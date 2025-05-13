@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <title>Monitoraggio Tremore Etna</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            background-color: #121212;
+            color: #e0e0e0;
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            padding-top: 60px;
+            text-align: center;
+        }
+        nav {
+            position: fixed;
+            top: 0;
+            width: 100%;
+            background-color: #1e1e1e;
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 999;
+        }
+        nav h2 {
+            margin: 0;
+            color: #00c0ff;
+        }
+        .menu {
+            position: relative;
+            display: inline-block;
+        }
+        .menu-button {
+            background-color: #00c0ff;
+            color: #000;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        .menu-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: #2a2a2a;
+            box-shadow: 0px 8px 16px rgba(0,0,0,0.3);
+            border-radius: 5px;
+            min-width: 160px;
+            text-align: left;
+        }
+        .menu-content a {
+            color: #e0e0e0;
+            padding: 12px 16px;
+            text-decoration: none;
+            display: block;
+        }
+        .menu-content a:hover {
+            background-color: #444;
+        }
+        .menu:hover .menu-content {
+            display: block;
+        }
+        canvas {
+            margin-top: 2rem;
+            background-color: #1e1e1e;
+            border: 1px solid #444;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <h2>🌋 Etna Monitor</h2>
+        <div class="menu">
+            <button class="menu-button">☰ Menu</button>
+            <div class="menu-content">
+                <a href="/register">Registrati</a>
+                <a href="/login">Login</a>
+                <a href="https://www.ct.ingv.it" target="_blank">Sito INGV</a>
+                <a href="https://www.protezionecivile.gov.it" target="_blank">Protezione Civile</a>
+            </div>
+        </div>
+    </nav>
+
+    <canvas id="etnaChart" width="1000" height="400"></canvas>
+
+    <script>
+        const labels = {{ labels|tojson }};
+        const values = {{ values|tojson }};
+
+        const data = {
+            labels: labels,
+            datasets: [{
+                label: 'Tremore (mV)',
+                data: values,
+                borderColor: 'lime',
+                backgroundColor: 'rgba(0,255,0,0.1)',
+                tension: 0.3,
+                pointRadius: 0
+            }]
+        };
+
+        const config = {
+            type: 'line',
+            data: data,
+            options: {
+                scales: {
+                    y: {
+                        type: 'logarithmic',
+                        min: 0.1,
+                        max: 10,
+                        title: { display: true, text: 'mV', color: '#ccc' },
+                        grid: { color: '#333' },
+                        ticks: { color: '#ccc' }
+                    },
+                    x: {
+                        ticks: { maxTicksLimit: 12, color: '#ccc' },
+                        title: { display: true, text: 'Tempo', color: '#ccc' },
+                        grid: { color: '#333' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: { color: '#ccc' }
+                    }
+                }
+            }
+        };
+
+        new Chart(
+            document.getElementById('etnaChart'),
+            config
+        );
+    </script>
+	<div style="margin-top: 3rem; background-color: #1e1e1e; padding: 1.5rem; border-radius: 8px;">
+    <h3>💙 Sostieni il progetto Etna Monitor</h3>
+    <p>Il servizio ti è utile? Aiutami a mantenerlo attivo con una piccola donazione.</p>
+    <a href="https://www.paypal.com/pools/c/9eMG7efxSs" target="_blank"
+       style="padding: 10px 25px; background-color: #00c0ff; color: #000; border-radius: 5px; text-decoration: none; font-weight: bold;">
+        👉 Dona su PayPal
+    </a>
+</div>
+
+</body>
+</html>
