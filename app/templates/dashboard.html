@@ -1,96 +1,181 @@
 {% extends "layout.html" %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+<meta name="theme-color" content="#007aff">
+{% endblock %}
+
 {% block content %}
-  <div class="grid grid-2">
-    <!-- Account Status Card -->
-    <div class="card">
-      <h2><i class="fas fa-user"></i> Account Status</h2>
-      <div class="account-info">
-        <p><strong>Email:</strong> {{ user.email }}</p>
-        <p><strong>Account Type:</strong> 
-          <span class="badge {{ 'premium' if user.premium else 'free' }}">
-            {{ 'Premium ⭐' if user.premium else 'Free' }}
-          </span>
-        </p>
-        <p><strong>Telegram:</strong> 
-          <span class="status-indicator {{ 'status-connected' if user.chat_id else 'status-disconnected' }}">
-            {{ 'Connected ✅' if user.chat_id else 'Not connected ❌' }}
-          </span>
-        </p>
-        
-        {% if user.premium %}
-          <p><strong>Custom Threshold:</strong> {{ user.threshold or threshold }} mV</p>
-          <a href="{{ url_for('dashboard.settings') }}" class="btn btn-secondary">
-            <i class="fas fa-cog"></i> Settings
-          </a>
-        {% else %}
-          <div class="premium-invite">
-            <h3><i class="fas fa-star"></i> Upgrade to Premium</h3>
-            <ul>
-              <li>Custom alert thresholds</li>
-              <li>Event history logging</li>
-              <li>Priority notifications</li>
-              <li>Advanced monitoring features</li>
-            </ul>
-            <p>Contact admin to activate Premium account.</p>
-          </div>
-        {% endif %}
+<div class="dashboard-container">
+  <div class="dashboard-header">
+    <div class="user-info">
+      <h1>Dashboard</h1>
+      <div class="user-badge">
+        <span class="badge {{ 'premium' if user.premium else 'free' }}">
+          {{ 'Premium ⭐' if user.premium else 'Free' }}
+        </span>
       </div>
     </div>
+    
+    <div class="dashboard-controls">
+      <button id="theme-toggle" class="btn btn-secondary" aria-label="Toggle theme">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+      </button>
+      
+      <div class="ingv-mode-toggle">
+        <label class="toggle-switch">
+          <input type="checkbox" id="ingv-mode" />
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-label">INGV Mode</span>
+      </div>
+    </div>
+  </div>
 
-    <!-- Tremor Status Card -->
-    <div class="card">
-      <h2><i class="fas fa-chart-line"></i> Current Status</h2>
+  <div class="chart-section card-base">
+    <div class="chart-header">
+      <h2>Volcanic Tremor Monitoring</h2>
+      <div class="chart-info">
+        <span id="last-updated">Last updated: --</span>
+        <span id="data-points">-- points</span>
+      </div>
+    </div>
+    
+    <div class="chart-controls">
+      {% if user.premium %}
+      <button id="update-btn" class="btn btn-primary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        Update Now
+      </button>
+      {% endif %}
+      
+      <div class="time-range-selector">
+        <select id="time-range">
+          <option value="24h">Last 24 hours</option>
+          <option value="3d">Last 3 days</option>
+          <option value="7d" selected>Last 7 days</option>
+          <option value="all">All data</option>
+        </select>
+      </div>
+      
+      {% if user.premium %}
+      <div class="export-controls">
+        <button id="export-csv" class="btn btn-secondary btn-sm">CSV</button>
+        <button id="export-png" class="btn btn-secondary btn-sm">PNG</button>
+      </div>
+      {% endif %}
+    </div>
+    
+    <div id="tremor-plot" class="chart-container"></div>
+    
+    <div class="chart-legend">
+      <div class="legend-item">
+        <span class="legend-color" style="background: #4ade80;"></span>
+        <span>Tremor Signal</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-color" style="background: #ef4444;"></span>
+        <span>Threshold</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-grid">
+    <div class="status-card card-base">
+      <h3>Current Status</h3>
       <div class="status-display">
         <div class="current-value">
-          <span class="value">{{ "%.2f"|format(latest_value) }}</span>
+          <span id="current-value">--</span>
           <span class="unit">mV</span>
         </div>
-        <div class="status-indicator status-{{ status }}">
-          {% if status == 'above' %}
-            <i class="fas fa-exclamation-triangle"></i> Above Threshold
-          {% else %}
-            <i class="fas fa-check-circle"></i> Below Threshold
-          {% endif %}
+        <div class="status-indicator" id="status-indicator">
+          <span id="status-text">--</span>
         </div>
-        <p class="threshold-info">Threshold: {{ threshold }} mV</p>
+      </div>
+    </div>
+
+    <div class="threshold-card card-base">
+      <h3>Threshold Settings</h3>
+      {% if user.premium %}
+      <div class="threshold-controls">
+        <label for="threshold-slider">Custom Threshold</label>
+        <div class="slider-container">
+          <input type="range" id="threshold-slider" min="0.1" max="10" step="0.1" value="{{ user.threshold or 2.0 }}">
+          <input type="number" id="threshold-input" min="0.1" max="10" step="0.1" value="{{ user.threshold or 2.0 }}">
+        </div>
+        <button id="save-threshold" class="btn btn-primary btn-sm">Save</button>
+      </div>
+      {% else %}
+      <div class="upgrade-prompt">
+        <p>Fixed threshold: {{ user.threshold or 2.0 }} mV</p>
+        <a href="/pricing" class="btn btn-primary btn-sm">Upgrade for Custom Thresholds</a>
+      </div>
+      {% endif %}
+    </div>
+
+    <div class="refresh-card card-base">
+      <h3>Auto-refresh</h3>
+      <div class="refresh-controls">
+        <select id="auto-refresh">
+          <option value="0">Off</option>
+          <option value="180000">3 minutes</option>
+          <option value="300000" selected>5 minutes</option>
+          <option value="600000">10 minutes</option>
+          <option value="1800000">30 minutes</option>
+        </select>
+        <div class="refresh-status">
+          <span id="refresh-countdown">--</span>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Tremor Graph -->
-  <div class="card">
-    <h2><i class="fas fa-chart-area"></i> Volcanic Tremor Graph</h2>
-    {% if graph_json %}
-      <div id="tremor-plot"></div>
-      <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-      <script>
-        var graphs = {{ graph_json|safe }};
-        Plotly.plot('tremor-plot', graphs, {});
-      </script>
-    {% else %}
-      <div class="no-data">
-        <i class="fas fa-exclamation-circle"></i>
-        <p>No tremor data available. Please check data source.</p>
+  {% if user.premium %}
+  <div class="premium-section">
+    <div class="alerts-card card-base">
+      <h3>Alert Settings</h3>
+      <div class="alert-controls">
+        <label class="checkbox-label">
+          <input type="checkbox" id="email-alerts" {% if user.email_alerts %}checked{% endif %}>
+          <span>Email notifications</span>
+        </label>
+        <label class="checkbox-label">
+          <input type="checkbox" id="telegram-alerts" {% if user.chat_id %}checked{% endif %}>
+          <span>Telegram notifications</span>
+        </label>
       </div>
-    {% endif %}
-  </div>
+    </div>
 
-  {% if user.premium and recent_events %}
-  <!-- Event Log for Premium Users -->
-  <div class="card">
-    <h2><i class="fas fa-history"></i> Recent Events</h2>
-    <div class="events-list">
-      {% for event in recent_events %}
-        <div class="event-item">
-          <div class="event-time">{{ event.timestamp.strftime('%Y-%m-%d %H:%M') }}</div>
-          <div class="event-type">{{ event.event_type.replace('_', ' ').title() }}</div>
-          <div class="event-message">{{ event.message or '' }}</div>
-          {% if event.value %}
-            <div class="event-value">{{ "%.2f"|format(event.value) }} mV</div>
-          {% endif %}
-        </div>
-      {% endfor %}
+    <div class="events-card card-base">
+      <h3>Recent Events</h3>
+      <div class="events-list" id="events-list">
+        {% for event in recent_events %}
+          <div class="event-item">
+            <span class="event-time">{{ event.timestamp.strftime('%H:%M') }}</span>
+            <span class="event-type">{{ event.event_type }}</span>
+            <span class="event-value">{{ "%.2f"|format(event.value) }} mV</span>
+          </div>
+        {% else %}
+          <p class="no-events">No recent events</p>
+        {% endfor %}
+      </div>
     </div>
   </div>
   {% endif %}
+</div>
+
+<div id="loading-overlay" class="loading-overlay" style="display: none;">
+  <div class="loading-spinner"></div>
+  <p>Updating data...</p>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}
