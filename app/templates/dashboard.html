@@ -1,31 +1,96 @@
 {% extends "layout.html" %}
 {% block content %}
-  <section class="grid">
+  <div class="grid grid-2">
+    <!-- Account Status Card -->
     <div class="card">
-      <h2>Account Status</h2>
-      <p>Email: <strong>{{ user.email }}</strong></p>
-      <p>Account Type: <strong>{{ 'Premium' if user.premium else 'Free' }}</strong></p>
-      <p>Telegram: <strong>{{ 'Connected' if user.chat_id else 'Not connected' }}</strong></p>
-      
-      {% if user.premium %}
-        <p>Custom Threshold: <strong>{{ user.threshold or 2.0 }} mV</strong></p>
-        <a href="{{ url_for('dashboard.settings') }}" class="btn btn-secondary">Settings</a>
-      {% else %}
-        <div class="premium-invite">
-          <h3>Upgrade to Premium</h3>
-          <p>Get access to:</p>
-          <ul>
-            <li>Custom alert thresholds</li>
-            <li>Priority notifications</li>
-            <li>Advanced monitoring features</li>
-          </ul>
-          <p>Contact admin to activate Premium account.</p>
+      <h2><i class="fas fa-user"></i> Account Status</h2>
+      <div class="account-info">
+        <p><strong>Email:</strong> {{ user.email }}</p>
+        <p><strong>Account Type:</strong> 
+          <span class="badge {{ 'premium' if user.premium else 'free' }}">
+            {{ 'Premium ⭐' if user.premium else 'Free' }}
+          </span>
+        </p>
+        <p><strong>Telegram:</strong> 
+          <span class="status-indicator {{ 'status-connected' if user.chat_id else 'status-disconnected' }}">
+            {{ 'Connected ✅' if user.chat_id else 'Not connected ❌' }}
+          </span>
+        </p>
+        
+        {% if user.premium %}
+          <p><strong>Custom Threshold:</strong> {{ user.threshold or threshold }} mV</p>
+          <a href="{{ url_for('dashboard.settings') }}" class="btn btn-secondary">
+            <i class="fas fa-cog"></i> Settings
+          </a>
+        {% else %}
+          <div class="premium-invite">
+            <h3><i class="fas fa-star"></i> Upgrade to Premium</h3>
+            <ul>
+              <li>Custom alert thresholds</li>
+              <li>Event history logging</li>
+              <li>Priority notifications</li>
+              <li>Advanced monitoring features</li>
+            </ul>
+            <p>Contact admin to activate Premium account.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Tremor Status Card -->
+    <div class="card">
+      <h2><i class="fas fa-chart-line"></i> Current Status</h2>
+      <div class="status-display">
+        <div class="current-value">
+          <span class="value">{{ "%.2f"|format(latest_value) }}</span>
+          <span class="unit">mV</span>
         </div>
-      {% endif %}
+        <div class="status-indicator status-{{ status }}">
+          {% if status == 'above' %}
+            <i class="fas fa-exclamation-triangle"></i> Above Threshold
+          {% else %}
+            <i class="fas fa-check-circle"></i> Below Threshold
+          {% endif %}
+        </div>
+        <p class="threshold-info">Threshold: {{ threshold }} mV</p>
+      </div>
     </div>
-    <div class="card">
-      <h2>Volcanic Tremor Graph</h2>
-      <div id="plot">(coming soon)</div>
+  </div>
+
+  <!-- Tremor Graph -->
+  <div class="card">
+    <h2><i class="fas fa-chart-area"></i> Volcanic Tremor Graph</h2>
+    {% if graph_json %}
+      <div id="tremor-plot"></div>
+      <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+      <script>
+        var graphs = {{ graph_json|safe }};
+        Plotly.plot('tremor-plot', graphs, {});
+      </script>
+    {% else %}
+      <div class="no-data">
+        <i class="fas fa-exclamation-circle"></i>
+        <p>No tremor data available. Please check data source.</p>
+      </div>
+    {% endif %}
+  </div>
+
+  {% if user.premium and recent_events %}
+  <!-- Event Log for Premium Users -->
+  <div class="card">
+    <h2><i class="fas fa-history"></i> Recent Events</h2>
+    <div class="events-list">
+      {% for event in recent_events %}
+        <div class="event-item">
+          <div class="event-time">{{ event.timestamp.strftime('%Y-%m-%d %H:%M') }}</div>
+          <div class="event-type">{{ event.event_type.replace('_', ' ').title() }}</div>
+          <div class="event-message">{{ event.message or '' }}</div>
+          {% if event.value %}
+            <div class="event-value">{{ "%.2f"|format(event.value) }} mV</div>
+          {% endif %}
+        </div>
+      {% endfor %}
     </div>
-  </section>
+  </div>
+  {% endif %}
 {% endblock %}

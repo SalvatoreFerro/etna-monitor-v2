@@ -3,25 +3,38 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>EtnaMonitor</title>
+    <title>EtnaMonitor 4.2</title>
     <link rel="stylesheet" href="/static/css/style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   </head>
   <body>
     <nav class="navbar">
       <div class="brand">EtnaMonitor</div>
       <div class="links">
-        <a href="/">Home</a>
+        <a href="/"><i class="fas fa-home"></i> Home</a>
         {% if session.user_id %}
-          <a href="/dashboard/">Dashboard</a>
-          <a href="/admin/">Admin</a>
-          <a href="{{ url_for('auth.logout') }}">Logout</a>
+          <a href="/dashboard/"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+          {% if current_user and current_user.is_admin %}
+            <a href="/admin/"><i class="fas fa-users-cog"></i> Admin</a>
+          {% endif %}
+          <a href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
         {% else %}
-          <a href="{{ url_for('auth.login') }}">Login</a>
-          <a href="{{ url_for('auth.register') }}">Register</a>
+          <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> Login</a>
+          <a href="{{ url_for('auth.register') }}"><i class="fas fa-user-plus"></i> Register</a>
         {% endif %}
       </div>
     </nav>
     <main class="container">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
       {% block content %}{% endblock %}
     </main>
   </body>
