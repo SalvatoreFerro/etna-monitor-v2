@@ -73,4 +73,12 @@ def process_png_to_csv(url="https://www.ct.ingv.it/RMS_Etna/2.png", output_path=
     
     if output_path is None:
         output_path = os.path.join(DATA_DIR, 'curva.csv')
-    return clean_and_save_data(df, output_path)
+    
+    final_path = clean_and_save_data(df, output_path)
+    
+    last_ts = df['timestamp'].iloc[-1].strftime('%Y-%m-%d %H:%M:%S') if not df.empty else ""
+    return {
+        "rows": len(df),
+        "last_ts": last_ts,
+        "output_path": final_path
+    }

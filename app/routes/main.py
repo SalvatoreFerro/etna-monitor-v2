@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, jsonify
 import pandas as pd
 import os
+import pathlib
 from pathlib import Path
 
 bp = Blueprint("main", __name__)
@@ -52,3 +53,30 @@ def index():
 def healthcheck():
     """Health check endpoint for Render deployment"""
     return jsonify({"ok": True}), 200
+
+@bp.route("/api/force_update", methods=["POST", "GET"])
+def force_update():
+    """Force update of PNG data and curva.csv"""
+    try:
+        CSV_PATH = pathlib.Path(os.getenv("CSV_PATH", "/data/curva.csv"))
+        INGV_URL = os.getenv("INGV_URL", "https://www.ct.ingv.it/RMS_Etna/2.png")
+        
+        try:
+            CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
+        except PermissionError:
+            ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
+            local_path = ROOT / "data" / "curva.csv"
+            local_path.parent.mkdir(parents=True, exist_ok=True)
+            CSV_PATH = local_path
+        
+        from backend.utils.extract_png import process_png_to_csv
+        result = process_png_to_csv(INGV_URL, str(CSV_PATH))
+        
+        return jsonify({
+            "ok": True,
+            "message": "Data updated successfully",
+            **result
+        }), 200
+        
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
