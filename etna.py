@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 
 URL_INGV = "https://www.ct.ingv.it/RMS_Etna/2.png"
 GRAFICO_LOCALE = "grafici/etna_latest.png"
-CSV_LOG = "log/log.csv"
+CSV_LOG = os.path.join(os.getenv("LOG_DIR", "log"), "log.csv")
 PLOT_IMG = "static/plot.png"
 
 def scarica_grafico():

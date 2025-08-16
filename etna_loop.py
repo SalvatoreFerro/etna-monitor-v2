@@ -13,7 +13,7 @@ os.makedirs("static", exist_ok=True)
 
 URL_INGV = "https://www.ct.ingv.it/RMS_Etna/2.png"
 GRAFICO_LOCALE = "grafici/etna_latest.png"
-CSV_LOG = "log/log.csv"
+CSV_LOG = os.path.join(os.getenv("LOG_DIR", "log"), "log.csv")
 TOKEN_TELEGRAM = "7688152214:AAGJoZFWowVv0aOwNkcsGET6lhmKGoTK1WU"  # ← cambia con il tuo token reale
 
 def scarica_grafico():
