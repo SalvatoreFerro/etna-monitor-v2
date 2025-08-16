@@ -101,6 +101,33 @@ project_root/
     └── curva.csv
 ```
 
+## API Endpoints
+
+### POST/GET /api/force_update
+
+Forces an update of the tremor data by downloading the latest PNG from INGV and processing it.
+
+**Environment Variables:**
+- `INGV_URL`: PNG source URL (default: https://www.ct.ingv.it/RMS_Etna/2.png)
+- `CSV_PATH`: Output CSV path (default: /data/curva.csv)
+
+**Response:**
+```json
+{
+  "ok": true,
+  "message": "Data updated successfully",
+  "rows": 1440,
+  "last_ts": "2025-08-16 20:00:00",
+  "output_path": "/data/curva.csv"
+}
+```
+
+**Test commands:**
+```bash
+curl -X POST https://your-app.onrender.com/api/force_update
+curl https://your-app.onrender.com/api/force_update
+```
+
 ## Testing Locally
 
 Before deploying to Render, test locally:
@@ -110,6 +137,7 @@ Before deploying to Render, test locally:
 export LOG_DIR=/data/log
 export DATA_DIR=/data
 export CSV_PATH=/data/curva.csv
+export INGV_URL=https://www.ct.ingv.it/RMS_Etna/2.png
 export PORT=5000
 
 # Test gunicorn startup
@@ -119,10 +147,15 @@ gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app
 curl http://localhost:5000/healthz
 # Expected: {"ok":true}
 
+# Test API endpoint
+curl -X POST http://localhost:5000/api/force_update
+curl http://localhost:5000/api/force_update
+
 # Test home page
 curl http://localhost:5000/
 # Expected: 200 OK (no 500 errors)
 
 # Run tests
 pytest -q tests/test_healthz.py
+pytest -q tests/test_force_update_api.py
 ```
