@@ -16,7 +16,8 @@ def force_update():
     try:
         ingv_url = os.getenv('INGV_URL', 'https://www.ct.ingv.it/RMS_Etna/2.png')
         
-        output_path = process_png_to_csv(ingv_url, "data/curva.csv")
+        DATA_DIR = os.getenv('DATA_DIR', 'data')
+        output_path = process_png_to_csv(ingv_url, os.path.join(DATA_DIR, "curva.csv"))
         
         return jsonify({"ok": True, "message": f"Data updated successfully in {output_path}"})
     

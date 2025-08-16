@@ -1,7 +1,45 @@
-from flask import Blueprint, render_template
+from flask import Blueprint, render_template, jsonify
+import pandas as pd
+import os
+from pathlib import Path
 
 bp = Blueprint("main", __name__)
 
 @bp.route("/")
 def index():
-    return render_template("index.html")
+    LOG_DIR = os.getenv("LOG_DIR", "log")
+    DATA_DIR = os.getenv("DATA_DIR", "data")
+    
+    Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
+    Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
+    
+    log_file = os.path.join(LOG_DIR, "log.csv")
+    log_file_alt = os.path.join(LOG_DIR, "log.cvs")
+    
+    try:
+        if os.path.exists(log_file):
+            df = pd.read_csv(log_file, parse_dates=["timestamp"])
+        elif os.path.exists(log_file_alt):
+            df = pd.read_csv(log_file_alt, parse_dates=["timestamp"])
+        else:
+            empty_df = pd.DataFrame(columns=["timestamp", "mV"])
+            empty_df.to_csv(log_file, index=False)
+            df = empty_df
+        
+        if not df.empty:
+            df["timestamp"] = df["timestamp"].dt.strftime("%Y-%m-%d %H:%M")
+            timestamps = df["timestamp"].tolist()
+            values = df["mV"].tolist()
+        else:
+            timestamps = []
+            values = []
+    except Exception as e:
+        timestamps = []
+        values = []
+    
+    return render_template("index.html", labels=timestamps, values=values)
+
+@bp.route("/healthz")
+def healthcheck():
+    """Health check endpoint for Render deployment"""
+    return jsonify({"status": "ok"}), 200
