@@ -1,24 +1,32 @@
 import os
-import sys
+import pathlib
 from pathlib import Path
 
-if '.' not in sys.path:
-    sys.path.insert(0, '.')
+ROOT = pathlib.Path(__file__).resolve().parent
+DATA_DIR = pathlib.Path(os.getenv("DATA_DIR", "/data"))
+LOG_DIR = pathlib.Path(os.getenv("LOG_DIR", "/data/log"))
+CSV_PATH = pathlib.Path(os.getenv("CSV_PATH", "/data/curva.csv"))
 
-LOG_DIR = os.getenv("LOG_DIR", "/data/log")
-DATA_DIR = os.getenv("DATA_DIR", "/data")
+def ensure_path(p: pathlib.Path):
+    """Create directory with fallback if /data is not writable"""
+    try:
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+    except PermissionError:
+        local = ROOT / p.relative_to("/data") if str(p).startswith("/data") else ROOT / "data_fallback"
+        local.mkdir(parents=True, exist_ok=True)
+        return local
 
-try:
-    Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
-except PermissionError:
-    LOG_DIR = "log"
-    Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
+LOG_DIR = ensure_path(LOG_DIR)
+CSV_PATH = (CSV_PATH if CSV_PATH.is_absolute() else LOG_DIR / CSV_PATH).resolve()
+if not CSV_PATH.parent.exists():
+    CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-try:
-    Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
-except PermissionError:
-    DATA_DIR = "data"
-    Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
+log_csv = LOG_DIR / "log.csv"
+if not log_csv.exists():
+    log_csv.write_text("timestamp,value\n", encoding="utf-8")
+if not CSV_PATH.exists():
+    CSV_PATH.write_text("timestamp,value\n", encoding="utf-8")
 
 from app import app
 
