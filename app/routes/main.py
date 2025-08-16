@@ -7,11 +7,20 @@ bp = Blueprint("main", __name__)
 
 @bp.route("/")
 def index():
-    LOG_DIR = os.getenv("LOG_DIR", "log")
-    DATA_DIR = os.getenv("DATA_DIR", "data")
+    LOG_DIR = os.getenv("LOG_DIR", "/data/log")
+    DATA_DIR = os.getenv("DATA_DIR", "/data")
     
-    Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
-    Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
+    try:
+        Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
+    except PermissionError:
+        LOG_DIR = "log"
+        Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
+    
+    try:
+        Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
+    except PermissionError:
+        DATA_DIR = "data"
+        Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
     
     log_file = os.path.join(LOG_DIR, "log.csv")
     log_file_alt = os.path.join(LOG_DIR, "log.cvs")
