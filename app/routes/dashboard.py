@@ -7,6 +7,8 @@ from config import Config
 import pandas as pd
 import plotly
 import json
+import os
+from pathlib import Path
 from datetime import datetime, timedelta
 
 bp = Blueprint("dashboard", __name__)
@@ -16,9 +18,18 @@ bp = Blueprint("dashboard", __name__)
 def dashboard_home():
     user = get_current_user()
     
+    DATA_DIR = os.getenv("DATA_DIR", "data")
+    
     try:
-        df = pd.read_csv('data/curva.csv', parse_dates=['timestamp'])
-        df = df.tail(100)  # Last 100 points for performance
+        curva_file = os.path.join(DATA_DIR, "curva.csv")
+        if os.path.exists(curva_file):
+            df = pd.read_csv(curva_file, parse_dates=['timestamp'])
+            df = df.tail(100)  # Last 100 points for performance
+        else:
+            Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
+            empty_df = pd.DataFrame(columns=['timestamp', 'value'])
+            empty_df.to_csv(curva_file, index=False)
+            df = empty_df
         
         threshold = user.threshold if user.premium and user.threshold else Config.ALERT_THRESHOLD_DEFAULT
         
