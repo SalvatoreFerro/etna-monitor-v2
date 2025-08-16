@@ -21,8 +21,8 @@
         const response = await fetch('/api/curva');
         const data = await response.json();
         
-        if (data.ok && data.rows.length > 0) {
-          plotData(data.rows);
+        if (data.ok && data.data && data.data.length > 0) {
+          plotData(data.data);
           document.getElementById('no-data-banner').style.display = 'none';
         } else {
           document.getElementById('no-data-banner').style.display = 'block';

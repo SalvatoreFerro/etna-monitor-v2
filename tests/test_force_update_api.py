@@ -99,10 +99,35 @@ def test_api_curva_success(client):
 
 def test_api_curva_file_not_found(client):
     """Test /api/curva returns 404 when CSV file doesn't exist"""
-    with patch('app.routes.main.CSV_PATH', '/nonexistent/path.csv'):
+    with patch('os.environ.get') as mock_getenv:
+        mock_getenv.return_value = '/nonexistent/path.csv'
         response = client.get('/api/curva')
         
         assert response.status_code == 404
         data = json.loads(response.data)
         assert data["ok"] is False
         assert "not found" in data["error"]
+
+def test_api_curva_with_parse_dates(client):
+    """Test /api/curva properly parses timestamps and returns ISO format"""
+    import tempfile
+    import pandas as pd
+    
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        test_data = pd.DataFrame({
+            'timestamp': ['2025-08-16 12:00:00', '2025-08-16 12:01:00'],
+            'value': [1.5, 2.3]
+        })
+        test_data.to_csv(f.name, index=False)
+        
+        with patch('os.environ.get') as mock_getenv:
+            mock_getenv.return_value = f.name
+            response = client.get('/api/curva')
+            
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert data["ok"] is True
+            assert len(data["data"]) == 2
+            assert data["data"][0]["timestamp"] == "2025-08-16T12:00:00"
+            assert data["data"][0]["value"] == 1.5
+            assert data["last_ts"] == "2025-08-16T12:01:00"
