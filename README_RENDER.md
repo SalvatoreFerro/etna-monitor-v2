@@ -5,20 +5,27 @@
 Set these in your Render service dashboard:
 
 ```
-LOG_DIR=/data/log
-DATA_DIR=/data
-CSV_PATH=/data/curva.csv
+DATA_DIR=/var/tmp
+LOG_DIR=/var/tmp/log
+CSV_PATH=/var/tmp/curva.csv
 FLASK_ENV=production
+INGV_URL=https://www.ct.ingv.it/RMS_Etna/2.png
 ```
+
+**Note**: Using `/var/tmp` instead of `/data` for Render free tier compatibility (no paid disk required).
 
 ## Disk Configuration
 
+**For Render Free Tier**: No disk configuration needed! The app uses `/var/tmp` which is writable on free tier.
+
+**For Render Paid Tier** (optional):
 1. Go to your Render service dashboard
 2. Navigate to "Settings" → "Disks"
 3. Add Disk:
    - **Name**: etna-data
    - **Mount path**: /data
    - **Size**: 1 GB
+4. Update environment variables to use `/data` paths instead of `/var/tmp`
 
 ## Start Command
 
@@ -86,20 +93,16 @@ After deployment, verify these items:
 
 After successful deployment, the app will create:
 ```
-/data/
+/var/tmp/
 ├── log/
 │   └── log.csv
 └── curva.csv
 ```
 
-If /data is not writable, fallback structure:
-```
-project_root/
-├── log/
-│   └── log.csv
-└── data/
-    └── curva.csv
-```
+**Fallback hierarchy** (if paths not writable):
+1. Environment variables: `DATA_DIR`, `LOG_DIR`, `CSV_PATH`
+2. System temp: `TMPDIR` environment variable
+3. Final fallback: `/var/tmp` (always writable on Render)
 
 ## API Endpoints
 
@@ -109,7 +112,7 @@ Forces an update of the tremor data by downloading the latest PNG from INGV and 
 
 **Environment Variables:**
 - `INGV_URL`: PNG source URL (default: https://www.ct.ingv.it/RMS_Etna/2.png)
-- `CSV_PATH`: Output CSV path (default: /data/curva.csv)
+- `CSV_PATH`: Output CSV path (default: /var/tmp/curva.csv)
 
 **Response:**
 ```json
@@ -126,6 +129,7 @@ Forces an update of the tremor data by downloading the latest PNG from INGV and 
 ```bash
 curl -X POST https://your-app.onrender.com/api/force_update
 curl https://your-app.onrender.com/api/force_update
+curl https://your-app.onrender.com/api/curva
 ```
 
 ## Testing Locally
@@ -134,9 +138,9 @@ Before deploying to Render, test locally:
 
 ```bash
 # Set environment variables
-export LOG_DIR=/data/log
-export DATA_DIR=/data
-export CSV_PATH=/data/curva.csv
+export DATA_DIR=/var/tmp
+export LOG_DIR=/var/tmp/log
+export CSV_PATH=/var/tmp/curva.csv
 export INGV_URL=https://www.ct.ingv.it/RMS_Etna/2.png
 export PORT=5000
 
@@ -147,9 +151,10 @@ gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app
 curl http://localhost:5000/healthz
 # Expected: {"ok":true}
 
-# Test API endpoint
+# Test API endpoints
 curl -X POST http://localhost:5000/api/force_update
 curl http://localhost:5000/api/force_update
+curl http://localhost:5000/api/curva
 
 # Test home page
 curl http://localhost:5000/

@@ -74,3 +74,35 @@ def test_curva_csv_created_correctly(client):
         assert data["ok"] is True
         assert data["rows"] == 2
         assert data["last_ts"] == "2025-01-01 13:00:00"
+
+def test_api_curva_success(client):
+    """Test /api/curva returns CSV data as JSON"""
+    import tempfile
+    import pandas as pd
+    
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        test_data = pd.DataFrame({
+            'timestamp': ['2025-01-01 12:00:00', '2025-01-01 12:01:00'],
+            'value': [1.5, 2.3]
+        })
+        test_data.to_csv(f.name, index=False)
+        
+        with patch('app.routes.main.CSV_PATH', f.name):
+            response = client.get('/api/curva')
+            
+            assert response.status_code == 200
+            data = json.loads(response.data)
+            assert data["ok"] is True
+            assert len(data["rows"]) == 2
+            assert data["rows"][0]["timestamp"] == "2025-01-01 12:00:00"
+            assert data["rows"][0]["value"] == 1.5
+
+def test_api_curva_file_not_found(client):
+    """Test /api/curva returns 404 when CSV file doesn't exist"""
+    with patch('app.routes.main.CSV_PATH', '/nonexistent/path.csv'):
+        response = client.get('/api/curva')
+        
+        assert response.status_code == 404
+        data = json.loads(response.data)
+        assert data["ok"] is False
+        assert "not found" in data["error"]

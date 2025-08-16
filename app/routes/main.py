@@ -6,48 +6,26 @@ from pathlib import Path
 
 bp = Blueprint("main", __name__)
 
+def _tmp_base():
+    return Path(os.getenv("DATA_DIR") or os.getenv("TMPDIR") or "/var/tmp")
+
+BASE_DIR = _tmp_base()
+LOG_DIR = Path(os.getenv("LOG_DIR") or BASE_DIR / "log")
+CSV_PATH = Path(os.getenv("CSV_PATH") or BASE_DIR / "curva.csv")
+
+for p in [BASE_DIR, LOG_DIR]:
+    try:
+        p.mkdir(parents=True, exist_ok=True)
+    except PermissionError:
+        BASE_DIR = Path("/var/tmp")
+        LOG_DIR = BASE_DIR / "log"
+        CSV_PATH = BASE_DIR / "curva.csv"
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        break
+
 @bp.route("/")
 def index():
-    LOG_DIR = os.getenv("LOG_DIR", "/data/log")
-    DATA_DIR = os.getenv("DATA_DIR", "/data")
-    
-    try:
-        Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
-    except PermissionError:
-        LOG_DIR = "log"
-        Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
-    
-    try:
-        Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
-    except PermissionError:
-        DATA_DIR = "data"
-        Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
-    
-    log_file = os.path.join(LOG_DIR, "log.csv")
-    log_file_alt = os.path.join(LOG_DIR, "log.cvs")
-    
-    try:
-        if os.path.exists(log_file):
-            df = pd.read_csv(log_file, parse_dates=["timestamp"])
-        elif os.path.exists(log_file_alt):
-            df = pd.read_csv(log_file_alt, parse_dates=["timestamp"])
-        else:
-            empty_df = pd.DataFrame(columns=["timestamp", "mV"])
-            empty_df.to_csv(log_file, index=False)
-            df = empty_df
-        
-        if not df.empty:
-            df["timestamp"] = df["timestamp"].dt.strftime("%Y-%m-%d %H:%M")
-            timestamps = df["timestamp"].tolist()
-            values = df["mV"].tolist()
-        else:
-            timestamps = []
-            values = []
-    except Exception as e:
-        timestamps = []
-        values = []
-    
-    return render_template("index.html", labels=timestamps, values=values)
+    return render_template("index.html")
 
 @bp.route("/healthz")
 def healthcheck():
@@ -58,16 +36,7 @@ def healthcheck():
 def force_update():
     """Force update of PNG data and curva.csv"""
     try:
-        CSV_PATH = pathlib.Path(os.getenv("CSV_PATH", "/data/curva.csv"))
         INGV_URL = os.getenv("INGV_URL", "https://www.ct.ingv.it/RMS_Etna/2.png")
-        
-        try:
-            CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
-        except PermissionError:
-            ROOT = pathlib.Path(__file__).resolve().parent.parent.parent
-            local_path = ROOT / "data" / "curva.csv"
-            local_path.parent.mkdir(parents=True, exist_ok=True)
-            CSV_PATH = local_path
         
         from backend.utils.extract_png import process_png_to_csv
         result = process_png_to_csv(INGV_URL, str(CSV_PATH))
@@ -80,3 +49,12 @@ def force_update():
         
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+@bp.route("/api/curva")
+def api_curva():
+    """Return curva.csv data as JSON"""
+    try:
+        df = pd.read_csv(CSV_PATH)
+        return jsonify(ok=True, rows=df.to_dict(orient="records"))
+    except FileNotFoundError:
+        return jsonify(ok=False, error="curva.csv not found"), 404

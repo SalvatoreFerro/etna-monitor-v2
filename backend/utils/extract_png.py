@@ -52,8 +52,18 @@ def extract_green_curve_from_png(png_bytes):
 def clean_and_save_data(df, output_path=None):
     """Clean signal from noise/duplicates and save to CSV"""
     if output_path is None:
-        DATA_DIR = os.getenv('DATA_DIR', 'data')
-        output_path = os.path.join(DATA_DIR, 'curva.csv')
+        def _tmp_base():
+            return Path(os.getenv("DATA_DIR") or os.getenv("TMPDIR") or "/var/tmp")
+        
+        BASE_DIR = _tmp_base()
+        try:
+            BASE_DIR.mkdir(parents=True, exist_ok=True)
+            output_path = BASE_DIR / 'curva.csv'
+        except PermissionError:
+            BASE_DIR = Path("/var/tmp")
+            BASE_DIR.mkdir(parents=True, exist_ok=True)
+            output_path = BASE_DIR / 'curva.csv'
+    
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     
     df = df.sort_values("timestamp").drop_duplicates("timestamp")
@@ -65,14 +75,8 @@ def clean_and_save_data(df, output_path=None):
 
 def process_png_to_csv(url="https://www.ct.ingv.it/RMS_Etna/2.png", output_path=None):
     """Complete pipeline: download PNG, extract curve, save CSV"""
-    DATA_DIR = os.getenv('DATA_DIR', 'data')
-    Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
-    
     png_bytes = download_png(url)
     df = extract_green_curve_from_png(png_bytes)
-    
-    if output_path is None:
-        output_path = os.path.join(DATA_DIR, 'curva.csv')
     
     final_path = clean_and_save_data(df, output_path)
     
