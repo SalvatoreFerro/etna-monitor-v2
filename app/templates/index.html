@@ -1,7 +1,100 @@
 {% extends "layout.html" %}
 {% block content %}
   <section class="card">
-    <h1>EtnaMonitor 3.x</h1>
-    <p>Demo base. Grafica dark, navbar fissa, pronto per grafico Plotly e logica soglia.</p>
+    <h1>EtnaMonitor 4.2</h1>
+    <div id="no-data-banner" style="display: none; background: #ff6b6b; color: white; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
+      <p>No data yet. Click 'Aggiorna' to fetch latest tremor data.</p>
+      <button id="update-btn" onclick="updateData()" style="background: white; color: #ff6b6b; border: none; padding: 5px 15px; border-radius: 3px; cursor: pointer;">Aggiorna</button>
+    </div>
+    <div id="plot-container">
+      <div id="tremor-plot" style="width: 100%; height: 400px;"></div>
+    </div>
+    <div id="loading" style="display: none; text-align: center; padding: 20px;">
+      <p>Loading data...</p>
+    </div>
   </section>
+
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script>
+    async function loadData() {
+      try {
+        const response = await fetch('/api/curva');
+        const data = await response.json();
+        
+        if (data.ok && data.data && data.data.length > 0) {
+          plotData(data.data);
+          document.getElementById('no-data-banner').style.display = 'none';
+        } else {
+          document.getElementById('no-data-banner').style.display = 'block';
+          document.getElementById('tremor-plot').innerHTML = '<p style="text-align: center; color: #666;">No data available</p>';
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+        document.getElementById('no-data-banner').style.display = 'block';
+        document.getElementById('tremor-plot').innerHTML = '<p style="text-align: center; color: #ff6b6b;">Error loading data</p>';
+      }
+    }
+
+    function plotData(rows) {
+      const timestamps = rows.map(row => row.timestamp);
+      const values = rows.map(row => row.value);
+      
+      const trace = {
+        x: timestamps,
+        y: values,
+        type: 'scatter',
+        mode: 'lines',
+        name: 'Tremor (mV)',
+        line: { color: '#00ff00', width: 2 }
+      };
+      
+      const layout = {
+        title: 'Etna Volcanic Tremor',
+        xaxis: { title: 'Time' },
+        yaxis: { 
+          title: 'Amplitude (mV)', 
+          type: 'log',
+          range: [-1, 2]
+        },
+        plot_bgcolor: '#1a1a1a',
+        paper_bgcolor: '#1a1a1a',
+        font: { color: 'white' },
+        shapes: [{
+          type: 'line',
+          x0: timestamps[0],
+          x1: timestamps[timestamps.length - 1],
+          y0: 2,
+          y1: 2,
+          line: { color: 'red', width: 2, dash: 'dash' }
+        }]
+      };
+      
+      Plotly.newPlot('tremor-plot', [trace], layout);
+    }
+
+    async function updateData() {
+      document.getElementById('loading').style.display = 'block';
+      document.getElementById('update-btn').disabled = true;
+      
+      try {
+        const response = await fetch('/api/force_update', { method: 'POST' });
+        const result = await response.json();
+        
+        if (result.ok) {
+          await loadData();
+        } else {
+          alert('Error updating data: ' + result.error);
+        }
+      } catch (error) {
+        console.error('Error updating data:', error);
+        alert('Error updating data');
+      } finally {
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('update-btn').disabled = false;
+      }
+    }
+
+    // Load data on page load
+    document.addEventListener('DOMContentLoaded', loadData);
+  </script>
 {% endblock %}
