@@ -1,0 +1,31 @@
+{% extends "layout.html" %}
+{% block content %}
+  <section class="grid">
+    <div class="card">
+      <h2>Account Status</h2>
+      <p>Email: <strong>{{ user.email }}</strong></p>
+      <p>Account Type: <strong>{{ 'Premium' if user.premium else 'Free' }}</strong></p>
+      <p>Telegram: <strong>{{ 'Connected' if user.chat_id else 'Not connected' }}</strong></p>
+      
+      {% if user.premium %}
+        <p>Custom Threshold: <strong>{{ user.threshold or 2.0 }} mV</strong></p>
+        <a href="{{ url_for('dashboard.settings') }}" class="btn btn-secondary">Settings</a>
+      {% else %}
+        <div class="premium-invite">
+          <h3>Upgrade to Premium</h3>
+          <p>Get access to:</p>
+          <ul>
+            <li>Custom alert thresholds</li>
+            <li>Priority notifications</li>
+            <li>Advanced monitoring features</li>
+          </ul>
+          <p>Contact admin to activate Premium account.</p>
+        </div>
+      {% endif %}
+    </div>
+    <div class="card">
+      <h2>Volcanic Tremor Graph</h2>
+      <div id="plot">(coming soon)</div>
+    </div>
+  </section>
+{% endblock %}

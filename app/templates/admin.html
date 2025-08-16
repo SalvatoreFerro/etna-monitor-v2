@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+{% block content %}
+  <section class="card">
+    <h2>User Management</h2>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Email</th>
+          <th>Premium</th>
+          <th>Admin</th>
+          <th>Telegram</th>
+          <th>Threshold</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for user in users %}
+          <tr>
+            <td>{{ user.email }}</td>
+            <td>{{ '✅' if user.premium else '❌' }}</td>
+            <td>{{ '👑' if user.is_admin else '—' }}</td>
+            <td>{{ user.chat_id or '—' }}</td>
+            <td>{{ user.threshold or '—' }}</td>
+            <td>
+              <button onclick="togglePremium({{ user.id }})" class="btn btn-sm">
+                {{ 'Downgrade' if user.premium else 'Upgrade' }}
+              </button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <script>
+    function togglePremium(userId) {
+      fetch(`/admin/toggle_premium/${userId}`, {method: 'POST'})
+        .then(response => response.json())
+        .then(data => {
+          if (data.success) {
+            location.reload();
+          } else {
+            alert('Error: ' + data.message);
+          }
+        });
+    }
+  </script>
+{% endblock %}
