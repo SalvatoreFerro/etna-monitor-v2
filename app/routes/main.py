@@ -51,4 +51,4 @@ def index():
 @bp.route("/healthz")
 def healthcheck():
     """Health check endpoint for Render deployment"""
-    return jsonify({"status": "ok"}), 200
+    return jsonify({"ok": True}), 200

@@ -49,8 +49,11 @@ def extract_green_curve_from_png(png_bytes):
     
     return pd.DataFrame(data, columns=["timestamp", "value"])
 
-def clean_and_save_data(df, output_path="data/curva.csv"):
+def clean_and_save_data(df, output_path=None):
     """Clean signal from noise/duplicates and save to CSV"""
+    if output_path is None:
+        DATA_DIR = os.getenv('DATA_DIR', 'data')
+        output_path = os.path.join(DATA_DIR, 'curva.csv')
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
     
     df = df.sort_values("timestamp").drop_duplicates("timestamp")
@@ -60,7 +63,7 @@ def clean_and_save_data(df, output_path="data/curva.csv"):
     df.to_csv(output_path, index=False)
     return output_path
 
-def process_png_to_csv(url="https://www.ct.ingv.it/RMS_Etna/2.png", output_path="data/curva.csv"):
+def process_png_to_csv(url="https://www.ct.ingv.it/RMS_Etna/2.png", output_path=None):
     """Complete pipeline: download PNG, extract curve, save CSV"""
     DATA_DIR = os.getenv('DATA_DIR', 'data')
     Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
@@ -68,5 +71,6 @@ def process_png_to_csv(url="https://www.ct.ingv.it/RMS_Etna/2.png", output_path=
     png_bytes = download_png(url)
     df = extract_green_curve_from_png(png_bytes)
     
-    output_path = os.path.join(DATA_DIR, 'curva.csv')
+    if output_path is None:
+        output_path = os.path.join(DATA_DIR, 'curva.csv')
     return clean_and_save_data(df, output_path)
