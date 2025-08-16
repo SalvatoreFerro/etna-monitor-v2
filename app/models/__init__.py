@@ -7,3 +7,8 @@ def init_db(app):
     db.init_app(app)
     with app.app_context():
         db.create_all()
+
+from .user import User
+from .event import Event
+
+__all__ = ['db', 'init_db', 'User', 'Event']
