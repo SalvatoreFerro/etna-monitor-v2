@@ -5,7 +5,7 @@
   --card-hover: #1a1d2a;
   --text: #e6e7ea;
   --muted: #a6abb3;
-  --accent: #e33;
+  --accent: #007aff;
   --success: #4ade80;
   --warning: #fbbf24;
   --error: #ef4444;
@@ -125,6 +125,28 @@ body {
   
   .navbar {
     padding: 8px 16px;
+  }
+  
+  .navbar-toggle {
+    display: flex !important;
+  }
+  
+  .navbar-menu {
+    display: none;
+  }
+  
+  .navbar-menu.active {
+    display: flex !important;
+    position: fixed;
+    top: 70px;
+    left: 0;
+    right: 0;
+    background: var(--card);
+    border-top: 1px solid var(--border);
+    flex-direction: column;
+    padding: var(--space-6, 24px);
+    gap: var(--space-6, 24px);
+    z-index: 1000;
   }
   
   .container {

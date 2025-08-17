@@ -748,6 +748,199 @@
   text-align: center;
 }
 
+/* Navbar Mobile Enhancements */
+.navbar-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-4) var(--space-6);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.navbar-toggle {
+  display: none;
+  flex-direction: column;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: var(--space-2);
+}
+
+.hamburger-line {
+  width: 24px;
+  height: 2px;
+  background: var(--color-text-primary);
+  margin: 2px 0;
+  transition: var(--transition-fast);
+}
+
+.navbar-menu {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.navbar-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.nav-link {
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  transition: all var(--transition-fast);
+}
+
+.nav-link:hover,
+.nav-link.active {
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.user-menu {
+  position: relative;
+}
+
+.user-menu-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+}
+
+.user-email {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  min-width: 200px;
+  z-index: var(--z-dropdown);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all var(--transition-fast);
+}
+
+.user-menu:hover .user-menu-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.dropdown-item {
+  display: block;
+  padding: var(--space-3) var(--space-4);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  transition: background var(--transition-fast);
+}
+
+.dropdown-item:hover {
+  background: var(--color-surface-hover);
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: var(--color-border);
+  margin: var(--space-2) 0;
+}
+
+.auth-buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Premium Page Specific Styles */
+.admin-container,
+.settings-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-8) var(--space-6);
+}
+
+.admin-header,
+.settings-header {
+  text-align: center;
+  padding: var(--space-8);
+  margin-bottom: var(--space-8);
+}
+
+.admin-content,
+.settings-content {
+  padding: var(--space-8);
+}
+
+.table-container {
+  overflow-x: auto;
+  border-radius: var(--radius-xl);
+}
+
+.table-premium {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table-premium th,
+.table-premium td {
+  padding: var(--space-4);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table-premium th {
+  background: var(--gradient-surface);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.action-buttons {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.badge.admin {
+  background: rgba(147, 51, 234, 0.2);
+  color: #9333ea;
+}
+
+.settings-form {
+  max-width: 500px;
+  margin: 0 auto;
+}
+
+.upgrade-prompt {
+  text-align: center;
+  padding: var(--space-8);
+}
+
+.navigation-actions {
+  margin-top: var(--space-8);
+  text-align: center;
+}
+
 /* Mobile Responsive Breakpoints */
 @media (max-width: 768px) {
   .navbar-container {
@@ -878,5 +1071,36 @@
   
   .export-controls {
     justify-content: center;
+  }
+  
+  .navbar-container {
+    padding: var(--space-2) var(--space-3);
+  }
+  
+  .brand-text {
+    font-size: var(--font-size-base);
+  }
+  
+  .navbar-menu.active {
+    top: 60px;
+  }
+  
+  .admin-container,
+  .settings-container {
+    padding: var(--space-4) var(--space-2);
+  }
+  
+  .admin-header h1,
+  .settings-header h1 {
+    font-size: var(--font-size-xl);
+  }
+  
+  .table-container {
+    font-size: var(--font-size-xs);
+  }
+  
+  .action-buttons .btn {
+    font-size: var(--font-size-xs);
+    padding: var(--space-1) var(--space-2);
   }
 }
