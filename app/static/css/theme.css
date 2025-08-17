@@ -941,31 +941,53 @@
   text-align: center;
 }
 
+/* iOS Safari Compatibility Enhancements */
+.glass,
+.glass-alt {
+  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: blur(20px);
+}
+
+.btn,
+.nav-link,
+.navbar-toggle {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
 /* Mobile Responsive Breakpoints */
 @media (max-width: 768px) {
   .navbar-container {
-    padding: var(--space-3) var(--space-4);
+    padding: max(var(--space-3), env(safe-area-inset-top)) max(var(--space-4), env(safe-area-inset-right)) var(--space-3) max(var(--space-4), env(safe-area-inset-left));
   }
   
   .navbar-toggle {
     display: flex;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
   
   .navbar-menu {
     position: fixed;
-    top: 70px;
+    top: calc(70px + env(safe-area-inset-top));
     left: 0;
     right: 0;
     background: var(--color-surface);
     border-top: 1px solid var(--color-border);
     flex-direction: column;
-    padding: var(--space-6);
+    padding: var(--space-6) max(var(--space-6), env(safe-area-inset-right)) var(--space-6) max(var(--space-6), env(safe-area-inset-left));
     gap: var(--space-6);
     transform: translateY(-100%);
     opacity: 0;
     visibility: hidden;
     transition: all var(--transition-normal);
     z-index: var(--z-fixed);
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
   }
   
   .navbar-menu.active {
@@ -984,6 +1006,8 @@
     width: 100%;
     text-align: center;
     padding: var(--space-4);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
   
   .navbar-actions {
@@ -1002,18 +1026,18 @@
   
   .admin-container,
   .settings-container {
-    padding: var(--space-6) var(--space-4);
+    padding: var(--space-6) max(var(--space-4), env(safe-area-inset-right)) var(--space-6) max(var(--space-4), env(safe-area-inset-left));
   }
   
   .admin-header,
   .settings-header {
-    padding: var(--space-6) var(--space-4);
+    padding: var(--space-6) max(var(--space-4), env(safe-area-inset-right)) var(--space-6) max(var(--space-4), env(safe-area-inset-left));
     margin-bottom: var(--space-6);
   }
   
   .admin-content,
   .settings-content {
-    padding: var(--space-6) var(--space-4);
+    padding: var(--space-6) max(var(--space-4), env(safe-area-inset-right)) var(--space-6) max(var(--space-4), env(safe-area-inset-left));
   }
   
   .table-premium {
@@ -1044,19 +1068,22 @@
   }
 }
 
+/* iPhone and Small Mobile Devices */
 @media (max-width: 480px) {
   .hero-premium {
-    padding: var(--space-6) var(--space-3);
+    padding: var(--space-6) max(var(--space-3), env(safe-area-inset-right)) var(--space-6) max(var(--space-3), env(safe-area-inset-left));
   }
   
   .card-premium {
-    margin: var(--space-3);
+    margin: var(--space-3) max(var(--space-3), env(safe-area-inset-right)) var(--space-3) max(var(--space-3), env(safe-area-inset-left));
     padding: var(--space-4);
   }
   
   .btn-premium {
     padding: var(--space-3) var(--space-4);
     font-size: var(--font-size-sm);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
   
   .dashboard-grid {
@@ -1074,7 +1101,7 @@
   }
   
   .navbar-container {
-    padding: var(--space-2) var(--space-3);
+    padding: max(var(--space-2), env(safe-area-inset-top)) max(var(--space-3), env(safe-area-inset-right)) var(--space-2) max(var(--space-3), env(safe-area-inset-left));
   }
   
   .brand-text {
@@ -1082,12 +1109,13 @@
   }
   
   .navbar-menu.active {
-    top: 60px;
+    top: calc(60px + env(safe-area-inset-top));
+    padding: var(--space-4) max(var(--space-4), env(safe-area-inset-right)) var(--space-4) max(var(--space-4), env(safe-area-inset-left));
   }
   
   .admin-container,
   .settings-container {
-    padding: var(--space-4) var(--space-2);
+    padding: var(--space-4) max(var(--space-2), env(safe-area-inset-right)) var(--space-4) max(var(--space-2), env(safe-area-inset-left));
   }
   
   .admin-header h1,
@@ -1097,10 +1125,44 @@
   
   .table-container {
     font-size: var(--font-size-xs);
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
   
   .action-buttons .btn {
     font-size: var(--font-size-xs);
     padding: var(--space-1) var(--space-2);
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+}
+
+/* iPhone 15 Pro and Similar Devices */
+@media only screen and (max-width: 393px) and (-webkit-min-device-pixel-ratio: 3) {
+  .navbar-container {
+    padding: max(8px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 8px max(16px, env(safe-area-inset-left));
+  }
+  
+  .brand-text {
+    font-size: 1.1rem;
+  }
+  
+  .navbar-menu.active {
+    top: calc(65px + env(safe-area-inset-top));
+    padding: 16px max(16px, env(safe-area-inset-right)) 16px max(16px, env(safe-area-inset-left));
+  }
+  
+  .hero-premium {
+    padding: 24px max(12px, env(safe-area-inset-right)) 24px max(12px, env(safe-area-inset-left));
+  }
+  
+  .card-premium {
+    margin: 12px max(8px, env(safe-area-inset-right)) 12px max(8px, env(safe-area-inset-left));
+    padding: 16px;
+  }
+  
+  .pricing-grid {
+    gap: 16px;
+    padding: 0 max(8px, env(safe-area-inset-right)) 0 max(8px, env(safe-area-inset-left));
   }
 }
