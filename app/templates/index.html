@@ -53,8 +53,8 @@
   </div>
   
   <div class="hero-visual">
-    <div class="preview-chart" id="preview-chart" role="img" aria-label="Volcanic tremor chart preview">
-      <div id="home-preview-loading" class="chart-placeholder" aria-live="polite">
+    <div class="preview-chart home-graph-card" id="preview-chart" role="img" aria-label="Volcanic tremor chart preview">
+      <div id="home-preview-loading" class="chart-loading-overlay" aria-live="polite">
         <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
           <path d="M3 3v18h18"/>
           <path d="M7 12l3-3 3 3 5-5"/>
@@ -108,6 +108,8 @@
 
 <!-- Plotly.js CDN - Updated version -->
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<!-- Home Preview Chart Module -->
+<script src="{{ url_for('static', filename='js/home_preview.js') }}"></script>
 
 <style>
 /* Hero Section Styles */
@@ -216,11 +218,44 @@
   background: var(--gradient-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-2xl);
+  position: relative;
+  overflow: visible;
+}
+
+.home-graph-card {
+  overflow: visible;
+}
+
+#home-preview-plot {
+  min-height: 260px;
+  height: 260px;
+  width: 100%;
+}
+
+#home-preview-loading {
+  position: absolute;
+  inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  position: relative;
-  overflow: hidden;
+  background: transparent;
+  z-index: 10;
+}
+
+#home-preview-loading.hidden { 
+  display: none; 
+}
+
+.chart-loading-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  z-index: 10;
 }
 
 .chart-placeholder {
@@ -418,8 +453,9 @@
     height: 220px;
   }
   
-  #home-preview-plot {
+  #home-preview-plot { 
     height: 220px !important;
+    min-height: 220px;
   }
 }
 
@@ -483,6 +519,16 @@
     min-width: 280px;
     margin: 0 var(--space-4);
   }
+  
+  .preview-chart {
+    max-width: 100%;
+    height: 220px;
+  }
+  
+  #home-preview-plot { 
+    height: 200px; 
+    min-height: 200px;
+  }
 }
 </style>
 
@@ -520,6 +566,7 @@ function showToast(message, type = 'info', duration = 5000) {
   }, duration);
 }
 
+<<<<<<< HEAD
 // Chart Rendering Functions
 async function fetchCurva() {
   try {
@@ -651,6 +698,117 @@ function showNoDataMessage() {
     plot.style.display = 'none';
   }
 }
+||||||| 487eb3b
+// Chart Rendering Functions
+async function fetchCurva() {
+  try {
+    const response = await fetch('/api/curva', {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    });
+    const data = await response.json();
+    
+    if (data.ok && data.data && data.data.length > 0) {
+      console.log(`curva loaded: ${data.rows}, last_ts: ${data.last_ts}`);
+      return data;
+    } else {
+      throw new Error('No data available');
+    }
+  } catch (error) {
+    console.error('Error fetching curva:', error);
+    throw error;
+  }
+}
+
+function drawPlot(data, container = 'preview-chart') {
+  if (!window.Plotly) {
+    console.error('Plotly library not loaded');
+    return;
+  }
+  
+  const timestamps = data.data.map(row => row.timestamp);
+  const values = data.data.map(row => row.value);
+  const threshold = 2.0; // Default threshold
+  
+  const trace = {
+    x: timestamps,
+    y: values,
+    type: 'scatter',
+    mode: 'lines',
+    name: 'Tremor',
+    line: { color: '#00AA00', width: 2 },
+    showlegend: false
+  };
+  
+  const layout = {
+    title: 'Etna Volcanic Tremor',
+    xaxis: { 
+      title: 'Time',
+      showgrid: true,
+      gridcolor: 'rgba(255,255,255,0.1)'
+    },
+    yaxis: { 
+      title: 'Amplitude (mV)', 
+      type: 'log',
+      range: [-1, 1], // 0.1 to 10 range
+      showgrid: true,
+      gridcolor: 'rgba(255,255,255,0.1)'
+    },
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    font: { color: '#e6e7ea', size: 12 },
+    margin: { l: 60, r: 20, t: 40, b: 40 },
+    shapes: [{
+      type: 'line',
+      x0: timestamps[0],
+      x1: timestamps[timestamps.length - 1],
+      y0: threshold,
+      y1: threshold,
+      line: { color: '#ef4444', width: 2, dash: 'dash' }
+    }]
+  };
+  
+  const config = {
+    staticPlot: false,
+    displayModeBar: false,
+    responsive: true
+  };
+  
+  Plotly.newPlot(container, [trace], layout, config);
+}
+
+async function refreshPlot() {
+  try {
+    const data = await fetchCurva();
+    drawPlot(data);
+    return data;
+  } catch (error) {
+    showNoDataMessage();
+    throw error;
+  }
+}
+
+function showNoDataMessage() {
+  const container = document.getElementById('preview-chart');
+  if (container) {
+    container.innerHTML = `
+      <div class="chart-placeholder">
+        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M3 3v18h18"/>
+          <path d="M7 12l3-3 3 3 5-5"/>
+        </svg>
+        <p>No data available</p>
+        <button onclick="quickUpdate()" class="btn btn-secondary btn-sm" style="margin-top: 12px;">
+          Update Now
+        </button>
+      </div>
+    `;
+  }
+}
+=======
+>>>>>>> origin/main
 
 // Status Check
 async function checkStatus() {
@@ -663,11 +821,11 @@ async function checkStatus() {
     
     if (data.ok) {
       statusDot.className = 'status-dot';
-      statusText.textContent = `Online • Last update ${new Date(data.last_update).toLocaleTimeString()}`;
+      statusText.textContent = `Online • Last update ${new Date(data.last_update || data.last_ts).toLocaleTimeString()}`;
       
       // Update hero stats
-      document.getElementById('last-update').textContent = new Date(data.last_update).toLocaleString();
-      document.getElementById('data-points').textContent = data.total_points.toLocaleString();
+      document.getElementById('last-update').textContent = new Date(data.last_update || data.last_ts).toLocaleString();
+      document.getElementById('data-points').textContent = (data.total_points || data.rows || 0).toLocaleString();
       document.getElementById('current-level').textContent = `${data.current_value?.toFixed(2) || '--'} mV`;
       document.getElementById('hero-stats').style.display = 'flex';
     } else {
@@ -702,11 +860,13 @@ async function quickUpdate() {
     if (result.ok) {
       showToast(`Data updated successfully! ${result.rows} data points processed.`, 'success');
       
-      // Refresh the chart with new data
+      // Refresh the home preview chart
       try {
-        await refreshPlot();
+        if (window.refreshHomePreview) {
+          await window.refreshHomePreview();
+        }
       } catch (plotError) {
-        console.error('Error refreshing plot:', plotError);
+        console.error('Error refreshing home preview:', plotError);
       }
       
       await checkStatus();
@@ -726,16 +886,13 @@ document.getElementById('quick-update-btn').addEventListener('click', quickUpdat
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
-  // Load initial chart
-  try {
-    await refreshPlot();
-  } catch (error) {
-    console.error('Error loading initial chart:', error);
-    showNoDataMessage();
-  }
-  
-  // Check status
+  // Check status first
   await checkStatus();
+  
+  // Initialize home preview chart
+  if (window.initializeHomePreview) {
+    window.initializeHomePreview();
+  }
   
   // Auto-refresh status every 30 seconds
   setInterval(checkStatus, 30000);
