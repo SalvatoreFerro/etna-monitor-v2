@@ -37,7 +37,7 @@
       
       <div class="plan-action">
         {% if not session.user_id %}
-        <a href="{{ url_for('auth.register') }}" class="btn btn-secondary">Get Started</a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-secondary" aria-label="Start free trial">Get Started</a>
         {% elif not current_user.premium %}
         <button class="btn btn-secondary" disabled>Current Plan</button>
         {% else %}
@@ -71,11 +71,11 @@
       
       <div class="plan-action">
         {% if not session.user_id %}
-        <a href="{{ url_for('auth.register') }}" class="btn btn-primary">Start Free Trial</a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-primary" aria-label="Start premium free trial">Start Free Trial</a>
         {% elif current_user.premium %}
         <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-secondary">Manage Subscription</a>
         {% else %}
-        <button id="upgrade-btn" class="btn btn-primary">Upgrade Now</button>
+        <button id="upgrade-btn" class="btn btn-primary" aria-label="Upgrade to premium plan">Upgrade Now</button>
         {% endif %}
       </div>
     </div>

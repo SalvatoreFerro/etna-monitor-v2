@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Real-time volcanic tremor monitoring for Mount Etna using INGV seismic data" />
     <meta name="theme-color" content="#007aff" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="EtnaMonitor" />
@@ -19,6 +20,7 @@
     
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -39,53 +41,55 @@
     {% block head %}{% endblock %}
   </head>
   <body>
-    <nav class="navbar">
+    <a href="#main-content" class="skip-link">Skip to main content</a>
+    
+    <nav class="navbar" role="navigation" aria-label="Main navigation">
       <div class="navbar-brand">
-        <a href="/" class="brand-link">
+        <a href="/" class="brand-link" aria-label="EtnaMonitor Home">
           <span class="brand-icon">🌋</span>
           <span class="brand-text">EtnaMonitor</span>
         </a>
       </div>
       
-      <div class="navbar-menu">
-        <a href="/" class="nav-link"><i class="fas fa-home"></i> Home</a>
+      <div class="navbar-menu" role="menubar">
+        <a href="/" class="nav-link" role="menuitem" aria-label="Go to Home page"><i class="fas fa-home" aria-hidden="true"></i> Home</a>
         
         {% if session.user_id %}
-          <a href="/dashboard/" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+          <a href="/dashboard/" class="nav-link" role="menuitem" aria-label="Go to Dashboard"><i class="fas fa-tachometer-alt" aria-hidden="true"></i> Dashboard</a>
           
           {% if current_user and current_user.is_admin %}
-            <a href="/admin/" class="nav-link"><i class="fas fa-users-cog"></i> Admin</a>
+            <a href="/admin/" class="nav-link" role="menuitem" aria-label="Go to Admin panel"><i class="fas fa-users-cog" aria-hidden="true"></i> Admin</a>
           {% endif %}
           
           <div class="nav-dropdown">
-            <button class="nav-dropdown-toggle">
-              <i class="fas fa-user"></i>
+            <button class="nav-dropdown-toggle" aria-label="User menu" aria-expanded="false">
+              <i class="fas fa-user" aria-hidden="true"></i>
               <span>{{ current_user.email if current_user else 'Account' }}</span>
-              <i class="fas fa-chevron-down"></i>
+              <i class="fas fa-chevron-down" aria-hidden="true"></i>
             </button>
-            <div class="nav-dropdown-menu">
-              <a href="/dashboard/settings" class="dropdown-item">
-                <i class="fas fa-cog"></i> Settings
+            <div class="nav-dropdown-menu" role="menu">
+              <a href="/dashboard/settings" class="dropdown-item" role="menuitem" aria-label="Go to Settings">
+                <i class="fas fa-cog" aria-hidden="true"></i> Settings
               </a>
               {% if current_user and current_user.premium %}
-                <a href="/billing/customer-portal" class="dropdown-item">
-                  <i class="fas fa-credit-card"></i> Billing
+                <a href="/billing/customer-portal" class="dropdown-item" role="menuitem" aria-label="Manage billing">
+                  <i class="fas fa-credit-card" aria-hidden="true"></i> Billing
                 </a>
               {% else %}
-                <a href="/pricing" class="dropdown-item">
-                  <i class="fas fa-star"></i> Upgrade to Premium
+                <a href="/pricing" class="dropdown-item" role="menuitem" aria-label="Upgrade to Premium">
+                  <i class="fas fa-star" aria-hidden="true"></i> Upgrade to Premium
                 </a>
               {% endif %}
-              <div class="dropdown-divider"></div>
-              <a href="{{ url_for('auth.logout') }}" class="dropdown-item">
-                <i class="fas fa-sign-out-alt"></i> Logout
+              <div class="dropdown-divider" role="separator"></div>
+              <a href="{{ url_for('auth.logout') }}" class="dropdown-item" role="menuitem" aria-label="Logout from account">
+                <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Logout
               </a>
             </div>
           </div>
         {% else %}
-          <a href="/pricing" class="nav-link">Pricing</a>
-          <a href="{{ url_for('auth.login') }}" class="nav-link">Login</a>
-          <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm">Get Started</a>
+          <a href="/pricing" class="nav-link" role="menuitem" aria-label="View pricing plans">Pricing</a>
+          <a href="{{ url_for('auth.login') }}" class="nav-link" role="menuitem" aria-label="Login to existing account">Login</a>
+          <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm" aria-label="Register new account">Get Started</a>
         {% endif %}
       </div>
       
@@ -96,17 +100,17 @@
       </button>
     </nav>
     
-    <main class="main-content">
+    <main class="main-content" role="main" aria-label="Main content" id="main-content">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-          <div class="flash-messages">
+          <div class="flash-messages" role="alert" aria-live="polite">
             {% for category, message in messages %}
               <div class="alert alert-{{ category }}">
-                <span class="alert-icon">
+                <span class="alert-icon" aria-hidden="true">
                   {% if category == 'success' %}✓{% elif category == 'error' %}✕{% else %}ℹ{% endif %}
                 </span>
                 <span class="alert-message">{{ message }}</span>
-                <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+                <button class="alert-close" onclick="this.parentElement.remove()" aria-label="Close alert">×</button>
               </div>
             {% endfor %}
           </div>
@@ -116,35 +120,35 @@
       {% block content %}{% endblock %}
     </main>
     
-    <footer class="footer">
+    <footer class="footer" role="contentinfo" aria-label="Site footer">
       <div class="footer-content">
         <div class="footer-section">
           <h4>EtnaMonitor</h4>
           <p>Real-time volcanic tremor monitoring using INGV seismic data.</p>
-          <div class="footer-links">
-            <a href="https://www.ct.ingv.it" target="_blank" rel="noopener">INGV Data Source</a>
-            <a href="/terms">Terms of Service</a>
-            <a href="/privacy">Privacy Policy</a>
+          <div class="footer-links" role="navigation" aria-label="Footer navigation">
+            <a href="https://www.ct.ingv.it" target="_blank" rel="noopener" aria-label="Visit INGV website (opens in new tab)">INGV Data Source</a>
+            <a href="/terms" aria-label="Read Terms of Service">Terms of Service</a>
+            <a href="/privacy" aria-label="Read Privacy Policy">Privacy Policy</a>
           </div>
         </div>
         
         <div class="footer-section">
           <h4>Status</h4>
-          <div class="service-status" id="service-status">
-            <span class="status-dot"></span>
+          <div class="service-status" id="service-status" role="status" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
             <span class="status-text">Checking...</span>
           </div>
-          <p class="build-info">
+          <p class="build-info" aria-label="Build version: {{ config.BUILD_SHA[:8] if config.BUILD_SHA else 'dev' }}">
             Build: {{ config.BUILD_SHA[:8] if config.BUILD_SHA else 'dev' }}
           </p>
         </div>
         
         <div class="footer-section">
           <h4>Support</h4>
-          <p>Questions? Contact us at <a href="mailto:support@etnamonitor.com">support@etnamonitor.com</a></p>
+          <p>Questions? Contact us at <a href="mailto:support@etnamonitor.com" aria-label="Send email to support">support@etnamonitor.com</a></p>
           <div class="social-links">
-            <a href="https://github.com/SalvatoreFerro/etna-monitor-v2" target="_blank" rel="noopener">
-              <i class="fab fa-github"></i>
+            <a href="https://github.com/SalvatoreFerro/etna-monitor-v2" target="_blank" rel="noopener" aria-label="View source code on GitHub (opens in new tab)">
+              <i class="fab fa-github" aria-hidden="true"></i>
             </a>
           </div>
         </div>
@@ -155,7 +159,7 @@
         <p>
           <small>
             Devin AI assisted development • 
-            <a href="https://app.devin.ai/sessions/f709f8fdc3ed475c9d306d21187c0f7d" target="_blank" rel="noopener">
+            <a href="https://app.devin.ai/sessions/f709f8fdc3ed475c9d306d21187c0f7d" target="_blank" rel="noopener" aria-label="View Devin session (opens in new tab)">
               Session Link
             </a>
           </small>
@@ -175,6 +179,13 @@
     </div>
     
     <script>
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/static/sw.js')
+        .then(registration => console.log('SW registered'))
+        .catch(error => console.log('SW registration failed'));
+    }
+    
     let deferredPrompt;
     
     window.addEventListener('beforeinstallprompt', (e) => {
@@ -209,9 +220,11 @@
           if (data.ok) {
             dot.className = 'status-dot online';
             text.textContent = 'All systems operational';
+            statusElement.setAttribute('aria-label', 'Service status: Online');
           } else {
             dot.className = 'status-dot offline';
             text.textContent = 'Service issues detected';
+            statusElement.setAttribute('aria-label', 'Service status: Offline');
           }
         }
       } catch (error) {
@@ -221,6 +234,7 @@
           const text = statusElement.querySelector('.status-text');
           dot.className = 'status-dot offline';
           text.textContent = 'Connection error';
+          statusElement.setAttribute('aria-label', 'Service status: Connection error');
         }
       }
     }
