@@ -1,5 +1,13 @@
 # Render Deployment Configuration Guide
 
+## Build Command
+
+Set this as the Build Command in your Render service dashboard:
+
+```
+pip install -r requirements.txt && python migrations/add_billing_fields.py
+```
+
 ## Environment Variables
 
 Set these in your Render service dashboard:
@@ -9,6 +17,8 @@ LOG_DIR=/data/log
 DATA_DIR=/data
 CSV_PATH=/data/curva.csv
 FLASK_ENV=production
+SECRET_KEY=your-production-secret-key
+DATABASE_URL=sqlite:////data/etna_monitor.db
 ```
 
 ## Disk Configuration
@@ -22,16 +32,15 @@ FLASK_ENV=production
 
 ## Start Command
 
-**IMPORTANT**: Leave the Start Command field **EMPTY** in the Render dashboard to use the Procfile.
-
-If for some reason you cannot use the Procfile, set the Start Command to:
+Set the Start Command in your Render service dashboard to:
 ```
 gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app
 ```
 
-**Fallback** (only if gunicorn not found):
+**Alternative** (if you prefer using Procfile):
+Leave the Start Command field **EMPTY** and ensure Procfile contains:
 ```
-bash -lc 'python -m pip install --no-cache-dir gunicorn && exec gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app'
+web: gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app
 ```
 
 ## Health Check Configuration
