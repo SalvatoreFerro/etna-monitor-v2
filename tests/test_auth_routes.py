@@ -33,19 +33,19 @@ def admin_user(app):
         return user_id
 
 def test_register_success(client):
-    response = client.post('/auth/register', data={
+    response = client.post('/register', data={
         'email': 'test@example.com',
         'password': 'password123'
     })
     assert response.status_code == 302
 
 def test_register_duplicate_email(client):
-    client.post('/auth/register', data={
+    client.post('/register', data={
         'email': 'test@example.com',
         'password': 'password123'
     })
     
-    response = client.post('/auth/register', data={
+    response = client.post('/register', data={
         'email': 'test@example.com',
         'password': 'password456'
     })
@@ -57,14 +57,14 @@ def test_login_success(client, app):
         db.session.add(user)
         db.session.commit()
     
-    response = client.post('/auth/login', data={
+    response = client.post('/login', data={
         'email': 'test@example.com',
         'password': 'password123'
     })
     assert response.status_code == 302
 
 def test_login_invalid_credentials(client):
-    response = client.post('/auth/login', data={
+    response = client.post('/login', data={
         'email': 'nonexistent@example.com',
         'password': 'wrongpassword'
     })
