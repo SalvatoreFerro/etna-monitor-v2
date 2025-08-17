@@ -566,7 +566,6 @@ function showToast(message, type = 'info', duration = 5000) {
   }, duration);
 }
 
-<<<<<<< HEAD
 // Chart Rendering Functions
 async function fetchCurva() {
   try {
@@ -698,117 +697,6 @@ function showNoDataMessage() {
     plot.style.display = 'none';
   }
 }
-||||||| 487eb3b
-// Chart Rendering Functions
-async function fetchCurva() {
-  try {
-    const response = await fetch('/api/curva', {
-      cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache'
-      }
-    });
-    const data = await response.json();
-    
-    if (data.ok && data.data && data.data.length > 0) {
-      console.log(`curva loaded: ${data.rows}, last_ts: ${data.last_ts}`);
-      return data;
-    } else {
-      throw new Error('No data available');
-    }
-  } catch (error) {
-    console.error('Error fetching curva:', error);
-    throw error;
-  }
-}
-
-function drawPlot(data, container = 'preview-chart') {
-  if (!window.Plotly) {
-    console.error('Plotly library not loaded');
-    return;
-  }
-  
-  const timestamps = data.data.map(row => row.timestamp);
-  const values = data.data.map(row => row.value);
-  const threshold = 2.0; // Default threshold
-  
-  const trace = {
-    x: timestamps,
-    y: values,
-    type: 'scatter',
-    mode: 'lines',
-    name: 'Tremor',
-    line: { color: '#00AA00', width: 2 },
-    showlegend: false
-  };
-  
-  const layout = {
-    title: 'Etna Volcanic Tremor',
-    xaxis: { 
-      title: 'Time',
-      showgrid: true,
-      gridcolor: 'rgba(255,255,255,0.1)'
-    },
-    yaxis: { 
-      title: 'Amplitude (mV)', 
-      type: 'log',
-      range: [-1, 1], // 0.1 to 10 range
-      showgrid: true,
-      gridcolor: 'rgba(255,255,255,0.1)'
-    },
-    plot_bgcolor: 'rgba(0,0,0,0)',
-    paper_bgcolor: 'rgba(0,0,0,0)',
-    font: { color: '#e6e7ea', size: 12 },
-    margin: { l: 60, r: 20, t: 40, b: 40 },
-    shapes: [{
-      type: 'line',
-      x0: timestamps[0],
-      x1: timestamps[timestamps.length - 1],
-      y0: threshold,
-      y1: threshold,
-      line: { color: '#ef4444', width: 2, dash: 'dash' }
-    }]
-  };
-  
-  const config = {
-    staticPlot: false,
-    displayModeBar: false,
-    responsive: true
-  };
-  
-  Plotly.newPlot(container, [trace], layout, config);
-}
-
-async function refreshPlot() {
-  try {
-    const data = await fetchCurva();
-    drawPlot(data);
-    return data;
-  } catch (error) {
-    showNoDataMessage();
-    throw error;
-  }
-}
-
-function showNoDataMessage() {
-  const container = document.getElementById('preview-chart');
-  if (container) {
-    container.innerHTML = `
-      <div class="chart-placeholder">
-        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <path d="M3 3v18h18"/>
-          <path d="M7 12l3-3 3 3 5-5"/>
-        </svg>
-        <p>No data available</p>
-        <button onclick="quickUpdate()" class="btn btn-secondary btn-sm" style="margin-top: 12px;">
-          Update Now
-        </button>
-      </div>
-    `;
-  }
-}
-=======
->>>>>>> origin/main
 
 // Status Check
 async function checkStatus() {
