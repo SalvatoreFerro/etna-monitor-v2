@@ -84,7 +84,7 @@
                     <a href="/pricing" class="dropdown-item">Upgrade to Premium</a>
                   {% endif %}
                   <div class="dropdown-divider"></div>
-                  <a href="/logout" class="dropdown-item">Logout</a>
+                  <a href="{{ url_for('auth.logout') }}" class="dropdown-item">Logout</a>
                 </div>
               </div>
             {% else %}
