@@ -1,41 +1,234 @@
 <!doctype html>
-<html lang="it">
+<html lang="en">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>EtnaMonitor 4.2</title>
-    <link rel="stylesheet" href="/static/css/style.css" />
+    <meta name="description" content="Real-time volcanic tremor monitoring for Mount Etna using INGV seismic data" />
+    <meta name="theme-color" content="#007aff" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="EtnaMonitor" />
+    
+    <title>{% block title %}EtnaMonitor - Volcanic Tremor Monitoring{% endblock %}</title>
+    
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
+    
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32x32.png') }}" />
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16x16.png') }}" />
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}" />
+    
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <meta property="og:title" content="EtnaMonitor - Volcanic Tremor Monitoring" />
+    <meta property="og:description" content="Real-time monitoring of Mount Etna volcanic tremor using INGV seismic data" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="{{ request.url }}" />
+    <meta property="og:image" content="{{ url_for('static', filename='images/og-image.png', _external=True) }}" />
+    
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="EtnaMonitor - Volcanic Tremor Monitoring" />
+    <meta name="twitter:description" content="Real-time monitoring of Mount Etna volcanic tremor using INGV seismic data" />
+    <meta name="twitter:image" content="{{ url_for('static', filename='images/twitter-card.png', _external=True) }}" />
+    
+    {% block head %}{% endblock %}
   </head>
   <body>
     <nav class="navbar">
-      <div class="brand">EtnaMonitor</div>
-      <div class="links">
-        <a href="/"><i class="fas fa-home"></i> Home</a>
+      <div class="navbar-brand">
+        <a href="/" class="brand-link">
+          <span class="brand-icon">🌋</span>
+          <span class="brand-text">EtnaMonitor</span>
+        </a>
+      </div>
+      
+      <div class="navbar-menu">
+        <a href="/" class="nav-link"><i class="fas fa-home"></i> Home</a>
+        
         {% if session.user_id %}
-          <a href="/dashboard/"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+          <a href="/dashboard/" class="nav-link"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+          
           {% if current_user and current_user.is_admin %}
-            <a href="/admin/"><i class="fas fa-users-cog"></i> Admin</a>
+            <a href="/admin/" class="nav-link"><i class="fas fa-users-cog"></i> Admin</a>
           {% endif %}
-          <a href="{{ url_for('auth.logout') }}"><i class="fas fa-sign-out-alt"></i> Logout</a>
+          
+          <div class="nav-dropdown">
+            <button class="nav-dropdown-toggle">
+              <i class="fas fa-user"></i>
+              <span>{{ current_user.email if current_user else 'Account' }}</span>
+              <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="nav-dropdown-menu">
+              <a href="/dashboard/settings" class="dropdown-item">
+                <i class="fas fa-cog"></i> Settings
+              </a>
+              {% if current_user and current_user.premium %}
+                <a href="/billing/customer-portal" class="dropdown-item">
+                  <i class="fas fa-credit-card"></i> Billing
+                </a>
+              {% else %}
+                <a href="/pricing" class="dropdown-item">
+                  <i class="fas fa-star"></i> Upgrade to Premium
+                </a>
+              {% endif %}
+              <div class="dropdown-divider"></div>
+              <a href="{{ url_for('auth.logout') }}" class="dropdown-item">
+                <i class="fas fa-sign-out-alt"></i> Logout
+              </a>
+            </div>
+          </div>
         {% else %}
-          <a href="{{ url_for('auth.login') }}"><i class="fas fa-sign-in-alt"></i> Login</a>
-          <a href="{{ url_for('auth.register') }}"><i class="fas fa-user-plus"></i> Register</a>
+          <a href="/pricing" class="nav-link">Pricing</a>
+          <a href="{{ url_for('auth.login') }}" class="nav-link">Login</a>
+          <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm">Get Started</a>
         {% endif %}
       </div>
+      
+      <button class="navbar-toggle" aria-label="Toggle navigation">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
     </nav>
-    <main class="container">
+    
+    <main class="main-content">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-          {% for category, message in messages %}
-            <div class="alert alert-{{ category }}">{{ message }}</div>
-          {% endfor %}
+          <div class="flash-messages">
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}">
+                <span class="alert-icon">
+                  {% if category == 'success' %}✓{% elif category == 'error' %}✕{% else %}ℹ{% endif %}
+                </span>
+                <span class="alert-message">{{ message }}</span>
+                <button class="alert-close" onclick="this.parentElement.remove()">×</button>
+              </div>
+            {% endfor %}
+          </div>
         {% endif %}
       {% endwith %}
+      
       {% block content %}{% endblock %}
     </main>
+    
+    <footer class="footer">
+      <div class="footer-content">
+        <div class="footer-section">
+          <h4>EtnaMonitor</h4>
+          <p>Real-time volcanic tremor monitoring using INGV seismic data.</p>
+          <div class="footer-links">
+            <a href="https://www.ct.ingv.it" target="_blank" rel="noopener">INGV Data Source</a>
+            <a href="/terms">Terms of Service</a>
+            <a href="/privacy">Privacy Policy</a>
+          </div>
+        </div>
+        
+        <div class="footer-section">
+          <h4>Status</h4>
+          <div class="service-status" id="service-status">
+            <span class="status-dot"></span>
+            <span class="status-text">Checking...</span>
+          </div>
+          <p class="build-info">
+            Build: {{ config.BUILD_SHA[:8] if config.BUILD_SHA else 'dev' }}
+          </p>
+        </div>
+        
+        <div class="footer-section">
+          <h4>Support</h4>
+          <p>Questions? Contact us at <a href="mailto:support@etnamonitor.com">support@etnamonitor.com</a></p>
+          <div class="social-links">
+            <a href="https://github.com/SalvatoreFerro/etna-monitor-v2" target="_blank" rel="noopener">
+              <i class="fab fa-github"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <div class="footer-bottom">
+        <p>&copy; 2025 EtnaMonitor. Data courtesy of INGV.</p>
+        <p>
+          <small>
+            Devin AI assisted development • 
+            <a href="https://app.devin.ai/sessions/f709f8fdc3ed475c9d306d21187c0f7d" target="_blank" rel="noopener">
+              Session Link
+            </a>
+          </small>
+        </p>
+      </div>
+    </footer>
+    
+    <div id="pwa-install-prompt" class="pwa-prompt" style="display: none;">
+      <div class="pwa-prompt-content">
+        <h3>Install EtnaMonitor</h3>
+        <p>Get instant access to volcanic tremor monitoring on your device.</p>
+        <div class="pwa-prompt-actions">
+          <button id="pwa-install-btn" class="btn btn-primary">Install</button>
+          <button id="pwa-dismiss-btn" class="btn btn-secondary">Not now</button>
+        </div>
+      </div>
+    </div>
+    
+    <script>
+    let deferredPrompt;
+    
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      document.getElementById('pwa-install-prompt').style.display = 'block';
+    });
+    
+    document.getElementById('pwa-install-btn')?.addEventListener('click', async () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        document.getElementById('pwa-install-prompt').style.display = 'none';
+      }
+    });
+    
+    document.getElementById('pwa-dismiss-btn')?.addEventListener('click', () => {
+      document.getElementById('pwa-install-prompt').style.display = 'none';
+    });
+    
+    async function checkServiceStatus() {
+      try {
+        const response = await fetch('/api/status');
+        const data = await response.json();
+        const statusElement = document.getElementById('service-status');
+        
+        if (statusElement) {
+          const dot = statusElement.querySelector('.status-dot');
+          const text = statusElement.querySelector('.status-text');
+          
+          if (data.ok) {
+            dot.className = 'status-dot online';
+            text.textContent = 'All systems operational';
+          } else {
+            dot.className = 'status-dot offline';
+            text.textContent = 'Service issues detected';
+          }
+        }
+      } catch (error) {
+        const statusElement = document.getElementById('service-status');
+        if (statusElement) {
+          const dot = statusElement.querySelector('.status-dot');
+          const text = statusElement.querySelector('.status-text');
+          dot.className = 'status-dot offline';
+          text.textContent = 'Connection error';
+        }
+      }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      checkServiceStatus();
+      setInterval(checkServiceStatus, 30000);
+    });
+    </script>
   </body>
 </html>

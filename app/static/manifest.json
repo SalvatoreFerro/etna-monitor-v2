@@ -1,0 +1,49 @@
+{
+  "name": "EtnaMonitor - Volcanic Tremor Monitoring",
+  "short_name": "EtnaMonitor",
+  "description": "Real-time volcanic tremor monitoring for Mount Etna",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#007aff",
+  "orientation": "portrait-primary",
+  "categories": ["science", "monitoring", "utilities"],
+  "lang": "en",
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View tremor monitoring dashboard",
+      "url": "/dashboard",
+      "icons": [{"src": "/static/icons/dashboard-96.png", "sizes": "96x96"}]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/static/screenshots/desktop.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide"
+    },
+    {
+      "src": "/static/screenshots/mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "form_factor": "narrow"
+    }
+  ]
+}

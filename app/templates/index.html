@@ -1,100 +1,499 @@
 {% extends "layout.html" %}
+
+{% block head %}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+{% endblock %}
+
 {% block content %}
-  <section class="card">
-    <h1>EtnaMonitor 4.2</h1>
-    <div id="no-data-banner" style="display: none; background: #ff6b6b; color: white; padding: 10px; border-radius: 5px; margin-bottom: 20px;">
-      <p>No data yet. Click 'Aggiorna' to fetch latest tremor data.</p>
-      <button id="update-btn" onclick="updateData()" style="background: white; color: #ff6b6b; border: none; padding: 5px 15px; border-radius: 3px; cursor: pointer;">Aggiorna</button>
+<!-- Hero Section -->
+<section class="hero-section">
+  <div class="hero-content">
+    <div class="hero-badge">
+      <span class="status-dot" id="status-dot"></span>
+      <span id="status-text">Checking status...</span>
     </div>
-    <div id="plot-container">
-      <div id="tremor-plot" style="width: 100%; height: 400px;"></div>
+    
+    <h1 class="hero-title">EtnaMonitor</h1>
+    <p class="hero-subtitle">
+      Real-time volcanic tremor monitoring for Mount Etna using INGV seismic data
+    </p>
+    
+    <div class="hero-stats" id="hero-stats" style="display: none;">
+      <div class="stat-item">
+        <span class="stat-value" id="last-update">--</span>
+        <span class="stat-label">Last Update</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="data-points">--</span>
+        <span class="stat-label">Data Points</span>
+      </div>
+      <div class="stat-item">
+        <span class="stat-value" id="current-level">--</span>
+        <span class="stat-label">Current Level</span>
+      </div>
     </div>
-    <div id="loading" style="display: none; text-align: center; padding: 20px;">
-      <p>Loading data...</p>
+    
+    <div class="hero-actions">
+      <a href="/dashboard" class="btn btn-primary btn-lg">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 3v5h5M21 21v-5h-5M21 3l-9 9-4-4-5 5"/>
+        </svg>
+        View Dashboard
+      </a>
+      <button id="quick-update-btn" class="btn btn-secondary btn-lg">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+        </svg>
+        Update Data Now
+      </button>
     </div>
-  </section>
+  </div>
+  
+  <div class="hero-visual">
+    <div class="preview-chart" id="preview-chart">
+      <div class="chart-placeholder">
+        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M3 3v18h18"/>
+          <path d="M7 12l3-3 3 3 5-5"/>
+        </svg>
+        <p>Loading preview...</p>
+      </div>
+    </div>
+  </div>
+</section>
 
-  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-  <script>
-    async function loadData() {
-      try {
-        const response = await fetch('/api/curva');
-        const data = await response.json();
-        
-        if (data.ok && data.data && data.data.length > 0) {
-          plotData(data.data);
-          document.getElementById('no-data-banner').style.display = 'none';
-        } else {
-          document.getElementById('no-data-banner').style.display = 'block';
-          document.getElementById('tremor-plot').innerHTML = '<p style="text-align: center; color: #666;">No data available</p>';
-        }
-      } catch (error) {
-        console.error('Error loading data:', error);
-        document.getElementById('no-data-banner').style.display = 'block';
-        document.getElementById('tremor-plot').innerHTML = '<p style="text-align: center; color: #ff6b6b;">Error loading data</p>';
-      }
+<!-- Features Section -->
+<section class="features-section">
+  <div class="features-grid">
+    <div class="feature-card">
+      <div class="feature-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12,6 12,12 16,14"/>
+        </svg>
+      </div>
+      <h3>Real-time Monitoring</h3>
+      <p>Continuous tracking of volcanic tremor data from INGV seismic stations</p>
+    </div>
+    
+    <div class="feature-card">
+      <div class="feature-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 3v18h18"/>
+          <path d="M7 12l3-3 3 3 5-5"/>
+        </svg>
+      </div>
+      <h3>Advanced Analytics</h3>
+      <p>Logarithmic scaling and threshold analysis for professional monitoring</p>
+    </div>
+    
+    <div class="feature-card">
+      <div class="feature-icon">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+        </svg>
+      </div>
+      <h3>INGV Compatible</h3>
+      <p>Faithful reproduction of official INGV visualization standards</p>
+    </div>
+  </div>
+</section>
+
+<!-- Toast Notifications -->
+<div id="toast-container" class="toast-container"></div>
+
+<style>
+/* Hero Section Styles */
+.hero-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-16);
+  align-items: center;
+  min-height: 70vh;
+  padding: var(--space-16) 0;
+}
+
+.hero-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  width: fit-content;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-success);
+  animation: pulse 2s infinite;
+}
+
+.status-dot.offline {
+  background: var(--color-error);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.hero-title {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
+  margin: 0;
+}
+
+.hero-subtitle {
+  font-size: var(--font-size-lg);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+
+.hero-stats {
+  display: flex;
+  gap: var(--space-8);
+  padding: var(--space-6) 0;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.stat-value {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.stat-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.hero-actions {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+}
+
+.hero-visual {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.preview-chart {
+  width: 100%;
+  max-width: 400px;
+  height: 300px;
+  background: var(--gradient-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.chart-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  color: var(--color-text-tertiary);
+  text-align: center;
+}
+
+/* Features Section */
+.features-section {
+  padding: var(--space-20) 0;
+  border-top: 1px solid var(--color-divider);
+}
+
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-8);
+}
+
+.feature-card {
+  padding: var(--space-8);
+  background: var(--gradient-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  text-align: center;
+  transition: all var(--transition-normal);
+}
+
+.feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-xl);
+}
+
+.feature-icon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-4);
+  color: var(--color-accent-primary);
+}
+
+.feature-card h3 {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin: 0 0 var(--space-3) 0;
+}
+
+.feature-card p {
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+  margin: 0;
+}
+
+/* Button Styles */
+.btn {
+  @extend .btn-base;
+}
+
+.btn-primary {
+  background: var(--gradient-primary);
+  color: var(--color-text-inverse);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+}
+
+.btn-secondary {
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+  background: var(--color-surface-hover);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-lg {
+  padding: var(--space-4) var(--space-6);
+  font-size: var(--font-size-base);
+}
+
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  top: var(--space-6);
+  right: var(--space-6);
+  z-index: var(--z-toast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.toast {
+  padding: var(--space-4) var(--space-6);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xl);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 300px;
+  animation: slideInRight var(--transition-normal) ease-out;
+}
+
+.toast.success {
+  border-left: 4px solid var(--color-success);
+}
+
+.toast.error {
+  border-left: 4px solid var(--color-error);
+}
+
+.toast.info {
+  border-left: 4px solid var(--color-info);
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .hero-section {
+    grid-template-columns: 1fr;
+    gap: var(--space-12);
+    text-align: center;
+  }
+  
+  .hero-stats {
+    justify-content: center;
+  }
+  
+  .hero-actions {
+    justify-content: center;
+  }
+  
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+
+<script>
+// Theme Management
+const themeToggle = document.getElementById('theme-toggle');
+const currentTheme = localStorage.getItem('theme') || 'dark';
+document.documentElement.setAttribute('data-theme', currentTheme);
+
+if (themeToggle) {
+  themeToggle.addEventListener('click', () => {
+    const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+  });
+}
+
+// Toast Notification System
+function showToast(message, type = 'info', duration = 5000) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  
+  const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
+  toast.innerHTML = `
+    <span class="toast-icon">${icon}</span>
+    <span class="toast-message">${message}</span>
+  `;
+  
+  container.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.style.animation = 'slideOutRight 300ms ease-in forwards';
+    setTimeout(() => container.removeChild(toast), 300);
+  }, duration);
+}
+
+// Status Check
+async function checkStatus() {
+  try {
+    const response = await fetch('/api/status');
+    const data = await response.json();
+    
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    
+    if (data.ok) {
+      statusDot.className = 'status-dot';
+      statusText.textContent = `Online • Last update ${new Date(data.last_ts).toLocaleTimeString()}`;
+      
+      // Update hero stats
+      document.getElementById('last-update').textContent = new Date(data.last_ts).toLocaleString();
+      document.getElementById('data-points').textContent = data.rows.toLocaleString();
+      document.getElementById('current-level').textContent = `${data.current_value?.toFixed(2) || '--'} mV`;
+      document.getElementById('hero-stats').style.display = 'flex';
+    } else {
+      statusDot.className = 'status-dot offline';
+      statusText.textContent = 'Offline';
     }
+  } catch (error) {
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    statusDot.className = 'status-dot offline';
+    statusText.textContent = 'Connection error';
+  }
+}
 
-    function plotData(rows) {
-      const timestamps = rows.map(row => row.timestamp);
-      const values = rows.map(row => row.value);
-      
-      const trace = {
-        x: timestamps,
-        y: values,
-        type: 'scatter',
-        mode: 'lines',
-        name: 'Tremor (mV)',
-        line: { color: '#00ff00', width: 2 }
-      };
-      
-      const layout = {
-        title: 'Etna Volcanic Tremor',
-        xaxis: { title: 'Time' },
-        yaxis: { 
-          title: 'Amplitude (mV)', 
-          type: 'log',
-          range: [-1, 2]
-        },
-        plot_bgcolor: '#1a1a1a',
-        paper_bgcolor: '#1a1a1a',
-        font: { color: 'white' },
-        shapes: [{
-          type: 'line',
-          x0: timestamps[0],
-          x1: timestamps[timestamps.length - 1],
-          y0: 2,
-          y1: 2,
-          line: { color: 'red', width: 2, dash: 'dash' }
-        }]
-      };
-      
-      Plotly.newPlot('tremor-plot', [trace], layout);
+// Quick Update
+async function quickUpdate() {
+  const btn = document.getElementById('quick-update-btn');
+  const originalText = btn.innerHTML;
+  
+  btn.disabled = true;
+  btn.innerHTML = `
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin">
+      <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+    </svg>
+    Updating...
+  `;
+  
+  try {
+    const response = await fetch('/api/force_update', { method: 'POST' });
+    const result = await response.json();
+    
+    if (result.ok) {
+      showToast(`Data updated successfully! ${result.rows} data points processed.`, 'success');
+      await checkStatus();
+    } else {
+      showToast(`Update failed: ${result.error}`, 'error');
     }
+  } catch (error) {
+    showToast('Network error during update', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = originalText;
+  }
+}
 
-    async function updateData() {
-      document.getElementById('loading').style.display = 'block';
-      document.getElementById('update-btn').disabled = true;
-      
-      try {
-        const response = await fetch('/api/force_update', { method: 'POST' });
-        const result = await response.json();
-        
-        if (result.ok) {
-          await loadData();
-        } else {
-          alert('Error updating data: ' + result.error);
-        }
-      } catch (error) {
-        console.error('Error updating data:', error);
-        alert('Error updating data');
-      } finally {
-        document.getElementById('loading').style.display = 'none';
-        document.getElementById('update-btn').disabled = false;
-      }
-    }
+// Event Listeners
+document.getElementById('quick-update-btn').addEventListener('click', quickUpdate);
 
-    // Load data on page load
-    document.addEventListener('DOMContentLoaded', loadData);
-  </script>
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  checkStatus();
+  
+  // Auto-refresh status every 30 seconds
+  setInterval(checkStatus, 30000);
+});
+
+// Add spinning animation for loading states
+const style = document.createElement('style');
+style.textContent = `
+  .animate-spin {
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+document.head.appendChild(style);
+</script>
 {% endblock %}

@@ -1,0 +1,177 @@
+{% extends "layout.html" %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+<script src="https://js.stripe.com/v3/"></script>
+{% endblock %}
+
+{% block content %}
+<div class="pricing-container">
+  <div class="pricing-header">
+    <h1>Choose Your Plan</h1>
+    <p>Unlock advanced monitoring features with Premium</p>
+  </div>
+  
+  <div class="pricing-grid">
+    <div class="pricing-card">
+      <div class="plan-header">
+        <h3>Free</h3>
+        <div class="price">
+          <span class="amount">€0</span>
+          <span class="period">/month</span>
+        </div>
+      </div>
+      
+      <div class="plan-features">
+        <ul>
+          <li><span class="check">✓</span> Last 7 days of data</li>
+          <li><span class="check">✓</span> Basic tremor monitoring</li>
+          <li><span class="check">✓</span> Fixed threshold (2.0 mV)</li>
+          <li><span class="check">✓</span> Standard refresh rate</li>
+          <li><span class="cross">✕</span> Custom thresholds</li>
+          <li><span class="cross">✕</span> Real-time alerts</li>
+          <li><span class="cross">✕</span> Data export</li>
+          <li><span class="cross">✕</span> Event history</li>
+        </ul>
+      </div>
+      
+      <div class="plan-action">
+        {% if not session.user_id %}
+        <a href="{{ url_for('auth.register') }}" class="btn btn-secondary">Get Started</a>
+        {% elif not current_user.premium %}
+        <button class="btn btn-secondary" disabled>Current Plan</button>
+        {% else %}
+        <button class="btn btn-secondary" disabled>Downgrade Available</button>
+        {% endif %}
+      </div>
+    </div>
+    
+    <div class="pricing-card premium">
+      <div class="plan-badge">Most Popular</div>
+      <div class="plan-header">
+        <h3>Premium</h3>
+        <div class="price">
+          <span class="amount">€9.99</span>
+          <span class="period">/month</span>
+        </div>
+      </div>
+      
+      <div class="plan-features">
+        <ul>
+          <li><span class="check">✓</span> Complete data history</li>
+          <li><span class="check">✓</span> Real-time monitoring</li>
+          <li><span class="check">✓</span> Custom thresholds (0.1-10 mV)</li>
+          <li><span class="check">✓</span> Instant alerts (Email + Telegram)</li>
+          <li><span class="check">✓</span> Data export (CSV, PNG)</li>
+          <li><span class="check">✓</span> Event history & logs</li>
+          <li><span class="check">✓</span> Priority support</li>
+          <li><span class="check">✓</span> Advanced analytics</li>
+        </ul>
+      </div>
+      
+      <div class="plan-action">
+        {% if not session.user_id %}
+        <a href="{{ url_for('auth.register') }}" class="btn btn-primary">Start Free Trial</a>
+        {% elif current_user.premium %}
+        <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-secondary">Manage Subscription</a>
+        {% else %}
+        <button id="upgrade-btn" class="btn btn-primary">Upgrade Now</button>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  
+  <div class="faq-section">
+    <h2>Frequently Asked Questions</h2>
+    
+    <div class="faq-grid">
+      <div class="faq-item">
+        <h4>What data sources do you use?</h4>
+        <p>We process real-time seismic data from INGV (Istituto Nazionale di Geofisica e Vulcanologia) monitoring stations on Mount Etna.</p>
+      </div>
+      
+      <div class="faq-item">
+        <h4>How accurate are the alerts?</h4>
+        <p>Our system processes official INGV data with customizable thresholds. Premium users can fine-tune sensitivity to reduce false positives.</p>
+      </div>
+      
+      <div class="faq-item">
+        <h4>Can I cancel anytime?</h4>
+        <p>Yes, you can cancel your Premium subscription at any time. You'll retain access until the end of your billing period.</p>
+      </div>
+      
+      <div class="faq-item">
+        <h4>Is there a free trial?</h4>
+        <p>Yes! New Premium subscribers get a 7-day free trial with full access to all features.</p>
+      </div>
+      
+      <div class="faq-item">
+        <h4>What payment methods do you accept?</h4>
+        <p>We accept all major credit cards, debit cards, and SEPA direct debit through our secure Stripe integration.</p>
+      </div>
+      
+      <div class="faq-item">
+        <h4>Do you offer refunds?</h4>
+        <p>We offer a 30-day money-back guarantee for annual subscriptions. Monthly subscriptions can be canceled anytime.</p>
+      </div>
+    </div>
+  </div>
+  
+  <div class="trust-section">
+    <div class="trust-items">
+      <div class="trust-item">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <span>Secure payments with Stripe</span>
+      </div>
+      
+      <div class="trust-item">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 12l2 2 4-4"/>
+          <circle cx="12" cy="12" r="9"/>
+        </svg>
+        <span>GDPR compliant</span>
+      </div>
+      
+      <div class="trust-item">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="8.5" cy="7" r="4"/>
+          <path d="M20 8v6M23 11h-6"/>
+        </svg>
+        <span>Cancel anytime</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const stripe = Stripe('{{ config.STRIPE_PUBLIC_KEY }}');
+
+document.getElementById('upgrade-btn')?.addEventListener('click', async () => {
+  const button = document.getElementById('upgrade-btn');
+  button.disabled = true;
+  button.textContent = 'Processing...';
+  
+  try {
+    const response = await fetch('/billing/create-checkout-session', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    
+    const data = await response.json();
+    
+    if (data.checkout_url) {
+      window.location.href = data.checkout_url;
+    } else {
+      throw new Error(data.error || 'Failed to create checkout session');
+    }
+  } catch (error) {
+    alert('Error: ' + error.message);
+    button.disabled = false;
+    button.textContent = 'Upgrade Now';
+  }
+});
+</script>
+{% endblock %}
