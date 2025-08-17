@@ -981,6 +981,109 @@
   }
 }
 
+/* Mobile content overflow fixes for all mobile devices */
+@media screen and (max-width: 768px) {
+  html, body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+    -webkit-text-size-adjust: 100%;
+  }
+  
+  * {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+  
+  .hero-premium, .hero-content, .hero-title, .hero-subtitle, .hero-stats {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-wrap: break-word !important;
+    word-wrap: break-word !important;
+    padding-left: var(--space-4) !important;
+    padding-right: var(--space-4) !important;
+  }
+  
+  .hero-premium {
+    padding: var(--space-6) var(--space-4) !important;
+    margin: 0 !important;
+  }
+  
+  .hero-content {
+    max-width: calc(100vw - 2rem) !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+  }
+  
+  .hero-title {
+    font-size: clamp(1.5rem, 8vw, 3rem) !important;
+    line-height: 1.2 !important;
+    margin-bottom: var(--space-4) !important;
+  }
+  
+  .hero-subtitle {
+    font-size: clamp(0.875rem, 4vw, 1.125rem) !important;
+    line-height: 1.4 !important;
+    margin-bottom: var(--space-6) !important;
+  }
+  
+  .hero-stats {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: var(--space-3) !important;
+    width: 100% !important;
+    margin-bottom: var(--space-6) !important;
+  }
+  
+  .hero-stats > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    text-align: center !important;
+    padding: var(--space-3) !important;
+  }
+  
+  /* Fix chart and visual elements overflow on mobile */
+  .hero-visual {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+  
+  .preview-chart, .home-graph-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+  
+  /* Plotly chart mobile responsiveness */
+  .js-plotly-plot, .plot-container, .plotly {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+  }
+  
+  .user-select-none.svg-container {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .user-select-none.svg-container svg {
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+  }
+  
+  .gl-container {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  
+  .modebar-container {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}
+
 .glass,
 .glass-alt {
   -webkit-backdrop-filter: blur(20px);
@@ -1023,6 +1126,10 @@
     touch-action: manipulation;
   }
   
+  .grid-2, .grid-3 {
+    grid-template-columns: 1fr;
+  }
+  
   .container {
     padding: 0 max(var(--space-4), env(safe-area-inset-left)) 0 max(var(--space-4), env(safe-area-inset-right));
     margin: var(--space-6) auto;
@@ -1036,6 +1143,38 @@
     padding: var(--space-8) max(var(--space-4), env(safe-area-inset-right)) var(--space-8) max(var(--space-4), env(safe-area-inset-left));
     margin: 0;
     width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+  
+  .hero-content {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+  
+  .hero-title {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+    hyphens: auto;
+  }
+  
+  .hero-subtitle {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+  }
+  
+  .hero-stats {
+    width: 100%;
+    max-width: 100%;
     box-sizing: border-box;
     overflow-x: hidden;
   }
@@ -1044,6 +1183,7 @@
     margin: var(--space-4) max(var(--space-4), env(safe-area-inset-right)) var(--space-4) max(var(--space-4), env(safe-area-inset-left));
     padding: var(--space-6);
     width: calc(100% - 2 * max(var(--space-4), env(safe-area-inset-left)));
+    max-width: 100%;
     box-sizing: border-box;
     overflow-x: hidden;
   }

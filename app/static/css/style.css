@@ -148,12 +148,7 @@ body {
   box-sizing: border-box;
 }
 
-/* Responsive Design - Basic grid layout only, mobile navbar handled in theme.css */
-@media (max-width: 768px) {
-  .grid-2, .grid-3 {
-    grid-template-columns: 1fr;
-  }
-}
+/* Responsive Design - Moved to theme.css to avoid conflicts */
 
 /* Buttons */
 .btn {
