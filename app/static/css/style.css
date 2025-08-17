@@ -5,7 +5,7 @@
   --card-hover: #1a1d2a;
   --text: #e6e7ea;
   --muted: #a6abb3;
-  --accent: #e33;
+  --accent: #007aff;
   --success: #4ade80;
   --warning: #fbbf24;
   --error: #ef4444;
@@ -117,22 +117,37 @@ body {
   grid-template-columns: repeat(3, 1fr);
 }
 
-/* Responsive Design */
+/* iOS Safari Compatibility */
+* {
+  -webkit-box-sizing: border-box;
+  -moz-box-sizing: border-box;
+  box-sizing: border-box;
+}
+
+body {
+  -webkit-text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* iOS Safe Area Support */
+.navbar {
+  padding-top: env(safe-area-inset-top);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+
+.container {
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+}
+
+/* Responsive Design - Basic grid layout only, mobile navbar handled in theme.css */
 @media (max-width: 768px) {
   .grid-2, .grid-3 {
     grid-template-columns: 1fr;
-  }
-  
-  .navbar {
-    padding: 8px 16px;
-  }
-  
-  .container {
-    padding: 0 12px;
-  }
-  
-  .card {
-    padding: 16px;
   }
 }
 

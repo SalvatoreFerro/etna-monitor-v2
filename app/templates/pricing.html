@@ -7,13 +7,13 @@
 
 {% block content %}
 <div class="pricing-container">
-  <div class="pricing-header">
+  <div class="pricing-header hero-premium animate-premium-fade">
     <h1>Choose Your Plan</h1>
     <p>Unlock advanced monitoring features with Premium</p>
   </div>
   
   <div class="pricing-grid">
-    <div class="pricing-card">
+    <div class="pricing-card card-premium animate-premium-slide">
       <div class="plan-header">
         <h3>Free</h3>
         <div class="price">
@@ -37,16 +37,16 @@
       
       <div class="plan-action">
         {% if not session.user_id %}
-        <a href="{{ url_for('auth.register') }}" class="btn btn-secondary" aria-label="Start free trial">Get Started</a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-secondary glass" aria-label="Start free trial">Get Started</a>
         {% elif not current_user.premium %}
-        <button class="btn btn-secondary" disabled>Current Plan</button>
+        <button class="btn btn-secondary glass" disabled>Current Plan</button>
         {% else %}
-        <button class="btn btn-secondary" disabled>Downgrade Available</button>
+        <button class="btn btn-secondary glass" disabled>Downgrade Available</button>
         {% endif %}
       </div>
     </div>
     
-    <div class="pricing-card premium">
+    <div class="pricing-card card-premium premium animate-premium-slide">
       <div class="plan-badge">Most Popular</div>
       <div class="plan-header">
         <h3>Premium</h3>
@@ -71,17 +71,17 @@
       
       <div class="plan-action">
         {% if not session.user_id %}
-        <a href="{{ url_for('auth.register') }}" class="btn btn-primary" aria-label="Start premium free trial">Start Free Trial</a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-premium" aria-label="Start premium free trial">Start Free Trial</a>
         {% elif current_user.premium %}
-        <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-secondary">Manage Subscription</a>
+        <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-secondary glass">Manage Subscription</a>
         {% else %}
-        <button id="upgrade-btn" class="btn btn-primary" aria-label="Upgrade to premium plan">Upgrade Now</button>
+        <button id="upgrade-btn" class="btn btn-premium" aria-label="Upgrade to premium plan">Upgrade Now</button>
         {% endif %}
       </div>
     </div>
   </div>
   
-  <div class="faq-section">
+  <div class="faq-section card-premium animate-premium-fade">
     <h2>Frequently Asked Questions</h2>
     
     <div class="faq-grid">
@@ -117,7 +117,7 @@
     </div>
   </div>
   
-  <div class="trust-section">
+  <div class="trust-section card-premium animate-premium-slide">
     <div class="trust-items">
       <div class="trust-item">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

@@ -1,7 +1,17 @@
 {% extends "layout.html" %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+{% endblock %}
+
 {% block content %}
-  <section class="card">
-    <h2>Dashboard Settings</h2>
+<div class="settings-container">
+  <div class="settings-header card-premium animate-premium-fade">
+    <h1>Dashboard Settings</h1>
+    <p>Customize your monitoring preferences</p>
+  </div>
+  
+  <div class="settings-content card-premium animate-premium-slide">
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -11,21 +21,27 @@
     {% endwith %}
     
     {% if user.premium %}
-      <form method="POST">
+      <form method="POST" class="settings-form">
         <div class="form-group">
           <label for="threshold">Custom Alert Threshold (mV):</label>
-          <input type="number" id="threshold" name="threshold" 
+          <input type="number" id="threshold" name="threshold" class="input-base"
                  value="{{ user.threshold or default_threshold }}" 
                  step="0.1" min="0.1" max="100.0" required>
           <small>Range: 0.1 - 100.0 mV</small>
         </div>
-        <button type="submit" class="btn btn-primary">Update Threshold</button>
+        <button type="submit" class="btn btn-premium">Update Threshold</button>
       </form>
     {% else %}
-      <p>Premium account required for custom thresholds.</p>
-      <p>Current default threshold: <strong>{{ default_threshold }} mV</strong></p>
+      <div class="upgrade-prompt">
+        <p>Premium account required for custom thresholds.</p>
+        <p>Current default threshold: <strong>{{ default_threshold }} mV</strong></p>
+        <a href="/pricing" class="btn btn-premium">Upgrade to Premium</a>
+      </div>
     {% endif %}
     
-    <p><a href="{{ url_for('dashboard.dashboard_home') }}">Back to Dashboard</a></p>
-  </section>
+    <div class="navigation-actions">
+      <a href="{{ url_for('dashboard.dashboard_home') }}" class="btn btn-secondary glass">Back to Dashboard</a>
+    </div>
+  </div>
+</div>
 {% endblock %}

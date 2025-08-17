@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, shrink-to-fit=no" />
     <meta name="description" content="Real-time volcanic tremor monitoring for Mount Etna using INGV seismic data" />
     <meta name="theme-color" content="#007aff" />
     <meta name="mobile-web-app-capable" content="yes" />
@@ -44,60 +44,58 @@
     <a href="#main-content" class="skip-link">Skip to main content</a>
     
     <nav class="navbar glass" role="navigation" aria-label="Main navigation">
-      <div class="navbar-brand">
-        <a href="/" class="brand-link" aria-label="EtnaMonitor Home">
-          <span class="brand-icon">🌋</span>
-          <span class="brand-text">EtnaMonitor</span>
-        </a>
-      </div>
-      
-      <div class="navbar-menu" role="menubar">
-        <a href="/" class="nav-link" role="menuitem" aria-label="Go to Home page"><i class="fas fa-home" aria-hidden="true"></i> Home</a>
+      <div class="navbar-container">
+        <div class="navbar-brand">
+          <a href="/" class="brand-link" aria-label="EtnaMonitor Home">
+            <span class="brand-icon">🌋</span>
+            <span class="brand-text">EtnaMonitor</span>
+          </a>
+        </div>
         
-        {% if session.user_id %}
-          <a href="/dashboard/" class="nav-link" role="menuitem" aria-label="Go to Dashboard"><i class="fas fa-tachometer-alt" aria-hidden="true"></i> Dashboard</a>
-          
-          {% if current_user and current_user.is_admin %}
-            <a href="/admin/" class="nav-link" role="menuitem" aria-label="Go to Admin panel"><i class="fas fa-users-cog" aria-hidden="true"></i> Admin</a>
-          {% endif %}
-          
-          <div class="nav-dropdown">
-            <button class="nav-dropdown-toggle" aria-label="User menu" aria-expanded="false">
-              <i class="fas fa-user" aria-hidden="true"></i>
-              <span>{{ current_user.email if current_user else 'Account' }}</span>
-              <i class="fas fa-chevron-down" aria-hidden="true"></i>
-            </button>
-            <div class="nav-dropdown-menu" role="menu">
-              <a href="/dashboard/settings" class="dropdown-item" role="menuitem" aria-label="Go to Settings">
-                <i class="fas fa-cog" aria-hidden="true"></i> Settings
-              </a>
-              {% if current_user and current_user.premium %}
-                <a href="/billing/customer-portal" class="dropdown-item" role="menuitem" aria-label="Manage billing">
-                  <i class="fas fa-credit-card" aria-hidden="true"></i> Billing
-                </a>
-              {% else %}
-                <a href="/pricing" class="dropdown-item" role="menuitem" aria-label="Upgrade to Premium">
-                  <i class="fas fa-star" aria-hidden="true"></i> Upgrade to Premium
-                </a>
+        <button class="navbar-toggle" id="navbar-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+          <span class="hamburger-line"></span>
+        </button>
+        
+        <div class="navbar-menu" id="navbar-menu">
+          <div class="navbar-nav">
+            <a href="/" class="nav-link {{ 'active' if request.endpoint == 'main.index' }}">Home</a>
+            {% if session.user_id %}
+              <a href="/dashboard" class="nav-link {{ 'active' if request.endpoint == 'dashboard.dashboard_home' }}">Dashboard</a>
+              {% if current_user and current_user.is_admin %}
+                <a href="/admin" class="nav-link {{ 'active' if request.endpoint == 'admin.admin_panel' }}">Admin</a>
               {% endif %}
-              <div class="dropdown-divider" role="separator"></div>
-              <a href="{{ url_for('auth.logout') }}" class="dropdown-item" role="menuitem" aria-label="Logout from account">
-                <i class="fas fa-sign-out-alt" aria-hidden="true"></i> Logout
-              </a>
-            </div>
+            {% endif %}
+            <a href="/pricing" class="nav-link {{ 'active' if request.endpoint == 'main.pricing' }}">Pricing</a>
           </div>
-        {% else %}
-          <a href="/pricing" class="nav-link" role="menuitem" aria-label="View pricing plans">Pricing</a>
-          <a href="{{ url_for('auth.login') }}" class="nav-link" role="menuitem" aria-label="Login to existing account">Login</a>
-          <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-sm" aria-label="Register new account">Get Started</a>
-        {% endif %}
+          
+          <div class="navbar-actions">
+            {% if session.user_id %}
+              <div class="user-menu">
+                <button class="user-menu-toggle btn btn-secondary glass" aria-label="User menu">
+                  <i class="fas fa-user"></i>
+                  <span class="user-email">{{ current_user.email if current_user else 'User' }}</span>
+                  <i class="fas fa-chevron-down"></i>
+                </button>
+                <div class="user-menu-dropdown">
+                  <a href="/dashboard/settings" class="dropdown-item">Settings</a>
+                  {% if not current_user.premium %}
+                    <a href="/pricing" class="dropdown-item">Upgrade to Premium</a>
+                  {% endif %}
+                  <div class="dropdown-divider"></div>
+                  <a href="/logout" class="dropdown-item">Logout</a>
+                </div>
+              </div>
+            {% else %}
+              <div class="auth-buttons">
+                <a href="/login" class="btn btn-secondary glass">Login</a>
+                <a href="/register" class="btn btn-premium">Sign Up</a>
+              </div>
+            {% endif %}
+          </div>
+        </div>
       </div>
-      
-      <button class="navbar-toggle" aria-label="Toggle navigation">
-        <span></span>
-        <span></span>
-        <span></span>
-      </button>
     </nav>
     
     <main class="main-content" role="main" aria-label="Main content" id="main-content">
@@ -242,6 +240,42 @@
     document.addEventListener('DOMContentLoaded', () => {
       checkServiceStatus();
       setInterval(checkServiceStatus, 30000);
+      
+      // Mobile Navigation Toggle
+      const navbarToggle = document.getElementById('navbar-toggle');
+      const navbarMenu = document.getElementById('navbar-menu');
+      
+      if (navbarToggle && navbarMenu) {
+        navbarToggle.addEventListener('click', function() {
+          const isActive = navbarMenu.classList.contains('active');
+          navbarMenu.classList.toggle('active');
+          navbarToggle.setAttribute('aria-expanded', !isActive);
+          
+          // Animate hamburger lines
+          const lines = navbarToggle.querySelectorAll('.hamburger-line');
+          if (!isActive) {
+            lines[0].style.transform = 'rotate(45deg) translate(5px, 5px)';
+            lines[1].style.opacity = '0';
+            lines[2].style.transform = 'rotate(-45deg) translate(7px, -6px)';
+          } else {
+            lines[0].style.transform = 'none';
+            lines[1].style.opacity = '1';
+            lines[2].style.transform = 'none';
+          }
+        });
+        
+        // Close menu when clicking outside
+        document.addEventListener('click', function(event) {
+          if (!navbarToggle.contains(event.target) && !navbarMenu.contains(event.target)) {
+            navbarMenu.classList.remove('active');
+            navbarToggle.setAttribute('aria-expanded', 'false');
+            const lines = navbarToggle.querySelectorAll('.hamburger-line');
+            lines[0].style.transform = 'none';
+            lines[1].style.opacity = '1';
+            lines[2].style.transform = 'none';
+          }
+        });
+      }
     });
     </script>
   </body>
