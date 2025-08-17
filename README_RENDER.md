@@ -2,7 +2,13 @@
 
 ## Build Command
 
-Set this as the Build Command in your Render service dashboard:
+**Option 1 (Recommended):** Set this as the Build Command in your Render service dashboard:
+
+```
+pip install -r requirements.txt
+```
+
+**Option 2 (Alternative):** If you want explicit migration in build:
 
 ```
 pip install -r requirements.txt && python migrations/add_billing_fields.py
@@ -32,16 +38,22 @@ DATABASE_URL=sqlite:////data/etna_monitor.db
 
 ## Start Command
 
-Set the Start Command in your Render service dashboard to:
+**Option 1 (Recommended - Auto-migration):** Set the Start Command to:
+```
+python startup.py
+```
+
+**Option 2 (Standard):** Set the Start Command to:
 ```
 gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app
 ```
 
-**Alternative** (if you prefer using Procfile):
-Leave the Start Command field **EMPTY** and ensure Procfile contains:
+**Option 3 (Procfile):** Leave Start Command **EMPTY** and ensure Procfile contains:
 ```
-web: gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app
+web: python startup.py
 ```
+
+The `startup.py` script automatically runs the database migration before starting the server, ensuring the billing columns are always present.
 
 ## Health Check Configuration
 

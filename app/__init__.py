@@ -23,6 +23,47 @@ def create_app():
     
     init_db(app)
     
+    with app.app_context():
+        try:
+            from sqlalchemy import inspect, text
+            from .models import db
+            inspector = inspect(db.engine)
+            
+            if 'users' in inspector.get_table_names():
+                existing_columns = [col['name'] for col in inspector.get_columns('users')]
+                
+                billing_columns = [
+                    ('stripe_customer_id', 'VARCHAR(100)'),
+                    ('subscription_status', 'VARCHAR(20) DEFAULT "free"'),
+                    ('subscription_id', 'VARCHAR(100)'),
+                    ('current_period_end', 'DATETIME'),
+                    ('trial_end', 'DATETIME'),
+                    ('billing_email', 'VARCHAR(120)'),
+                    ('company_name', 'VARCHAR(200)'),
+                    ('vat_id', 'VARCHAR(50)')
+                ]
+                
+                columns_added = 0
+                for column_name, column_def in billing_columns:
+                    if column_name not in existing_columns:
+                        try:
+                            with db.engine.connect() as conn:
+                                conn.execute(text(f'ALTER TABLE users ADD COLUMN {column_name} {column_def}'))
+                                conn.commit()
+                            print(f"✅ Auto-migration: Added column {column_name} to users table")
+                            columns_added += 1
+                        except Exception as e:
+                            print(f"⚠️  Auto-migration: Could not add column {column_name}: {e}")
+                
+                if columns_added > 0:
+                    print(f"🎉 Auto-migration: Added {columns_added} billing columns to users table")
+            
+            db.create_all()
+            
+        except Exception as e:
+            print(f"⚠️  Auto-migration failed: {e}")
+            pass
+    
     csp = {
         'default-src': "'self'",
         'script-src': [
