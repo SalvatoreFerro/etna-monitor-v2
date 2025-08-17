@@ -36,7 +36,7 @@
     </div>
   </div>
 
-  <div class="chart-section card-base">
+  <div class="chart-section card-premium animate-premium-fade">
     <div class="chart-header">
       <h2>Volcanic Tremor Monitoring</h2>
       <div class="chart-info">
@@ -47,7 +47,7 @@
     
     <div class="chart-controls">
       {% if user.premium %}
-      <button id="update-btn" class="btn btn-primary">
+      <button id="update-btn" class="btn btn-premium">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
         </svg>
@@ -57,7 +57,7 @@
       
       <div class="time-range-selector">
         <label for="time-range" class="sr-only">Select time range for chart</label>
-        <select id="time-range" aria-label="Time range selector">
+        <select id="time-range" class="input-base" aria-label="Time range selector">
           <option value="24h">Last 24 hours</option>
           <option value="3d">Last 3 days</option>
           <option value="7d" selected>Last 7 days</option>
@@ -67,8 +67,8 @@
       
       {% if user.premium %}
       <div class="export-controls" role="group" aria-label="Export options">
-        <button id="export-csv" class="btn btn-secondary btn-sm" aria-label="Export data as CSV file">CSV</button>
-        <button id="export-png" class="btn btn-secondary btn-sm" aria-label="Export chart as PNG image">PNG</button>
+        <button id="export-csv" class="btn btn-secondary btn-sm glass" aria-label="Export data as CSV file">CSV</button>
+        <button id="export-png" class="btn btn-secondary btn-sm glass" aria-label="Export chart as PNG image">PNG</button>
       </div>
       {% endif %}
     </div>
@@ -88,7 +88,7 @@
   </div>
 
   <div class="dashboard-grid">
-    <div class="status-card card-base">
+    <div class="status-card card-premium animate-premium-slide">
       <h3>Current Status</h3>
       <div class="status-display">
         <div class="current-value">
@@ -101,7 +101,7 @@
       </div>
     </div>
 
-    <div class="threshold-card card-base">
+    <div class="threshold-card card-premium animate-premium-slide">
       <h3>Threshold Settings</h3>
       {% if user.premium %}
       <div class="threshold-controls">
@@ -111,17 +111,17 @@
           <input type="number" id="threshold-input" min="0.1" max="10" step="0.1" value="{{ user.threshold or 2.0 }}" aria-label="Threshold value input" aria-describedby="threshold-help">
           <div id="threshold-help" class="sr-only">Set custom threshold between 0.1 and 10 mV for alerts</div>
         </div>
-        <button id="save-threshold" class="btn btn-primary btn-sm">Save</button>
+        <button id="save-threshold" class="btn btn-premium btn-sm">Save</button>
       </div>
       {% else %}
       <div class="upgrade-prompt">
         <p>Fixed threshold: {{ user.threshold or 2.0 }} mV</p>
-        <a href="/pricing" class="btn btn-primary btn-sm">Upgrade for Custom Thresholds</a>
+        <a href="/pricing" class="btn btn-premium btn-sm">Upgrade for Custom Thresholds</a>
       </div>
       {% endif %}
     </div>
 
-    <div class="refresh-card card-base">
+    <div class="refresh-card card-premium animate-premium-slide">
       <h3>Auto-refresh</h3>
       <div class="refresh-controls">
         <label for="auto-refresh" class="sr-only">Auto-refresh interval</label>
@@ -141,7 +141,7 @@
 
   {% if user.premium %}
   <div class="premium-section">
-    <div class="alerts-card card-base">
+    <div class="alerts-card card-premium animate-premium-fade">
       <h3>Alert Settings</h3>
       <div class="alert-controls">
         <label class="checkbox-label">
@@ -155,7 +155,7 @@
       </div>
     </div>
 
-    <div class="events-card card-base">
+    <div class="events-card card-premium animate-premium-fade">
       <h3>Recent Events</h3>
       <div class="events-list" id="events-list">
         {% for event in recent_events %}
