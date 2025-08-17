@@ -43,11 +43,11 @@
         </svg>
         View Dashboard
       </a>
-      <button id="quick-update-btn" class="btn btn-secondary btn-lg glass" aria-label="Update data immediately">
+      <button id="quick-update-btn" class="btn btn-secondary btn-lg glass" aria-label="Aggiorna dati immediatamente">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
         </svg>
-        Update Data Now
+        Aggiorna Dati Ora
       </button>
     </div>
   </div>
@@ -59,7 +59,7 @@
           <path d="M3 3v18h18"/>
           <path d="M7 12l3-3 3 3 5-5"/>
         </svg>
-        <p>Loading preview...</p>
+        <p>Caricamento dati da INGV, attendere...</p>
       </div>
       <div id="home-preview-plot" style="width: 100%; height: 260px;" role="img" aria-label="Tremor data visualization"></div>
     </div>
@@ -671,7 +671,7 @@ async function fetchCurva() {
       console.log(`curva loaded: ${data.rows}, last_ts: ${data.last_ts}`);
       return data;
     } else {
-      throw new Error('No data available');
+      throw new Error('Nessun dato disponibile');
     }
   } catch (error) {
     console.error('Error fetching curva:', error);
@@ -778,9 +778,9 @@ function showNoDataMessage() {
         <path d="M3 3v18h18"/>
         <path d="M7 12l3-3 3 3 5-5"/>
       </svg>
-      <p>No data available</p>
-      <button onclick="quickUpdate()" class="btn btn-secondary btn-sm" style="margin-top: 12px;" aria-label="Update data now">
-        Update Now
+      <p>Nessun dato sismico disponibile</p>
+      <button onclick="quickUpdate()" class="btn btn-secondary btn-sm" style="margin-top: 12px;" aria-label="Aggiorna dati ora">
+        Aggiorna Ora
       </button>
     `;
     loading.style.display = 'flex';
@@ -789,6 +789,9 @@ function showNoDataMessage() {
 }
 
 // Status Check
+let statusRetryCount = 0;
+const statusMaxRetries = 3;
+
 async function checkStatus() {
   try {
     const response = await fetch('/api/status');
@@ -799,13 +802,14 @@ async function checkStatus() {
     
     if (data.ok) {
       statusDot.className = 'status-dot';
-      statusText.textContent = `Online • Last update ${new Date(data.last_update || data.last_ts).toLocaleTimeString()}`;
+      statusText.textContent = `Online • Ultimo aggiornamento ${new Date(data.last_update || data.last_ts).toLocaleTimeString()}`;
       
       // Update hero stats
       document.getElementById('last-update').textContent = new Date(data.last_update || data.last_ts).toLocaleString();
       document.getElementById('data-points').textContent = (data.total_points || data.rows || 0).toLocaleString();
       document.getElementById('current-level').textContent = `${data.current_value?.toFixed(2) || '--'} mV`;
       document.getElementById('hero-stats').style.display = 'flex';
+      statusRetryCount = 0;
     } else {
       statusDot.className = 'status-dot offline';
       statusText.textContent = 'Offline';
@@ -814,7 +818,14 @@ async function checkStatus() {
     const statusDot = document.getElementById('status-dot');
     const statusText = document.getElementById('status-text');
     statusDot.className = 'status-dot offline';
-    statusText.textContent = 'Connection error';
+    
+    if (statusRetryCount < statusMaxRetries) {
+      statusText.textContent = 'Caricamento dati da INGV, attendere...';
+      statusRetryCount++;
+      setTimeout(() => checkStatus(), Math.pow(2, statusRetryCount) * 1000);
+    } else {
+      statusText.textContent = 'Errore di connessione persistente';
+    }
   }
 }
 
@@ -828,7 +839,7 @@ async function quickUpdate() {
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin">
       <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
     </svg>
-    Updating...
+    Aggiornamento...
   `;
   
   try {
