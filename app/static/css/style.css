@@ -73,6 +73,8 @@ body {
   max-width: 1200px;
   margin: 24px auto;
   padding: 0 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Card System with 3D Effects */
@@ -142,14 +144,11 @@ body {
 .container {
   padding-left: max(16px, env(safe-area-inset-left));
   padding-right: max(16px, env(safe-area-inset-right));
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* Responsive Design - Basic grid layout only, mobile navbar handled in theme.css */
-@media (max-width: 768px) {
-  .grid-2, .grid-3 {
-    grid-template-columns: 1fr;
-  }
-}
+/* Responsive Design - Moved to theme.css to avoid conflicts */
 
 /* Buttons */
 .btn {
