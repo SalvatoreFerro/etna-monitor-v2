@@ -2,6 +2,67 @@
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+<style>
+@media only screen and (max-width: 393px) and (-webkit-min-device-pixel-ratio: 3) {
+  .admin-container {
+    padding: 12px max(4px, env(safe-area-inset-right)) 12px max(4px, env(safe-area-inset-left));
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .admin-header {
+    padding: 16px max(4px, env(safe-area-inset-right)) 16px max(4px, env(safe-area-inset-left));
+    margin-bottom: 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .admin-header h1 {
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--space-2);
+  }
+  
+  .admin-content {
+    padding: 16px max(4px, env(safe-area-inset-right)) 16px max(4px, env(safe-area-inset-left));
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .table-premium {
+    font-size: var(--font-size-xs);
+    min-width: 100%;
+  }
+  
+  .table-premium th,
+  .table-premium td {
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--font-size-xs);
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+  
+  .action-buttons .btn {
+    font-size: var(--font-size-xs);
+    padding: var(--space-1) var(--space-2);
+    width: 100%;
+  }
+  
+  .badge {
+    font-size: var(--font-size-xs);
+    padding: 2px 6px;
+  }
+}
+</style>
 {% endblock %}
 
 {% block content %}

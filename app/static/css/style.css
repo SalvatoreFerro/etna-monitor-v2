@@ -73,6 +73,8 @@ body {
   max-width: 1200px;
   margin: 24px auto;
   padding: 0 16px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Card System with 3D Effects */
@@ -142,6 +144,8 @@ body {
 .container {
   padding-left: max(16px, env(safe-area-inset-left));
   padding-right: max(16px, env(safe-area-inset-right));
+  width: 100%;
+  box-sizing: border-box;
 }
 
 /* Responsive Design - Basic grid layout only, mobile navbar handled in theme.css */

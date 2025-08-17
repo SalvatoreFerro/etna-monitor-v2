@@ -2,6 +2,68 @@
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+<style>
+@media only screen and (max-width: 393px) and (-webkit-min-device-pixel-ratio: 3) {
+  .settings-container {
+    padding: 12px max(4px, env(safe-area-inset-right)) 12px max(4px, env(safe-area-inset-left));
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .settings-header {
+    padding: 16px max(4px, env(safe-area-inset-right)) 16px max(4px, env(safe-area-inset-left));
+    margin-bottom: 12px;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .settings-header h1 {
+    font-size: var(--font-size-xl);
+    margin-bottom: var(--space-2);
+  }
+  
+  .settings-content {
+    padding: 16px max(4px, env(safe-area-inset-right)) 16px max(4px, env(safe-area-inset-left));
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .settings-form {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .form-group {
+    margin-bottom: var(--space-4);
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .input-base {
+    width: 100%;
+    box-sizing: border-box;
+    font-size: var(--font-size-sm);
+  }
+  
+  .btn {
+    width: 100%;
+    justify-content: center;
+    margin-bottom: var(--space-3);
+  }
+  
+  .navigation-actions {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  
+  .upgrade-prompt {
+    text-align: center;
+    padding: var(--space-4);
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+</style>
 {% endblock %}
 
 {% block content %}
