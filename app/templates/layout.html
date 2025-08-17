@@ -205,6 +205,9 @@
       document.getElementById('pwa-install-prompt').style.display = 'none';
     });
     
+    let retryCount = 0;
+    const maxRetries = 3;
+    
     async function checkServiceStatus() {
       try {
         const response = await fetch('/api/status');
@@ -217,12 +220,13 @@
           
           if (data.ok) {
             dot.className = 'status-dot online';
-            text.textContent = 'All systems operational';
-            statusElement.setAttribute('aria-label', 'Service status: Online');
+            text.textContent = 'Tutti i sistemi operativi';
+            statusElement.setAttribute('aria-label', 'Stato servizio: Online');
+            retryCount = 0;
           } else {
             dot.className = 'status-dot offline';
-            text.textContent = 'Service issues detected';
-            statusElement.setAttribute('aria-label', 'Service status: Offline');
+            text.textContent = 'Problemi di servizio rilevati';
+            statusElement.setAttribute('aria-label', 'Stato servizio: Offline');
           }
         }
       } catch (error) {
@@ -231,8 +235,15 @@
           const dot = statusElement.querySelector('.status-dot');
           const text = statusElement.querySelector('.status-text');
           dot.className = 'status-dot offline';
-          text.textContent = 'Connection error';
-          statusElement.setAttribute('aria-label', 'Service status: Connection error');
+          
+          if (retryCount < maxRetries) {
+            text.textContent = 'Errore di connessione ai dati INGV, riprovo automaticamente...';
+            retryCount++;
+            setTimeout(() => checkServiceStatus(), Math.pow(2, retryCount) * 1000);
+          } else {
+            text.textContent = 'Errore di connessione persistente';
+          }
+          statusElement.setAttribute('aria-label', 'Stato servizio: Errore di connessione');
         }
       }
     }

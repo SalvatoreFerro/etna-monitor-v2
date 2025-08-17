@@ -3,6 +3,9 @@
  * Handles chart rendering and updates for the home page preview
  */
 
+let chartRetryCount = 0;
+const chartMaxRetries = 3;
+
 async function fetchCurva(limit = 168) {
   try {
     const url = limit ? `/api/curva?limit=${limit}` : '/api/curva';
@@ -16,13 +19,19 @@ async function fetchCurva(limit = 168) {
     
     if (data.ok && data.data && data.data.length > 0) {
       console.log(`Home preview curva loaded: ${data.rows || data.data.length}, last_ts: ${data.last_ts}`);
+      chartRetryCount = 0;
       return data;
     } else {
-      throw new Error('No data available');
+      throw new Error('Nessun dato disponibile');
     }
   } catch (error) {
     console.error('Error fetching curva for home preview:', error);
-    throw error;
+    if (chartRetryCount < chartMaxRetries) {
+      chartRetryCount++;
+      throw new Error('Caricamento dati da INGV, attendere...');
+    } else {
+      throw new Error('Errore di connessione persistente ai dati INGV');
+    }
   }
 }
 
@@ -126,9 +135,9 @@ function showNoDataMessage() {
           <path d="M3 3v18h18"/>
           <path d="M7 12l3-3 3 3 5-5"/>
         </svg>
-        <p>No data available</p>
+        <p>Nessun dato sismico disponibile</p>
         <button onclick="quickUpdate()" class="btn btn-secondary btn-sm" style="margin-top: 12px;">
-          Update Now
+          Aggiorna Ora
         </button>
       </div>
     `;
@@ -141,12 +150,19 @@ function showNoDataMessage() {
 }
 
 function initializeHomePreview() {
+  const loadingOverlay = document.getElementById('home-preview-loading');
+  if (loadingOverlay) {
+    loadingOverlay.style.display = 'flex';
+    loadingOverlay.classList.remove('hidden');
+  }
+  
   requestAnimationFrame(() => {
     setTimeout(() => {
       refreshHomePreview().catch(error => {
         console.error('Failed to initialize home preview:', error);
+        showNoDataMessage();
       });
-    }, 100);
+    }, 50);
   });
 }
 

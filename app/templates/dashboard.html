@@ -165,7 +165,7 @@
             <span class="event-value">{{ "%.2f"|format(event.value) }} mV</span>
           </div>
         {% else %}
-          <p class="no-events">No recent events</p>
+          <p class="no-events">Nessun evento sismico significativo nelle ultime 24 ore</p>
         {% endfor %}
       </div>
     </div>
@@ -175,7 +175,7 @@
 
 <div id="loading-overlay" class="loading-overlay" style="display: none;">
   <div class="loading-spinner"></div>
-  <p>Updating data...</p>
+  <p>Caricamento dati da INGV, attendere...</p>
 </div>
 
 <div id="toast-container" class="toast-container"></div>
