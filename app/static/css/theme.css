@@ -490,6 +490,30 @@
   }
 }
 
+/* iOS Safari Mobile Compatibility */
+@supports (-webkit-touch-callout: none) {
+  .navbar-menu {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  .navbar-toggle {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+  }
+}
+
+/* Force mobile layout on iOS devices */
+@media screen and (-webkit-min-device-pixel-ratio: 2) and (max-width: 768px) {
+  .navbar-toggle {
+    display: flex !important;
+  }
+  
+  .navbar-menu:not(.active) {
+    display: none !important;
+  }
+}
+
 /* Component Base Classes */
 .btn-base {
   display: inline-flex;
@@ -566,7 +590,7 @@
 }
 
 .navbar-toggle {
-  display: none;
+  display: none !important;
   flex-direction: column;
   background: none;
   border: none;
@@ -759,7 +783,7 @@
 }
 
 .navbar-toggle {
-  display: none;
+  display: none !important;
   flex-direction: column;
   background: none;
   border: none;
@@ -966,7 +990,7 @@
   }
   
   .navbar-toggle {
-    display: flex;
+    display: flex !important;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }
