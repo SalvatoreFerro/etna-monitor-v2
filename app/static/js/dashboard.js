@@ -190,7 +190,14 @@ class EtnaDashboard {
     
     renderPlot(data) {
         const plotDiv = document.getElementById('tremor-plot');
-        if (!plotDiv || !data.data || data.data.length === 0) return;
+        if (!plotDiv) return;
+        
+        if (!data.data || data.data.length === 0) {
+            this.showNoDataMessage();
+            return;
+        }
+        
+        console.log(`curva loaded: ${data.rows}, last_ts: ${data.last_ts}`);
         
         const timestamps = data.data.map(row => row.timestamp);
         const values = data.data.map(row => row.value);
@@ -201,7 +208,7 @@ class EtnaDashboard {
             y: values,
             type: 'scatter',
             mode: 'lines',
-            name: this.ingvMode ? 'RMS' : 'Tremor',
+            name: this.ingvMode ? 'RMS' : 'Etna Volcanic Tremor',
             line: {
                 color: this.ingvMode ? '#00AA00' : '#4ade80',
                 width: this.ingvMode ? 1 : 2
@@ -224,7 +231,7 @@ class EtnaDashboard {
                     tickformat: '%d/%m\n%H:%M'
                 },
                 yaxis: {
-                    title: '',
+                    title: 'Amplitude (mV)',
                     type: 'log',
                     range: [-1, 1],
                     showgrid: true,
@@ -245,23 +252,31 @@ class EtnaDashboard {
                     x1: timestamps[timestamps.length - 1],
                     y0: threshold,
                     y1: threshold,
-                    line: { color: '#FF0000', width: 1 }
+                    line: { color: '#FF0000', width: 1, dash: 'solid' }
                 }]
             };
         } else {
             const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
             layout = {
-                xaxis: { title: 'Time' },
+                title: 'Etna Volcanic Tremor',
+                title_font: { size: 16, color: isDark ? '#e6e7ea' : '#000000' },
+                xaxis: { 
+                    title: 'Time',
+                    showgrid: true,
+                    gridcolor: isDark ? '#374151' : '#e5e7eb'
+                },
                 yaxis: {
-                    title: 'Tremor (mV)',
+                    title: 'Amplitude (mV)',
                     type: 'log',
-                    range: [-1, 1]
+                    range: [-1, 1],
+                    showgrid: true,
+                    gridcolor: isDark ? '#374151' : '#e5e7eb'
                 },
                 template: isDark ? 'plotly_dark' : 'plotly_white',
                 plot_bgcolor: 'rgba(0,0,0,0)',
                 paper_bgcolor: 'rgba(0,0,0,0)',
                 font: { color: isDark ? '#e6e7ea' : '#000000' },
-                margin: { l: 0, r: 0, t: 30, b: 0 },
+                margin: { l: 60, r: 20, t: 50, b: 40 },
                 shapes: [{
                     type: 'line',
                     x0: timestamps[0],
@@ -275,7 +290,8 @@ class EtnaDashboard {
         
         const config = {
             displayModeBar: false,
-            responsive: true
+            responsive: true,
+            staticPlot: false
         };
         
         Plotly.newPlot(plotDiv, [trace], layout, config);
@@ -416,13 +432,16 @@ class EtnaDashboard {
         const plotDiv = document.getElementById('tremor-plot');
         if (plotDiv) {
             plotDiv.innerHTML = `
-                <div class="no-data-message">
-                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+                <div class="no-data-message" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 420px; text-align: center; color: var(--text-secondary);">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" style="margin-bottom: 16px; opacity: 0.5;">
                         <path d="M3 3v18h18"/>
                         <path d="M7 12l3-3 3 3 5-5"/>
                     </svg>
-                    <h3>No data available</h3>
-                    <p>Click "Update Now" to fetch the latest tremor data</p>
+                    <h3 style="margin: 0 0 8px 0; font-size: 18px;">Nessun dato disponibile</h3>
+                    <p style="margin: 0 0 16px 0; opacity: 0.7;">I dati del tremore vulcanico verranno caricati automaticamente</p>
+                    <button onclick="window.location.reload()" class="btn btn-primary" style="padding: 8px 16px; border: none; border-radius: 6px; background: #007aff; color: white; cursor: pointer;">
+                        Aggiorna ora
+                    </button>
                 </div>
             `;
         }
