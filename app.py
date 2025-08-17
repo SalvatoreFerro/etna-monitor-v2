@@ -18,9 +18,8 @@ def ensure_path(p: pathlib.Path):
         return local
 
 LOG_DIR = ensure_path(LOG_DIR)
-CSV_PATH = (CSV_PATH if CSV_PATH.is_absolute() else LOG_DIR / CSV_PATH).resolve()
-if not CSV_PATH.parent.exists():
-    CSV_PATH.parent.mkdir(parents=True, exist_ok=True)
+DATA_DIR = ensure_path(DATA_DIR)
+CSV_PATH = ensure_path(CSV_PATH.parent) / CSV_PATH.name
 
 log_csv = LOG_DIR / "log.csv"
 if not log_csv.exists():

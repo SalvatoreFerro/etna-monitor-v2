@@ -38,25 +38,3 @@ def pricing():
 @bp.route("/healthz")
 def healthcheck():
     return jsonify({"status": "ok"}), 200
-
-@bp.route("/api/force_update", methods=["GET", "POST"])
-@requires_premium
-def force_update():
-    try:
-        ingv_url = os.getenv('INGV_URL', 'https://www.ct.ingv.it/RMS_Etna/2.png')
-        csv_path = os.getenv('CSV_PATH', '/var/tmp/curva.csv')
-        
-        result = process_png_to_csv(ingv_url, csv_path)
-        
-        return jsonify({
-            "ok": True,
-            "rows": result["rows"],
-            "last_ts": result["last_ts"],
-            "output_path": result["output_path"]
-        }), 200
-        
-    except Exception as e:
-        return jsonify({
-            "ok": False,
-            "error": str(e)
-        }), 500

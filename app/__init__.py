@@ -69,6 +69,7 @@ def create_app():
         'script-src': [
             "'self'",
             "'unsafe-inline'",
+            "'unsafe-eval'",  # Required for Plotly.js
             "https://cdn.plot.ly",
             "https://fonts.googleapis.com",
             "https://js.stripe.com"
