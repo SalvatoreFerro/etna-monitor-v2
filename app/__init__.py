@@ -86,7 +86,8 @@ def create_app():
             "https://cdnjs.cloudflare.com"
         ],
         'img-src': ["'self'", "data:", "https:"],
-        'connect-src': ["'self'", "https://api.stripe.com"]
+        'connect-src': ["'self'", "https://api.stripe.com"],
+        'frame-src': ["https://js.stripe.com", "https://hooks.stripe.com"]
     }
     
     Talisman(app, 

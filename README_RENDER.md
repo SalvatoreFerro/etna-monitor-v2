@@ -25,6 +25,16 @@ CSV_PATH=/data/curva.csv
 FLASK_ENV=production
 SECRET_KEY=your-production-secret-key
 DATABASE_URL=sqlite:////data/etna_monitor.db
+
+# Stripe Billing (Production Keys)
+STRIPE_PUBLIC_KEY=pk_live_...
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_PREMIUM=price_...
+
+# For development/testing
+# STRIPE_PUBLIC_KEY=pk_test_...
+# STRIPE_SECRET_KEY=sk_test_...
 ```
 
 ## Disk Configuration
@@ -59,6 +69,12 @@ The `startup.py` script automatically runs the database migration before startin
 
 Set the health check path in Render to: `/healthz`
 
+## Stripe Webhook Configuration
+
+1. **In Stripe Dashboard**, add webhook endpoint: `https://your-app.onrender.com/billing/webhook`
+2. **Select events**: `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `invoice.payment_succeeded`, `invoice.payment_failed`
+3. **Copy webhook secret** to `STRIPE_WEBHOOK_SECRET` environment variable
+
 ## Verification Post-Deploy
 
 After deployment, verify these items:
@@ -77,7 +93,11 @@ After deployment, verify these items:
 
 3. **Home page**: Verify the home page loads without 500 errors, even if CSV files don't exist (they will be created automatically)
 
-4. **No Flask dev server**: Logs should NOT show:
+4. **PWA installation**: Test that the app can be installed and works offline
+
+5. **Stripe billing**: Test the pricing page loads without Stripe errors and checkout flow works
+
+6. **No Flask dev server**: Logs should NOT show:
    ```
    * Running on http://127.0.0.1:5000
    * Debug mode: on

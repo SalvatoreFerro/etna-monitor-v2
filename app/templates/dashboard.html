@@ -19,19 +19,19 @@
     </div>
     
     <div class="dashboard-controls">
-      <button id="theme-toggle" class="btn btn-secondary" aria-label="Toggle theme">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button id="theme-toggle" class="btn btn-secondary" aria-label="Toggle between light and dark theme" tabindex="0">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <circle cx="12" cy="12" r="5"/>
           <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
         </svg>
       </button>
       
       <div class="ingv-mode-toggle">
-        <label class="toggle-switch">
-          <input type="checkbox" id="ingv-mode" />
-          <span class="toggle-slider"></span>
+        <label class="toggle-switch" for="ingv-mode">
+          <input type="checkbox" id="ingv-mode" aria-describedby="ingv-mode-desc" />
+          <span class="toggle-slider" aria-hidden="true"></span>
         </label>
-        <span class="toggle-label">INGV Mode</span>
+        <span class="toggle-label" id="ingv-mode-desc">INGV Mode</span>
       </div>
     </div>
   </div>
@@ -56,7 +56,8 @@
       {% endif %}
       
       <div class="time-range-selector">
-        <select id="time-range">
+        <label for="time-range" class="sr-only">Select time range for chart</label>
+        <select id="time-range" aria-label="Time range selector">
           <option value="24h">Last 24 hours</option>
           <option value="3d">Last 3 days</option>
           <option value="7d" selected>Last 7 days</option>
@@ -65,14 +66,14 @@
       </div>
       
       {% if user.premium %}
-      <div class="export-controls">
-        <button id="export-csv" class="btn btn-secondary btn-sm">CSV</button>
-        <button id="export-png" class="btn btn-secondary btn-sm">PNG</button>
+      <div class="export-controls" role="group" aria-label="Export options">
+        <button id="export-csv" class="btn btn-secondary btn-sm" aria-label="Export data as CSV file">CSV</button>
+        <button id="export-png" class="btn btn-secondary btn-sm" aria-label="Export chart as PNG image">PNG</button>
       </div>
       {% endif %}
     </div>
     
-    <div id="tremor-plot" class="chart-container"></div>
+    <div id="tremor-plot" class="chart-container" role="img" aria-label="Volcanic tremor data chart"></div>
     
     <div class="chart-legend">
       <div class="legend-item">
@@ -106,8 +107,9 @@
       <div class="threshold-controls">
         <label for="threshold-slider">Custom Threshold</label>
         <div class="slider-container">
-          <input type="range" id="threshold-slider" min="0.1" max="10" step="0.1" value="{{ user.threshold or 2.0 }}">
-          <input type="number" id="threshold-input" min="0.1" max="10" step="0.1" value="{{ user.threshold or 2.0 }}">
+          <input type="range" id="threshold-slider" min="0.1" max="10" step="0.1" value="{{ user.threshold or 2.0 }}" aria-label="Threshold slider" aria-describedby="threshold-help">
+          <input type="number" id="threshold-input" min="0.1" max="10" step="0.1" value="{{ user.threshold or 2.0 }}" aria-label="Threshold value input" aria-describedby="threshold-help">
+          <div id="threshold-help" class="sr-only">Set custom threshold between 0.1 and 10 mV for alerts</div>
         </div>
         <button id="save-threshold" class="btn btn-primary btn-sm">Save</button>
       </div>
@@ -122,7 +124,8 @@
     <div class="refresh-card card-base">
       <h3>Auto-refresh</h3>
       <div class="refresh-controls">
-        <select id="auto-refresh">
+        <label for="auto-refresh" class="sr-only">Auto-refresh interval</label>
+        <select id="auto-refresh" aria-label="Auto-refresh interval selector">
           <option value="0">Off</option>
           <option value="180000">3 minutes</option>
           <option value="300000" selected>5 minutes</option>
@@ -177,6 +180,6 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
 {% endblock %}

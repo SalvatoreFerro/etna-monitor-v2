@@ -9,11 +9,11 @@
 
 {% block content %}
 <!-- Hero Section -->
-<section class="hero-section">
+<section class="hero-section" role="banner" aria-label="EtnaMonitor main section">
   <div class="hero-content">
-    <div class="hero-badge">
-      <span class="status-dot" id="status-dot"></span>
-      <span id="status-text">Checking status...</span>
+    <div class="hero-badge" role="status" aria-live="polite">
+      <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+      <span id="status-text" aria-label="Service status">Checking status...</span>
     </div>
     
     <h1 class="hero-title">EtnaMonitor</h1>
@@ -21,30 +21,30 @@
       Real-time volcanic tremor monitoring for Mount Etna using INGV seismic data
     </p>
     
-    <div class="hero-stats" id="hero-stats" style="display: none;">
+    <div class="hero-stats" id="hero-stats" style="display: none;" role="group" aria-label="Current monitoring metrics">
       <div class="stat-item">
-        <span class="stat-value" id="last-update">--</span>
+        <span class="stat-value" id="last-update" aria-label="Last update time">--</span>
         <span class="stat-label">Last Update</span>
       </div>
       <div class="stat-item">
-        <span class="stat-value" id="data-points">--</span>
+        <span class="stat-value" id="data-points" aria-label="Number of data points">--</span>
         <span class="stat-label">Data Points</span>
       </div>
       <div class="stat-item">
-        <span class="stat-value" id="current-level">--</span>
+        <span class="stat-value" id="current-level" aria-label="Current tremor level">--</span>
         <span class="stat-label">Current Level</span>
       </div>
     </div>
     
-    <div class="hero-actions">
-      <a href="/dashboard" class="btn btn-primary btn-lg">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <div class="hero-actions" role="group" aria-label="Main actions">
+      <a href="/dashboard" class="btn btn-primary btn-lg" aria-label="Open monitoring dashboard">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M3 3v5h5M21 21v-5h-5M21 3l-9 9-4-4-5 5"/>
         </svg>
         View Dashboard
       </a>
-      <button id="quick-update-btn" class="btn btn-secondary btn-lg">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <button id="quick-update-btn" class="btn btn-secondary btn-lg" aria-label="Update data immediately">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
         </svg>
         Update Data Now
@@ -53,24 +53,24 @@
   </div>
   
   <div class="hero-visual">
-    <div class="preview-chart home-graph-card" id="preview-chart">
-      <div id="home-preview-loading" class="chart-loading-overlay">
-        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+    <div class="preview-chart home-graph-card" id="preview-chart" role="img" aria-label="Volcanic tremor chart preview">
+      <div id="home-preview-loading" class="chart-loading-overlay" aria-live="polite">
+        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
           <path d="M3 3v18h18"/>
           <path d="M7 12l3-3 3 3 5-5"/>
         </svg>
         <p>Loading preview...</p>
       </div>
-      <div id="home-preview-plot"></div>
+      <div id="home-preview-plot" style="width: 100%; height: 260px;" role="img" aria-label="Tremor data visualization"></div>
     </div>
   </div>
 </section>
 
 <!-- Features Section -->
-<section class="features-section">
+<section class="features-section" role="region" aria-label="Key features">
   <div class="features-grid">
     <div class="feature-card">
-      <div class="feature-icon">
+      <div class="feature-icon" aria-hidden="true">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"/>
           <polyline points="12,6 12,12 16,14"/>
@@ -81,7 +81,7 @@
     </div>
     
     <div class="feature-card">
-      <div class="feature-icon">
+      <div class="feature-icon" aria-hidden="true">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 3v18h18"/>
           <path d="M7 12l3-3 3 3 5-5"/>
@@ -92,7 +92,7 @@
     </div>
     
     <div class="feature-card">
-      <div class="feature-icon">
+      <div class="feature-icon" aria-hidden="true">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
         </svg>
@@ -106,7 +106,7 @@
 <!-- Toast Notifications -->
 <div id="toast-container" class="toast-container"></div>
 
-<!-- Plotly.js CDN -->
+<!-- Plotly.js CDN - Updated version -->
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 <!-- Home Preview Chart Module -->
 <script src="{{ url_for('static', filename='js/home_preview.js') }}"></script>
@@ -262,9 +262,31 @@
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: var(--space-4);
   color: var(--color-text-tertiary);
   text-align: center;
+  height: 100%;
+  padding: var(--space-6);
+}
+
+.chart-placeholder svg {
+  opacity: 0.6;
+  animation: pulse 2s infinite;
+}
+
+#home-preview-plot {
+  display: none;
+}
+
+#home-preview-plot.loaded {
+  display: block;
+  animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* Features Section */
@@ -315,7 +337,25 @@
 
 /* Button Styles */
 .btn {
-  @extend .btn-base;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: none;
+  border-radius: var(--radius-lg);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  cursor: pointer;
+  transition: all var(--transition-normal);
+  min-height: 44px; /* Touch target minimum */
+  min-width: 44px;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
 }
 
 .btn-primary {
@@ -324,7 +364,7 @@
   box-shadow: var(--shadow-md);
 }
 
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
 }
@@ -335,7 +375,7 @@
   border: 1px solid var(--color-border);
 }
 
-.btn-secondary:hover {
+.btn-secondary:hover:not(:disabled) {
   background: var(--color-surface-hover);
   transform: translateY(-2px);
   box-shadow: var(--shadow-md);
@@ -344,6 +384,13 @@
 .btn-lg {
   padding: var(--space-4) var(--space-6);
   font-size: var(--font-size-base);
+  min-height: 48px; /* Larger touch target for primary actions */
+}
+
+.btn-sm {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+  min-height: 36px;
 }
 
 /* Toast Notifications */
@@ -395,17 +442,35 @@
 
 /* Responsive Design */
 @media (max-width: 1024px) {
+  .hero-section {
+    grid-template-columns: 1fr;
+    gap: var(--space-8);
+    text-align: center;
+  }
+  
+  .preview-chart {
+    max-width: 100%;
+    height: 220px;
+  }
+  
   #home-preview-plot { 
-    height: 220px; 
+    height: 220px !important;
     min-height: 220px;
   }
 }
 
 @media (max-width: 768px) {
   .hero-section {
-    grid-template-columns: 1fr;
-    gap: var(--space-12);
-    text-align: center;
+    padding: var(--space-8) 0;
+    min-height: auto;
+  }
+  
+  .hero-title {
+    font-size: var(--font-size-3xl);
+  }
+  
+  .hero-subtitle {
+    font-size: var(--font-size-base);
   }
   
   .hero-stats {
@@ -416,10 +481,43 @@
   
   .hero-actions {
     justify-content: center;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .hero-actions .btn {
+    width: 100%;
+    max-width: 280px;
   }
   
   .features-grid {
     grid-template-columns: 1fr;
+    gap: var(--space-6);
+  }
+  
+  .preview-chart {
+    height: 200px;
+  }
+  
+  #home-preview-plot {
+    height: 200px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .hero-stats {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-3);
+  }
+  
+  .stat-item {
+    text-align: center;
+  }
+  
+  .toast {
+    min-width: 280px;
+    margin: 0 var(--space-4);
   }
   
   .preview-chart {
@@ -468,6 +566,249 @@ function showToast(message, type = 'info', duration = 5000) {
   }, duration);
 }
 
+<<<<<<< HEAD
+// Chart Rendering Functions
+async function fetchCurva() {
+  try {
+    const response = await fetch('/api/curva', {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    });
+    const data = await response.json();
+    
+    if (data.ok && data.data && data.data.length > 0) {
+      console.log(`curva loaded: ${data.rows}, last_ts: ${data.last_ts}`);
+      return data;
+    } else {
+      throw new Error('No data available');
+    }
+  } catch (error) {
+    console.error('Error fetching curva:', error);
+    throw error;
+  }
+}
+
+function drawPlot(data, container = 'home-preview-plot') {
+  if (!window.Plotly) {
+    console.error('Plotly library not loaded');
+    return;
+  }
+  
+  const timestamps = data.data.map(row => row.timestamp);
+  const values = data.data.map(row => row.value);
+  const threshold = 2.0; // Default threshold
+  
+  const trace = {
+    x: timestamps,
+    y: values,
+    type: 'scatter',
+    mode: 'lines',
+    name: 'Tremor',
+    line: { color: '#00AA00', width: 2 },
+    showlegend: false
+  };
+  
+  const layout = {
+    title: 'Etna Volcanic Tremor',
+    xaxis: { 
+      title: 'Time',
+      showgrid: true,
+      gridcolor: 'rgba(255,255,255,0.1)',
+      tickfont: { size: 10 }
+    },
+    yaxis: { 
+      title: 'Amplitude (mV)', 
+      type: 'log',
+      range: [-1, 1], // 0.1 to 10 range
+      showgrid: true,
+      gridcolor: 'rgba(255,255,255,0.1)',
+      tickfont: { size: 10 }
+    },
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    font: { color: '#e6e7ea', size: 12 },
+    margin: { l: 50, r: 10, t: 30, b: 40 },
+    shapes: [{
+      type: 'line',
+      x0: timestamps[0],
+      x1: timestamps[timestamps.length - 1],
+      y0: threshold,
+      y1: threshold,
+      line: { color: '#ef4444', width: 2, dash: 'dash' }
+    }]
+  };
+  
+  const config = {
+    staticPlot: false,
+    displayModeBar: false,
+    responsive: true
+  };
+  
+  Plotly.newPlot(container, [trace], layout, config).then(() => {
+    // Hide loading placeholder and show chart with animation
+    const loading = document.getElementById('home-preview-loading');
+    const plot = document.getElementById(container);
+    
+    if (loading) {
+      loading.style.display = 'none';
+    }
+    if (plot) {
+      plot.classList.add('loaded');
+      plot.style.display = 'block';
+    }
+  });
+  
+  // Add resize handler for responsiveness
+  window.addEventListener('resize', () => {
+    if (document.getElementById(container)) {
+      Plotly.Plots.resize(container);
+    }
+  });
+}
+
+async function refreshPlot() {
+  try {
+    const data = await fetchCurva();
+    drawPlot(data, 'home-preview-plot');
+    return data;
+  } catch (error) {
+    showNoDataMessage();
+    throw error;
+  }
+}
+
+function showNoDataMessage() {
+  const loading = document.getElementById('home-preview-loading');
+  const plot = document.getElementById('home-preview-plot');
+  
+  if (loading && plot) {
+    loading.innerHTML = `
+      <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+        <path d="M3 3v18h18"/>
+        <path d="M7 12l3-3 3 3 5-5"/>
+      </svg>
+      <p>No data available</p>
+      <button onclick="quickUpdate()" class="btn btn-secondary btn-sm" style="margin-top: 12px;" aria-label="Update data now">
+        Update Now
+      </button>
+    `;
+    loading.style.display = 'flex';
+    plot.style.display = 'none';
+  }
+}
+||||||| 487eb3b
+// Chart Rendering Functions
+async function fetchCurva() {
+  try {
+    const response = await fetch('/api/curva', {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache'
+      }
+    });
+    const data = await response.json();
+    
+    if (data.ok && data.data && data.data.length > 0) {
+      console.log(`curva loaded: ${data.rows}, last_ts: ${data.last_ts}`);
+      return data;
+    } else {
+      throw new Error('No data available');
+    }
+  } catch (error) {
+    console.error('Error fetching curva:', error);
+    throw error;
+  }
+}
+
+function drawPlot(data, container = 'preview-chart') {
+  if (!window.Plotly) {
+    console.error('Plotly library not loaded');
+    return;
+  }
+  
+  const timestamps = data.data.map(row => row.timestamp);
+  const values = data.data.map(row => row.value);
+  const threshold = 2.0; // Default threshold
+  
+  const trace = {
+    x: timestamps,
+    y: values,
+    type: 'scatter',
+    mode: 'lines',
+    name: 'Tremor',
+    line: { color: '#00AA00', width: 2 },
+    showlegend: false
+  };
+  
+  const layout = {
+    title: 'Etna Volcanic Tremor',
+    xaxis: { 
+      title: 'Time',
+      showgrid: true,
+      gridcolor: 'rgba(255,255,255,0.1)'
+    },
+    yaxis: { 
+      title: 'Amplitude (mV)', 
+      type: 'log',
+      range: [-1, 1], // 0.1 to 10 range
+      showgrid: true,
+      gridcolor: 'rgba(255,255,255,0.1)'
+    },
+    plot_bgcolor: 'rgba(0,0,0,0)',
+    paper_bgcolor: 'rgba(0,0,0,0)',
+    font: { color: '#e6e7ea', size: 12 },
+    margin: { l: 60, r: 20, t: 40, b: 40 },
+    shapes: [{
+      type: 'line',
+      x0: timestamps[0],
+      x1: timestamps[timestamps.length - 1],
+      y0: threshold,
+      y1: threshold,
+      line: { color: '#ef4444', width: 2, dash: 'dash' }
+    }]
+  };
+  
+  const config = {
+    staticPlot: false,
+    displayModeBar: false,
+    responsive: true
+  };
+  
+  Plotly.newPlot(container, [trace], layout, config);
+}
+
+async function refreshPlot() {
+  try {
+    const data = await fetchCurva();
+    drawPlot(data);
+    return data;
+  } catch (error) {
+    showNoDataMessage();
+    throw error;
+  }
+}
+
+function showNoDataMessage() {
+  const container = document.getElementById('preview-chart');
+  if (container) {
+    container.innerHTML = `
+      <div class="chart-placeholder">
+        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <path d="M3 3v18h18"/>
+          <path d="M7 12l3-3 3 3 5-5"/>
+        </svg>
+        <p>No data available</p>
+        <button onclick="quickUpdate()" class="btn btn-secondary btn-sm" style="margin-top: 12px;">
+          Update Now
+        </button>
+      </div>
+    `;
+  }
+}
+=======
+>>>>>>> origin/main
 
 // Status Check
 async function checkStatus() {

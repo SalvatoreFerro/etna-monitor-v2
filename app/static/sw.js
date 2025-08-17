@@ -8,7 +8,7 @@ const STATIC_ASSETS = [
   '/static/css/theme.css',
   '/static/js/dashboard.js',
   '/static/manifest.json',
-  'https://cdn.plot.ly/plotly-latest.min.js',
+  'https://cdn.plot.ly/plotly-2.32.0.min.js',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
 ];
 
