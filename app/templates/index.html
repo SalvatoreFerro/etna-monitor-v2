@@ -9,9 +9,9 @@
 
 {% block content %}
 <!-- Hero Section -->
-<section class="hero-section" role="banner" aria-label="EtnaMonitor main section">
+<section class="hero-section hero-premium animate-premium-fade" role="banner" aria-label="EtnaMonitor main section">
   <div class="hero-content">
-    <div class="hero-badge" role="status" aria-live="polite">
+    <div class="hero-badge glass" role="status" aria-live="polite">
       <span class="status-dot" id="status-dot" aria-hidden="true"></span>
       <span id="status-text" aria-label="Service status">Checking status...</span>
     </div>
@@ -21,7 +21,7 @@
       Real-time volcanic tremor monitoring for Mount Etna using INGV seismic data
     </p>
     
-    <div class="hero-stats" id="hero-stats" style="display: none;" role="group" aria-label="Current monitoring metrics">
+    <div class="hero-stats card-premium" id="hero-stats" style="display: none;" role="group" aria-label="Current monitoring metrics">
       <div class="stat-item">
         <span class="stat-value" id="last-update" aria-label="Last update time">--</span>
         <span class="stat-label">Last Update</span>
@@ -37,13 +37,13 @@
     </div>
     
     <div class="hero-actions" role="group" aria-label="Main actions">
-      <a href="/dashboard" class="btn btn-primary btn-lg" aria-label="Open monitoring dashboard">
+      <a href="/dashboard" class="btn btn-premium btn-lg" aria-label="Open monitoring dashboard">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M3 3v5h5M21 21v-5h-5M21 3l-9 9-4-4-5 5"/>
         </svg>
         View Dashboard
       </a>
-      <button id="quick-update-btn" class="btn btn-secondary btn-lg" aria-label="Update data immediately">
+      <button id="quick-update-btn" class="btn btn-secondary btn-lg glass" aria-label="Update data immediately">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
         </svg>
@@ -53,7 +53,7 @@
   </div>
   
   <div class="hero-visual">
-    <div class="preview-chart home-graph-card" id="preview-chart" role="img" aria-label="Volcanic tremor chart preview">
+    <div class="preview-chart home-graph-card card-premium" id="preview-chart" role="img" aria-label="Volcanic tremor chart preview">
       <div id="home-preview-loading" class="chart-loading-overlay" aria-live="polite">
         <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
           <path d="M3 3v18h18"/>

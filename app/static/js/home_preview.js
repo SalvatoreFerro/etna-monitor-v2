@@ -81,9 +81,17 @@ function renderHomePreview(data) {
   };
   
   return Plotly.newPlot(container, [trace], layout, config).then(() => {
-    const loadingOverlay = document.querySelector('#home-preview-loading');
+    const loadingOverlay = document.getElementById('home-preview-loading');
+    const plotContainer = document.getElementById(container);
+    
     if (loadingOverlay) {
+      loadingOverlay.style.display = 'none';
       loadingOverlay.classList.add('hidden');
+    }
+    
+    if (plotContainer) {
+      plotContainer.style.display = 'block';
+      plotContainer.classList.add('loaded');
     }
     
     window.addEventListener('resize', () => {
