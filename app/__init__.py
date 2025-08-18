@@ -16,7 +16,6 @@ from .routes.billing import bp as billing_bp
 from .models import init_db
 from .context_processors import inject_user
 from .services.scheduler_service import SchedulerService
-from .services.telegram_bot_service import TelegramBotService
 from config import Config
 
 def create_app():
@@ -32,12 +31,17 @@ def create_app():
         print(f"⚠️  Scheduler initialization failed: {e}")
         pass
     
-    try:
-        telegram_bot = TelegramBotService()
-        telegram_bot.init_app(app)
-    except Exception as e:
-        print(f"⚠️  Telegram bot initialization failed: {e}")
-        pass
+    if os.getenv("ENABLE_TELEGRAM_BOT", "false").lower() == "true":
+        try:
+            from .services.telegram_bot_service import TelegramBotService
+            telegram_bot = TelegramBotService()
+            telegram_bot.init_app(app)
+            print("✅ Telegram bot initialized and polling started")
+        except Exception as e:
+            print(f"⚠️  Telegram bot initialization failed: {e}")
+            pass
+    else:
+        print("ℹ️  Telegram bot disabled (ENABLE_TELEGRAM_BOT=false)")
     
     with app.app_context():
         try:
