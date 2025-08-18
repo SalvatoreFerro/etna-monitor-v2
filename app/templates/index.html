@@ -32,7 +32,7 @@
       </div>
       <div class="stat-item">
         <span class="stat-value" id="current-level" aria-label="Current tremor level">--</span>
-        <span class="stat-label">Current Level</span>
+        <span class="stat-label">Livello Attuale</span>
       </div>
     </div>
     
@@ -54,6 +54,13 @@
   
   <div class="hero-visual">
     <div class="preview-chart home-graph-card card-premium" id="preview-chart" role="img" aria-label="Volcanic tremor chart preview">
+      <div class="chart-header">
+        <h3>Andamento tremore vulcanico – ultime 24h</h3>
+        <div class="current-status" id="current-status">
+          <span class="current-value" id="current-value-display">-- mV</span>
+          <span class="activity-badge" id="activity-badge">--</span>
+        </div>
+      </div>
       <div id="home-preview-loading" class="chart-loading-overlay" aria-live="polite">
         <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
           <path d="M3 3v18h18"/>
@@ -61,7 +68,7 @@
         </svg>
         <p>Caricamento dati da INGV, attendere...</p>
       </div>
-      <div id="home-preview-plot" style="width: 100%; height: 260px;" role="img" aria-label="Tremor data visualization"></div>
+      <div id="home-preview-plot" style="width: 100%; height: 320px;" role="img" aria-label="Tremor data visualization"></div>
     </div>
   </div>
 </section>
@@ -213,8 +220,8 @@
 
 .preview-chart {
   width: 100%;
-  max-width: 400px;
-  height: 300px;
+  max-width: 500px;
+  height: 380px;
   background: var(--gradient-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-2xl);
@@ -222,13 +229,64 @@
   overflow: visible;
 }
 
+.chart-header {
+  padding: var(--space-4) var(--space-4) var(--space-2) var(--space-4);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.chart-header h3 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.current-status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.current-value {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.activity-badge {
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.activity-badge.low {
+  background: var(--color-success);
+  color: white;
+}
+
+.activity-badge.moderate {
+  background: var(--color-warning);
+  color: white;
+}
+
+.activity-badge.high {
+  background: var(--color-error);
+  color: white;
+}
+
 .home-graph-card {
   overflow: visible;
 }
 
 #home-preview-plot {
-  min-height: 260px;
-  height: 260px;
+  min-height: 320px;
+  height: 320px;
   width: 100%;
 }
 
@@ -450,12 +508,12 @@
   
   .preview-chart {
     max-width: 100%;
-    height: 220px;
+    height: 280px;
   }
   
   #home-preview-plot { 
-    height: 220px !important;
-    min-height: 220px;
+    height: 240px !important;
+    min-height: 240px;
   }
 }
 
@@ -501,11 +559,11 @@
   }
   
   .preview-chart {
-    height: 200px;
+    height: 260px;
   }
   
   #home-preview-plot {
-    height: 200px !important;
+    height: 220px !important;
   }
 }
 
@@ -536,14 +594,14 @@
   
   .preview-chart {
     max-width: 100%;
-    height: 220px;
+    height: 280px;
     width: calc(100% - 2 * max(var(--space-3), env(safe-area-inset-left)));
     box-sizing: border-box;
   }
   
   #home-preview-plot { 
-    height: 200px; 
-    min-height: 200px;
+    height: 240px; 
+    min-height: 240px;
     width: 100%;
   }
 }
@@ -700,25 +758,26 @@ function drawPlot(data, container = 'home-preview-plot') {
   };
   
   const layout = {
-    title: 'Etna Volcanic Tremor',
     xaxis: { 
-      title: 'Time',
+      title: 'Data/Ora',
       showgrid: true,
       gridcolor: 'rgba(255,255,255,0.1)',
-      tickfont: { size: 10 }
+      tickfont: { size: 11, color: '#e6e7ea' },
+      titlefont: { size: 12, color: '#e6e7ea' }
     },
     yaxis: { 
-      title: 'Amplitude (mV)', 
+      title: 'mV', 
       type: 'log',
       range: [-1, 1], // 0.1 to 10 range
       showgrid: true,
       gridcolor: 'rgba(255,255,255,0.1)',
-      tickfont: { size: 10 }
+      tickfont: { size: 11, color: '#e6e7ea' },
+      titlefont: { size: 12, color: '#e6e7ea' }
     },
-    plot_bgcolor: 'rgba(0,0,0,0)',
-    paper_bgcolor: 'rgba(0,0,0,0)',
+    plot_bgcolor: '#151821',
+    paper_bgcolor: '#151821',
     font: { color: '#e6e7ea', size: 12 },
-    margin: { l: 50, r: 10, t: 30, b: 40 },
+    margin: { l: 60, r: 20, t: 20, b: 50 },
     shapes: [{
       type: 'line',
       x0: timestamps[0],
@@ -788,6 +847,32 @@ function showNoDataMessage() {
   }
 }
 
+// Activity Badge Update
+function updateActivityBadge(currentValue) {
+  const valueDisplay = document.getElementById('current-value-display');
+  const badge = document.getElementById('activity-badge');
+  
+  if (!valueDisplay || !badge || !currentValue) return;
+  
+  valueDisplay.textContent = `${currentValue.toFixed(2)} mV`;
+  
+  // Remove existing classes
+  badge.classList.remove('low', 'moderate', 'high');
+  
+  if (currentValue >= 0.1 && currentValue <= 1.0) {
+    badge.classList.add('low');
+    badge.textContent = 'Attività Bassa';
+  } else if (currentValue > 1.0 && currentValue <= 5.0) {
+    badge.classList.add('moderate');
+    badge.textContent = 'Attività Moderata';
+  } else if (currentValue > 5.0) {
+    badge.classList.add('high');
+    badge.textContent = 'Attività Elevata';
+  } else {
+    badge.textContent = 'Dati Non Disponibili';
+  }
+}
+
 // Status Check
 let statusRetryCount = 0;
 const statusMaxRetries = 3;
@@ -809,6 +894,9 @@ async function checkStatus() {
       document.getElementById('data-points').textContent = (data.total_points || data.rows || 0).toLocaleString();
       document.getElementById('current-level').textContent = `${data.current_value?.toFixed(2) || '--'} mV`;
       document.getElementById('hero-stats').style.display = 'flex';
+      
+      // Update chart header status
+      updateActivityBadge(data.current_value);
       statusRetryCount = 0;
     } else {
       statusDot.className = 'status-dot offline';

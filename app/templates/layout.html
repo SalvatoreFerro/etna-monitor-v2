@@ -121,69 +121,20 @@
     <footer class="footer" role="contentinfo" aria-label="Site footer">
       <div class="footer-content">
         <div class="footer-section">
-          <h4>EtnaMonitor</h4>
-          <p>Monitoraggio in tempo reale del tremore vulcanico dell'Etna utilizzando dati sismici INGV.</p>
-          <div class="footer-links" role="navigation" aria-label="Footer navigation">
-            <a href="https://www.ct.ingv.it" target="_blank" rel="noopener" aria-label="Visita il sito INGV (si apre in una nuova scheda)">Fonte Dati INGV</a>
-            <a href="/terms" aria-label="Leggi i Termini di Servizio">Termini di Servizio</a>
-            <a href="/privacy" aria-label="Leggi l'Informativa sulla Privacy">Privacy Policy</a>
+          <div class="footer-brand">
+            <span class="brand-icon">🌋</span>
+            <span class="brand-text">EtnaMonitor</span>
           </div>
-        </div>
-        
-        <div class="footer-section">
-          <h4>Stato del Servizio</h4>
-          <div class="service-status" id="service-status" role="status" aria-live="polite">
-            <span class="status-dot" aria-hidden="true"></span>
-            <span class="status-text">Verifica in corso...</span>
+          <div class="footer-disclaimer">
+            <p><strong>Disclaimer:</strong> I dati visualizzati da EtnaMonitor sono elaborazioni automatiche basate sulle rappresentazioni pubbliche fornite dall'INGV. Non hanno carattere ufficiale. Per informazioni ufficiali consultare direttamente <a href="https://www.ct.ingv.it" target="_blank" rel="noopener">INGV Catania</a>.</p>
           </div>
-          <p class="build-info" aria-label="Versione build: {{ config.BUILD_SHA[:8] if config.BUILD_SHA else 'dev' }}">
-            Build: {{ config.BUILD_SHA[:8] if config.BUILD_SHA else 'dev' }}
-          </p>
-        </div>
-        
-        <div class="footer-section">
-          <h4>Cos'è il Tremore Vulcanico?</h4>
-          <p>Il tremore vulcanico è un segnale sismico continuo che indica l'attività magmatica all'interno del vulcano. L'ampiezza del tremore, misurata in millivolt (mV), fornisce informazioni cruciali sullo stato di attività dell'Etna.</p>
-          <div class="tremor-scale">
-            <small>
-              <strong>Scala indicativa:</strong><br>
-              • 0.1-1 mV: Attività bassa<br>
-              • 1-5 mV: Attività moderata<br>
-              • >5 mV: Attività elevata
-            </small>
-          </div>
-        </div>
-        
-        <div class="footer-section">
-          <h4>Informazioni sul Progetto</h4>
-          <p><strong>Creato da:</strong> <a href="https://github.com/SalvatoreFerro" target="_blank" rel="noopener">Salvatore Ferro</a></p>
-          <p><strong>Disclaimer:</strong> I dati mostrati sono <em>non ufficiali</em> e derivati dal sito web dell'INGV. Per informazioni ufficiali, consultare direttamente <a href="https://www.ct.ingv.it" target="_blank" rel="noopener">INGV Catania</a>.</p>
-          <div class="social-links">
-            <a href="https://github.com/SalvatoreFerro/etna-monitor-v2" target="_blank" rel="noopener" aria-label="Visualizza il codice sorgente su GitHub (si apre in una nuova scheda)">
-              <i class="fab fa-github" aria-hidden="true"></i>
-              <span>Codice Sorgente</span>
-            </a>
-          </div>
-        </div>
-        
-        <div class="footer-section">
-          <h4>Supporto</h4>
-          <p>Domande? Contattaci all'indirizzo <a href="mailto:support@etnamonitor.com" aria-label="Invia email al supporto">support@etnamonitor.com</a></p>
-          <p><strong>Aggiornamenti:</strong> I dati vengono aggiornati automaticamente ogni 5 minuti dal sistema di monitoraggio INGV.</p>
         </div>
       </div>
       
       <div class="footer-bottom">
         <div class="footer-bottom-content">
-          <p>&copy; 2025 EtnaMonitor. Dati per gentile concessione di INGV.</p>
-          <p>
-            <small>
-              Sviluppo assistito da Devin AI • 
-              <a href="https://app.devin.ai/sessions/f709f8fdc3ed475c9d306d21187c0f7d" target="_blank" rel="noopener" aria-label="Visualizza sessione Devin (si apre in una nuova scheda)">
-                Link Sessione
-              </a>
-            </small>
-          </p>
+          <p>&copy; 2025 EtnaMonitor – Dati pubblici da INGV Catania</p>
+          <p>Supporto: <a href="mailto:support@etnamonitor.com">support@etnamonitor.com</a></p>
         </div>
       </div>
     </footer>
