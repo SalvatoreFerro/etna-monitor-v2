@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 {% block content %}
   <section class="card card-premium animate-premium-fade">
-    <h2>Login</h2>
+    <h2>Accedi</h2>
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
         {% for category, message in messages %}
@@ -19,8 +19,8 @@
         <label for="password">Password:</label>
         <input type="password" id="password" name="password" required class="input-base">
       </div>
-      <button type="submit" class="btn btn-premium">Login</button>
+      <button type="submit" class="btn btn-premium">Accedi</button>
     </form>
-    <p><a href="{{ url_for('auth.register') }}">Don't have an account? Register here</a></p>
+    <p><a href="{{ url_for('auth.register') }}">Non hai un account? Registrati qui</a></p>
   </section>
 {% endblock %}

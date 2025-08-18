@@ -85,10 +85,10 @@
         <thead>
           <tr>
             <th>Email</th>
-            <th>Account Type</th>
-            <th>Custom Threshold</th>
-            <th>Chat ID</th>
-            <th>Actions</th>
+            <th>Tipo Account</th>
+            <th>Soglia Personalizzata</th>
+            <th>ID Chat</th>
+            <th>Azioni</th>
           </tr>
         </thead>
         <tbody>
@@ -103,17 +103,17 @@
                   <span class="badge admin">Admin</span>
                 {% endif %}
               </td>
-              <td>{{ user.threshold or 'Default (2.0)' }} mV</td>
-              <td>{{ user.chat_id or 'Not set' }}</td>
+              <td>{{ user.threshold or 'Predefinita (2.0)' }} mV</td>
+              <td>{{ user.chat_id or 'Non impostato' }}</td>
               <td>
                 <div class="action-buttons">
                   <button onclick="togglePremium({{ user.id }})" class="btn btn-premium btn-sm">
                     <i class="fas fa-{{ 'star' if not user.premium else 'star-half-alt' }}"></i>
-                    {{ 'Upgrade' if not user.premium else 'Downgrade' }}
+                    {{ 'Aggiorna' if not user.premium else 'Declassa' }}
                   </button>
                   {% if not user.is_admin %}
                     <button onclick="deleteUser({{ user.id }})" class="btn btn-danger btn-sm">
-                      <i class="fas fa-trash"></i> Delete
+                      <i class="fas fa-trash"></i> Elimina
                     </button>
                   {% endif %}
                 </div>
@@ -143,7 +143,7 @@
   }
 
   function deleteUser(userId) {
-    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+    if (confirm('Sei sicuro di voler eliminare questo utente? Questa azione non può essere annullata.')) {
       fetch(`/admin/delete_user/${userId}`, {
         method: 'POST',
         headers: {

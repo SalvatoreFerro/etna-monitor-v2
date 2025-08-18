@@ -8,111 +8,111 @@
 {% block content %}
 <div class="pricing-container">
   <div class="pricing-header hero-premium animate-premium-fade">
-    <h1>Choose Your Plan</h1>
-    <p>Unlock advanced monitoring features with Premium</p>
+    <h1>Scegli il Tuo Piano</h1>
+    <p>Sblocca funzionalità di monitoraggio avanzate con Premium</p>
   </div>
   
   <div class="pricing-grid">
     <div class="pricing-card card-premium animate-premium-slide">
       <div class="plan-header">
-        <h3>Free</h3>
+        <h3>Gratuito</h3>
         <div class="price">
           <span class="amount">€0</span>
-          <span class="period">/month</span>
+          <span class="period">/mese</span>
         </div>
       </div>
       
       <div class="plan-features">
         <ul>
-          <li><span class="check">✓</span> Last 7 days of data</li>
-          <li><span class="check">✓</span> Basic tremor monitoring</li>
-          <li><span class="check">✓</span> Fixed threshold (2.0 mV)</li>
-          <li><span class="check">✓</span> Standard refresh rate</li>
-          <li><span class="cross">✕</span> Custom thresholds</li>
-          <li><span class="cross">✕</span> Real-time alerts</li>
-          <li><span class="cross">✕</span> Data export</li>
-          <li><span class="cross">✕</span> Event history</li>
+          <li><span class="check">✓</span> Ultimi 7 giorni di dati</li>
+          <li><span class="check">✓</span> Monitoraggio tremore base</li>
+          <li><span class="check">✓</span> Soglia fissa (2.0 mV)</li>
+          <li><span class="check">✓</span> Frequenza aggiornamento standard</li>
+          <li><span class="cross">✕</span> Soglie personalizzate</li>
+          <li><span class="cross">✕</span> Avvisi in tempo reale</li>
+          <li><span class="cross">✕</span> Esportazione dati</li>
+          <li><span class="cross">✕</span> Cronologia eventi</li>
         </ul>
       </div>
       
       <div class="plan-action">
         {% if not session.user_id %}
-        <a href="{{ url_for('auth.register') }}" class="btn btn-secondary glass" aria-label="Start free trial">Get Started</a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-secondary glass" aria-label="Inizia prova gratuita">Inizia</a>
         {% elif not current_user.premium %}
-        <button class="btn btn-secondary glass" disabled>Current Plan</button>
+        <button class="btn btn-secondary glass" disabled>Piano Attuale</button>
         {% else %}
-        <button class="btn btn-secondary glass" disabled>Downgrade Available</button>
+        <button class="btn btn-secondary glass" disabled>Declassamento Disponibile</button>
         {% endif %}
       </div>
     </div>
     
     <div class="pricing-card card-premium premium animate-premium-slide">
-      <div class="plan-badge">Most Popular</div>
+      <div class="plan-badge">Più Popolare</div>
       <div class="plan-header">
         <h3>Premium</h3>
         <div class="price">
           <span class="amount">€9.99</span>
-          <span class="period">/month</span>
+          <span class="period">/mese</span>
         </div>
       </div>
       
       <div class="plan-features">
         <ul>
-          <li><span class="check">✓</span> Complete data history</li>
-          <li><span class="check">✓</span> Real-time monitoring</li>
-          <li><span class="check">✓</span> Custom thresholds (0.1-10 mV)</li>
-          <li><span class="check">✓</span> Instant alerts (Email + Telegram)</li>
-          <li><span class="check">✓</span> Data export (CSV, PNG)</li>
-          <li><span class="check">✓</span> Event history & logs</li>
-          <li><span class="check">✓</span> Priority support</li>
-          <li><span class="check">✓</span> Advanced analytics</li>
+          <li><span class="check">✓</span> Cronologia dati completa</li>
+          <li><span class="check">✓</span> Monitoraggio in tempo reale</li>
+          <li><span class="check">✓</span> Soglie personalizzate (0.1-10 mV)</li>
+          <li><span class="check">✓</span> Avvisi istantanei (Email + Telegram)</li>
+          <li><span class="check">✓</span> Esportazione dati (CSV, PNG)</li>
+          <li><span class="check">✓</span> Cronologia eventi e log</li>
+          <li><span class="check">✓</span> Supporto prioritario</li>
+          <li><span class="check">✓</span> Analisi avanzate</li>
         </ul>
       </div>
       
       <div class="plan-action">
         {% if not session.user_id %}
-        <a href="{{ url_for('auth.register') }}" class="btn btn-premium" aria-label="Start premium free trial">Start Free Trial</a>
+        <a href="{{ url_for('auth.register') }}" class="btn btn-premium" aria-label="Inizia prova gratuita premium">Inizia Prova Gratuita</a>
         {% elif current_user.premium %}
-        <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-secondary glass">Manage Subscription</a>
+        <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-secondary glass">Gestisci Abbonamento</a>
         {% else %}
-        <button id="upgrade-btn" class="btn btn-premium" aria-label="Upgrade to premium plan">Upgrade Now</button>
+        <button id="upgrade-btn" class="btn btn-premium" aria-label="Passa al piano premium">Aggiorna Ora</button>
         {% endif %}
       </div>
     </div>
   </div>
   
   <div class="faq-section card-premium animate-premium-fade">
-    <h2>Frequently Asked Questions</h2>
+    <h2>Domande Frequenti</h2>
     
     <div class="faq-grid">
       <div class="faq-item">
-        <h4>What data sources do you use?</h4>
-        <p>We process real-time seismic data from INGV (Istituto Nazionale di Geofisica e Vulcanologia) monitoring stations on Mount Etna.</p>
+        <h4>Quali fonti di dati utilizzate?</h4>
+        <p>Elaboriamo dati sismici in tempo reale dalle stazioni di monitoraggio INGV (Istituto Nazionale di Geofisica e Vulcanologia) sull'Etna.</p>
       </div>
       
       <div class="faq-item">
-        <h4>How accurate are the alerts?</h4>
-        <p>Our system processes official INGV data with customizable thresholds. Premium users can fine-tune sensitivity to reduce false positives.</p>
+        <h4>Quanto sono accurati gli avvisi?</h4>
+        <p>Il nostro sistema elabora dati ufficiali INGV con soglie personalizzabili. Gli utenti Premium possono regolare la sensibilità per ridurre i falsi positivi.</p>
       </div>
       
       <div class="faq-item">
-        <h4>Can I cancel anytime?</h4>
-        <p>Yes, you can cancel your Premium subscription at any time. You'll retain access until the end of your billing period.</p>
+        <h4>Posso cancellare in qualsiasi momento?</h4>
+        <p>Sì, puoi cancellare il tuo abbonamento Premium in qualsiasi momento. Manterrai l'accesso fino alla fine del periodo di fatturazione.</p>
       </div>
       
       <div class="faq-item">
-        <h4>Is there a free trial?</h4>
-        <p>Yes! New Premium subscribers get a 7-day free trial with full access to all features.</p>
+        <h4>C'è una prova gratuita?</h4>
+        <p>Sì! I nuovi abbonati Premium ottengono una prova gratuita di 7 giorni con accesso completo a tutte le funzionalità.</p>
       </div>
       
       <div class="faq-item">
-        <h4>What payment methods do you accept?</h4>
-        <p>We accept all major credit cards, debit cards, and SEPA direct debit through our secure Stripe integration.</p>
+        <h4>Quali metodi di pagamento accettate?</h4>
+        <p>Accettiamo tutte le principali carte di credito, carte di debito e addebito diretto SEPA attraverso la nostra integrazione sicura con Stripe.</p>
       </div>
       
       <div class="faq-item">
-        <h4>Do you offer refunds?</h4>
-        <p>We offer a 30-day money-back guarantee for annual subscriptions. Monthly subscriptions can be canceled anytime.</p>
+        <h4>Offrite rimborsi?</h4>
+        <p>Offriamo una garanzia di rimborso di 30 giorni per gli abbonamenti annuali. Gli abbonamenti mensili possono essere cancellati in qualsiasi momento.</p>
       </div>
     </div>
   </div>
@@ -123,7 +123,7 @@
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
         </svg>
-        <span>Secure payments with Stripe</span>
+        <span>Pagamenti sicuri con Stripe</span>
       </div>
       
       <div class="trust-item">
@@ -131,7 +131,7 @@
           <path d="M9 12l2 2 4-4"/>
           <circle cx="12" cy="12" r="9"/>
         </svg>
-        <span>GDPR compliant</span>
+        <span>Conforme GDPR</span>
       </div>
       
       <div class="trust-item">
@@ -140,7 +140,7 @@
           <circle cx="8.5" cy="7" r="4"/>
           <path d="M20 8v6M23 11h-6"/>
         </svg>
-        <span>Cancel anytime</span>
+        <span>Cancella in qualsiasi momento</span>
       </div>
     </div>
   </div>
@@ -152,7 +152,7 @@ const stripe = Stripe('{{ config.STRIPE_PUBLIC_KEY }}');
 document.getElementById('upgrade-btn')?.addEventListener('click', async () => {
   const button = document.getElementById('upgrade-btn');
   button.disabled = true;
-  button.textContent = 'Processing...';
+  button.textContent = 'Elaborazione...';
   
   try {
     const response = await fetch('/billing/create-checkout-session', {
@@ -168,9 +168,9 @@ document.getElementById('upgrade-btn')?.addEventListener('click', async () => {
       throw new Error(data.error || 'Failed to create checkout session');
     }
   } catch (error) {
-    alert('Error: ' + error.message);
+    alert('Errore: ' + error.message);
     button.disabled = false;
-    button.textContent = 'Upgrade Now';
+    button.textContent = 'Aggiorna Ora';
   }
 });
 </script>
