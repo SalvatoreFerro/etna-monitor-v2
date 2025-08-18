@@ -3,6 +3,7 @@ from ..utils.auth import admin_required
 from ..models import db
 from ..models.user import User
 from ..models.event import Event
+from ..services.telegram_service import TelegramService
 
 bp = Blueprint("admin", __name__)
 
@@ -54,6 +55,37 @@ def delete_user(user_id):
     else:
         flash(f"User {user.email} deleted successfully", "success")
         return redirect(url_for('admin.admin_home'))
+
+@bp.route("/test-alert", methods=["POST"])
+@admin_required
+def test_alert():
+    """Test alert endpoint - manually trigger Telegram alert checking"""
+    try:
+        telegram_service = TelegramService()
+        result = telegram_service.check_and_send_alerts()
+        
+        premium_users = User.query.filter(
+            User.premium == True,
+            User.chat_id.isnot(None),
+            User.chat_id != ''
+        ).count()
+        
+        recent_alerts = Event.query.filter_by(event_type='alert').count()
+        
+        message = f"Controllo completato.\n"
+        message += f"Utenti Premium con Telegram: {premium_users}\n"
+        message += f"Alert totali nel sistema: {recent_alerts}"
+        
+        return jsonify({
+            "success": True,
+            "message": message
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "message": f"Errore durante il controllo: {str(e)}"
+        }), 500
 
 @bp.route("/users")
 @admin_required
