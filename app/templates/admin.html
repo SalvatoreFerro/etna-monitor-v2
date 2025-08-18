@@ -73,6 +73,13 @@
   </div>
   
   <div class="admin-content card-premium animate-premium-slide">
+    <div style="margin-bottom: 20px;">
+      <button onclick="testAlert()" class="btn btn-premium">
+        <i class="fas fa-bell"></i> Test Alert
+      </button>
+      <small style="color: #888; margin-left: 10px;">Esegue immediatamente il controllo degli alert Telegram</small>
+    </div>
+    
     <div class="table-container">
       <table class="table table-premium">
         <thead>
@@ -152,6 +159,37 @@
         }
       });
     }
+  }
+
+  function testAlert(event) {
+    const button = event ? event.target : document.querySelector('button[onclick="testAlert()"]');
+    const originalText = button.innerHTML;
+    
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Controllo in corso...';
+    button.disabled = true;
+    
+    fetch('/admin/test-alert', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      button.innerHTML = originalText;
+      button.disabled = false;
+      
+      if (data.success) {
+        alert('✅ Controllo alert eseguito con successo!\n\n' + data.message);
+      } else {
+        alert('❌ Errore durante il controllo: ' + data.message);
+      }
+    })
+    .catch(error => {
+      button.innerHTML = originalText;
+      button.disabled = false;
+      alert('❌ Errore di connessione: ' + error.message);
+    });
   }
 </script>
 {% endblock %}
