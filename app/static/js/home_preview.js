@@ -58,19 +58,21 @@ function renderHomePreview(data) {
   
   const layout = {
     margin: { l: 40, r: 10, t: 30, b: 40 },
-    paper_bgcolor: 'rgba(0,0,0,0)',
-    plot_bgcolor: 'rgba(0,0,0,0)',
+    paper_bgcolor: '#151821',
+    plot_bgcolor: '#151821',
     xaxis: { 
       showgrid: false, 
-      tickfont: { size: 10 },
-      showticklabels: true
+      tickfont: { size: 10, color: '#e6e7ea' },
+      showticklabels: true,
+      color: '#e6e7ea'
     },
     yaxis: { 
       type: 'log', 
       range: [-1, 2], // 0.1 to 100 range
-      tickfont: { size: 10 },
+      tickfont: { size: 10, color: '#e6e7ea' },
       showgrid: true,
-      gridcolor: 'rgba(255,255,255,0.1)'
+      gridcolor: 'rgba(255,255,255,0.1)',
+      color: '#e6e7ea'
     },
     font: { color: '#e6e7ea', size: 10 },
     shapes: [{
