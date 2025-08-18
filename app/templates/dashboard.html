@@ -145,29 +145,66 @@
       <h3>Alert Settings</h3>
       <div class="alert-controls">
         <label class="checkbox-label">
-          <input type="checkbox" id="email-alerts" {% if user.email_alerts %}checked{% endif %}>
+          <input type="checkbox" id="email-alerts" {% if user.email_alerts %}checked{% endif %} 
+                 onchange="toggleAlert('email', this.checked)">
           <span>Email notifications</span>
         </label>
-        <label class="checkbox-label">
-          <input type="checkbox" id="telegram-alerts" {% if user.chat_id %}checked{% endif %}>
-          <span>Telegram notifications</span>
-        </label>
+        
+        <div class="telegram-section">
+          <h4>Telegram Notifications</h4>
+          {% if user.chat_id %}
+            <div class="telegram-connected">
+              <span class="status-indicator connected">✓ Connected</span>
+              <p>Chat ID: {{ user.chat_id }}</p>
+              <form method="POST" action="{{ url_for('dashboard.disconnect_telegram') }}" style="display: inline;">
+                <button type="submit" class="btn btn-secondary btn-sm">Disconnect</button>
+              </form>
+            </div>
+          {% else %}
+            <div class="telegram-setup">
+              <p>Connect your Telegram account to receive instant alerts:</p>
+              <ol>
+                <li>Start a chat with <a href="https://t.me/etna_turi_bot" target="_blank">@etna_turi_bot</a></li>
+                <li>Send the command <code>/start</code></li>
+                <li>Copy your Chat ID and paste it below</li>
+              </ol>
+              <form method="POST" action="{{ url_for('dashboard.connect_telegram') }}">
+                <div class="form-group">
+                  <label for="chat_id">Telegram Chat ID:</label>
+                  <input type="text" id="chat_id" name="chat_id" class="input-base" 
+                         placeholder="e.g., 123456789" required>
+                </div>
+                <button type="submit" class="btn btn-premium">Connect Telegram</button>
+              </form>
+            </div>
+          {% endif %}
+        </div>
       </div>
     </div>
 
     <div class="events-card card-premium animate-premium-fade">
       <h3>Recent Events</h3>
       <div class="events-list" id="events-list">
-        {% for event in recent_events %}
-          <div class="event-item">
-            <span class="event-time">{{ event.timestamp.strftime('%H:%M') }}</span>
-            <span class="event-type">{{ event.event_type }}</span>
-            <span class="event-value">{{ "%.2f"|format(event.value) }} mV</span>
-          </div>
-        {% else %}
-          <p class="no-events">Nessun evento sismico significativo nelle ultime 24 ore</p>
-        {% endfor %}
+         {% for event in recent_events %}
+           <div class="event-item">
+             <span class="event-time">{{ event.timestamp.strftime('%d/%m %H:%M') }}</span>
+             <span class="event-type">{{ event.event_type.replace('_', ' ').title() }}</span>
+             {% if event.value %}
+               <span class="event-value">{{ "%.2f"|format(event.value) }} mV</span>
+             {% endif %}
+           </div>
+         {% else %}
+           <p class="no-events">Nessun evento sismico significativo nelle ultime 24 ore</p>
+         {% endfor %}
       </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="upgrade-section">
+    <div class="upgrade-card card-premium">
+      <h3>Upgrade to Premium</h3>
+      <p>Get access to Telegram notifications, custom thresholds, and event history.</p>
+      <a href="/pricing" class="btn btn-premium">Upgrade Now</a>
     </div>
   </div>
   {% endif %}

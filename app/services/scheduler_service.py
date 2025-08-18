@@ -1,0 +1,37 @@
+from apscheduler.schedulers.background import BackgroundScheduler
+from apscheduler.triggers.interval import IntervalTrigger
+from app.utils.logger import get_logger
+from .telegram_service import TelegramService
+import atexit
+
+logger = get_logger(__name__)
+
+class SchedulerService:
+    def __init__(self, app=None):
+        self.scheduler = None
+        self.telegram_service = TelegramService()
+        if app:
+            self.init_app(app)
+    
+    def init_app(self, app):
+        """Initialize scheduler with Flask app"""
+        self.scheduler = BackgroundScheduler()
+        
+        self.scheduler.add_job(
+            func=self._check_alerts_with_context,
+            trigger=IntervalTrigger(hours=1),
+            id='telegram_alerts',
+            name='Check tremor levels and send Telegram alerts',
+            replace_existing=True
+        )
+        
+        self.scheduler.start()
+        logger.info("Scheduler started - checking alerts every hour")
+        
+        atexit.register(lambda: self.scheduler.shutdown())
+    
+    def _check_alerts_with_context(self):
+        """Run alert checking within Flask app context"""
+        from app import app
+        with app.app_context():
+            self.telegram_service.check_and_send_alerts()

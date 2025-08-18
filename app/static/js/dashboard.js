@@ -469,6 +469,18 @@ class EtnaDashboard {
     }
 }
 
+function toggleAlert(alertType, enabled) {
+    fetch('/dashboard/alerts/toggle', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+        body: `alert_type=${alertType}&enabled=${enabled}`
+    }).then(response => {
+        if (response.ok) {
+            window.location.reload();
+        }
+    });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     new EtnaDashboard();
 });

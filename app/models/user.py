@@ -10,6 +10,7 @@ class User(db.Model):
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     chat_id = db.Column(db.String(50), nullable=True)
     threshold = db.Column(db.Float, nullable=True)
+    email_alerts = db.Column(db.Boolean, default=False, nullable=False)
     stripe_customer_id = db.Column(db.String(100), nullable=True)
     subscription_status = db.Column(db.String(20), default='free', nullable=False)
     subscription_id = db.Column(db.String(100), nullable=True)

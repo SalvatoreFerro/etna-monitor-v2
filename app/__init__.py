@@ -15,6 +15,7 @@ from .routes.status import status_bp
 from .routes.billing import bp as billing_bp
 from .models import init_db
 from .context_processors import inject_user
+from .services.scheduler_service import SchedulerService
 from config import Config
 
 def create_app():
@@ -22,6 +23,9 @@ def create_app():
     app.config.from_object(Config)
     
     init_db(app)
+    
+    scheduler = SchedulerService()
+    scheduler.init_app(app)
     
     with app.app_context():
         try:
