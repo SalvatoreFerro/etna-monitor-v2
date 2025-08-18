@@ -57,24 +57,29 @@ function renderHomePreview(data) {
   };
   
   const layout = {
-    margin: { l: 40, r: 10, t: 30, b: 40 },
+    margin: { l: 60, r: 20, t: 20, b: 50 },
     paper_bgcolor: '#151821',
     plot_bgcolor: '#151821',
     xaxis: { 
-      showgrid: false, 
-      tickfont: { size: 10, color: '#e6e7ea' },
+      title: 'Data/Ora',
+      showgrid: true, 
+      gridcolor: 'rgba(255,255,255,0.1)',
+      tickfont: { size: 11, color: '#e6e7ea' },
+      titlefont: { size: 12, color: '#e6e7ea' },
       showticklabels: true,
       color: '#e6e7ea'
     },
     yaxis: { 
+      title: 'mV',
       type: 'log', 
-      range: [-1, 2], // 0.1 to 100 range
-      tickfont: { size: 10, color: '#e6e7ea' },
+      range: [-1, 1], // 0.1 to 10 range
+      tickfont: { size: 11, color: '#e6e7ea' },
+      titlefont: { size: 12, color: '#e6e7ea' },
       showgrid: true,
       gridcolor: 'rgba(255,255,255,0.1)',
       color: '#e6e7ea'
     },
-    font: { color: '#e6e7ea', size: 10 },
+    font: { color: '#e6e7ea', size: 12 },
     shapes: [{
       type: 'line',
       x0: timestamps[0],
@@ -103,6 +108,13 @@ function renderHomePreview(data) {
     if (plotContainer) {
       plotContainer.style.display = 'block';
       plotContainer.classList.add('loaded');
+    }
+    
+    if (data.data && data.data.length > 0) {
+      const currentValue = data.data[data.data.length - 1].value;
+      if (window.updateActivityBadge) {
+        window.updateActivityBadge(currentValue);
+      }
     }
     
     window.addEventListener('resize', () => {
