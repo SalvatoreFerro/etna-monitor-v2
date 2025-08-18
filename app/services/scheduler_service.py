@@ -32,6 +32,6 @@ class SchedulerService:
     
     def _check_alerts_with_context(self):
         """Run alert checking within Flask app context"""
-        from app import app
-        with app.app_context():
+        from flask import current_app
+        with current_app.app_context():
             self.telegram_service.check_and_send_alerts()

@@ -24,8 +24,12 @@ def create_app():
     
     init_db(app)
     
-    scheduler = SchedulerService()
-    scheduler.init_app(app)
+    try:
+        scheduler = SchedulerService()
+        scheduler.init_app(app)
+    except Exception as e:
+        print(f"⚠️  Scheduler initialization failed: {e}")
+        pass
     
     with app.app_context():
         try:
@@ -44,7 +48,8 @@ def create_app():
                     ('trial_end', 'DATETIME'),
                     ('billing_email', 'VARCHAR(120)'),
                     ('company_name', 'VARCHAR(200)'),
-                    ('vat_id', 'VARCHAR(50)')
+                    ('vat_id', 'VARCHAR(50)'),
+                    ('email_alerts', 'BOOLEAN DEFAULT 0 NOT NULL')
                 ]
                 
                 columns_added = 0
