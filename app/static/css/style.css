@@ -1,17 +1,17 @@
-/* CSS Variables for Dark Theme */
+/* CSS Variables for EtnaMonitor Dark Theme */
 :root {
-  --bg: #0e0f12;
-  --card: #151821;
-  --card-hover: #1a1d2a;
-  --text: #e6e7ea;
-  --muted: #a6abb3;
-  --accent: #007aff;
-  --success: #4ade80;
-  --warning: #fbbf24;
-  --error: #ef4444;
-  --border: #2a2f3a;
+  --bg: #2C3E50;
+  --card: #34495E;
+  --card-hover: #3C5A78;
+  --text: #FAF0E6;
+  --muted: #D5C4A1;
+  --accent: #E74C3C;
+  --success: #27AE60;
+  --warning: #FF6B35;
+  --error: #E74C3C;
+  --border: #3C5A78;
   --shadow: rgba(0, 0, 0, 0.25);
-  --gradient: linear-gradient(135deg, #151821 0%, #1a1d2a 100%);
+  --gradient: linear-gradient(135deg, #34495E 0%, #3C5A78 100%);
 }
 
 /* Base Styles */
@@ -33,7 +33,7 @@ body {
   justify-content: space-between;
   align-items: center;
   padding: 12px 20px;
-  background: rgba(11, 12, 16, 0.95);
+  background: rgba(44, 62, 80, 0.95);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
   z-index: 1000;
@@ -47,10 +47,9 @@ body {
   color: var(--text);
 }
 
+/* Remove old emoji styling - replaced with actual logo */
 .brand::before {
-  content: "🌋";
-  margin-right: 8px;
-  font-size: 1.5rem;
+  display: none;
 }
 
 .navbar a {
