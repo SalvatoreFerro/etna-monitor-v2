@@ -1,5 +1,6 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from ..utils.auth import login_required, get_current_user
+from ..utils.logger import get_logger
 from ..models import db
 from ..models.event import Event
 from ..utils.plot import make_tremor_figure
@@ -10,6 +11,8 @@ import json
 import os
 from pathlib import Path
 from datetime import datetime, timedelta
+
+logger = get_logger(__name__)
 
 bp = Blueprint("dashboard", __name__)
 
@@ -98,3 +101,81 @@ def settings():
             flash("Premium account required for custom thresholds", "error")
     
     return render_template("dashboard_settings.html", user=user, default_threshold=Config.ALERT_THRESHOLD_DEFAULT)
+
+@bp.route("/telegram/connect", methods=["POST"])
+@login_required
+def connect_telegram():
+    user = get_current_user()
+    
+    if not user.premium:
+        flash("Premium account required for Telegram notifications", "error")
+        return redirect(url_for('dashboard.dashboard_home'))
+    
+    chat_id = request.form.get("chat_id", "").strip()
+    if not chat_id:
+        flash("Please provide your Telegram chat ID", "error")
+        return redirect(url_for('dashboard.dashboard_home'))
+    
+    try:
+        int(chat_id)
+        user.chat_id = chat_id
+        db.session.commit()
+        
+        event = Event(
+            user_id=user.id,
+            event_type='telegram_connected',
+            message=f'Telegram connected: {chat_id}'
+        )
+        db.session.add(event)
+        db.session.commit()
+        
+        flash("Telegram successfully connected!", "success")
+    except ValueError:
+        flash("Invalid chat ID format", "error")
+    except Exception as e:
+        flash("Error connecting Telegram", "error")
+        logger.error(f"Telegram connection error: {e}")
+    
+    return redirect(url_for('dashboard.dashboard_home'))
+
+@bp.route("/telegram/disconnect", methods=["POST"])
+@login_required
+def disconnect_telegram():
+    user = get_current_user()
+    
+    if not user.premium:
+        flash("Premium account required", "error")
+        return redirect(url_for('dashboard.dashboard_home'))
+    
+    user.chat_id = None
+    db.session.commit()
+    
+    event = Event(
+        user_id=user.id,
+        event_type='telegram_disconnected',
+        message='Telegram disconnected'
+    )
+    db.session.add(event)
+    db.session.commit()
+    
+    flash("Telegram disconnected", "info")
+    return redirect(url_for('dashboard.dashboard_home'))
+
+@bp.route("/alerts/toggle", methods=["POST"])
+@login_required
+def toggle_alerts():
+    user = get_current_user()
+    
+    if not user.premium:
+        flash("Premium account required", "error")
+        return redirect(url_for('dashboard.dashboard_home'))
+    
+    alert_type = request.form.get("alert_type")
+    enabled = request.form.get("enabled") == "true"
+    
+    if alert_type == "email":
+        user.email_alerts = enabled
+        db.session.commit()
+        flash(f"Email alerts {'enabled' if enabled else 'disabled'}", "success")
+    
+    return redirect(url_for('dashboard.dashboard_home'))
