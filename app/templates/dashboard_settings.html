@@ -69,8 +69,8 @@
 {% block content %}
 <div class="settings-container">
   <div class="settings-header card-premium animate-premium-fade">
-    <h1>Dashboard Settings</h1>
-    <p>Customize your monitoring preferences</p>
+    <h1>Impostazioni Dashboard</h1>
+    <p>Personalizza le tue preferenze di monitoraggio</p>
   </div>
   
   <div class="settings-content card-premium animate-premium-slide">
@@ -85,24 +85,24 @@
     {% if user.premium %}
       <form method="POST" class="settings-form">
         <div class="form-group">
-          <label for="threshold">Custom Alert Threshold (mV):</label>
+          <label for="threshold">Soglia Personalizzata Alert (mV):</label>
           <input type="number" id="threshold" name="threshold" class="input-base"
                  value="{{ user.threshold or default_threshold }}" 
                  step="0.1" min="0.1" max="100.0" required>
           <small>Range: 0.1 - 100.0 mV</small>
         </div>
-        <button type="submit" class="btn btn-premium">Update Threshold</button>
+        <button type="submit" class="btn btn-premium">Aggiorna Soglia</button>
       </form>
     {% else %}
       <div class="upgrade-prompt">
-        <p>Premium account required for custom thresholds.</p>
-        <p>Current default threshold: <strong>{{ default_threshold }} mV</strong></p>
-        <a href="/pricing" class="btn btn-premium">Upgrade to Premium</a>
+        <p>Account Premium richiesto per soglie personalizzate.</p>
+        <p>Soglia predefinita attuale: <strong>{{ default_threshold }} mV</strong></p>
+        <a href="/pricing" class="btn btn-premium">Passa a Premium</a>
       </div>
     {% endif %}
     
     <div class="navigation-actions">
-      <a href="{{ url_for('dashboard.dashboard_home') }}" class="btn btn-secondary glass">Back to Dashboard</a>
+      <a href="{{ url_for('dashboard.dashboard_home') }}" class="btn btn-secondary glass">Torna alla Dashboard</a>
     </div>
   </div>
 </div>
