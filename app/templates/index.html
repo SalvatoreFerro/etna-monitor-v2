@@ -52,7 +52,7 @@
     </div>
   </div>
   
-  <div class="hero-visual">
+  <div class="hero-visual" style="flex: 1; transform: translateX(-30%); margin-left: -20%;">
     <div class="preview-chart home-graph-card card-premium" id="preview-chart" role="img" aria-label="Anteprima grafico tremore vulcanico">
       <div class="chart-header">
         <h3>Andamento tremore vulcanico – ultime 24h</h3>
@@ -121,18 +121,19 @@
 <style>
 /* Hero Section Styles */
 .hero-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-8);
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   min-height: 70vh;
   padding: var(--space-16) 0;
+  gap: var(--space-8);
 }
 
 .hero-content {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+  flex: 1.5;
 }
 
 .hero-badge {
@@ -501,9 +502,14 @@
 /* Responsive Design */
 @media (max-width: 1024px) {
   .hero-section {
-    grid-template-columns: 1fr;
+    flex-direction: column;
     gap: var(--space-8);
     text-align: center;
+  }
+  
+  .hero-visual {
+    transform: none !important;
+    margin-left: 0 !important;
   }
   
   .preview-chart {
@@ -519,6 +525,8 @@
 
 @media (max-width: 768px) {
   .hero-section {
+    flex-direction: column;
+    text-align: center;
     padding: var(--space-8) max(var(--space-4), env(safe-area-inset-left)) var(--space-8) max(var(--space-4), env(safe-area-inset-right));
     min-height: auto;
     width: 100%;
@@ -526,6 +534,11 @@
     box-sizing: border-box;
     margin: 0;
     overflow-x: hidden;
+  }
+  
+  .hero-visual {
+    transform: none !important;
+    margin-left: 0 !important;
   }
   
   .hero-title {
