@@ -92,7 +92,7 @@ class EtnaDashboard {
                 }
                 
                 this.showToast(
-                    this.ingvMode ? 'INGV mode enabled' : 'Modern mode enabled',
+                    this.ingvMode ? 'Modalità INGV attivata' : 'Modalità moderna attivata',
                     'info'
                 );
             });
@@ -142,7 +142,7 @@ class EtnaDashboard {
             if (countdownElement) {
                 const minutes = Math.floor(remaining / 60);
                 const seconds = remaining % 60;
-                countdownElement.textContent = `Next refresh: ${minutes}:${seconds.toString().padStart(2, '0')}`;
+                countdownElement.textContent = `Prossimo aggiornamento: ${minutes}:${seconds.toString().padStart(2, '0')}`;
             }
             
             if (remaining <= 0) {
@@ -171,7 +171,7 @@ class EtnaDashboard {
             }
         } catch (error) {
             console.error('Error loading data:', error);
-            this.showToast('Error loading data', 'error');
+            this.showToast('Errore nel caricamento dati', 'error');
         }
     }
     
@@ -184,7 +184,7 @@ class EtnaDashboard {
                 this.updateStatus(data);
             }
         } catch (error) {
-            console.error('Error loading status:', error);
+            console.error('Errore nel caricamento stato:', error);
         }
     }
     
@@ -302,11 +302,11 @@ class EtnaDashboard {
         const dataPoints = document.getElementById('data-points');
         
         if (lastUpdated && data.last_ts) {
-            lastUpdated.textContent = `Last updated: ${new Date(data.last_ts).toLocaleString()}`;
+            lastUpdated.textContent = `Ultimo aggiornamento: ${new Date(data.last_ts).toLocaleString()}`;
         }
         
         if (dataPoints) {
-            dataPoints.textContent = `${data.data.length} points`;
+            dataPoints.textContent = `${data.data.length} punti`;
         }
     }
     
@@ -322,7 +322,7 @@ class EtnaDashboard {
         if (statusIndicator && statusText) {
             const isAbove = data.above_threshold;
             statusIndicator.className = `status-indicator ${isAbove ? 'status-above' : 'status-below'}`;
-            statusText.textContent = isAbove ? 'Above Threshold' : 'Below Threshold';
+            statusText.textContent = isAbove ? 'Sopra Soglia' : 'Sotto Soglia';
         }
     }
     
@@ -333,21 +333,21 @@ class EtnaDashboard {
         try {
             if (updateBtn) {
                 updateBtn.disabled = true;
-                updateBtn.innerHTML = '<span class="loading-spinner"></span> Updating...';
+                updateBtn.innerHTML = '<span class="loading-spinner"></span> Aggiornamento...';
             }
             
             const response = await fetch('/api/force_update', { method: 'POST' });
             const result = await response.json();
             
             if (result.ok) {
-                this.showToast(`Data updated! ${result.rows} points processed.`, 'success');
+                this.showToast(`Dati aggiornati! ${result.rows} punti elaborati.`, 'success');
                 await this.loadData();
                 await this.loadStatus();
             } else {
-                this.showToast(`Update failed: ${result.error}`, 'error');
+                this.showToast(`Aggiornamento fallito: ${result.error}`, 'error');
             }
         } catch (error) {
-            this.showToast('Network error during update', 'error');
+            this.showToast('Errore di rete durante aggiornamento', 'error');
         } finally {
             if (updateBtn) {
                 updateBtn.disabled = false;
@@ -361,7 +361,7 @@ class EtnaDashboard {
         const threshold = parseFloat(thresholdInput?.value);
         
         if (!threshold || threshold < 0.1 || threshold > 10) {
-            this.showToast('Threshold must be between 0.1 and 10 mV', 'error');
+            this.showToast('La soglia deve essere tra 0.1 e 10 mV', 'error');
             return;
         }
         
@@ -373,15 +373,15 @@ class EtnaDashboard {
             });
             
             if (response.ok) {
-                this.showToast('Threshold saved successfully', 'success');
+                this.showToast('Soglia salvata con successo', 'success');
                 if (this.plotData) {
                     this.renderPlot(this.plotData);
                 }
             } else {
-                this.showToast('Error saving threshold', 'error');
+                this.showToast('Errore nel salvare la soglia', 'error');
             }
         } catch (error) {
-            this.showToast('Network error', 'error');
+            this.showToast('Errore di rete', 'error');
         }
     }
     
@@ -408,7 +408,7 @@ class EtnaDashboard {
                 }
             }
         } catch (error) {
-            this.showToast('Export failed', 'error');
+            this.showToast('Esportazione fallita', 'error');
         }
     }
     
@@ -440,7 +440,7 @@ class EtnaDashboard {
                     <h3 style="margin: 0 0 8px 0; font-size: 18px;">Nessun dato disponibile</h3>
                     <p style="margin: 0 0 16px 0; opacity: 0.7;">I dati del tremore vulcanico verranno caricati automaticamente</p>
                     <button onclick="window.location.reload()" class="btn btn-primary" style="padding: 8px 16px; border: none; border-radius: 6px; background: #007aff; color: white; cursor: pointer;">
-                        Aggiorna ora
+                        Aggiorna Ora
                     </button>
                 </div>
             `;

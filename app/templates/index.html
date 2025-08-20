@@ -13,35 +13,35 @@
   <div class="hero-content">
     <div class="hero-badge glass" role="status" aria-live="polite">
       <span class="status-dot" id="status-dot" aria-hidden="true"></span>
-      <span id="status-text" aria-label="Service status">Checking status...</span>
+      <span id="status-text" aria-label="Service status">Controllo stato...</span>
     </div>
     
     <h1 class="hero-title">EtnaMonitor</h1>
     <p class="hero-subtitle">
-      Real-time volcanic tremor monitoring for Mount Etna using INGV seismic data
+      Monitoraggio in tempo reale del tremore vulcanico dell'Etna utilizzando dati sismici INGV
     </p>
     
     <div class="hero-stats card-premium" id="hero-stats" style="display: none;" role="group" aria-label="Current monitoring metrics">
       <div class="stat-item">
-        <span class="stat-value" id="last-update" aria-label="Last update time">--</span>
-        <span class="stat-label">Last Update</span>
+        <span class="stat-value" id="last-update" aria-label="Ora ultimo aggiornamento">--</span>
+        <span class="stat-label">Ultimo Aggiornamento</span>
       </div>
       <div class="stat-item">
-        <span class="stat-value" id="data-points" aria-label="Number of data points">--</span>
-        <span class="stat-label">Data Points</span>
+        <span class="stat-value" id="data-points" aria-label="Numero di punti dati">--</span>
+        <span class="stat-label">Punti Dati</span>
       </div>
       <div class="stat-item">
-        <span class="stat-value" id="current-level" aria-label="Current tremor level">--</span>
+        <span class="stat-value" id="current-level" aria-label="Livello tremore attuale">--</span>
         <span class="stat-label">Livello Attuale</span>
       </div>
     </div>
     
     <div class="hero-actions" role="group" aria-label="Main actions">
-      <a href="/dashboard" class="btn btn-premium btn-lg" aria-label="Open monitoring dashboard">
+      <a href="/dashboard" class="btn btn-premium btn-lg" aria-label="Apri dashboard di monitoraggio">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <path d="M3 3v5h5M21 21v-5h-5M21 3l-9 9-4-4-5 5"/>
         </svg>
-        View Dashboard
+        Visualizza Dashboard
       </a>
       <button id="quick-update-btn" class="btn btn-secondary btn-lg glass" aria-label="Aggiorna dati immediatamente">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -53,7 +53,7 @@
   </div>
   
   <div class="hero-visual">
-    <div class="preview-chart home-graph-card card-premium" id="preview-chart" role="img" aria-label="Volcanic tremor chart preview">
+    <div class="preview-chart home-graph-card card-premium" id="preview-chart" role="img" aria-label="Anteprima grafico tremore vulcanico">
       <div class="chart-header">
         <h3>Andamento tremore vulcanico – ultime 24h</h3>
         <div class="current-status" id="current-status">
@@ -68,7 +68,7 @@
         </svg>
         <p>Caricamento dati da INGV, attendere...</p>
       </div>
-      <div id="home-preview-plot" style="width: 100%; height: 320px;" role="img" aria-label="Tremor data visualization"></div>
+      <div id="home-preview-plot" style="width: 100%; height: 320px;" role="img" aria-label="Visualizzazione dati tremore"></div>
     </div>
   </div>
 </section>
@@ -83,8 +83,8 @@
           <polyline points="12,6 12,12 16,14"/>
         </svg>
       </div>
-      <h3>Real-time Monitoring</h3>
-      <p>Continuous tracking of volcanic tremor data from INGV seismic stations</p>
+      <h3>Monitoraggio in Tempo Reale</h3>
+      <p>Tracciamento continuo dei dati del tremore vulcanico dalle stazioni sismiche INGV</p>
     </div>
     
     <div class="feature-card">
@@ -94,8 +94,8 @@
           <path d="M7 12l3-3 3 3 5-5"/>
         </svg>
       </div>
-      <h3>Advanced Analytics</h3>
-      <p>Logarithmic scaling and threshold analysis for professional monitoring</p>
+      <h3>Analisi Avanzate</h3>
+      <p>Scala logaritmica e analisi delle soglie per monitoraggio professionale</p>
     </div>
     
     <div class="feature-card">
@@ -104,8 +104,8 @@
           <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
         </svg>
       </div>
-      <h3>INGV Compatible</h3>
-      <p>Faithful reproduction of official INGV visualization standards</p>
+      <h3>Compatibile INGV</h3>
+      <p>Riproduzione fedele degli standard di visualizzazione ufficiali INGV</p>
     </div>
   </div>
 </section>
@@ -122,8 +122,8 @@
 /* Hero Section Styles */
 .hero-section {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: var(--space-16);
+  grid-template-columns: 2fr 0.1fr;
+  gap: var(--space-2);
   align-items: center;
   min-height: 70vh;
   padding: var(--space-16) 0;
@@ -935,7 +935,7 @@ async function quickUpdate() {
     const result = await response.json();
     
     if (result.ok) {
-      showToast(`Data updated successfully! ${result.rows} data points processed.`, 'success');
+      showToast(`Dati aggiornati con successo! ${result.rows} punti dati elaborati.`, 'success');
       
       // Refresh the home preview chart
       try {
@@ -951,7 +951,7 @@ async function quickUpdate() {
       showToast(`Update failed: ${result.error}`, 'error');
     }
   } catch (error) {
-    showToast('Network error during update', 'error');
+    showToast('Errore di rete durante l\'aggiornamento', 'error');
   } finally {
     btn.disabled = false;
     btn.innerHTML = originalText;
