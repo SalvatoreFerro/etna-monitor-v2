@@ -10,7 +10,29 @@
 {% block content %}
 <!-- Hero Section -->
 <section class="hero-section hero-premium animate-premium-fade" role="banner" aria-label="EtnaMonitor main section">
-  <div class="hero-content">
+  <!-- Chart as Primary Element -->
+  <div class="hero-visual-centered">
+    <div class="preview-chart home-graph-card card-premium" id="preview-chart" role="img" aria-label="Anteprima grafico tremore vulcanico">
+      <div class="chart-header">
+        <h3>Andamento tremore vulcanico – ultime 24h</h3>
+        <div class="current-status" id="current-status">
+          <span class="current-value" id="current-value-display">-- mV</span>
+          <span class="activity-badge" id="activity-badge">--</span>
+        </div>
+      </div>
+      <div id="home-preview-loading" class="chart-loading-overlay" aria-live="polite">
+        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M3 3v18h18"/>
+          <path d="M7 12l3-3 3 3 5-5"/>
+        </svg>
+        <p>Caricamento dati da INGV, attendere...</p>
+      </div>
+      <div id="home-preview-plot" style="width: 100%; height: 320px;" role="img" aria-label="Visualizzazione dati tremore"></div>
+    </div>
+  </div>
+  
+  <!-- Content Below Chart -->
+  <div class="hero-content-below">
     <div class="hero-badge glass" role="status" aria-live="polite">
       <span class="status-dot" id="status-dot" aria-hidden="true"></span>
       <span id="status-text" aria-label="Service status">Controllo stato...</span>
@@ -49,26 +71,6 @@
         </svg>
         Aggiorna Dati Ora
       </button>
-    </div>
-  </div>
-  
-  <div class="hero-visual" style="flex: 1; transform: translateX(-30%); margin-left: -20%;">
-    <div class="preview-chart home-graph-card card-premium" id="preview-chart" role="img" aria-label="Anteprima grafico tremore vulcanico">
-      <div class="chart-header">
-        <h3>Andamento tremore vulcanico – ultime 24h</h3>
-        <div class="current-status" id="current-status">
-          <span class="current-value" id="current-value-display">-- mV</span>
-          <span class="activity-badge" id="activity-badge">--</span>
-        </div>
-      </div>
-      <div id="home-preview-loading" class="chart-loading-overlay" aria-live="polite">
-        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-          <path d="M3 3v18h18"/>
-          <path d="M7 12l3-3 3 3 5-5"/>
-        </svg>
-        <p>Caricamento dati da INGV, attendere...</p>
-      </div>
-      <div id="home-preview-plot" style="width: 100%; height: 320px;" role="img" aria-label="Visualizzazione dati tremore"></div>
     </div>
   </div>
 </section>
@@ -125,19 +127,38 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: 80vh;
-  padding: var(--space-8) 0;
-  gap: var(--space-6);
+  min-height: 90vh;
+  padding: var(--space-4) 0;
   text-align: center;
+  width: 100%;
+  margin: 0;
+  box-sizing: border-box;
+  gap: var(--space-6);
 }
 
-.hero-content {
+/* Chart Container - Absolute Center */
+.hero-visual-centered {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  width: auto;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Content Below Chart - Positioned Below Absolute Chart */
+.hero-content-below {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
   max-width: 800px;
-  margin: 0 auto;
-  order: 2;
+  margin: 60vh auto 0 auto;
+  padding: 0 var(--space-4);
+  position: relative;
+  z-index: 5;
 }
 
 .hero-badge {
@@ -221,27 +242,20 @@
   margin-top: var(--space-4);
 }
 
-.hero-visual {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  order: 1;
-  width: 100%;
-  max-width: 900px;
-  margin: 0 auto var(--space-8) auto;
-}
+/* Remove old hero-visual styles - replaced with hero-visual-centered */
 
 .preview-chart {
-  width: 100%;
-  max-width: 800px;
-  height: 450px;
+  width: min(85vw, 1000px);
+  height: 400px;
   background: var(--gradient-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-2xl);
   position: relative;
   overflow: visible;
   box-shadow: var(--shadow-2xl);
-  margin: 0 auto;
+  margin: 0;
+  display: block;
+}
 }
 
 .chart-header {
@@ -521,12 +535,18 @@
   }
   
   .hero-visual {
-    max-width: 100%;
-    margin-bottom: var(--space-6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    margin: var(--space-6) auto 0 auto;
+    padding: 0 var(--space-4);
+    box-sizing: border-box;
   }
   
   .preview-chart {
-    max-width: 100%;
+    width: 90vw;
+    max-width: 900px;
     height: 350px;
   }
   
@@ -538,7 +558,7 @@
 
 @media (max-width: 768px) {
   .hero-section {
-    padding: var(--space-4) max(var(--space-4), env(safe-area-inset-left)) var(--space-4) max(var(--space-4), env(safe-area-inset-right));
+    padding: var(--space-4) 0;
     min-height: 60vh;
     width: 100%;
     max-width: 100%;
@@ -548,8 +568,13 @@
   }
   
   .hero-visual {
-    margin-bottom: var(--space-4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
     width: 100%;
+    margin: var(--space-4) auto 0 auto;
+    padding: 0 var(--space-3);
+    box-sizing: border-box;
   }
   
   .hero-title {
@@ -583,8 +608,9 @@
   }
   
   .preview-chart {
-    height: 300px;
+    width: 95vw;
     max-width: 100%;
+    height: 300px;
   }
   
   #home-preview-plot {
@@ -595,7 +621,7 @@
 
 @media (max-width: 480px) {
   .hero-section {
-    padding: var(--space-3) max(var(--space-3), env(safe-area-inset-left)) var(--space-3) max(var(--space-3), env(safe-area-inset-right));
+    padding: var(--space-3) 0;
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
@@ -605,7 +631,13 @@
   }
   
   .hero-visual {
-    margin-bottom: var(--space-3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    margin: var(--space-3) auto 0 auto;
+    padding: 0 var(--space-2);
+    box-sizing: border-box;
   }
   
   .hero-title {
