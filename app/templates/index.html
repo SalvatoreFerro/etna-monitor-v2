@@ -52,7 +52,7 @@
     </div>
   </div>
   
-  <div class="hero-visual">
+  <div class="hero-visual" style="flex: 1; transform: translateX(-30%); margin-left: -20%;">
     <div class="preview-chart home-graph-card card-premium" id="preview-chart" role="img" aria-label="Anteprima grafico tremore vulcanico">
       <div class="chart-header">
         <h3>Andamento tremore vulcanico – ultime 24h</h3>
@@ -119,20 +119,25 @@
 <script src="{{ url_for('static', filename='js/home_preview.js') }}"></script>
 
 <style>
-/* Hero Section Styles */
+/* Hero Section Styles - Chart-Centered Layout */
 .hero-section {
-  display: grid;
-  grid-template-columns: 2fr 0.1fr;
-  gap: var(--space-2);
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  min-height: 70vh;
-  padding: var(--space-16) 0;
+  justify-content: center;
+  min-height: 80vh;
+  padding: var(--space-8) 0;
+  gap: var(--space-6);
+  text-align: center;
 }
 
 .hero-content {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
+  gap: var(--space-4);
+  max-width: 800px;
+  margin: 0 auto;
+  order: 2;
 }
 
 .hero-badge {
@@ -167,24 +172,26 @@
 }
 
 .hero-title {
-  font-size: var(--font-size-4xl);
+  font-size: var(--font-size-3xl);
   font-weight: var(--font-weight-bold);
   line-height: var(--line-height-tight);
   color: var(--color-text-primary);
-  margin: 0;
+  margin: 0 0 var(--space-3) 0;
 }
 
 .hero-subtitle {
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-base);
   line-height: var(--line-height-relaxed);
   color: var(--color-text-secondary);
-  margin: 0;
+  margin: 0 0 var(--space-4) 0;
 }
 
 .hero-stats {
   display: flex;
-  gap: var(--space-8);
-  padding: var(--space-6) 0;
+  gap: var(--space-6);
+  padding: var(--space-4) 0;
+  justify-content: center;
+  flex-wrap: wrap;
 }
 
 .stat-item {
@@ -210,23 +217,31 @@
   display: flex;
   gap: var(--space-4);
   flex-wrap: wrap;
+  justify-content: center;
+  margin-top: var(--space-4);
 }
 
 .hero-visual {
   display: flex;
   justify-content: center;
   align-items: center;
+  order: 1;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto var(--space-8) auto;
 }
 
 .preview-chart {
   width: 100%;
-  max-width: 500px;
-  height: 380px;
+  max-width: 800px;
+  height: 450px;
   background: var(--gradient-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-2xl);
   position: relative;
   overflow: visible;
+  box-shadow: var(--shadow-2xl);
+  margin: 0 auto;
 }
 
 .chart-header {
@@ -285,8 +300,8 @@
 }
 
 #home-preview-plot {
-  min-height: 320px;
-  height: 320px;
+  min-height: 380px;
+  height: 380px;
   width: 100%;
 }
 
@@ -501,26 +516,30 @@
 /* Responsive Design */
 @media (max-width: 1024px) {
   .hero-section {
-    grid-template-columns: 1fr;
-    gap: var(--space-8);
-    text-align: center;
+    padding: var(--space-6) 0;
+    min-height: 70vh;
+  }
+  
+  .hero-visual {
+    max-width: 100%;
+    margin-bottom: var(--space-6);
   }
   
   .preview-chart {
     max-width: 100%;
-    height: 280px;
+    height: 350px;
   }
   
   #home-preview-plot { 
-    height: 240px !important;
-    min-height: 240px;
+    height: 300px !important;
+    min-height: 300px;
   }
 }
 
 @media (max-width: 768px) {
   .hero-section {
-    padding: var(--space-8) max(var(--space-4), env(safe-area-inset-left)) var(--space-8) max(var(--space-4), env(safe-area-inset-right));
-    min-height: auto;
+    padding: var(--space-4) max(var(--space-4), env(safe-area-inset-left)) var(--space-4) max(var(--space-4), env(safe-area-inset-right));
+    min-height: 60vh;
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
@@ -528,24 +547,29 @@
     overflow-x: hidden;
   }
   
+  .hero-visual {
+    margin-bottom: var(--space-4);
+    width: 100%;
+  }
+  
   .hero-title {
-    font-size: var(--font-size-3xl);
+    font-size: var(--font-size-2xl);
   }
   
   .hero-subtitle {
-    font-size: var(--font-size-base);
+    font-size: var(--font-size-sm);
   }
   
   .hero-stats {
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: var(--space-4);
+    gap: var(--space-3);
+    flex-direction: column;
+    align-items: center;
   }
   
   .hero-actions {
-    justify-content: center;
     flex-direction: column;
     align-items: center;
+    width: 100%;
   }
   
   .hero-actions .btn {
@@ -559,28 +583,43 @@
   }
   
   .preview-chart {
-    height: 260px;
+    height: 300px;
+    max-width: 100%;
   }
   
   #home-preview-plot {
-    height: 220px !important;
+    height: 250px !important;
+    min-height: 250px;
   }
 }
 
 @media (max-width: 480px) {
   .hero-section {
-    padding: var(--space-6) max(var(--space-3), env(safe-area-inset-left)) var(--space-6) max(var(--space-3), env(safe-area-inset-right));
+    padding: var(--space-3) max(var(--space-3), env(safe-area-inset-left)) var(--space-3) max(var(--space-3), env(safe-area-inset-right));
     width: 100%;
     max-width: 100%;
     box-sizing: border-box;
     margin: 0;
     overflow-x: hidden;
+    min-height: 50vh;
+  }
+  
+  .hero-visual {
+    margin-bottom: var(--space-3);
+  }
+  
+  .hero-title {
+    font-size: var(--font-size-xl);
+  }
+  
+  .hero-subtitle {
+    font-size: var(--font-size-xs);
   }
   
   .hero-stats {
     flex-direction: column;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--space-2);
   }
   
   .stat-item {
@@ -600,8 +639,8 @@
   }
   
   #home-preview-plot { 
-    height: 240px; 
-    min-height: 240px;
+    height: 230px; 
+    min-height: 230px;
     width: 100%;
   }
 }
