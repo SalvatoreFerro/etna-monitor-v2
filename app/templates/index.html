@@ -806,6 +806,11 @@ function drawPlot(data, container = 'home-preview-plot') {
   const values = data.data.map(row => row.value);
   const threshold = 2.0; // Default threshold
   
+  // Get the actual container dimensions
+  const containerElement = document.getElementById(container);
+  const containerWidth = containerElement ? containerElement.offsetWidth : 300;
+  const containerHeight = containerElement ? containerElement.offsetHeight : 250;
+  
   const trace = {
     x: timestamps,
     y: values,
@@ -817,12 +822,14 @@ function drawPlot(data, container = 'home-preview-plot') {
   };
   
   const layout = {
+    width: containerWidth,
+    height: containerHeight,
     xaxis: { 
       title: 'Data/Ora',
       showgrid: true,
       gridcolor: 'rgba(255,255,255,0.1)',
-      tickfont: { size: 11, color: '#e6e7ea' },
-      titlefont: { size: 12, color: '#e6e7ea' }
+      tickfont: { size: 9, color: '#e6e7ea' },
+      titlefont: { size: 10, color: '#e6e7ea' }
     },
     yaxis: { 
       title: 'mV', 
@@ -830,13 +837,14 @@ function drawPlot(data, container = 'home-preview-plot') {
       range: [-1, 1], // 0.1 to 10 range
       showgrid: true,
       gridcolor: 'rgba(255,255,255,0.1)',
-      tickfont: { size: 11, color: '#e6e7ea' },
-      titlefont: { size: 12, color: '#e6e7ea' }
+      tickfont: { size: 9, color: '#e6e7ea' },
+      titlefont: { size: 10, color: '#e6e7ea' }
     },
     plot_bgcolor: '#151821',
     paper_bgcolor: '#151821',
-    font: { color: '#e6e7ea', size: 12 },
-    margin: { l: 60, r: 20, t: 20, b: 50 },
+    font: { color: '#e6e7ea', size: 10 },
+    margin: { l: 45, r: 5, t: 5, b: 35 },
+    autosize: false,
     shapes: [{
       type: 'line',
       x0: timestamps[0],
@@ -868,10 +876,20 @@ function drawPlot(data, container = 'home-preview-plot') {
   });
   
   // Add resize handler for responsiveness
+  let resizeTimeout;
   window.addEventListener('resize', () => {
-    if (document.getElementById(container)) {
-      Plotly.Plots.resize(container);
-    }
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      const containerElement = document.getElementById(container);
+      if (containerElement) {
+        const newWidth = containerElement.offsetWidth;
+        const newHeight = containerElement.offsetHeight;
+        Plotly.relayout(container, {
+          width: newWidth,
+          height: newHeight
+        });
+      }
+    }, 250);
   });
 }
 
