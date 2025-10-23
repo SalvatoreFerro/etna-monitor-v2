@@ -307,6 +307,7 @@
   height: 380px;
   width: 100%;
   box-sizing: border-box;
+  padding: var(--space-2);
 }
 
 #home-preview-loading {
@@ -539,6 +540,7 @@
   #home-preview-plot { 
     height: 320px !important;
     min-height: 320px;
+    padding: var(--space-2);
   }
 }
 
@@ -598,6 +600,7 @@
   #home-preview-plot {
     height: 280px !important;
     min-height: 280px;
+    padding: var(--space-2);
   }
 }
 
@@ -652,6 +655,7 @@
     height: 260px !important; 
     min-height: 260px;
     width: 100%;
+    padding: var(--space-2);
   }
 }
 
@@ -714,6 +718,7 @@
   #home-preview-plot {
     height: 240px !important;
     min-height: 240px;
+    padding: var(--space-2);
   }
   
   .features-section {
@@ -821,8 +826,8 @@ function drawPlot(data, container = 'home-preview-plot') {
       title: 'Data/Ora',
       showgrid: true,
       gridcolor: 'rgba(255,255,255,0.1)',
-      tickfont: { size: 11, color: '#e6e7ea' },
-      titlefont: { size: 12, color: '#e6e7ea' }
+      tickfont: { size: 10, color: '#e6e7ea' },
+      titlefont: { size: 11, color: '#e6e7ea' }
     },
     yaxis: { 
       title: 'mV', 
@@ -830,13 +835,14 @@ function drawPlot(data, container = 'home-preview-plot') {
       range: [-1, 1], // 0.1 to 10 range
       showgrid: true,
       gridcolor: 'rgba(255,255,255,0.1)',
-      tickfont: { size: 11, color: '#e6e7ea' },
-      titlefont: { size: 12, color: '#e6e7ea' }
+      tickfont: { size: 10, color: '#e6e7ea' },
+      titlefont: { size: 11, color: '#e6e7ea' }
     },
     plot_bgcolor: '#151821',
     paper_bgcolor: '#151821',
-    font: { color: '#e6e7ea', size: 12 },
-    margin: { l: 60, r: 20, t: 20, b: 50 },
+    font: { color: '#e6e7ea', size: 11 },
+    margin: { l: 50, r: 10, t: 10, b: 40 },
+    autosize: true,
     shapes: [{
       type: 'line',
       x0: timestamps[0],
