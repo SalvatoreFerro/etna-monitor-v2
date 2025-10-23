@@ -811,6 +811,11 @@ function drawPlot(data, container = 'home-preview-plot') {
   const values = data.data.map(row => row.value);
   const threshold = 2.0; // Default threshold
   
+  // Get the actual container dimensions
+  const containerElement = document.getElementById(container);
+  const containerWidth = containerElement ? containerElement.offsetWidth : 300;
+  const containerHeight = containerElement ? containerElement.offsetHeight : 250;
+  
   const trace = {
     x: timestamps,
     y: values,
@@ -822,6 +827,8 @@ function drawPlot(data, container = 'home-preview-plot') {
   };
   
   const layout = {
+    width: containerWidth,
+    height: containerHeight,
     xaxis: { 
       title: 'Data/Ora',
       showgrid: true,
@@ -842,7 +849,7 @@ function drawPlot(data, container = 'home-preview-plot') {
     paper_bgcolor: '#151821',
     font: { color: '#e6e7ea', size: 11 },
     margin: { l: 50, r: 10, t: 10, b: 40 },
-    autosize: true,
+    autosize: false,
     shapes: [{
       type: 'line',
       x0: timestamps[0],
@@ -874,10 +881,20 @@ function drawPlot(data, container = 'home-preview-plot') {
   });
   
   // Add resize handler for responsiveness
+  let resizeTimeout;
   window.addEventListener('resize', () => {
-    if (document.getElementById(container)) {
-      Plotly.Plots.resize(container);
-    }
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+      const containerElement = document.getElementById(container);
+      if (containerElement) {
+        const newWidth = containerElement.offsetWidth;
+        const newHeight = containerElement.offsetHeight;
+        Plotly.relayout(container, {
+          width: newWidth,
+          height: newHeight
+        });
+      }
+    }, 250);
   });
 }
 
