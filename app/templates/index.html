@@ -596,8 +596,8 @@
   }
   
   #home-preview-plot {
-    height: 280px !important;
-    min-height: 280px;
+    height: 340px !important;
+    min-height: 340px;
   }
 }
 
@@ -649,8 +649,8 @@
   }
   
   #home-preview-plot { 
-    height: 260px !important; 
-    min-height: 260px;
+    height: 320px !important; 
+    min-height: 320px;
     width: 100%;
   }
 }
@@ -712,8 +712,8 @@
   }
   
   #home-preview-plot {
-    height: 240px !important;
-    min-height: 240px;
+    height: 300px !important;
+    min-height: 300px;
   }
   
   .features-section {
@@ -808,8 +808,14 @@ function drawPlot(data, container = 'home-preview-plot') {
   
   // Get the actual container dimensions
   const containerElement = document.getElementById(container);
-  const containerWidth = containerElement ? containerElement.offsetWidth : 300;
-  const containerHeight = containerElement ? containerElement.offsetHeight : 250;
+  let containerWidth = containerElement ? containerElement.offsetWidth : 300;
+  let containerHeight = containerElement ? containerElement.offsetHeight : 250;
+  
+  // Ensure minimum dimensions and log for debugging
+  console.log('Container dimensions before adjustment:', containerWidth, containerHeight);
+  if (containerWidth < 100) containerWidth = 300;
+  if (containerHeight < 100) containerHeight = 250;
+  console.log('Container dimensions after adjustment:', containerWidth, containerHeight);
   
   const trace = {
     x: timestamps,
