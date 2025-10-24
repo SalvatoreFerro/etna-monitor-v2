@@ -68,7 +68,7 @@
         </svg>
         <p>Caricamento dati da INGV, attendere...</p>
       </div>
-      <div id="home-preview-plot" style="width: 100%; height: 320px;" role="img" aria-label="Visualizzazione dati tremore"></div>
+      <div id="home-preview-plot" style="width: 100%;" role="img" aria-label="Visualizzazione dati tremore"></div>
     </div>
   </div>
 </section>
@@ -236,7 +236,6 @@
 .preview-chart {
   width: 100%;
   max-width: 800px;
-  height: 450px;
   background: var(--gradient-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-2xl);
@@ -245,6 +244,7 @@
   box-shadow: var(--shadow-2xl);
   margin: 0 auto;
   box-sizing: border-box;
+  padding-bottom: var(--space-4);
 }
 
 .chart-header {
@@ -303,8 +303,6 @@
 }
 
 #home-preview-plot {
-  min-height: 380px;
-  height: 380px;
   width: 100%;
   box-sizing: border-box;
 }
@@ -532,13 +530,7 @@
   
   .preview-chart {
     max-width: 100%;
-    height: 380px;
     margin: 0;
-  }
-  
-  #home-preview-plot { 
-    height: 320px !important;
-    min-height: 320px;
   }
 }
 
@@ -590,14 +582,8 @@
   }
   
   .preview-chart {
-    height: 400px;
     max-width: 100%;
     margin: 0;
-  }
-  
-  #home-preview-plot {
-    height: 400px !important;
-    min-height: 400px;
   }
 }
 
@@ -642,16 +628,9 @@
   
   .preview-chart {
     max-width: 100%;
-    height: 380px;
     width: 100%;
     box-sizing: border-box;
     margin: 0;
-  }
-  
-  #home-preview-plot { 
-    height: 380px !important; 
-    min-height: 380px;
-    width: 100%;
   }
 }
 
