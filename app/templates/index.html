@@ -829,7 +829,6 @@ function drawPlot(data, container = 'home-preview-plot') {
   
   const layout = {
     width: containerWidth,
-    height: containerHeight,
     xaxis: { 
       title: 'Data/Ora',
       showgrid: true,
@@ -852,7 +851,7 @@ function drawPlot(data, container = 'home-preview-plot') {
     paper_bgcolor: '#151821',
     font: { color: '#e6e7ea', size: 10 },
     margin: { l: 10, r: 10, t: 10, b: 10 },
-    autosize: false,
+    autosize: true,
     shapes: [{
       type: 'line',
       x0: timestamps[0],
@@ -891,10 +890,8 @@ function drawPlot(data, container = 'home-preview-plot') {
       const containerElement = document.getElementById(container);
       if (containerElement) {
         const newWidth = containerElement.offsetWidth;
-        const newHeight = containerElement.offsetHeight;
         Plotly.relayout(container, {
-          width: newWidth,
-          height: newHeight
+          width: newWidth
         });
       }
     }, 250);
