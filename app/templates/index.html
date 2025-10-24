@@ -16,9 +16,9 @@
       <span id="status-text" aria-label="Service status">Controllo stato...</span>
     </div>
     
-    <h1 class="hero-title">🔥 TEST DEPLOY - EtnaMonitor 🔥</h1>
+    <h1 class="hero-title">EtnaMonitor</h1>
     <p class="hero-subtitle">
-      ⚠️ QUESTO È UN TEST PER VERIFICARE CHE IL DEPLOY FUNZIONI CORRETTAMENTE ⚠️
+      Monitoraggio in tempo reale del tremore vulcanico dell'Etna utilizzando dati sismici INGV
     </p>
     
     <div class="hero-stats card-premium" id="hero-stats" style="display: none;" role="group" aria-label="Current monitoring metrics">
@@ -809,7 +809,7 @@ function drawPlot(data, container = 'home-preview-plot') {
   
   const layout = {
     width: containerWidth,
-    height: 400,
+    height: 500,
     xaxis: { 
       title: 'Data/Ora',
       showgrid: true,
@@ -829,7 +829,7 @@ function drawPlot(data, container = 'home-preview-plot') {
     plot_bgcolor: '#151821',
     paper_bgcolor: '#151821',
     font: { color: '#e6e7ea', size: 10 },
-    margin: { l: 50, r: 20, t: 20, b: 80 },
+    margin: { l: 50, r: 20, t: 20, b: 100 },
     autosize: false,
     shapes: [{
       type: 'line',
