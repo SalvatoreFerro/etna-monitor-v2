@@ -115,8 +115,6 @@
 
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<!-- Home Preview Chart Module -->
-<script src="{{ url_for('static', filename='js/home_preview.js') }}"></script>
 
 <style>
 /* Hero Section Styles - Chart-Centered Layout */
@@ -1037,9 +1035,7 @@ async function quickUpdate() {
       
       // Refresh the home preview chart
       try {
-        if (window.refreshHomePreview) {
-          await window.refreshHomePreview();
-        }
+        await refreshPlot();
       } catch (plotError) {
         console.error('Error refreshing home preview:', plotError);
       }
@@ -1065,8 +1061,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   await checkStatus();
   
   // Initialize home preview chart
-  if (window.initializeHomePreview) {
-    window.initializeHomePreview();
+  try {
+    await refreshPlot();
+  } catch (error) {
+    console.error('Failed to initialize chart:', error);
+    showNoDataMessage();
   }
   
   // Auto-refresh status every 30 seconds
