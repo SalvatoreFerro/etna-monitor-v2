@@ -375,7 +375,6 @@
 #home-preview-plot {
   width: 100%;
   box-sizing: border-box;
-  touch-action: pan-x pinch-zoom;
 }
 
 #home-preview-loading {
@@ -1188,11 +1187,7 @@ function drawPlot(data, container = 'home-preview-plot') {
           type: 'logarithmic',
           position: 'left',
           title: {
-            display: true,
-            text: 'mV',
-            color: '#e6e7ea',
-            font: { size: 11 },
-            padding: { top: 0, bottom: 0 }
+            display: false
           },
           min: 0.1,
           max: 10,
@@ -1221,19 +1216,6 @@ function drawPlot(data, container = 'home-preview-plot') {
   if (canvas) {
     canvas.classList.add('loaded');
     canvas.style.display = 'block';
-    
-    // Prevent default touch behavior to allow Chart.js zoom to work
-    canvas.addEventListener('touchstart', function(e) {
-      if (e.touches.length > 1) {
-        e.preventDefault();
-      }
-    }, { passive: false });
-    
-    canvas.addEventListener('touchmove', function(e) {
-      if (e.touches.length > 1) {
-        e.preventDefault();
-      }
-    }, { passive: false });
   }
 }
 
