@@ -236,6 +236,7 @@
 .preview-chart {
   width: 100%;
   max-width: 800px;
+  min-height: 450px;
   background: var(--gradient-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-2xl);
@@ -808,6 +809,7 @@ function drawPlot(data, container = 'home-preview-plot') {
   
   const layout = {
     width: containerWidth,
+    height: 400,
     xaxis: { 
       title: 'Data/Ora',
       showgrid: true,
@@ -829,8 +831,8 @@ function drawPlot(data, container = 'home-preview-plot') {
     plot_bgcolor: '#151821',
     paper_bgcolor: '#151821',
     font: { color: '#e6e7ea', size: 10 },
-    margin: { l: 10, r: 10, t: 10, b: 10 },
-    autosize: true,
+    margin: { l: 50, r: 20, t: 20, b: 80 },
+    autosize: false,
     shapes: [{
       type: 'line',
       x0: timestamps[0],
