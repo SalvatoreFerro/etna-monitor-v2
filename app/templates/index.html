@@ -68,7 +68,7 @@
         </svg>
         <p>Caricamento dati da INGV, attendere...</p>
       </div>
-      <div id="home-preview-plot" style="width: 100%; height: 400px;" role="img" aria-label="Visualizzazione dati tremore"></div>
+      <div id="home-preview-plot" style="width: 100%; height: 450px;" role="img" aria-label="Visualizzazione dati tremore"></div>
     </div>
   </div>
 </section>
@@ -1071,7 +1071,7 @@ function drawPlot(data, container = 'home-preview-plot') {
   
   const layout = {
     autosize: true,
-    height: 400,
+    height: 450,
     xaxis: { 
       title: 'Data/Ora',
       showgrid: true,
@@ -1091,7 +1091,7 @@ function drawPlot(data, container = 'home-preview-plot') {
     plot_bgcolor: '#151821',
     paper_bgcolor: '#151821',
     font: { color: '#e6e7ea', size: 10 },
-    margin: { l: 35, r: 10, t: 10, b: 50 },
+    margin: { l: 20, r: 10, t: 10, b: 60 },
     shapes: [{
       type: 'line',
       x0: timestamps[0],
