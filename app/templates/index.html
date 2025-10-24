@@ -375,7 +375,6 @@
 #home-preview-plot {
   width: 100%;
   box-sizing: border-box;
-  touch-action: pan-x pinch-zoom;
 }
 
 #home-preview-loading {
@@ -1221,19 +1220,6 @@ function drawPlot(data, container = 'home-preview-plot') {
   if (canvas) {
     canvas.classList.add('loaded');
     canvas.style.display = 'block';
-    
-    // Prevent default touch behavior to allow Chart.js zoom to work
-    canvas.addEventListener('touchstart', function(e) {
-      if (e.touches.length > 1) {
-        e.preventDefault();
-      }
-    }, { passive: false });
-    
-    canvas.addEventListener('touchmove', function(e) {
-      if (e.touches.length > 1) {
-        e.preventDefault();
-      }
-    }, { passive: false });
   }
 }
 
