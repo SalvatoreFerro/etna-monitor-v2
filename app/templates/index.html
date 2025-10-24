@@ -1187,7 +1187,11 @@ function drawPlot(data, container = 'home-preview-plot') {
           type: 'logarithmic',
           position: 'left',
           title: {
-            display: false
+            display: true,
+            text: 'mV',
+            color: '#e6e7ea',
+            font: { size: 11 },
+            padding: { top: 0, bottom: 0 }
           },
           min: 0.1,
           max: 10,
