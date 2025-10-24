@@ -1106,6 +1106,14 @@ function drawPlot(data, container = 'home-preview-plot') {
     options: {
       responsive: true,
       maintainAspectRatio: false,
+      layout: {
+        padding: {
+          left: 0,
+          right: 10,
+          top: 10,
+          bottom: 0
+        }
+      },
       interaction: {
         intersect: false,
         mode: 'index'
@@ -1132,8 +1140,7 @@ function drawPlot(data, container = 'home-preview-plot') {
         zoom: {
           pan: {
             enabled: true,
-            mode: 'x',
-            modifierKey: 'ctrl'
+            mode: 'x'
           },
           zoom: {
             wheel: {
@@ -1143,7 +1150,10 @@ function drawPlot(data, container = 'home-preview-plot') {
             pinch: {
               enabled: true
             },
-            mode: 'x'
+            mode: 'x',
+            drag: {
+              enabled: false
+            }
           },
           limits: {
             x: { min: 'original', max: 'original' },
@@ -1175,6 +1185,7 @@ function drawPlot(data, container = 'home-preview-plot') {
         },
         y: {
           type: 'logarithmic',
+          position: 'left',
           title: {
             display: true,
             text: 'mV',
