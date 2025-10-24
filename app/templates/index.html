@@ -115,6 +115,8 @@
 
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<!-- Chart.js Zoom Plugin -->
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
 <style>
 /* Hero Section Styles - Chart-Centered Layout */
@@ -529,7 +531,7 @@
   
   .preview-chart {
     max-width: 100%;
-    margin: 0;
+    margin: 0 auto;
   }
 }
 
@@ -582,7 +584,7 @@
   
   .preview-chart {
     max-width: 100%;
-    margin: 0;
+    margin: 0 auto;
   }
 }
 
@@ -629,7 +631,7 @@
     max-width: 100%;
     width: 100%;
     box-sizing: border-box;
-    margin: 0;
+    margin: 0 auto;
   }
 }
 
@@ -684,7 +686,7 @@
   .preview-chart {
     width: 100%;
     height: 380px;
-    margin: 0;
+    margin: 0 auto;
     box-sizing: border-box;
     max-width: 100%;
   }
@@ -850,6 +852,27 @@ function drawPlot(data, container = 'home-preview-plot') {
             label: function(context) {
               return context.dataset.label + ': ' + context.parsed.y.toFixed(2) + ' mV';
             }
+          }
+        },
+        zoom: {
+          pan: {
+            enabled: true,
+            mode: 'x',
+            modifierKey: 'ctrl'
+          },
+          zoom: {
+            wheel: {
+              enabled: true,
+              speed: 0.1
+            },
+            pinch: {
+              enabled: true
+            },
+            mode: 'x'
+          },
+          limits: {
+            x: { min: 'original', max: 'original' },
+            y: { min: 0.1, max: 10 }
           }
         }
       },
