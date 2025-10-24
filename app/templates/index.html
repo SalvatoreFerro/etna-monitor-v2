@@ -68,7 +68,7 @@
         </svg>
         <p>Caricamento dati da INGV, attendere...</p>
       </div>
-      <div id="home-preview-plot" style="width: 100%;" role="img" aria-label="Visualizzazione dati tremore"></div>
+      <canvas id="home-preview-plot" style="width: 100%; height: 400px;" role="img" aria-label="Visualizzazione dati tremore"></canvas>
     </div>
   </div>
 </section>
@@ -113,8 +113,8 @@
 <!-- Toast Notifications -->
 <div id="toast-container" class="toast-container"></div>
 
-<!-- Plotly.js CDN - Updated version -->
-<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <!-- Home Preview Chart Module -->
 <script src="{{ url_for('static', filename='js/home_preview.js') }}"></script>
 
@@ -776,9 +776,11 @@ async function fetchCurva() {
   }
 }
 
+let chartInstance = null;
+
 function drawPlot(data, container = 'home-preview-plot') {
-  if (!window.Plotly) {
-    console.error('Plotly library not loaded');
+  if (!window.Chart) {
+    console.error('Chart.js library not loaded');
     return;
   }
   
@@ -786,95 +788,130 @@ function drawPlot(data, container = 'home-preview-plot') {
   const values = data.data.map(row => row.value);
   const threshold = 2.0; // Default threshold
   
-  // Get the actual container dimensions
-  const containerElement = document.getElementById(container);
-  let containerWidth = containerElement ? containerElement.offsetWidth : 300;
-  let containerHeight = containerElement ? containerElement.offsetHeight : 250;
+  // Get canvas element
+  const canvas = document.getElementById(container);
+  if (!canvas) {
+    console.error('Canvas element not found:', container);
+    return;
+  }
   
-  // Ensure minimum dimensions and log for debugging
-  console.log('Container dimensions before adjustment:', containerWidth, containerHeight);
-  if (containerWidth < 100) containerWidth = 300;
-  if (containerHeight < 100) containerHeight = 250;
-  console.log('Container dimensions after adjustment:', containerWidth, containerHeight);
+  // Destroy existing chart if it exists
+  if (chartInstance) {
+    chartInstance.destroy();
+  }
   
-  const trace = {
-    x: timestamps,
-    y: values,
-    type: 'scatter',
-    mode: 'lines',
-    name: 'Tremor',
-    line: { color: '#00AA00', width: 2 },
-    showlegend: false
-  };
-  
-  const layout = {
-    width: containerWidth,
-    height: 500,
-    xaxis: { 
-      title: 'Data/Ora',
-      showgrid: true,
-      gridcolor: 'rgba(255,255,255,0.1)',
-      tickfont: { size: 9, color: '#e6e7ea' },
-      titlefont: { size: 10, color: '#e6e7ea' }
+  // Create Chart.js chart
+  const ctx = canvas.getContext('2d');
+  chartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: timestamps,
+      datasets: [
+        {
+          label: 'Tremor',
+          data: values,
+          borderColor: '#00AA00',
+          backgroundColor: 'rgba(0, 170, 0, 0.1)',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.1,
+          fill: false
+        },
+        {
+          label: 'Soglia',
+          data: Array(timestamps.length).fill(threshold),
+          borderColor: '#ef4444',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          pointRadius: 0,
+          fill: false
+        }
+      ]
     },
-    yaxis: { 
-      title: 'mV', 
-      type: 'log',
-      range: [-1, 1], // 0.1 to 10 range
-      showgrid: true,
-      gridcolor: 'rgba(255,255,255,0.1)',
-      tickfont: { size: 9, color: '#e6e7ea' },
-      titlefont: { size: 10, color: '#e6e7ea' }
-    },
-    plot_bgcolor: '#151821',
-    paper_bgcolor: '#151821',
-    font: { color: '#e6e7ea', size: 10 },
-    margin: { l: 50, r: 20, t: 20, b: 100 },
-    autosize: false,
-    shapes: [{
-      type: 'line',
-      x0: timestamps[0],
-      x1: timestamps[timestamps.length - 1],
-      y0: threshold,
-      y1: threshold,
-      line: { color: '#ef4444', width: 2, dash: 'dash' }
-    }]
-  };
-  
-  const config = {
-    staticPlot: false,
-    displayModeBar: false,
-    responsive: true
-  };
-  
-  Plotly.newPlot(container, [trace], layout, config).then(() => {
-    // Hide loading placeholder and show chart with animation
-    const loading = document.getElementById('home-preview-loading');
-    const plot = document.getElementById(container);
-    
-    if (loading) {
-      loading.style.display = 'none';
-    }
-    if (plot) {
-      plot.classList.add('loaded');
-      plot.style.display = 'block';
-    }
-  });
-  
-  // Add resize handler for responsiveness
-  let resizeTimeout;
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-      const containerElement = document.getElementById(container);
-      if (containerElement) {
-        const newWidth = containerElement.offsetWidth;
-        Plotly.relayout(container, {
-          width: newWidth
-        });
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        intersect: false,
+        mode: 'index'
+      },
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(21, 24, 33, 0.95)',
+          titleColor: '#e6e7ea',
+          bodyColor: '#e6e7ea',
+          borderColor: 'rgba(255, 255, 255, 0.1)',
+          borderWidth: 1,
+          padding: 10,
+          displayColors: false,
+          callbacks: {
+            label: function(context) {
+              return context.dataset.label + ': ' + context.parsed.y.toFixed(2) + ' mV';
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          type: 'category',
+          title: {
+            display: true,
+            text: 'Data/Ora',
+            color: '#e6e7ea',
+            font: { size: 11 }
+          },
+          ticks: {
+            color: '#e6e7ea',
+            font: { size: 9 },
+            maxRotation: 45,
+            minRotation: 45,
+            autoSkip: true,
+            maxTicksLimit: 8
+          },
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)',
+            drawBorder: false
+          }
+        },
+        y: {
+          type: 'logarithmic',
+          title: {
+            display: true,
+            text: 'mV',
+            color: '#e6e7ea',
+            font: { size: 11 }
+          },
+          min: 0.1,
+          max: 10,
+          ticks: {
+            color: '#e6e7ea',
+            font: { size: 9 },
+            callback: function(value) {
+              return value.toFixed(1);
+            }
+          },
+          grid: {
+            color: 'rgba(255, 255, 255, 0.1)',
+            drawBorder: false
+          }
+        }
       }
-    }, 250);
+    }
   });
+  
+  // Hide loading placeholder and show chart
+  const loading = document.getElementById('home-preview-loading');
+  if (loading) {
+    loading.style.display = 'none';
+  }
+  if (canvas) {
+    canvas.classList.add('loaded');
+    canvas.style.display = 'block';
+  }
 }
 
 async function refreshPlot() {
