@@ -41,6 +41,11 @@ def privacy():
     return render_template("privacy.html")
 
 
+@bp.route("/terms")
+def terms():
+    return render_template("terms.html")
+
+
 @bp.route("/cookies")
 def cookies():
     return render_template("cookies.html")
