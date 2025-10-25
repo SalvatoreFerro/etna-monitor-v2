@@ -73,6 +73,21 @@
         </div>
       </div>
 
+      <nav class="hero-section-nav" aria-label="Vai alle sezioni principali">
+        <a href="#section-tecnologia" class="hero-section-link">
+          <span class="hero-section-dot" aria-hidden="true"></span>
+          Tecnologia
+        </a>
+        <a href="#section-progetto" class="hero-section-link">
+          <span class="hero-section-dot" aria-hidden="true"></span>
+          Il progetto
+        </a>
+        <a href="#section-team" class="hero-section-link">
+          <span class="hero-section-dot" aria-hidden="true"></span>
+          Chi c'è dietro
+        </a>
+      </nav>
+
       <div class="hero-stats card-premium" id="hero-stats" style="display: none;" role="group" aria-label="Metriche correnti di EtnaMonitor">
         <div class="stat-card">
           <div class="stat-icon" aria-hidden="true">
@@ -139,10 +154,10 @@
 </section>
 
 <!-- Feature Highlights -->
-<section class="features-section" role="region" aria-label="Funzionalità principali">
+<section id="section-tecnologia" class="features-section" role="region" aria-labelledby="section-tecnologia-title">
   <div class="section-heading">
     <span class="section-pill">Tecnologia</span>
-    <h2>Strumenti costruiti per analisi continue e decisioni rapide</h2>
+    <h2 id="section-tecnologia-title">Strumenti costruiti per analisi continue e decisioni rapide</h2>
     <p>Pipeline dati ottimizzata, visualizzazioni interattive e controlli operativi per interpretare il tremore vulcanico dell'Etna con precisione scientifica.</p>
   </div>
 
@@ -185,11 +200,11 @@
 </section>
 
 <!-- About Project Section -->
-<section class="about-section" role="region" aria-label="Il progetto EtnaMonitor">
+<section id="section-progetto" class="about-section" role="region" aria-labelledby="section-progetto-title">
   <div class="about-grid">
     <div class="about-copy">
       <span class="section-pill">Il progetto</span>
-      <h2>Un'unica piattaforma per leggere l'attività dell'Etna</h2>
+      <h2 id="section-progetto-title">Un'unica piattaforma per leggere l'attività dell'Etna</h2>
       <p>EtnaMonitor integra dati ufficiali INGV con un motore di visualizzazione moderno pensato per ingegneri, operatori sul campo e cittadini. Le metriche vengono aggiornate e validate automaticamente, offrendo una panoramica chiara delle variazioni del tremore vulcanico.</p>
       <p>Ogni grafico è stato progettato per mantenere la leggibilità anche in condizioni di luce critiche grazie a combinazioni cromatiche a contrasto elevato e tipografia ottimizzata.</p>
 
@@ -231,11 +246,11 @@
 </section>
 
 <!-- About Developer Section -->
-<section class="developer-section" role="region" aria-label="Informazioni sullo sviluppatore">
+<section id="section-team" class="developer-section" role="region" aria-labelledby="section-team-title">
   <div class="developer-content">
     <div class="developer-header">
       <span class="section-pill">Chi c'è dietro</span>
-      <h2>Costruito con passione da Salvatore Ferro</h2>
+      <h2 id="section-team-title">Costruito con passione da Salvatore Ferro</h2>
       <p>Sviluppatore full-stack con un forte interesse per la visualizzazione di dati scientifici e per le tecnologie a supporto della prevenzione. EtnaMonitor nasce per rendere accessibili a tutti le informazioni sull'attività vulcanica dell'Etna.</p>
     </div>
 
@@ -494,6 +509,55 @@
   margin-top: var(--space-1);
 }
 
+.hero-section-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  border-radius: var(--radius-2xl);
+  background: rgba(4, 12, 28, 0.55);
+  border: 1px solid rgba(0, 210, 255, 0.18);
+  box-shadow: var(--shadow-glass);
+}
+
+.hero-section-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-xl);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  background: rgba(255, 255, 255, 0.04);
+  transition: transform var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.hero-section-link:hover,
+.hero-section-link:focus-visible {
+  background: rgba(0, 210, 255, 0.18);
+  box-shadow: 0 12px 30px rgba(0, 210, 255, 0.25);
+  transform: translateY(-2px);
+}
+
+.hero-section-link:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.35);
+  outline-offset: 2px;
+}
+
+.hero-section-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-accent-primary);
+  box-shadow: 0 0 0 4px rgba(0, 210, 255, 0.18);
+}
+
 .hero-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -653,6 +717,12 @@
   padding: var(--space-20) var(--space-4);
   background: linear-gradient(160deg, rgba(10, 16, 34, 0.92), rgba(6, 10, 24, 0.98));
   border-top: 1px solid rgba(0, 210, 255, 0.08);
+}
+
+.features-section,
+.about-section,
+.developer-section {
+  scroll-margin-top: 120px;
 }
 
 .section-heading {
@@ -1001,6 +1071,10 @@
     justify-content: flex-start;
   }
 
+  .hero-section-nav {
+    justify-content: flex-start;
+  }
+
   .hero-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1033,6 +1107,15 @@
 
   .hero-stats {
     grid-template-columns: 1fr;
+  }
+
+  .hero-section-nav {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero-section-link {
+    justify-content: center;
   }
 
   .features-grid {
@@ -1078,6 +1161,14 @@
   }
 
   .hero-actions .btn {
+    width: 100%;
+  }
+
+  .hero-section-nav {
+    padding: var(--space-3) var(--space-2);
+  }
+
+  .hero-section-link {
     width: 100%;
   }
 }
