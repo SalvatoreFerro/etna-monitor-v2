@@ -1,0 +1,51 @@
+{% extends "layout.html" %}
+
+{% block title %}Informativa sulla privacy - EtnaMonitor{% endblock %}
+
+{% block content %}
+<main id="main-content" class="static-page">
+  <section class="static-hero" aria-labelledby="privacy-title">
+    <div class="static-hero-inner">
+      <h1 id="privacy-title">Informativa sulla privacy</h1>
+      <p class="lead">
+        Questa informativa descrive come EtnaMonitor tratta i tuoi dati personali, con particolare attenzione alle
+        informazioni ricevute tramite Google OAuth2 durante l'accesso alla piattaforma.
+      </p>
+    </div>
+  </section>
+
+  <section class="static-section" aria-labelledby="privacy-collection">
+    <h2 id="privacy-collection">Dati che raccogliamo</h2>
+    <p>
+      Quando accedi con Google, Google OAuth2 ci fornisce il tuo nome, indirizzo email e immagine del profilo.
+      Non richiediamo né riceviamo altre informazioni del tuo account Google e non abbiamo accesso alle tue password.
+    </p>
+  </section>
+
+  <section class="static-section" aria-labelledby="privacy-usage">
+    <h2 id="privacy-usage">Come utilizziamo i dati</h2>
+    <ul>
+      <li>Verificare la tua identità e consentire l'accesso al tuo account EtnaMonitor.</li>
+      <li>Personalizzare l'esperienza dell'applicazione mostrando il tuo nome e l'immagine del profilo.</li>
+      <li>Comunicare con te in merito ai servizi EtnaMonitor, inclusi aggiornamenti o notifiche importanti.</li>
+    </ul>
+  </section>
+
+  <section class="static-section" aria-labelledby="privacy-retention">
+    <h2 id="privacy-retention">Conservazione e condivisione</h2>
+    <p>
+      Conserviamo i dati ottenuti tramite Google OAuth2 per tutta la durata del tuo account. Non vendiamo né condividiamo
+      i tuoi dati con terze parti, ad eccezione dei fornitori strettamente necessari per erogare il servizio, tutti
+      vincolati da accordi di riservatezza e conformità al GDPR.
+    </p>
+  </section>
+
+  <section class="static-section" aria-labelledby="privacy-rights">
+    <h2 id="privacy-rights">I tuoi diritti</h2>
+    <p>
+      Puoi richiedere la cancellazione dei tuoi dati o revocare l'accesso a Google OAuth2 in qualsiasi momento
+      attraverso le impostazioni del tuo account Google. Per ulteriori domande, contattaci all'indirizzo privacy@etnamonitor.app.
+    </p>
+  </section>
+</main>
+{% endblock %}
