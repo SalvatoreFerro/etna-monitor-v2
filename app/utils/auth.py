@@ -1,14 +1,37 @@
-import bcrypt
+"""Authentication helpers.
+
+This module now primarily serves session-based helpers used by the new OAuth
+flow. Legacy password utilities are kept for reference but should be
+considered deprecated and unused within the application.
+"""
+
+import warnings
 from functools import wraps
-from flask import session, redirect, url_for, flash, request
+
+import bcrypt
+from flask import flash, redirect, request, session, url_for
+
 from ..models.user import User
 
+_PASSWORD_DEPRECATION_MSG = (
+    "Password hashing utilities are deprecated. Use Google OAuth instead."
+)
+
+
 def hash_password(plain: str) -> str:
+    """Deprecated password hashing helper retained for archival purposes."""
+
+    warnings.warn(_PASSWORD_DEPRECATION_MSG, DeprecationWarning, stacklevel=2)
     salt = bcrypt.gensalt()
     return bcrypt.hashpw(plain.encode(), salt).decode()
 
+
 def check_password(plain: str, hashed: str) -> bool:
+    """Deprecated password verification helper retained for archival purposes."""
+
+    warnings.warn(_PASSWORD_DEPRECATION_MSG, DeprecationWarning, stacklevel=2)
     return bcrypt.checkpw(plain.encode(), hashed.encode())
+
 
 def login_required(f):
     @wraps(f)
