@@ -1,150 +1,251 @@
 {% extends "layout.html" %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/pricing.css') }}">
 <script src="https://js.stripe.com/v3/"></script>
 {% endblock %}
 
 {% block content %}
-<div class="pricing-container">
-  <div class="pricing-header hero-premium animate-premium-fade">
-    <h1>Scegli il Tuo Piano</h1>
-    <p>Sblocca funzionalità di monitoraggio avanzate con Premium</p>
-  </div>
-  
-  <div class="pricing-grid">
-    <div class="pricing-card card-premium animate-premium-slide">
-      <div class="plan-header">
-        <h3>Gratuito</h3>
-        <div class="price">
-          <span class="amount">€0</span>
-          <span class="period">/mese</span>
+<main id="main-content" class="pricing-page">
+  <section class="pricing-hero hero-premium animate-premium-fade" role="banner" aria-label="Piani EtnaMonitor">
+    <div class="hero-background" aria-hidden="true">
+      <span class="orb orb-one"></span>
+      <span class="orb orb-two"></span>
+      <span class="grid-overlay"></span>
+    </div>
+
+    <div class="pricing-hero-inner">
+      <div class="hero-copy">
+        <div class="hero-brand" role="presentation">
+          <img src="{{ LOGO_DATA_URL }}" alt="Logo EtnaMonitor" class="hero-logo">
+          <div class="hero-brand-text">
+            <span class="brand-name">EtnaMonitor</span>
+            <span class="brand-tagline">Volcano Intelligence Platform</span>
+          </div>
+        </div>
+
+        <h1 class="hero-title">Scegli il piano perfetto per il tuo monitoraggio</h1>
+        <p class="hero-subtitle">
+          Dalla panoramica gratuita alle analisi avanzate con automazione, i piani EtnaMonitor mantengono il tuo team aggiornato
+          sul tremore vulcanico dell'Etna con un look &amp; feel coerente e strumenti professionali.
+        </p>
+
+        <div class="hero-actions">
+          {% if not session.user_id %}
+            <a href="{{ url_for('auth.register') }}" class="btn btn-premium" aria-label="Inizia la prova gratuita di EtnaMonitor">Inizia prova gratuita</a>
+          {% elif current_user.premium %}
+            <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-premium" aria-label="Gestisci il tuo abbonamento premium">Gestisci abbonamento</a>
+          {% else %}
+            <button id="upgrade-btn" class="btn btn-premium" aria-label="Aggiorna il tuo piano a Premium">Aggiorna ora</button>
+          {% endif %}
+          <a href="#plans" class="btn btn-secondary glass" aria-label="Confronta i piani EtnaMonitor">Confronta i piani</a>
         </div>
       </div>
-      
-      <div class="plan-features">
-        <ul>
-          <li><span class="check">✓</span> Ultimi 7 giorni di dati</li>
-          <li><span class="check">✓</span> Monitoraggio tremore di base</li>
-          <li><span class="check">✓</span> Soglia fissa (2.0 mV)</li>
-          <li><span class="check">✓</span> Frequenza aggiornamento standard</li>
-          <li><span class="cross">✕</span> Soglie personalizzate</li>
-          <li><span class="cross">✕</span> Avvisi in tempo reale</li>
-          <li><span class="cross">✕</span> Esportazione dati</li>
-          <li><span class="cross">✕</span> Cronologia eventi</li>
+
+      <aside class="hero-panel glass" aria-label="Anteprima benefici premium">
+        <h3>Perché passare a Premium</h3>
+        <ul class="hero-highlights" role="list">
+          <li>
+            <span class="highlight-icon" aria-hidden="true"><i class="fa-solid fa-satellite-dish"></i></span>
+            Streaming in tempo reale dalle stazioni INGV
+          </li>
+          <li>
+            <span class="highlight-icon" aria-hidden="true"><i class="fa-solid fa-bell"></i></span>
+            Avvisi istantanei via Email e Telegram
+          </li>
+          <li>
+            <span class="highlight-icon" aria-hidden="true"><i class="fa-solid fa-chart-line"></i></span>
+            Dashboard avanzata con export CSV/PNG
+          </li>
+          <li>
+            <span class="highlight-icon" aria-hidden="true"><i class="fa-solid fa-lock"></i></span>
+            Sicurezza enterprise con gestione account
+          </li>
         </ul>
-      </div>
-      
-      <div class="plan-action">
-        {% if not session.user_id %}
-        <a href="{{ url_for('auth.register') }}" class="btn btn-secondary glass" aria-label="Inizia prova gratuita">Inizia Ora</a>
-        {% elif not current_user.premium %}
-        <button class="btn btn-secondary glass" disabled>Piano Attuale</button>
-        {% else %}
-        <button class="btn btn-secondary glass" disabled>Declassamento Disponibile</button>
-        {% endif %}
-      </div>
+      </aside>
     </div>
-    
-    <div class="pricing-card card-premium premium animate-premium-slide">
-      <div class="plan-badge">Più Popolare</div>
-      <div class="plan-header">
-        <h3>Premium</h3>
-        <div class="price">
-          <span class="amount">€9.99</span>
-          <span class="period">/mese</span>
-        </div>
-      </div>
-      
-      <div class="plan-features">
-        <ul>
-          <li><span class="check">✓</span> Cronologia dati completa</li>
-          <li><span class="check">✓</span> Monitoraggio in tempo reale</li>
-          <li><span class="check">✓</span> Soglie personalizzate (0.1-10 mV)</li>
-          <li><span class="check">✓</span> Avvisi istantanei (Email + Telegram)</li>
-          <li><span class="check">✓</span> Esportazione dati (CSV, PNG)</li>
-          <li><span class="check">✓</span> Cronologia eventi e log</li>
-          <li><span class="check">✓</span> Supporto prioritario</li>
-          <li><span class="check">✓</span> Analisi avanzate</li>
+  </section>
+
+  <section id="plans" class="plans-section animate-premium-slide" aria-labelledby="plans-title">
+    <div class="section-header">
+      <h2 id="plans-title">Confronta i piani</h2>
+      <p>Ogni piano include accesso alla piattaforma cloud EtnaMonitor con aggiornamenti costanti e supporto dedicato.</p>
+    </div>
+
+    <div class="plan-grid">
+      <article class="plan-card glass" aria-label="Piano Gratuito">
+        <header class="plan-header">
+          <div class="plan-labels">
+            <span class="plan-name">Gratuito</span>
+            <span class="plan-tag">Ideale per iniziare</span>
+          </div>
+          <div class="plan-price">
+            <span class="currency">€</span><span class="amount">0</span>
+            <span class="period">/mese</span>
+          </div>
+        </header>
+
+        <ul class="plan-features" role="list">
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Ultimi 7 giorni di dati storici</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Monitoraggio tremore di base</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Soglia fissa preconfigurata (2.0 mV)</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Aggiornamenti standard ogni 15 minuti</li>
+          <li><span class="feature-icon muted" aria-hidden="true"><i class="fa-solid fa-minus"></i></span> Nessuna esportazione dati o avvisi</li>
+          <li><span class="feature-icon muted" aria-hidden="true"><i class="fa-solid fa-minus"></i></span> Supporto comunità</li>
         </ul>
+
+        <footer class="plan-footer">
+          {% if not session.user_id %}
+            <a href="{{ url_for('auth.register') }}" class="btn btn-secondary glass" aria-label="Registrati con piano gratuito">Inizia ora</a>
+          {% elif not current_user.premium %}
+            <button class="btn btn-secondary glass" disabled aria-disabled="true">Piano attuale</button>
+          {% else %}
+            <button class="btn btn-secondary glass" disabled aria-disabled="true">Disponibile downgrade</button>
+          {% endif %}
+        </footer>
+      </article>
+
+      <article class="plan-card plan-card-premium" aria-label="Piano Premium">
+        <header class="plan-header">
+          <div class="plan-labels">
+            <span class="plan-badge">Più Popolare</span>
+            <span class="plan-name">Premium</span>
+            <span class="plan-tag">Per team e professionisti</span>
+          </div>
+          <div class="plan-price">
+            <span class="currency">€</span><span class="amount">9.99</span>
+            <span class="period">/mese</span>
+          </div>
+        </header>
+
+        <ul class="plan-features" role="list">
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Cronologia dati completa e illimitata</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Streaming in tempo reale a bassa latenza</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Soglie personalizzate (0.1 – 10 mV) e alert smart</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Avvisi istantanei via Email, Telegram e Webhook</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Esportazione CSV/PNG e API per integrazioni</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Cronologia eventi con annotazioni</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Supporto prioritario 7×24</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Accesso anticipato a feature sperimentali</li>
+        </ul>
+
+        <footer class="plan-footer">
+          {% if not session.user_id %}
+            <a href="{{ url_for('auth.register') }}" class="btn btn-premium" aria-label="Prova il piano premium gratuitamente">Inizia prova gratuita</a>
+          {% elif current_user.premium %}
+            <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-secondary glass" aria-label="Gestisci il tuo abbonamento premium">Gestisci abbonamento</a>
+          {% else %}
+            <button id="upgrade-btn" class="btn btn-premium" aria-label="Aggiorna al piano premium">Aggiorna ora</button>
+          {% endif %}
+        </footer>
+      </article>
+    </div>
+
+    <div class="plan-metrics glass" role="list">
+      <div class="metric-item" role="listitem">
+        <span class="metric-label">SLA uptime</span>
+        <span class="metric-value">99.9%</span>
       </div>
-      
-      <div class="plan-action">
-        {% if not session.user_id %}
-        <a href="{{ url_for('auth.register') }}" class="btn btn-premium" aria-label="Inizia prova premium gratuita">Inizia Prova Gratuita</a>
-        {% elif current_user.premium %}
-        <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-secondary glass">Gestisci Abbonamento</a>
-        {% else %}
-        <button id="upgrade-btn" class="btn btn-premium" aria-label="Aggiorna a piano premium">Aggiorna Ora</button>
-        {% endif %}
+      <div class="metric-item" role="listitem">
+        <span class="metric-label">Aggiornamenti dati</span>
+        <span class="metric-value">Ogni 60s (premium)</span>
+      </div>
+      <div class="metric-item" role="listitem">
+        <span class="metric-label">Integrazioni</span>
+        <span class="metric-value">Email · Telegram · Webhook</span>
+      </div>
+      <div class="metric-item" role="listitem">
+        <span class="metric-label">Team supportati</span>
+        <span class="metric-value">5+ membri</span>
       </div>
     </div>
-  </div>
-  
-  <div class="faq-section card-premium animate-premium-fade">
-    <h2>Domande Frequenti</h2>
-    
-    <div class="faq-grid">
-      <div class="faq-item">
-        <h4>Quali fonti di dati utilizzate?</h4>
-        <p>Elaboriamo dati sismici in tempo reale dalle stazioni di monitoraggio INGV (Istituto Nazionale di Geofisica e Vulcanologia) sull'Etna.</p>
-      </div>
-      
-      <div class="faq-item">
-        <h4>Quanto sono accurati gli avvisi?</h4>
-        <p>Il nostro sistema elabora dati ufficiali INGV con soglie personalizzabili. Gli utenti Premium possono regolare la sensibilità per ridurre i falsi positivi.</p>
-      </div>
-      
-      <div class="faq-item">
-        <h4>Posso cancellare in qualsiasi momento?</h4>
-        <p>Sì, puoi cancellare il tuo abbonamento Premium in qualsiasi momento. Manterrai l'accesso fino alla fine del periodo di fatturazione.</p>
-      </div>
-      
-      <div class="faq-item">
-        <h4>C'è una prova gratuita?</h4>
-        <p>Sì! I nuovi abbonati Premium ottengono una prova gratuita di 7 giorni con accesso completo a tutte le funzionalità.</p>
-      </div>
-      
-      <div class="faq-item">
-        <h4>Quali metodi di pagamento accettate?</h4>
-        <p>Accettiamo tutte le principali carte di credito, carte di debito e addebito diretto SEPA tramite la nostra integrazione sicura Stripe.</p>
-      </div>
-      
-      <div class="faq-item">
-        <h4>Offrite rimborsi?</h4>
-        <p>Offriamo una garanzia di rimborso di 30 giorni per gli abbonamenti annuali. Gli abbonamenti mensili possono essere cancellati in qualsiasi momento.</p>
-      </div>
+  </section>
+
+  <section class="feature-showcase animate-premium-fade" aria-labelledby="feature-showcase-title">
+    <div class="section-header">
+      <h2 id="feature-showcase-title">Tutto ciò che serve per reagire in tempo</h2>
+      <p>Dal rilevamento anticipato alla collaborazione cross-team, EtnaMonitor centralizza gli insight sismici con workflow pronti all'azione.</p>
     </div>
-  </div>
-  
-  <div class="trust-section card-premium animate-premium-slide">
-    <div class="trust-items">
-      <div class="trust-item">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-        </svg>
-        <span>Pagamenti sicuri con Stripe</span>
-      </div>
-      
-      <div class="trust-item">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M9 12l2 2 4-4"/>
-          <circle cx="12" cy="12" r="9"/>
-        </svg>
-        <span>Conforme GDPR</span>
-      </div>
-      
-      <div class="trust-item">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-          <circle cx="8.5" cy="7" r="4"/>
-          <path d="M20 8v6M23 11h-6"/>
-        </svg>
-        <span>Cancella in qualsiasi momento</span>
-      </div>
+
+    <div class="feature-grid">
+      <article class="feature-card glass">
+        <div class="feature-icon-wrap" aria-hidden="true"><i class="fa-solid fa-bolt"></i></div>
+        <h3>Alert intelligenti</h3>
+        <p>Configura soglie multiple e silenzi temporanei per ricevere solo notifiche critiche quando il tremore supera i livelli di attenzione.</p>
+      </article>
+      <article class="feature-card glass">
+        <div class="feature-icon-wrap" aria-hidden="true"><i class="fa-solid fa-database"></i></div>
+        <h3>Dati illimitati</h3>
+        <p>Accedi all'intera serie storica e scarica CSV, PNG o usa l'API per integrare i dati nei tuoi modelli previsionali.</p>
+      </article>
+      <article class="feature-card glass">
+        <div class="feature-icon-wrap" aria-hidden="true"><i class="fa-solid fa-users-gear"></i></div>
+        <h3>Collaborazione team</h3>
+        <p>Gestisci membri, ruoli e log attività con audit trail completo per squadre di monitoraggio, ricerca e protezione civile.</p>
+      </article>
     </div>
-  </div>
-</div>
+  </section>
+
+  <section class="faq-section glass animate-premium-slide" aria-labelledby="faq-title">
+    <div class="section-header">
+      <h2 id="faq-title">Domande frequenti</h2>
+      <p>Risposte rapide ai dubbi più comuni su prezzi, fatturazione e sicurezza.</p>
+    </div>
+
+    <div class="faq-grid" role="list">
+      <article class="faq-item" role="listitem">
+        <h3>Quali fonti di dati utilizzate?</h3>
+        <p>Elaboriamo dati sismici in tempo reale dalle stazioni di monitoraggio INGV, con pipeline proprietaria per garantire precisione e resilienza.</p>
+      </article>
+      <article class="faq-item" role="listitem">
+        <h3>Quanto sono accurati gli avvisi?</h3>
+        <p>Gli alert sfruttano soglie dinamiche e controlli manuali. Gli utenti Premium possono regolare sensibilità e finestra temporale per minimizzare falsi positivi.</p>
+      </article>
+      <article class="faq-item" role="listitem">
+        <h3>Posso cancellare in qualsiasi momento?</h3>
+        <p>Sì, puoi interrompere il rinnovo automatico dal portale Stripe. L'accesso Premium resta attivo fino alla fine del ciclo di fatturazione.</p>
+      </article>
+      <article class="faq-item" role="listitem">
+        <h3>C'è una prova gratuita?</h3>
+        <p>Tutti i nuovi abbonati ottengono 7 giorni di prova con funzionalità complete per testare alert, export e strumenti avanzati.</p>
+      </article>
+      <article class="faq-item" role="listitem">
+        <h3>Quali metodi di pagamento accettate?</h3>
+        <p>Gestiamo carte di credito/debito e addebito diretto SEPA tramite Stripe con tokenizzazione sicura e conformità PCI.</p>
+      </article>
+      <article class="faq-item" role="listitem">
+        <h3>Offrite rimborsi?</h3>
+        <p>Per i piani annuali è prevista una garanzia di rimborso di 30 giorni. I piani mensili possono essere disdetti in qualsiasi momento senza penali.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="trust-ribbon animate-premium-fade" aria-label="Sicurezza e fiducia">
+    <div class="trust-item">
+      <i class="fa-solid fa-shield-check" aria-hidden="true"></i>
+      <span>Pagamenti sicuri con Stripe</span>
+    </div>
+    <div class="trust-item">
+      <i class="fa-solid fa-user-lock" aria-hidden="true"></i>
+      <span>Compliant GDPR &amp; backup continuo</span>
+    </div>
+    <div class="trust-item">
+      <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
+      <span>Cancella o cambia piano quando vuoi</span>
+    </div>
+  </section>
+
+  <section class="cta-banner glass animate-premium-slide" aria-label="Richiedi una demo personalizzata">
+    <div class="cta-copy">
+      <h2>Vuoi una demo live per il tuo team?</h2>
+      <p>Scopri come EtnaMonitor può integrarsi nei tuoi workflow operativi con una sessione guidata dagli specialisti vulcanologici.</p>
+    </div>
+    <div class="cta-actions">
+      <a href="mailto:hello@etnamonitor.io" class="btn btn-secondary glass" aria-label="Richiedi una demo personalizzata">Prenota una demo</a>
+      <a href="{{ url_for('auth.register') }}" class="btn btn-premium" aria-label="Attiva subito EtnaMonitor">Attiva subito</a>
+    </div>
+  </section>
+</main>
 
 <script>
 const stripe = Stripe('{{ config.STRIPE_PUBLIC_KEY }}');
@@ -153,15 +254,15 @@ document.getElementById('upgrade-btn')?.addEventListener('click', async () => {
   const button = document.getElementById('upgrade-btn');
   button.disabled = true;
   button.textContent = 'Elaborazione...';
-  
+
   try {
     const response = await fetch('/billing/create-checkout-session', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
-    
+
     const data = await response.json();
-    
+
     if (data.checkout_url) {
       window.location.href = data.checkout_url;
     } else {
@@ -170,7 +271,7 @@ document.getElementById('upgrade-btn')?.addEventListener('click', async () => {
   } catch (error) {
     alert('Errore: ' + error.message);
     button.disabled = false;
-    button.textContent = 'Aggiorna Ora';
+    button.textContent = 'Aggiorna ora';
   }
 });
 </script>
