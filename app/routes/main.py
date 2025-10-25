@@ -35,6 +35,16 @@ def index():
 def pricing():
     return render_template("pricing.html")
 
+
+@bp.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
+
+
+@bp.route("/cookies")
+def cookies():
+    return render_template("cookies.html")
+
 @bp.route("/healthz")
 def healthcheck():
     return jsonify({"status": "ok"}), 200
