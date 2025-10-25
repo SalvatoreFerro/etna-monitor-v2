@@ -51,7 +51,13 @@ def auth_google():
     if next_page:
         session["post_login_redirect"] = next_page
 
-    redirect_uri = url_for("auth.auth_callback", _external=True)
+    # Use the redirect URI configured in the environment to match the value
+    # registered with Google. Fall back to a dynamically generated URL for
+    # local development when the env variable is missing.
+    redirect_uri = (
+        current_app.config.get("GOOGLE_REDIRECT_URI")
+        or url_for("auth.auth_callback", _external=True)
+    )
     params = {
         "client_id": client_id,
         "response_type": "code",
@@ -91,7 +97,12 @@ def auth_callback():
         return redirect(url_for("auth.login"))
 
     token_endpoint = "https://oauth2.googleapis.com/token"
-    redirect_uri = url_for("auth.auth_callback", _external=True)
+    # Reuse the same redirect URI used during the authorization request to
+    # satisfy Google's strict redirect matching rules.
+    redirect_uri = (
+        current_app.config.get("GOOGLE_REDIRECT_URI")
+        or url_for("auth.auth_callback", _external=True)
+    )
     token_payload = {
         "code": code,
         "client_id": client_id,
@@ -107,6 +118,8 @@ def auth_callback():
 
     token_json = token_response.json()
     access_token = token_json.get("access_token")
+    id_token = token_json.get("id_token")
+    refresh_token = token_json.get("refresh_token")
     if not access_token:
         flash("Google did not return an access token.", "error")
         return redirect(url_for("auth.login"))
@@ -150,7 +163,14 @@ def auth_callback():
 
     db.session.commit()
 
+    # Persist the OAuth session information to simplify future API calls or
+    # refresh flows. Tokens remain in the server-side session.
     session["user_id"] = user.id
+    session["google_access_token"] = access_token
+    if refresh_token:
+        session["google_refresh_token"] = refresh_token
+    if id_token:
+        session["google_id_token"] = id_token
     flash("Login effettuato con Google!", "success")
 
     next_page = session.pop("post_login_redirect", None) or request.args.get("next")
