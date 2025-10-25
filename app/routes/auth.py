@@ -2,6 +2,7 @@ import secrets
 from urllib.parse import urlencode
 
 import requests
+import traceback
 from flask import (
     Blueprint,
     current_app,
@@ -15,6 +16,7 @@ from flask import (
 
 from ..models import db
 from ..models.user import User
+from sqlalchemy.exc import IntegrityError
 
 bp = Blueprint("auth", __name__)
 
@@ -111,72 +113,108 @@ def auth_callback():
         "grant_type": "authorization_code",
     }
 
-    token_response = requests.post(token_endpoint, data=token_payload, timeout=10)
-    if token_response.status_code != 200:
-        flash("Could not verify Google credentials.", "error")
-        return redirect(url_for("auth.login"))
+    try:
+        token_response = requests.post(token_endpoint, data=token_payload, timeout=10)
+        if token_response.status_code != 200:
+            current_app.logger.error(
+                "Google token endpoint failed with status %s: %s",
+                token_response.status_code,
+                token_response.text,
+            )
+            flash("Could not verify Google credentials.", "error")
+            return redirect(url_for("auth.login"))
 
-    token_json = token_response.json()
-    access_token = token_json.get("access_token")
-    id_token = token_json.get("id_token")
-    refresh_token = token_json.get("refresh_token")
-    if not access_token:
-        flash("Google did not return an access token.", "error")
-        return redirect(url_for("auth.login"))
+        token_json = token_response.json()
+        access_token = token_json.get("access_token")
+        id_token = token_json.get("id_token")
+        refresh_token = token_json.get("refresh_token")
+        if not access_token:
+            flash("Google did not return an access token.", "error")
+            return redirect(url_for("auth.login"))
 
-    userinfo_endpoint = "https://www.googleapis.com/oauth2/v3/userinfo"
-    userinfo_response = requests.get(
-        userinfo_endpoint,
-        headers={"Authorization": f"Bearer {access_token}"},
-        timeout=10,
-    )
-
-    if userinfo_response.status_code != 200:
-        flash("Unable to fetch Google profile information.", "error")
-        return redirect(url_for("auth.login"))
-
-    profile = userinfo_response.json()
-    google_id = profile.get("sub")
-    email = profile.get("email")
-
-    if not google_id or not email:
-        flash("Google profile is missing required information.", "error")
-        return redirect(url_for("auth.login"))
-
-    user = User.query.filter_by(google_id=google_id).first()
-    if not user and email:
-        user = User.query.filter_by(email=email).first()
-
-    if user:
-        user.google_id = google_id
-        user.email = email or user.email
-        user.name = profile.get("name")
-        user.picture_url = profile.get("picture")
-    else:
-        user = User(
-            email=email,
-            google_id=google_id,
-            name=profile.get("name"),
-            picture_url=profile.get("picture"),
+        userinfo_endpoint = "https://www.googleapis.com/oauth2/v3/userinfo"
+        userinfo_response = requests.get(
+            userinfo_endpoint,
+            headers={"Authorization": f"Bearer {access_token}"},
+            timeout=10,
         )
-        db.session.add(user)
 
-    db.session.commit()
+        if userinfo_response.status_code != 200:
+            current_app.logger.error(
+                "Google userinfo endpoint failed with status %s: %s",
+                userinfo_response.status_code,
+                userinfo_response.text,
+            )
+            flash("Unable to fetch Google profile information.", "error")
+            return redirect(url_for("auth.login"))
 
-    # Persist the OAuth session information to simplify future API calls or
-    # refresh flows. Tokens remain in the server-side session.
-    session["user_id"] = user.id
-    session["google_access_token"] = access_token
-    if refresh_token:
-        session["google_refresh_token"] = refresh_token
-    if id_token:
-        session["google_id_token"] = id_token
-    flash("Login effettuato con Google!", "success")
+        profile = userinfo_response.json()
+        google_id = profile.get("sub")
+        email = profile.get("email")
 
-    next_page = session.pop("post_login_redirect", None) or request.args.get("next")
-    if next_page:
-        return redirect(next_page)
-    return redirect(url_for("dashboard.dashboard_home"))
+        if not google_id or not email:
+            flash("Google profile is missing required information.", "error")
+            return redirect(url_for("auth.login"))
+
+        user = User.query.filter_by(google_id=google_id).first()
+        if not user and email:
+            user = User.query.filter_by(email=email).first()
+
+        if user:
+            user.google_id = google_id
+            user.email = email or user.email
+            user.name = profile.get("name")
+            user.picture_url = profile.get("picture")
+        else:
+            user = User(
+                email=email,
+                google_id=google_id,
+                name=profile.get("name"),
+                picture_url=profile.get("picture"),
+            )
+            db.session.add(user)
+
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            existing_user = None
+            if email:
+                existing_user = User.query.filter_by(email=email).first()
+            if not existing_user and google_id:
+                existing_user = User.query.filter_by(google_id=google_id).first()
+
+            if not existing_user:
+                raise
+
+            existing_user.google_id = google_id
+            existing_user.email = email or existing_user.email
+            existing_user.name = profile.get("name")
+            existing_user.picture_url = profile.get("picture")
+
+            db.session.add(existing_user)
+            db.session.commit()
+            user = existing_user
+
+        # Persist the OAuth session information to simplify future API calls or
+        # refresh flows. Tokens remain in the server-side session.
+        session["user_id"] = user.id
+        session["google_access_token"] = access_token
+        if refresh_token:
+            session["google_refresh_token"] = refresh_token
+        if id_token:
+            session["google_id_token"] = id_token
+        flash("Login effettuato con Google!", "success")
+
+        next_page = session.pop("post_login_redirect", None) or request.args.get("next")
+        if next_page:
+            return redirect(next_page)
+        return redirect(url_for("dashboard.dashboard_home"))
+    except Exception:
+        current_app.logger.exception("OAuth callback failed")
+        current_app.logger.debug("Full traceback: %s", traceback.format_exc())
+        flash("We could not complete the Google sign-in. Please try again.", "error")
+        return redirect(url_for("auth.login"))
 
 
 @bp.route("/logout", methods=["GET"])
