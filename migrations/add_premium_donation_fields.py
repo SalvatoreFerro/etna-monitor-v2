@@ -24,8 +24,8 @@ def upgrade():
 
         existing_columns = {col['name'] for col in inspector.get_columns('users')}
         columns_to_add = [
-            ('is_premium', 'BOOLEAN DEFAULT 0 NOT NULL'),
-            ('premium_lifetime', 'BOOLEAN DEFAULT 0 NOT NULL'),
+            ('is_premium', 'BOOLEAN DEFAULT FALSE NOT NULL'),
+            ('premium_lifetime', 'BOOLEAN DEFAULT FALSE NOT NULL'),
             ('premium_since', 'TIMESTAMP'),
             ('donation_tx', 'VARCHAR(255)')
         ]
