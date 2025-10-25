@@ -23,9 +23,16 @@ from config import Config
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
-    if not app.config["SQLALCHEMY_DATABASE_URI"]:
-        app.logger.warning("[BOOT] DATABASE_URL not set. Falling back to default SQLALCHEMY_DATABASE_URI from Config.")
+
+    database_url = os.getenv("INTERNAL_DATABASE_URL") or os.getenv("DATABASE_URL")
+    if database_url:
+        if database_url.startswith("postgres://"):
+            database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
+        app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+    else:
+        app.logger.warning(
+            "[BOOT] DATABASE_URL not set. Falling back to default SQLALCHEMY_DATABASE_URI from Config."
+        )
         app.config["SQLALCHEMY_DATABASE_URI"] = Config.SQLALCHEMY_DATABASE_URI
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["CANONICAL_HOST"] = os.getenv("CANONICAL_HOST", "")
