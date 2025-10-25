@@ -4,7 +4,6 @@
 from app import create_app
 from app.models import db
 from app.models.user import User
-from app.utils.auth import hash_password
 import os
 
 def init_database():
@@ -14,15 +13,16 @@ def init_database():
         db.create_all()
         
         admin_email = os.getenv('ADMIN_EMAIL', 'admin@etnamonitor.com')
-        admin_password = os.getenv('ADMIN_PASSWORD', 'admin123')
+        admin_google_id = os.getenv('ADMIN_GOOGLE_ID')
         
         if not User.query.filter_by(email=admin_email).first():
             admin_user = User(
                 email=admin_email,
-                password_hash=hash_password(admin_password),
                 is_admin=True,
                 premium=True
             )
+            if admin_google_id:
+                admin_user.google_id = admin_google_id
             db.session.add(admin_user)
             db.session.commit()
             print(f"Admin user created: {admin_email}")

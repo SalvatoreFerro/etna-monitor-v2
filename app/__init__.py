@@ -51,7 +51,9 @@ def create_app():
             
             if 'users' in inspector.get_table_names():
                 existing_columns = [col['name'] for col in inspector.get_columns('users')]
-                
+                existing_indexes = [index['name'] for index in inspector.get_indexes('users')]
+                existing_uniques = [constraint['name'] for constraint in inspector.get_unique_constraints('users')]
+
                 billing_columns = [
                     ('stripe_customer_id', 'VARCHAR(100)'),
                     ('subscription_status', 'VARCHAR(20) DEFAULT "free"'),
@@ -63,7 +65,7 @@ def create_app():
                     ('vat_id', 'VARCHAR(50)'),
                     ('email_alerts', 'BOOLEAN DEFAULT 0 NOT NULL')
                 ]
-                
+
                 columns_added = 0
                 for column_name, column_def in billing_columns:
                     if column_name not in existing_columns:
@@ -75,12 +77,69 @@ def create_app():
                             columns_added += 1
                         except Exception as e:
                             print(f"⚠️  Auto-migration: Could not add column {column_name}: {e}")
-                
+
                 if columns_added > 0:
                     print(f"🎉 Auto-migration: Added {columns_added} billing columns to users table")
-            
+
+                auth_columns = [
+                    ('google_id', 'VARCHAR(255)'),
+                    ('name', 'VARCHAR(255)'),
+                    ('picture_url', 'VARCHAR(512)')
+                ]
+
+                auth_columns_added = 0
+                for column_name, column_def in auth_columns:
+                    if column_name not in existing_columns:
+                        try:
+                            with db.engine.connect() as conn:
+                                conn.execute(text(f'ALTER TABLE users ADD COLUMN {column_name} {column_def}'))
+                                conn.commit()
+                            existing_columns.append(column_name)
+                            auth_columns_added += 1
+                            print(f"✅ Auto-migration: Added column {column_name} to users table")
+                        except Exception as e:
+                            print(f"⚠️  Auto-migration: Could not add column {column_name}: {e}")
+
+                if auth_columns_added > 0:
+                    print(f"🎉 Auto-migration: Added {auth_columns_added} authentication columns to users table")
+
+                try:
+                    dialect = db.engine.dialect.name
+                    with db.engine.connect() as conn:
+                        if dialect == 'postgresql' and 'uq_users_google_id' not in existing_uniques:
+                            conn.execute(text('ALTER TABLE users ADD CONSTRAINT uq_users_google_id UNIQUE (google_id)'))
+                            conn.commit()
+                            print("✅ Auto-migration: Added unique constraint uq_users_google_id")
+                        elif dialect == 'mysql' and 'uq_users_google_id' not in existing_indexes:
+                            conn.execute(text('ALTER TABLE users ADD UNIQUE INDEX uq_users_google_id (google_id)'))
+                            conn.commit()
+                            print("✅ Auto-migration: Added unique index uq_users_google_id")
+                        elif dialect == 'sqlite':
+                            conn.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS uq_users_google_id ON users (google_id)'))
+                            conn.commit()
+                            print("✅ Auto-migration: Ensured unique index uq_users_google_id")
+                except Exception as e:
+                    print(f"⚠️  Auto-migration: Could not ensure unique constraint on google_id: {e}")
+
+                if 'password_hash' in existing_columns:
+                    try:
+                        dialect = db.engine.dialect.name
+                        with db.engine.connect() as conn:
+                            if dialect == 'postgresql':
+                                conn.execute(text('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL'))
+                                conn.commit()
+                                print('✅ Auto-migration: password_hash set to nullable (PostgreSQL)')
+                            elif dialect == 'mysql':
+                                conn.execute(text('ALTER TABLE users MODIFY password_hash VARCHAR(128) NULL'))
+                                conn.commit()
+                                print('✅ Auto-migration: password_hash set to nullable (MySQL)')
+                            elif dialect == 'sqlite':
+                                print('ℹ️  Auto-migration: Skipping password_hash nullability change on SQLite')
+                    except Exception as e:
+                        print(f"⚠️  Auto-migration: Could not update password_hash nullability: {e}")
+
             db.create_all()
-            
+
         except Exception as e:
             print(f"⚠️  Auto-migration failed: {e}")
             pass
