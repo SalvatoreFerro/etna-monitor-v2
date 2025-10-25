@@ -1,0 +1,198 @@
+{% extends "layout.html" %}
+
+{% block title %}Gestione Banner Sponsor{% endblock %}
+
+{% block content %}
+<section class="admin-container" style="padding: clamp(16px, 4vw, 40px);">
+  <header class="admin-header card-premium animate-premium-fade" style="margin-bottom: clamp(16px, 3vw, 32px);">
+    <h1><i class="fas fa-image"></i> Banner sponsorizzati</h1>
+    <p>Carica, attiva o disattiva i banner visibili sulle pagine pubbliche.</p>
+    <div style="margin-top: 12px;">
+      <a href="{{ url_for('admin.admin_home') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-arrow-left"></i> Torna alla dashboard admin</a>
+    </div>
+  </header>
+
+  <div class="card-premium animate-premium-slide" style="margin-bottom: clamp(20px, 4vw, 36px);">
+    <form method="POST" action="{{ url_for('admin.banner_create') }}" class="stacked-form" style="display: grid; gap: 16px;">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <h2 style="margin: 0; font-size: 1.25rem;">Nuovo banner</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="title">Titolo</label>
+          <input type="text" id="title" name="title" class="input-base" placeholder="Nome sponsor" required>
+        </div>
+        <div class="form-group">
+          <label for="image_url">URL immagine</label>
+          <input type="url" id="image_url" name="image_url" class="input-base" placeholder="https://" required>
+        </div>
+        <div class="form-group">
+          <label for="target_url">Link destinazione</label>
+          <input type="url" id="target_url" name="target_url" class="input-base" placeholder="https://" required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="description">Descrizione (opzionale)</label>
+        <textarea id="description" name="description" class="input-base" rows="2" placeholder="Messaggio breve"></textarea>
+      </div>
+      <label class="checkbox-inline">
+        <input type="checkbox" name="active" value="1" checked> Attiva subito
+      </label>
+      <div>
+        <button type="submit" class="btn btn-premium"><i class="fas fa-plus"></i> Crea banner</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card-premium animate-premium-fade">
+    <h2 style="margin-bottom: 16px;">Banner esistenti</h2>
+    {% if banners %}
+      <div class="banner-list">
+        {% for banner in banners %}
+          <article class="banner-item">
+            <div class="banner-preview">
+              <img src="{{ banner.image_url }}" alt="{{ banner.title }}" loading="lazy">
+            </div>
+            <div class="banner-details">
+              <form method="POST" action="{{ url_for('admin.banner_update', banner_id=banner.id) }}" class="banner-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="form-grid">
+                  <div class="form-group">
+                    <label for="title-{{ banner.id }}">Titolo</label>
+                    <input type="text" id="title-{{ banner.id }}" name="title" class="input-base" value="{{ banner.title }}" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="image-{{ banner.id }}">URL immagine</label>
+                    <input type="url" id="image-{{ banner.id }}" name="image_url" class="input-base" value="{{ banner.image_url }}" required>
+                  </div>
+                  <div class="form-group">
+                    <label for="target-{{ banner.id }}">Link destinazione</label>
+                    <input type="url" id="target-{{ banner.id }}" name="target_url" class="input-base" value="{{ banner.target_url }}" required>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label for="description-{{ banner.id }}">Descrizione</label>
+                  <textarea id="description-{{ banner.id }}" name="description" class="input-base" rows="2">{{ banner.description or '' }}</textarea>
+                </div>
+                <label class="checkbox-inline">
+                  <input type="checkbox" name="active" value="1" {% if banner.active %}checked{% endif %}> Attivo
+                </label>
+                <div class="banner-actions">
+                  <button type="submit" class="btn btn-secondary glass btn-sm"><i class="fas fa-save"></i> Salva</button>
+                </div>
+              </form>
+              <div class="banner-meta">
+                <span class="badge {{ 'premium' if banner.active else 'free' }}">{{ 'Visibile' if banner.active else 'Nascosto' }}</span>
+                <small>Ultimo aggiornamento: {{ banner.updated_at.strftime('%d/%m/%Y %H:%M') if banner.updated_at else 'n/d' }}</small>
+              </div>
+            </div>
+            <div class="banner-controls">
+              <form method="POST" action="{{ url_for('admin.banner_toggle', banner_id=banner.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-secondary glass btn-sm">
+                  <i class="fas fa-eye{% if not banner.active %}-slash{% endif %}"></i>
+                  {{ 'Disattiva' if banner.active else 'Attiva' }}
+                </button>
+              </form>
+              <form method="POST" action="{{ url_for('admin.banner_delete', banner_id=banner.id) }}" onsubmit="return confirm('Eliminare questo banner?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i> Elimina</button>
+              </form>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="muted">Nessun banner registrato. Aggiungine uno per iniziare.</p>
+    {% endif %}
+  </div>
+</section>
+
+<style>
+  .form-grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  }
+
+  .banner-list {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(16px, 3vw, 24px);
+  }
+
+  .banner-item {
+    display: grid;
+    gap: clamp(16px, 4vw, 28px);
+    grid-template-columns: minmax(220px, 320px) 1fr auto;
+    padding: clamp(16px, 3vw, 24px);
+    border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(13, 19, 33, 0.7);
+  }
+
+  .banner-preview {
+    border-radius: 16px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.04);
+    display: grid;
+    place-items: center;
+    padding: 12px;
+  }
+
+  .banner-preview img {
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+  }
+
+  .banner-details {
+    display: grid;
+    gap: 16px;
+  }
+
+  .banner-form {
+    display: grid;
+    gap: 12px;
+  }
+
+  .banner-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    color: var(--text-secondary);
+  }
+
+  .banner-controls {
+    display: grid;
+    gap: 12px;
+    align-content: flex-start;
+  }
+
+  .checkbox-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+  }
+
+  @media (max-width: 1024px) {
+    .banner-item {
+      grid-template-columns: 1fr;
+    }
+
+    .banner-controls {
+      grid-auto-flow: column;
+      justify-content: flex-start;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .banner-controls {
+      grid-auto-flow: row;
+    }
+  }
+</style>
+{% endblock %}

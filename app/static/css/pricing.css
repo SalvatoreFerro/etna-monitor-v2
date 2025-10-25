@@ -461,6 +461,86 @@
   color: var(--accent);
 }
 
+.donation-support {
+  display: grid;
+  gap: clamp(24px, 4vw, 48px);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  padding: clamp(24px, 5vw, 56px);
+  border-radius: 28px;
+  border: 1px solid rgba(0, 210, 255, 0.18);
+  background: linear-gradient(135deg, rgba(10, 18, 38, 0.85), rgba(10, 24, 46, 0.9));
+}
+
+.donation-support__content {
+  display: grid;
+  gap: 16px;
+}
+
+.donation-support__content p {
+  color: var(--muted);
+}
+
+.donation-steps {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 10px;
+  color: var(--muted);
+}
+
+.donation-support__cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+
+.paypal-form {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.donation-support__aside {
+  display: grid;
+  gap: 16px;
+}
+
+.donation-card {
+  padding: clamp(16px, 3vw, 24px);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(14, 22, 40, 0.75);
+  display: grid;
+  gap: 12px;
+}
+
+.donation-card.secondary {
+  border-color: rgba(0, 210, 255, 0.18);
+  background: rgba(0, 210, 255, 0.08);
+}
+
+.donation-card ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--muted);
+  display: grid;
+  gap: 8px;
+}
+
+.donation-card p,
+.donation-card a {
+  color: var(--muted);
+}
+
+.donation-card a:hover {
+  color: var(--accent);
+}
+
 .cta-banner {
   display: grid;
   gap: 24px;
@@ -518,6 +598,10 @@
 
   .faq-section {
     padding: 28px;
+  }
+
+  .donation-support {
+    padding: clamp(20px, 7vw, 36px);
   }
 }
 

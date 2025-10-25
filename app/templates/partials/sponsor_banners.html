@@ -1,0 +1,84 @@
+{% if sponsor_banners %}
+<section class="sponsor-banners" aria-label="Sponsor EtnaMonitor">
+  <div class="sponsor-banners__inner">
+    <header class="sponsor-banners__header">
+      <span class="sponsor-badge" aria-hidden="true">Sponsor</span>
+      <p class="sponsor-tagline">Partner che supportano lo sviluppo indipendente di EtnaMonitor</p>
+    </header>
+    <div class="sponsor-banners__viewport" role="group" aria-roledescription="carousel">
+      <div class="sponsor-banners__track" data-banner-count="{{ sponsor_banners|length }}">
+        {% for banner in sponsor_banners %}
+          <article class="sponsor-card" data-index="{{ loop.index0 }}" role="group" aria-roledescription="slide" aria-label="{{ banner.title }}">
+            <a href="{{ banner.target_url }}" class="sponsor-card__link" target="_blank" rel="noopener">
+              <figure class="sponsor-card__figure">
+                <img src="{{ banner.image_url }}" alt="{{ banner.title }}" loading="lazy" />
+              </figure>
+              <div class="sponsor-card__content">
+                <h3 class="sponsor-card__title">{{ banner.title }}</h3>
+                {% if banner.description %}
+                  <p class="sponsor-card__description">{{ banner.description }}</p>
+                {% endif %}
+              </div>
+            </a>
+          </article>
+        {% endfor %}
+      </div>
+      {% if sponsor_banners|length > 3 %}
+        <div class="sponsor-banners__controls" aria-hidden="true">
+          <button class="sponsor-banners__prev" type="button" aria-label="Banner precedente">
+            <i class="fas fa-chevron-left"></i>
+          </button>
+          <button class="sponsor-banners__next" type="button" aria-label="Banner successivo">
+            <i class="fas fa-chevron-right"></i>
+          </button>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+<script>
+(function() {
+  const track = document.querySelector('.sponsor-banners__track');
+  if (!track) return;
+  const cards = Array.from(track.children);
+  const maxVisible = 3;
+  let currentIndex = 0;
+  const prevBtn = document.querySelector('.sponsor-banners__prev');
+  const nextBtn = document.querySelector('.sponsor-banners__next');
+
+  function updateVisibility() {
+    const total = cards.length;
+    cards.forEach((card, index) => {
+      const shouldShow = index >= currentIndex && index < currentIndex + maxVisible;
+      card.classList.toggle('is-visible', shouldShow);
+      card.setAttribute('aria-hidden', shouldShow ? 'false' : 'true');
+    });
+  }
+
+  function showNext() {
+    const total = cards.length;
+    if (total <= maxVisible) return;
+    currentIndex = (currentIndex + 1) % total;
+    if (currentIndex > total - maxVisible) {
+      currentIndex = 0;
+    }
+    updateVisibility();
+  }
+
+  function showPrev() {
+    const total = cards.length;
+    if (total <= maxVisible) return;
+    currentIndex = (currentIndex - 1 + total) % total;
+    updateVisibility();
+  }
+
+  if (prevBtn) prevBtn.addEventListener('click', showPrev);
+  if (nextBtn) nextBtn.addEventListener('click', showNext);
+
+  updateVisibility();
+  if (cards.length > maxVisible) {
+    setInterval(showNext, 8000);
+  }
+})();
+</script>
+{% endif %}

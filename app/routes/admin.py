@@ -7,6 +7,7 @@ from ..utils.auth import admin_required
 from ..models import db
 from ..models.user import User
 from ..models.event import Event
+from ..models.sponsor_banner import SponsorBanner
 from ..services.telegram_service import TelegramService
 from ..utils.csrf import validate_csrf_token
 
@@ -146,3 +147,101 @@ def activate_premium(user_id: int):
 
     flash('Attivato premium lifetime.', 'success')
     return redirect(url_for('admin.donations'))
+
+
+@bp.route("/banners", methods=["GET"])
+@admin_required
+def banner_list():
+    banners = SponsorBanner.query.order_by(SponsorBanner.created_at.desc()).all()
+    return render_template("admin/banners.html", banners=banners)
+
+
+@bp.route("/banners", methods=["POST"])
+@admin_required
+def banner_create():
+    if not validate_csrf_token(request.form.get('csrf_token')):
+        flash('Token di sicurezza non valido.', 'error')
+        return redirect(url_for('admin.banner_list'))
+
+    title = (request.form.get('title') or '').strip()
+    image_url = (request.form.get('image_url') or '').strip()
+    target_url = (request.form.get('target_url') or '').strip()
+    description = (request.form.get('description') or '').strip() or None
+    active = bool(request.form.get('active'))
+
+    if not title or not image_url or not target_url:
+        flash('Compila titolo, immagine e link destinazione.', 'error')
+        return redirect(url_for('admin.banner_list'))
+
+    banner = SponsorBanner(
+        title=title,
+        image_url=image_url,
+        target_url=target_url,
+        description=description,
+        active=active,
+    )
+    db.session.add(banner)
+    db.session.commit()
+
+    flash('Banner creato con successo.', 'success')
+    return redirect(url_for('admin.banner_list'))
+
+
+@bp.route("/banners/<int:banner_id>/toggle", methods=["POST"])
+@admin_required
+def banner_toggle(banner_id: int):
+    if not validate_csrf_token(request.form.get('csrf_token')):
+        flash('Token di sicurezza non valido.', 'error')
+        return redirect(url_for('admin.banner_list'))
+
+    banner = SponsorBanner.query.get_or_404(banner_id)
+    banner.active = not banner.active
+    db.session.commit()
+
+    flash('Stato banner aggiornato.', 'success')
+    return redirect(url_for('admin.banner_list'))
+
+
+@bp.route("/banners/<int:banner_id>/delete", methods=["POST"])
+@admin_required
+def banner_delete(banner_id: int):
+    if not validate_csrf_token(request.form.get('csrf_token')):
+        flash('Token di sicurezza non valido.', 'error')
+        return redirect(url_for('admin.banner_list'))
+
+    banner = SponsorBanner.query.get_or_404(banner_id)
+    db.session.delete(banner)
+    db.session.commit()
+
+    flash('Banner eliminato.', 'success')
+    return redirect(url_for('admin.banner_list'))
+
+
+@bp.route("/banners/<int:banner_id>/update", methods=["POST"])
+@admin_required
+def banner_update(banner_id: int):
+    if not validate_csrf_token(request.form.get('csrf_token')):
+        flash('Token di sicurezza non valido.', 'error')
+        return redirect(url_for('admin.banner_list'))
+
+    banner = SponsorBanner.query.get_or_404(banner_id)
+
+    title = (request.form.get('title') or '').strip()
+    image_url = (request.form.get('image_url') or '').strip()
+    target_url = (request.form.get('target_url') or '').strip()
+    description = (request.form.get('description') or '').strip() or None
+    active = bool(request.form.get('active'))
+
+    if not title or not image_url or not target_url:
+        flash('Titolo, immagine e link sono obbligatori.', 'error')
+        return redirect(url_for('admin.banner_list'))
+
+    banner.title = title
+    banner.image_url = image_url
+    banner.target_url = target_url
+    banner.description = description
+    banner.active = active
+    db.session.commit()
+
+    flash('Banner aggiornato.', 'success')
+    return redirect(url_for('admin.banner_list'))

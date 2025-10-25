@@ -1,0 +1,171 @@
+.sponsor-banners {
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.08), rgba(58, 123, 213, 0.08));
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: var(--space-4) clamp(16px, 5vw, 48px);
+  color: var(--text-primary);
+}
+
+.sponsor-banners__inner {
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.sponsor-banners__header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.sponsor-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(0, 210, 255, 0.12);
+  color: var(--accent);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+
+.sponsor-tagline {
+  font-size: clamp(0.95rem, 1.2vw, 1.05rem);
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.sponsor-banners__viewport {
+  position: relative;
+  overflow: hidden;
+}
+
+.sponsor-banners__track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--space-3);
+}
+
+.sponsor-card {
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(11, 16, 29, 0.72);
+  backdrop-filter: blur(12px);
+  transition: transform 0.4s ease, opacity 0.4s ease, border-color 0.4s ease;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.sponsor-card.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sponsor-card__link {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  text-decoration: none;
+  color: inherit;
+  padding: var(--space-3);
+  gap: var(--space-2);
+}
+
+.sponsor-card__figure {
+  margin: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.04);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 120px;
+}
+
+.sponsor-card__figure img {
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+.sponsor-card__title {
+  font-size: 1.05rem;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.sponsor-card__description {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.sponsor-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(0, 210, 255, 0.35);
+}
+
+.sponsor-banners__controls {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+
+.sponsor-banners__controls button {
+  pointer-events: auto;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.sponsor-banners__controls button:hover {
+  background: rgba(0, 210, 255, 0.18);
+  color: var(--text-primary);
+}
+
+@media (max-width: 1024px) {
+  .sponsor-banners__track {
+    gap: var(--space-2);
+  }
+}
+
+@media (max-width: 768px) {
+  .sponsor-banners {
+    padding: var(--space-3) clamp(12px, 6vw, 32px);
+  }
+
+  .sponsor-card__link {
+    padding: var(--space-2);
+  }
+
+  .sponsor-card__title {
+    font-size: 1rem;
+  }
+
+  .sponsor-card__description {
+    font-size: 0.9rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .sponsor-banners__track {
+    grid-auto-columns: minmax(0, 92vw);
+  }
+
+  .sponsor-card__figure {
+    min-height: 96px;
+  }
+}

@@ -1,4 +1,5 @@
 from .utils.auth import get_current_user
+from .models.sponsor_banner import SponsorBanner
 
 
 def inject_user():
@@ -15,3 +16,13 @@ def inject_user():
         current_user_name=user_name,
         current_user_avatar_url=user_avatar,
     )
+
+
+def inject_sponsor_banners():
+    banners = (
+        SponsorBanner.query.filter_by(active=True)
+        .order_by(SponsorBanner.created_at.desc())
+        .limit(12)
+        .all()
+    )
+    return {"sponsor_banners": banners}

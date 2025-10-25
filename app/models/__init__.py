@@ -10,5 +10,6 @@ def init_db(app):
 
 from .user import User
 from .event import Event
+from .sponsor_banner import SponsorBanner
 
-__all__ = ['db', 'init_db', 'User', 'Event']
+__all__ = ['db', 'init_db', 'User', 'Event', 'SponsorBanner']

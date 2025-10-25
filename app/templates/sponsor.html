@@ -1,0 +1,111 @@
+{% extends "layout.html" %}
+
+{% block title %}Sponsor & Partnership - EtnaMonitor{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/sponsor.css') }}">
+{% endblock %}
+
+{% block content %}
+<main id="main-content" class="sponsor-page" aria-labelledby="sponsor-title">
+  <section class="sponsor-hero glass" role="banner">
+    <div class="sponsor-hero__copy">
+      <h1 id="sponsor-title">Diventa sponsor di EtnaMonitor</h1>
+      <p>Supporta il monitoraggio indipendente dell'Etna e raggiungi una community attenta a sicurezza, ricerca e turismo consapevole.</p>
+      <div class="sponsor-hero__actions">
+        <a href="{{ url_for('main.pricing') }}#donazioni" class="btn btn-premium">Sostieni con PayPal</a>
+        <a href="mailto:team@etnamonitor.it" class="btn btn-secondary glass">Parla con il team</a>
+      </div>
+    </div>
+    <div class="sponsor-hero__visual" aria-hidden="true">
+      <span class="sponsor-orb orb-one"></span>
+      <span class="sponsor-orb orb-two"></span>
+      <span class="sponsor-grid"></span>
+    </div>
+  </section>
+
+  <section class="sponsor-benefits" aria-labelledby="benefits-title">
+    <header class="section-header">
+      <h2 id="benefits-title">Perché sponsorizzare EtnaMonitor</h2>
+      <p>Metti in luce il tuo brand a fianco di un progetto usato da guide, protezione civile e appassionati di vulcanologia.</p>
+    </header>
+    <div class="benefit-grid" role="list">
+      <article class="benefit-card" role="listitem">
+        <div class="benefit-icon" aria-hidden="true"><i class="fas fa-satellite"></i></div>
+        <h3>Visibilità premium</h3>
+        <p>Banner dedicati nelle pagine più visitate e citazioni nei canali social di EtnaMonitor.</p>
+      </article>
+      <article class="benefit-card" role="listitem">
+        <div class="benefit-icon" aria-hidden="true"><i class="fas fa-mountain"></i></div>
+        <h3>Community locale</h3>
+        <p>Raggiungi guide vulcanologiche, fotografi e cittadini che seguono l'attività dell'Etna ogni giorno.</p>
+      </article>
+      <article class="benefit-card" role="listitem">
+        <div class="benefit-icon" aria-hidden="true"><i class="fas fa-hands-helping"></i></div>
+        <h3>Impatto concreto</h3>
+        <p>Ogni sponsorizzazione finanzia nuove funzionalità pubbliche: mappe venti, webcam e analisi AI.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="sponsor-packages glass" aria-labelledby="packages-title">
+    <header class="section-header">
+      <h2 id="packages-title">Formula sponsor</h2>
+      <p>Scegli come supportare EtnaMonitor: da semplici donazioni a partnership strutturate.</p>
+    </header>
+    <div class="package-grid" role="list">
+      <article class="package-card" role="listitem">
+        <h3>Supporter</h3>
+        <p class="package-description">Logo statico in homepage e citazione nella newsletter mensile.</p>
+        <ul class="package-list">
+          <li>Logo 400x120 px</li>
+          <li>Link dofollow al tuo sito</li>
+          <li>Ringraziamento nei social</li>
+        </ul>
+      </article>
+      <article class="package-card highlight" role="listitem">
+        <h3>Partner</h3>
+        <p class="package-description">Banner ruotanti in dashboard, roadmap e pagina sponsor.</p>
+        <ul class="package-list">
+          <li>Report mensile impression/click</li>
+          <li>Co-marketing su Telegram</li>
+          <li>Accesso Premium per il tuo team</li>
+        </ul>
+      </article>
+      <article class="package-card" role="listitem">
+        <h3>Innovation Lab</h3>
+        <p class="package-description">Collaborazione tecnica per integrare i tuoi dati o servizi nella piattaforma.</p>
+        <ul class="package-list">
+          <li>Workshop dedicati</li>
+          <li>Sviluppo feature co-branded</li>
+          <li>Analisi dati personalizzate</li>
+        </ul>
+      </article>
+    </div>
+    <div class="package-cta">
+      <a href="mailto:team@etnamonitor.it" class="btn btn-premium">Richiedi il media kit</a>
+      <a href="https://www.paypal.com/donate?hosted_button_id=2T6DKB7U2ZSK8" class="btn btn-secondary glass" target="_blank" rel="noopener">Donazione veloce</a>
+    </div>
+  </section>
+
+  <section class="sponsor-faq" aria-labelledby="faq-title">
+    <header class="section-header">
+      <h2 id="faq-title">Domande frequenti</h2>
+    </header>
+    <div class="faq-grid" role="list">
+      <article class="faq-card" role="listitem">
+        <h3>Quali formati accettate?</h3>
+        <p>Formato consigliato 1200x400 px in PNG o WebP con sfondo trasparente. I banner sono ottimizzati automaticamente.</p>
+      </article>
+      <article class="faq-card" role="listitem">
+        <h3>Serve un contratto?</h3>
+        <p>Per donazioni spot è sufficiente la ricevuta PayPal. Per partnership annuali inviamo accordo e fattura elettronica.</p>
+      </article>
+      <article class="faq-card" role="listitem">
+        <h3>Quanto dura la visibilità?</h3>
+        <p>I banner restano pubblicati per il periodo concordato (minimo 30 giorni) con report mensile trasparente.</p>
+      </article>
+    </div>
+  </section>
+</main>
+{% endblock %}

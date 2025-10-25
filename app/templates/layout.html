@@ -143,6 +143,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/banners.css') }}" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -190,15 +191,17 @@
               {% endif %}
             {% endif %}
             <a href="/pricing" class="nav-link {{ 'active' if request.endpoint == 'main.pricing' }}">Prezzi</a>
-            <div class="nav-dropdown">
-              <button class="nav-link nav-dropdown-toggle" type="button" aria-expanded="false" aria-haspopup="true">
-                Esplora
-                <i class="fas fa-chevron-down" aria-hidden="true"></i>
-              </button>
-              <div class="nav-dropdown-menu" role="menu">
-                <a href="/roadmap" class="nav-dropdown-item {{ 'active' if request.endpoint == 'main.roadmap' }}" role="menuitem">Roadmap</a>
+              <div class="nav-dropdown">
+                <button class="nav-link nav-dropdown-toggle" type="button" aria-expanded="false" aria-haspopup="true">
+                  Esplora
+                  <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                </button>
+                <div class="nav-dropdown-menu" role="menu">
+                  <a href="/roadmap" class="nav-dropdown-item {{ 'active' if request.endpoint == 'main.roadmap' }}" role="menuitem">Roadmap</a>
+                  <a href="/sponsor" class="nav-dropdown-item {{ 'active' if request.endpoint == 'main.sponsor' }}" role="menuitem">Sponsor</a>
+                  <a href="{{ url_for('main.pricing') }}#donazioni" class="nav-dropdown-item" role="menuitem">Donazioni PayPal</a>
+                </div>
               </div>
-            </div>
           </div>
           
           <div class="navbar-actions">
@@ -241,7 +244,9 @@
         </div>
       </div>
     </nav>
-    
+
+    {% include 'partials/sponsor_banners.html' %}
+
     <main class="main-content" role="main" aria-label="Main content" id="main-content">
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}

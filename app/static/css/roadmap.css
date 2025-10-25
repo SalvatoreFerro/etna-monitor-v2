@@ -176,6 +176,37 @@
   color: var(--text);
 }
 
+.roadmap-support {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+  padding: clamp(24px, 4vw, 40px);
+  border-radius: 22px;
+}
+
+.support-copy {
+  display: grid;
+  gap: 16px;
+}
+
+.support-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.support-note {
+  border-radius: 18px;
+  padding: 20px;
+  background: rgba(0, 210, 255, 0.08);
+  border: 1px solid rgba(0, 210, 255, 0.16);
+  color: var(--muted);
+}
+
+.support-note a {
+  color: var(--accent);
+}
+
 .roadmap-footer {
   padding: 48px;
   border-radius: 24px;

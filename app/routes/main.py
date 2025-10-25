@@ -41,6 +41,11 @@ def roadmap():
     return render_template("roadmap.html")
 
 
+@bp.route("/sponsor")
+def sponsor():
+    return render_template("sponsor.html")
+
+
 @bp.route("/privacy")
 def privacy():
     return render_template("privacy.html")

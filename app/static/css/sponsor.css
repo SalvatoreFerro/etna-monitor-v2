@@ -1,0 +1,212 @@
+.sponsor-page {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(40px, 6vw, 72px);
+  padding: clamp(24px, 6vw, 64px) clamp(16px, 6vw, 72px);
+  color: var(--text-primary);
+}
+
+.sponsor-hero {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  align-items: center;
+  gap: clamp(24px, 5vw, 64px);
+  padding: clamp(24px, 5vw, 64px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(140deg, rgba(17, 25, 40, 0.9), rgba(17, 25, 40, 0.72));
+  position: relative;
+  overflow: hidden;
+}
+
+.sponsor-hero__copy h1 {
+  font-size: clamp(2rem, 4vw, 2.75rem);
+  margin-bottom: var(--space-2);
+}
+
+.sponsor-hero__copy p {
+  font-size: clamp(1rem, 1.4vw, 1.15rem);
+  color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.sponsor-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.sponsor-hero__visual {
+  position: relative;
+  min-height: 220px;
+}
+
+.sponsor-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(0px);
+  opacity: 0.45;
+}
+
+.sponsor-orb.orb-one {
+  width: 220px;
+  height: 220px;
+  background: rgba(0, 210, 255, 0.4);
+  top: 0;
+  right: 10%;
+}
+
+.sponsor-orb.orb-two {
+  width: 180px;
+  height: 180px;
+  background: rgba(112, 68, 255, 0.35);
+  bottom: -40px;
+  left: 10%;
+}
+
+.sponsor-grid {
+  position: absolute;
+  inset: -20% -10%;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.15) 0%, transparent 65%);
+  opacity: 0.6;
+}
+
+.section-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.section-header h2 {
+  font-size: clamp(1.6rem, 3vw, 2.2rem);
+}
+
+.section-header p {
+  color: var(--text-secondary);
+  max-width: 720px;
+}
+
+.benefit-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+
+.benefit-card {
+  padding: var(--space-3);
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(13, 20, 35, 0.6);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.benefit-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: rgba(0, 210, 255, 0.12);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  font-size: 1.3rem;
+}
+
+.sponsor-packages {
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: clamp(24px, 5vw, 56px);
+  display: grid;
+  gap: clamp(24px, 4vw, 48px);
+}
+
+.package-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: clamp(16px, 3vw, 32px);
+}
+
+.package-card {
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(11, 18, 34, 0.72);
+  padding: clamp(20px, 3vw, 32px);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.package-card.highlight {
+  border-color: rgba(0, 210, 255, 0.35);
+  background: linear-gradient(160deg, rgba(0, 210, 255, 0.18), rgba(72, 52, 212, 0.12));
+  box-shadow: 0 0 48px rgba(0, 210, 255, 0.18);
+}
+
+.package-description {
+  color: var(--text-secondary);
+}
+
+.package-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.package-list li::before {
+  content: '\2713';
+  color: var(--accent);
+  margin-right: 8px;
+}
+
+.package-cta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  justify-content: flex-start;
+}
+
+.sponsor-faq .faq-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+
+.faq-card {
+  padding: var(--space-3);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(16, 22, 36, 0.72);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.faq-card p {
+  color: var(--text-secondary);
+}
+
+@media (max-width: 768px) {
+  .sponsor-page {
+    padding: clamp(20px, 8vw, 40px) clamp(12px, 5vw, 32px);
+  }
+
+  .sponsor-hero {
+    padding: clamp(20px, 7vw, 40px);
+  }
+
+  .sponsor-hero__copy h1 {
+    font-size: clamp(1.8rem, 6vw, 2.2rem);
+  }
+
+  .package-cta {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .sponsor-hero__actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}

@@ -161,6 +161,44 @@
     </div>
   </section>
 
+  <section id="donazioni" class="donation-support glass animate-premium-fade" aria-labelledby="donation-title">
+    <div class="donation-support__content">
+      <h2 id="donation-title">Upgrade manuale via Donazione PayPal</h2>
+      <p>
+        Preferisci sostenere il progetto senza abbonamento ricorrente? Fai una donazione minima di
+        <strong>€9,99</strong> e il team attiverà manualmente il tuo account <strong>Premium Lifetime</strong>.
+      </p>
+      <ol class="donation-steps">
+        <li>Invia una donazione con il pulsante PayPal ufficiale.</li>
+        <li>Nel messaggio PayPal indica l'email con cui accedi a EtnaMonitor.</li>
+        <li>Compila il form <em>Ho donato</em> o scrivici su <a href="mailto:team@etnamonitor.it">team@etnamonitor.it</a>.</li>
+        <li>Un admin attiverà il piano Premium entro 24 ore.</li>
+      </ol>
+      <div class="donation-support__cta" role="group" aria-label="Donazione PayPal">
+        <form action="https://www.paypal.com/donate" method="post" target="_top" class="paypal-form">
+          <input type="hidden" name="hosted_button_id" value="2T6DKB7U2ZSK8" />
+          <input type="image" src="https://www.paypalobjects.com/it_IT/IT/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Fai una donazione con il pulsante PayPal" />
+          <img alt="" border="0" src="https://www.paypal.com/it_IT/i/scr/pixel.gif" width="1" height="1" />
+        </form>
+        <a href="{{ url_for('billing.donate') }}" class="btn btn-secondary glass">Ho già donato</a>
+      </div>
+    </div>
+    <aside class="donation-support__aside" aria-label="Informazioni sul supporto">
+      <div class="donation-card">
+        <h3>Perché donare</h3>
+        <ul>
+          <li>Finanzi nuove feature pubbliche: roadmap, webcam, AI prediction.</li>
+          <li>Supporti infrastruttura server e notifiche Telegram.</li>
+          <li>Ricevi assistenza prioritaria via email e Telegram.</li>
+        </ul>
+      </div>
+      <div class="donation-card secondary">
+        <h3>Serve aiuto?</h3>
+        <p>Scrivici a <a href="mailto:team@etnamonitor.it">team@etnamonitor.it</a> oppure sul canale Telegram @EtnaMonitorBot.</p>
+      </div>
+    </aside>
+  </section>
+
   <section class="feature-showcase animate-premium-fade" aria-labelledby="feature-showcase-title">
     <div class="section-header">
       <h2 id="feature-showcase-title">Tutto ciò che serve per reagire in tempo</h2>
