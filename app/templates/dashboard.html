@@ -1,213 +1,262 @@
 {% extends "layout.html" %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard-fixes.css') }}">
-<meta name="theme-color" content="#007aff">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+<meta name="theme-color" content="#00D2FF">
 {% endblock %}
 
 {% block content %}
-<div class="dashboard-container">
-  <div class="dashboard-header">
-    <div class="user-info">
-      <h1>Dashboard</h1>
-      <div class="user-badge">
-        <span class="badge {{ 'premium' if user.premium else 'free' }}">
-          {{ 'Premium ⭐' if user.premium else 'Free' }}
-        </span>
-      </div>
+<div class="dashboard-main">
+  <section class="dashboard-hero hero-premium animate-premium-fade" role="region" aria-label="Panoramica account EtnaMonitor">
+    <div class="dashboard-hero-overlay" aria-hidden="true">
+      <span class="dashboard-orb orb-one"></span>
+      <span class="dashboard-orb orb-two"></span>
+      <span class="dashboard-grid"></span>
     </div>
-    
-    <div class="dashboard-controls">
-      <button id="theme-toggle" class="btn btn-secondary" aria-label="Cambia tra tema chiaro e scuro" tabindex="0">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <circle cx="12" cy="12" r="5"/>
-          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-        </svg>
-      </button>
-      
-      <div class="ingv-mode-toggle">
-        <label class="toggle-switch" for="ingv-mode">
-          <input type="checkbox" id="ingv-mode" aria-describedby="ingv-mode-desc" />
-          <span class="toggle-slider" aria-hidden="true"></span>
-        </label>
-        <span class="toggle-label" id="ingv-mode-desc">INGV Mode</span>
-      </div>
-    </div>
-  </div>
 
-  <div class="chart-section card-premium animate-premium-fade">
-    <div class="chart-header">
-      <h2>Monitoraggio Tremore Vulcanico</h2>
-      <div class="chart-info">
-        <span id="last-updated">Ultimo aggiornamento: --</span>
-        <span id="data-points">-- punti dati</span>
-      </div>
-    </div>
-    
-    <div class="chart-controls">
-      {% if user.premium %}
-      <button id="update-btn" class="btn btn-premium">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-        </svg>
-        Aggiorna Ora
-      </button>
-      {% endif %}
-      
-      <div class="time-range-selector">
-        <label for="time-range" class="sr-only">Seleziona intervallo temporale per il grafico</label>
-        <select id="time-range" class="input-base" aria-label="Selettore intervallo temporale">
-          <option value="24h">Ultime 24 ore</option>
-          <option value="3d">Ultimi 3 giorni</option>
-          <option value="7d" selected>Ultimi 7 giorni</option>
-          <option value="all">Tutti i dati</option>
-        </select>
-      </div>
-      
-      {% if user.premium %}
-      <div class="export-controls" role="group" aria-label="Opzioni di esportazione">
-        <button id="export-csv" class="btn btn-secondary btn-sm glass" aria-label="Esporta dati come file CSV">CSV</button>
-        <button id="export-png" class="btn btn-secondary btn-sm glass" aria-label="Esporta grafico come immagine PNG">PNG</button>
-      </div>
-      {% endif %}
-    </div>
-    
-    <div id="tremor-plot" class="chart-container" role="img" aria-label="Grafico dati tremore vulcanico"></div>
-    
-    <div class="chart-legend">
-      <div class="legend-item">
-        <span class="legend-color" style="background: #4ade80;"></span>
-        <span>Segnale Tremore</span>
-      </div>
-      <div class="legend-item">
-        <span class="legend-color" style="background: #ef4444;"></span>
-        <span>Soglia</span>
-      </div>
-    </div>
-  </div>
+    <div class="dashboard-hero-inner">
+      <div class="dashboard-hero-head">
+        <div class="dashboard-hero-info">
+          <div class="dashboard-hero-brand">
+            <img src="{{ LOGO_DATA_URL }}" alt="Logo EtnaMonitor" class="dashboard-hero-logo" />
+            <div class="dashboard-hero-meta">
+              <span class="dashboard-hero-overline">Control Room</span>
+              <span class="dashboard-hero-email">{{ user.email }}</span>
+            </div>
+          </div>
 
-  <div class="dashboard-grid">
-    <div class="status-card card-premium animate-premium-slide">
-      <h3>Stato Attuale</h3>
-      <div class="status-display">
-        <div class="current-value">
-          <span id="current-value">--</span>
-          <span class="unit">mV</span>
+          <h1>Monitoraggio personale dell'attività dell'Etna</h1>
+          <p class="dashboard-hero-subtitle">
+            Visualizza il tremore vulcanico in tempo reale, regola le soglie operative e sincronizza gli avvisi su tutti i tuoi dispositivi.
+          </p>
+
+          <div class="dashboard-plan">
+            <span class="badge {{ 'premium' if user.premium else 'free' }}">
+              {{ 'Premium ⭐' if user.premium else 'Free' }}
+            </span>
+            <span class="plan-caption">
+              {{ 'Accesso a notifiche avanzate, esportazione dati e soglie dinamiche.' if user.premium else 'Aggiorna per sbloccare automazioni, avvisi Telegram e cronologia completa.' }}
+            </span>
+          </div>
         </div>
-        <div class="status-indicator" id="status-indicator">
-          <span id="status-text">--</span>
+
+        <div class="dashboard-hero-controls" aria-label="Azioni rapide">
+          <button id="theme-toggle" class="control-button glass" aria-label="Cambia tra tema chiaro e scuro">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="12" cy="12" r="5" />
+              <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" />
+            </svg>
+          </button>
+
+          <div class="ingv-mode-toggle">
+            <label class="toggle-switch" for="ingv-mode">
+              <input type="checkbox" id="ingv-mode" aria-describedby="ingv-mode-desc" />
+              <span class="toggle-slider" aria-hidden="true"></span>
+            </label>
+            <span class="toggle-label" id="ingv-mode-desc">INGV Mode</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="dashboard-hero-metrics" role="group" aria-label="Metriche principali">
+        <div class="metric-card card-premium">
+          <span class="metric-label">Ultimo aggiornamento</span>
+          <span class="metric-value" id="last-updated">Ultimo aggiornamento: --</span>
+        </div>
+        <div class="metric-card card-premium">
+          <span class="metric-label">Campioni disponibili</span>
+          <span class="metric-value" id="data-points">-- punti</span>
+        </div>
+        <div class="metric-card card-premium status-metric">
+          <span class="metric-label">Stato attuale</span>
+          <div class="status-value">
+            <span class="metric-number" id="current-value">--</span>
+            <span class="metric-unit">mV</span>
+          </div>
+          <div class="status-indicator" id="status-indicator">
+            <span id="status-text">--</span>
+          </div>
         </div>
       </div>
     </div>
+  </section>
 
-    <div class="threshold-card card-premium animate-premium-slide">
-      <h3>Impostazioni Soglia</h3>
-      {% if user.premium %}
-      <div class="threshold-controls">
-        <label for="threshold-slider">Soglia Personalizzata</label>
-        <div class="slider-container">
-          <input type="range" id="threshold-slider" min="0.1" max="10" step="0.1" value="{{ user.threshold or 2.0 }}" aria-label="Cursore soglia" aria-describedby="threshold-help">
-          <input type="number" id="threshold-input" min="0.1" max="10" step="0.1" value="{{ user.threshold or 2.0 }}" aria-label="Valore soglia" aria-describedby="threshold-help">
-          <div id="threshold-help" class="sr-only">Imposta soglia personalizzata tra 0.1 e 10 mV per gli avvisi</div>
+  <section class="dashboard-panels" role="region" aria-label="Strumenti di monitoraggio">
+    <div class="panels-grid">
+      <article class="card-premium chart-card">
+        <header class="chart-card-header">
+          <div>
+            <p class="chart-eyebrow">Monitoraggio Tremore Vulcanico</p>
+            <h2>Serie storica in tempo reale</h2>
+          </div>
+        </header>
+
+        <div class="chart-toolbar">
+          <div class="chart-actions">
+            {% if user.premium %}
+            <button id="update-btn" class="btn btn-premium">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+              </svg>
+              Aggiorna ora
+            </button>
+            {% endif %}
+          </div>
+
+          <div class="chart-controls">
+            <label for="time-range" class="sr-only">Seleziona intervallo temporale per il grafico</label>
+            <select id="time-range" class="input-base" aria-label="Selettore intervallo temporale">
+              <option value="24h">Ultime 24 ore</option>
+              <option value="3d">Ultimi 3 giorni</option>
+              <option value="7d" selected>Ultimi 7 giorni</option>
+              <option value="all">Tutti i dati</option>
+            </select>
+
+            {% if user.premium %}
+            <div class="export-controls" role="group" aria-label="Opzioni di esportazione">
+              <button id="export-csv" class="btn btn-secondary btn-sm glass" aria-label="Esporta dati come file CSV">CSV</button>
+              <button id="export-png" class="btn btn-secondary btn-sm glass" aria-label="Esporta grafico come immagine PNG">PNG</button>
+            </div>
+            {% endif %}
+          </div>
         </div>
-        <button id="save-threshold" class="btn btn-premium btn-sm">Salva</button>
+
+        <div id="tremor-plot" class="chart-container" role="img" aria-label="Grafico dati tremore vulcanico"></div>
+
+        <footer class="chart-legend">
+          <div class="legend-item">
+            <span class="legend-color" style="background: #4ade80;"></span>
+            <span>Segnale Tremore</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-color" style="background: #ef4444;"></span>
+            <span>Soglia</span>
+          </div>
+        </footer>
+      </article>
+
+      <div class="side-grid">
+        <article class="card-premium threshold-card animate-premium-slide">
+          <header class="card-header">
+            <h3>Impostazioni soglia</h3>
+            <p>Gestisci il livello di allerta per notifiche e visualizzazioni.</p>
+          </header>
+
+          {% if user.premium %}
+          <div class="threshold-controls">
+            <label for="threshold-slider">Soglia personalizzata</label>
+            <div class="slider-container">
+              <input type="range" id="threshold-slider" min="0.1" max="10" step="0.1" value="{{ user.threshold or 2.0 }}" aria-label="Cursore soglia" aria-describedby="threshold-help">
+              <input type="number" id="threshold-input" min="0.1" max="10" step="0.1" value="{{ user.threshold or 2.0 }}" aria-label="Valore soglia" aria-describedby="threshold-help">
+            </div>
+            <p id="threshold-help" class="help-text">Imposta una soglia tra 0.1 e 10 mV per gli avvisi automatici.</p>
+            <button id="save-threshold" class="btn btn-premium btn-sm">Salva</button>
+          </div>
+          {% else %}
+          <div class="upgrade-prompt">
+            <p>Soglia fissa: {{ user.threshold or 2.0 }} mV</p>
+            <a href="/pricing" class="btn btn-premium btn-sm">Passa a Premium per soglie personalizzate</a>
+          </div>
+          {% endif %}
+        </article>
+
+        <article class="card-premium refresh-card animate-premium-slide">
+          <header class="card-header">
+            <h3>Aggiornamento automatico</h3>
+            <p>Imposta ogni quanto sincronizzare i dati INGV.</p>
+          </header>
+          <div class="refresh-controls">
+            <label for="auto-refresh" class="sr-only">Intervallo aggiornamento automatico</label>
+            <select id="auto-refresh" class="input-base" aria-label="Selettore intervallo aggiornamento automatico">
+              <option value="0">Disattivato</option>
+              <option value="180000">3 minuti</option>
+              <option value="300000" selected>5 minuti</option>
+              <option value="600000">10 minuti</option>
+              <option value="1800000">30 minuti</option>
+            </select>
+            <div class="refresh-status">
+              <span id="refresh-countdown">--</span>
+            </div>
+          </div>
+        </article>
       </div>
-      {% else %}
-      <div class="upgrade-prompt">
-        <p>Soglia fissa: {{ user.threshold or 2.0 }} mV</p>
-        <a href="/pricing" class="btn btn-premium btn-sm">Passa a Premium per Soglie Personalizzate</a>
-      </div>
-      {% endif %}
     </div>
 
-    <div class="refresh-card card-premium animate-premium-slide">
-      <h3>Aggiornamento Automatico</h3>
-      <div class="refresh-controls">
-        <label for="auto-refresh" class="sr-only">Intervallo aggiornamento automatico</label>
-        <select id="auto-refresh" aria-label="Selettore intervallo aggiornamento automatico">
-          <option value="0">Disattivato</option>
-          <option value="180000">3 minuti</option>
-          <option value="300000" selected>5 minuti</option>
-          <option value="600000">10 minuti</option>
-          <option value="1800000">30 minuti</option>
-        </select>
-        <div class="refresh-status">
-          <span id="refresh-countdown">--</span>
-        </div>
-      </div>
-    </div>
-  </div>
+    {% if user.premium %}
+    <div class="premium-grid">
+      <article class="card-premium alerts-card animate-premium-fade">
+        <header class="card-header">
+          <h3>Impostazioni avvisi</h3>
+          <p>Configura email e Telegram per ricevere notifiche immediate.</p>
+        </header>
 
-  {% if user.premium %}
-  <div class="premium-section">
-    <div class="alerts-card card-premium animate-premium-fade">
-      <h3>Impostazioni Avvisi</h3>
-      <div class="alert-controls">
-        <label class="checkbox-label">
-          <input type="checkbox" id="email-alerts" {% if user.email_alerts %}checked{% endif %} 
-                 onchange="toggleAlert('email', this.checked)">
-          <span>Notifiche email</span>
-        </label>
-        
-        <div class="telegram-section">
-          <h4>Notifiche Telegram</h4>
-          {% if user.chat_id %}
-            <div class="telegram-connected">
-              <span class="status-indicator connected">✓ Connesso</span>
-              <p>Chat ID: {{ user.chat_id }}</p>
-              <form method="POST" action="{{ url_for('dashboard.disconnect_telegram') }}" style="display: inline;">
-                <button type="submit" class="btn btn-secondary btn-sm">Disconnetti</button>
-              </form>
+        <div class="alert-controls">
+          <label class="checkbox-label">
+            <input type="checkbox" id="email-alerts" {% if user.email_alerts %}checked{% endif %} onchange="toggleAlert('email', this.checked)">
+            <span>Notifiche email</span>
+          </label>
+
+          <div class="telegram-section">
+            <h4>Notifiche Telegram</h4>
+            {% if user.chat_id %}
+              <div class="telegram-connected glass">
+                <span class="connection-status status-success">✓ Connesso</span>
+                <p>Chat ID: {{ user.chat_id }}</p>
+                <form method="POST" action="{{ url_for('dashboard.disconnect_telegram') }}">
+                  <button type="submit" class="btn btn-secondary btn-sm">Disconnetti</button>
+                </form>
+              </div>
+            {% else %}
+              <div class="telegram-setup">
+                <p>Collega il tuo account Telegram per ricevere avvisi istantanei:</p>
+                <ol>
+                  <li>Avvia una chat con <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">@etna_turi_bot</a></li>
+                  <li>Invia il comando <code>/start</code></li>
+                  <li>Copia il tuo Chat ID e incollalo qui sotto</li>
+                </ol>
+                <form method="POST" action="{{ url_for('dashboard.connect_telegram') }}" class="telegram-form">
+                  <div class="form-group">
+                    <label for="chat_id">ID Chat Telegram</label>
+                    <input type="text" id="chat_id" name="chat_id" class="input-base" placeholder="es. 123456789" required>
+                  </div>
+                  <button type="submit" class="btn btn-premium">Collega Telegram</button>
+                </form>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+
+      <article class="card-premium events-card animate-premium-fade">
+        <header class="card-header">
+          <h3>Eventi recenti</h3>
+          <p>Ultimi eventi sismici rilevati dalla piattaforma.</p>
+        </header>
+        <div class="events-list" id="events-list">
+          {% for event in recent_events %}
+            <div class="event-item">
+              <span class="event-time">{{ event.timestamp.strftime('%d/%m %H:%M') }}</span>
+              <span class="event-type">{{ event.event_type.replace('_', ' ').title() }}</span>
+              {% if event.value %}
+                <span class="event-value">{{ "%.2f"|format(event.value) }} mV</span>
+              {% endif %}
             </div>
           {% else %}
-            <div class="telegram-setup">
-              <p>Collega il tuo account Telegram per ricevere avvisi istantanei:</p>
-              <ol>
-                <li>Avvia una chat con <a href="https://t.me/etna_turi_bot" target="_blank">@etna_turi_bot</a></li>
-                <li>Invia il comando <code>/start</code></li>
-                <li>Copia il tuo Chat ID e incollalo qui sotto</li>
-              </ol>
-              <form method="POST" action="{{ url_for('dashboard.connect_telegram') }}">
-                <div class="form-group">
-                  <label for="chat_id">ID Chat Telegram:</label>
-                  <input type="text" id="chat_id" name="chat_id" class="input-base" 
-                         placeholder="e.g., 123456789" required>
-                </div>
-                <button type="submit" class="btn btn-premium">Collega Telegram</button>
-              </form>
-            </div>
-          {% endif %}
+            <p class="no-events">Nessun evento sismico significativo nelle ultime 24 ore.</p>
+          {% endfor %}
         </div>
+      </article>
+    </div>
+    {% else %}
+    <div class="upgrade-banner card-premium animate-premium-fade">
+      <div>
+        <h3>Passa a Premium</h3>
+        <p>Sblocca notifiche Telegram, soglie personalizzate e cronologia eventi completa.</p>
       </div>
+      <a href="/pricing" class="btn btn-premium">Aggiorna ora</a>
     </div>
-
-    <div class="events-card card-premium animate-premium-fade">
-      <h3>Eventi Recenti</h3>
-      <div class="events-list" id="events-list">
-         {% for event in recent_events %}
-           <div class="event-item">
-             <span class="event-time">{{ event.timestamp.strftime('%d/%m %H:%M') }}</span>
-             <span class="event-type">{{ event.event_type.replace('_', ' ').title() }}</span>
-             {% if event.value %}
-               <span class="event-value">{{ "%.2f"|format(event.value) }} mV</span>
-             {% endif %}
-           </div>
-         {% else %}
-           <p class="no-events">Nessun evento sismico significativo nelle ultime 24 ore</p>
-         {% endfor %}
-      </div>
-    </div>
-  </div>
-  {% else %}
-  <div class="upgrade-section">
-    <div class="upgrade-card card-premium">
-      <h3>Passa a Premium</h3>
-      <p>Ottieni accesso alle notifiche Telegram, soglie personalizzate e cronologia eventi.</p>
-      <a href="/pricing" class="btn btn-premium">Aggiorna Ora</a>
-    </div>
-  </div>
-  {% endif %}
+    {% endif %}
+  </section>
 </div>
 
 <div id="loading-overlay" class="loading-overlay" style="display: none;">

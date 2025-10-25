@@ -9,166 +9,258 @@
 
 {% block content %}
 <!-- Hero Section -->
-<section class="hero-section hero-premium animate-premium-fade" role="banner" aria-label="EtnaMonitor main section">
-  <div class="hero-content">
-    <div class="hero-badge glass" role="status" aria-live="polite">
-      <span class="status-dot" id="status-dot" aria-hidden="true"></span>
-      <span id="status-text" aria-label="Service status">Controllo stato...</span>
-    </div>
-    
-    <h1 class="hero-title">EtnaMonitor</h1>
-    <p class="hero-subtitle">
-      Monitoraggio in tempo reale del tremore vulcanico dell'Etna utilizzando dati sismici INGV
-    </p>
-    
-    <div class="hero-stats card-premium" id="hero-stats" style="display: none;" role="group" aria-label="Current monitoring metrics">
-      <div class="stat-item">
-        <span class="stat-value" id="last-update" aria-label="Ora ultimo aggiornamento">--</span>
-        <span class="stat-label">Ultimo Aggiornamento</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-value" id="data-points" aria-label="Numero di punti dati">--</span>
-        <span class="stat-label">Punti Dati</span>
-      </div>
-      <div class="stat-item">
-        <span class="stat-value" id="current-level" aria-label="Livello tremore attuale">--</span>
-        <span class="stat-label">Livello Attuale</span>
-      </div>
-    </div>
-    
-    <div class="hero-actions" role="group" aria-label="Main actions">
-      <a href="/dashboard" class="btn btn-premium btn-lg" aria-label="Apri dashboard di monitoraggio">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <path d="M3 3v5h5M21 21v-5h-5M21 3l-9 9-4-4-5 5"/>
-        </svg>
-        Visualizza Dashboard
-      </a>
-      <button id="quick-update-btn" class="btn btn-secondary btn-lg glass" aria-label="Aggiorna dati immediatamente">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-        </svg>
-        Aggiorna Dati Ora
-      </button>
-    </div>
+<section class="hero-section hero-premium animate-premium-fade" role="banner" aria-label="EtnaMonitor">
+  <div class="hero-background" aria-hidden="true">
+    <span class="orb orb-1"></span>
+    <span class="orb orb-2"></span>
+    <span class="orb orb-3"></span>
+    <span class="grid-overlay"></span>
   </div>
-  
-  <div class="hero-visual">
-    <div class="preview-chart home-graph-card card-premium" id="preview-chart" role="img" aria-label="Anteprima grafico tremore vulcanico">
-      <div class="chart-header">
-        <h3>Andamento tremore vulcanico – ultime 24h</h3>
-        <div class="current-status" id="current-status">
-          <span class="current-value" id="current-value-display">-- mV</span>
-          <span class="activity-badge" id="activity-badge">--</span>
+
+  <div class="hero-inner">
+    <div class="hero-copy">
+      <div class="hero-brand" role="presentation">
+        <img src="{{ LOGO_DATA_URL }}" alt="Logo EtnaMonitor" class="hero-logo">
+        <div class="hero-brand-text">
+          <span class="brand-name">EtnaMonitor</span>
+          <span class="brand-tagline">Volcano Intelligence Platform</span>
         </div>
       </div>
-      <div id="home-preview-loading" class="chart-loading-overlay" aria-live="polite">
-        <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-          <path d="M3 3v18h18"/>
-          <path d="M7 12l3-3 3 3 5-5"/>
-        </svg>
-        <p>Caricamento dati da INGV, attendere...</p>
+
+      <div class="hero-badge glass" role="status" aria-live="polite">
+        <span class="status-dot" id="status-dot" aria-hidden="true"></span>
+        <span id="status-text" aria-label="Service status">Controllo stato...</span>
       </div>
-      <div id="home-preview-plot" role="img" aria-label="Visualizzazione dati tremore"></div>
+
+      <h1 class="hero-title">Monitoraggio vulcanico di nuova generazione</h1>
+      <p class="hero-subtitle">
+        Dati INGV in tempo reale, analisi avanzata e visualizzazioni professionali in un'unica piattaforma progettata per team di ricerca, protezione civile e appassionati di tecnologia.
+      </p>
+
+      <ul class="hero-highlights" role="list">
+        <li>Telemetria continua con aggiornamenti automatici ogni 5 minuti</li>
+        <li>Scala logaritmica e soglie dinamiche per livelli di allerta immediati</li>
+        <li>Dashboard responsive ottimizzata per desktop, tablet e mobile</li>
+      </ul>
+
+      <div class="hero-actions" role="group" aria-label="Azioni principali">
+        <a href="/dashboard" class="btn btn-premium btn-lg" aria-label="Apri dashboard di monitoraggio">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M3 3v5h5M21 21v-5h-5M21 3l-9 9-4-4-5 5"/>
+          </svg>
+          Visualizza Dashboard
+        </a>
+        <button id="quick-update-btn" class="btn btn-secondary btn-lg glass" aria-label="Aggiorna dati immediatamente">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+          </svg>
+          Aggiorna Dati Ora
+        </button>
+      </div>
+
+      <div class="hero-meta" role="list">
+        <div class="meta-item" role="listitem">
+          <span class="meta-label">Dataset ufficiali</span>
+          <span class="meta-value">INGV Catania</span>
+        </div>
+        <div class="meta-item" role="listitem">
+          <span class="meta-label">Rendering grafico</span>
+          <span class="meta-value">Plotly.js + Flask</span>
+        </div>
+        <div class="meta-item" role="listitem">
+          <span class="meta-label">Copertura temporalità</span>
+          <span class="meta-value">Ultime 24 ore</span>
+        </div>
+      </div>
+
+      <div class="hero-stats card-premium" id="hero-stats" style="display: none;" role="group" aria-label="Metriche correnti di EtnaMonitor">
+        <div class="stat-card">
+          <div class="stat-icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 12a9 9 0 1 1 18 0"></path>
+              <path d="M12 7v5l3 2"></path>
+            </svg>
+          </div>
+          <div class="stat-content">
+            <span class="stat-label">Ultimo aggiornamento</span>
+            <span class="stat-value" id="last-update">--</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 3v18h18"></path>
+              <polyline points="6,15 10,11 13,14 18,9"></polyline>
+            </svg>
+          </div>
+          <div class="stat-content">
+            <span class="stat-label">Punti dati</span>
+            <span class="stat-value" id="data-points">--</span>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon" aria-hidden="true">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M4 19h16"></path>
+              <path d="M7 19V9a5 5 0 0 1 10 0v10"></path>
+            </svg>
+          </div>
+          <div class="stat-content">
+            <span class="stat-label">Livello attuale</span>
+            <span class="stat-value" id="current-level">--</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-visual">
+      <div class="preview-chart home-graph-card card-premium" id="preview-chart" role="img" aria-label="Anteprima grafico tremore vulcanico">
+        <div class="chart-header">
+          <div>
+            <p class="chart-eyebrow">Realtime Feed</p>
+            <h3>Trend tremore vulcanico • ultime 24h</h3>
+          </div>
+          <div class="current-status" id="current-status">
+            <span class="current-value" id="current-value-display">-- mV</span>
+            <span class="activity-badge" id="activity-badge">--</span>
+          </div>
+        </div>
+        <div id="home-preview-loading" class="chart-loading-overlay" aria-live="polite">
+          <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M3 3v18h18"/>
+            <path d="M7 12l3-3 3 3 5-5"/>
+          </svg>
+          <p>Caricamento dati da INGV, attendere...</p>
+        </div>
+        <div id="home-preview-plot" role="img" aria-label="Visualizzazione dati tremore"></div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- Features Section -->
-<section class="features-section" role="region" aria-label="Key features">
+<!-- Feature Highlights -->
+<section class="features-section" role="region" aria-label="Funzionalità principali">
+  <div class="section-heading">
+    <span class="section-pill">Tecnologia</span>
+    <h2>Strumenti costruiti per analisi continue e decisioni rapide</h2>
+    <p>Pipeline dati ottimizzata, visualizzazioni interattive e controlli operativi per interpretare il tremore vulcanico dell'Etna con precisione scientifica.</p>
+  </div>
+
   <div class="features-grid">
-    <div class="feature-card">
+    <article class="feature-card">
       <div class="feature-icon" aria-hidden="true">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <polyline points="12,6 12,12 16,14"/>
+          <path d="M3 3v18h18"></path>
+          <polyline points="6 14 10 10 13 13 18 8"></polyline>
+          <circle cx="10" cy="10" r="1"></circle>
         </svg>
       </div>
-      <h3>Monitoraggio in Tempo Reale</h3>
-      <p>Tracciamento continuo dei dati del tremore vulcanico dalle stazioni sismiche INGV</p>
-    </div>
-    
-    <div class="feature-card">
+      <h3>Monitoraggio in tempo reale</h3>
+      <p>Feed continuo dei dati sismici INGV con controlli di integrità e recupero automatico dei campioni mancanti.</p>
+    </article>
+
+    <article class="feature-card">
       <div class="feature-icon" aria-hidden="true">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 3v18h18"/>
-          <path d="M7 12l3-3 3 3 5-5"/>
+          <path d="M4 4h16v7H4z"></path>
+          <path d="M9 18h6"></path>
+          <path d="M9 14h6"></path>
         </svg>
       </div>
-      <h3>Analisi Avanzate</h3>
-      <p>Scala logaritmica e analisi delle soglie per monitoraggio professionale</p>
-    </div>
-    
-    <div class="feature-card">
+      <h3>Visual analytics</h3>
+      <p>Grafici interattivi con scala logaritmica, soglia dinamica e palette ad alto contrasto per letture immediate.</p>
+    </article>
+
+    <article class="feature-card">
       <div class="feature-icon" aria-hidden="true">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          <path d="M9 12l2 2 4-4"></path>
         </svg>
       </div>
-      <h3>Compatibile INGV</h3>
-      <p>Riproduzione fedele degli standard di visualizzazione ufficiali INGV</p>
-    </div>
+      <h3>Affidabilità operativa</h3>
+      <p>Architettura cloud-ready con notifiche smart per mantenere il team allineato sulle variazioni del tremore.</p>
+    </article>
   </div>
 </section>
 
 <!-- About Project Section -->
-<section class="about-section" role="region" aria-label="About EtnaMonitor">
-  <div class="about-container">
-    <div class="about-content">
-      <h2>Il Progetto EtnaMonitor</h2>
-      <p>EtnaMonitor è un sistema avanzato di monitoraggio vulcanico che fornisce dati in tempo reale sull'attività sismica dell'Etna. Utilizzando i dati ufficiali dell'INGV (Istituto Nazionale di Geofisica e Vulcanologia), il sistema offre una visualizzazione professionale e accessibile dell'andamento del tremore vulcanico.</p>
-      
-      <div class="about-features">
-        <div class="about-feature">
-          <h3>🌋 Dati INGV Ufficiali</h3>
-          <p>Integrazione diretta con le stazioni sismiche dell'INGV per garantire accuratezza e affidabilità dei dati di monitoraggio vulcanico.</p>
+<section class="about-section" role="region" aria-label="Il progetto EtnaMonitor">
+  <div class="about-grid">
+    <div class="about-copy">
+      <span class="section-pill">Il progetto</span>
+      <h2>Un'unica piattaforma per leggere l'attività dell'Etna</h2>
+      <p>EtnaMonitor integra dati ufficiali INGV con un motore di visualizzazione moderno pensato per ingegneri, operatori sul campo e cittadini. Le metriche vengono aggiornate e validate automaticamente, offrendo una panoramica chiara delle variazioni del tremore vulcanico.</p>
+      <p>Ogni grafico è stato progettato per mantenere la leggibilità anche in condizioni di luce critiche grazie a combinazioni cromatiche a contrasto elevato e tipografia ottimizzata.</p>
+
+      <div class="about-metrics">
+        <div class="metric-card">
+          <span class="metric-value">5 min</span>
+          <span class="metric-label">Frequenza aggiornamento</span>
         </div>
-        <div class="about-feature">
-          <h3>📊 Visualizzazione Avanzata</h3>
-          <p>Grafici interattivi con scala logaritmica, zoom e pan per un'analisi dettagliata dell'attività sismica nelle ultime 24 ore.</p>
+        <div class="metric-card">
+          <span class="metric-value">24/7</span>
+          <span class="metric-label">Monitoraggio continuo</span>
         </div>
-        <div class="about-feature">
-          <h3>⚡ Aggiornamenti Real-time</h3>
-          <p>Sistema di aggiornamento automatico ogni 5 minuti per fornire sempre i dati più recenti sull'attività vulcanica.</p>
-        </div>
-        <div class="about-feature">
-          <h3>📱 Design Responsive</h3>
-          <p>Interfaccia ottimizzata per tutti i dispositivi, da smartphone a desktop, per un accesso facile e immediato ovunque.</p>
+        <div class="metric-card">
+          <span class="metric-value">Log</span>
+          <span class="metric-label">Scala analitica</span>
         </div>
       </div>
+    </div>
+
+    <div class="about-feature-list">
+      <article class="about-feature">
+        <h3>🌋 Dati INGV ufficiali</h3>
+        <p>Integrazione diretta con le stazioni sismiche dell'INGV Catania per assicurare affidabilità scientifica.</p>
+      </article>
+      <article class="about-feature">
+        <h3>📊 Visualizzazione avanzata</h3>
+        <p>Plotly.js con interazioni fluide, zoom, pan e confronto storico delle ultime 24 ore.</p>
+      </article>
+      <article class="about-feature">
+        <h3>⚡ Aggiornamenti real-time</h3>
+        <p>Processo di acquisizione automatizzato con fallback e retry per garantire continuità del segnale.</p>
+      </article>
+      <article class="about-feature">
+        <h3>📱 Design responsive</h3>
+        <p>UI ottimizzata per smartphone, tablet e desktop con componenti a densità adattiva.</p>
+      </article>
     </div>
   </div>
 </section>
 
 <!-- About Developer Section -->
-<section class="developer-section" role="region" aria-label="About the Developer">
-  <div class="developer-container">
-    <div class="developer-content">
-      <h2>Chi Sono</h2>
-      <div class="developer-info">
-        <div class="developer-text">
-          <h3>Salvatore Ferro</h3>
-          <p>Sviluppatore appassionato di tecnologie web e monitoraggio ambientale. Ho creato EtnaMonitor per rendere accessibili a tutti i dati scientifici dell'INGV sull'attività vulcanica dell'Etna.</p>
-          
-          <p>Con esperienza in sviluppo full-stack e particolare interesse per la visualizzazione di dati scientifici, mi dedico a creare strumenti che rendano la scienza più comprensibile e accessibile.</p>
-          
-          <div class="developer-skills">
-            <span class="skill-tag">Python</span>
-            <span class="skill-tag">Flask</span>
-            <span class="skill-tag">JavaScript</span>
-            <span class="skill-tag">Plotly.js</span>
-            <span class="skill-tag">Data Visualization</span>
-            <span class="skill-tag">API Integration</span>
-          </div>
-          
-          <div class="developer-links">
-            <a href="https://www.linkedin.com/in/ferrosalvatore" target="_blank" rel="noopener noreferrer" class="linkedin-link">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-              </svg>
-              Connettiti su LinkedIn
-            </a>
-          </div>
+<section class="developer-section" role="region" aria-label="Informazioni sullo sviluppatore">
+  <div class="developer-content">
+    <div class="developer-header">
+      <span class="section-pill">Chi c'è dietro</span>
+      <h2>Costruito con passione da Salvatore Ferro</h2>
+      <p>Sviluppatore full-stack con un forte interesse per la visualizzazione di dati scientifici e per le tecnologie a supporto della prevenzione. EtnaMonitor nasce per rendere accessibili a tutti le informazioni sull'attività vulcanica dell'Etna.</p>
+    </div>
+
+    <div class="developer-grid">
+      <div class="developer-card">
+        <h3>Competenze principali</h3>
+        <div class="developer-skills">
+          <span class="skill-tag">Python</span>
+          <span class="skill-tag">Flask</span>
+          <span class="skill-tag">JavaScript</span>
+          <span class="skill-tag">Plotly.js</span>
+          <span class="skill-tag">Data Visualization</span>
+          <span class="skill-tag">API Integration</span>
         </div>
+        <a href="https://www.linkedin.com/in/ferrosalvatore" target="_blank" rel="noopener noreferrer" class="linkedin-link">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+          </svg>
+          Connettiti su LinkedIn
+        </a>
+      </div>
+      <div class="developer-card">
+        <h3>Missione</h3>
+        <p>Supportare i professionisti del territorio e gli appassionati con un'interfaccia moderna, affidabile e curata nei minimi dettagli.</p>
+        <p>La piattaforma è progettata per evolversi: l'infrastruttura consente l'integrazione di alert automatici, storicizzazione estesa e modelli predittivi.</p>
       </div>
     </div>
   </div>
@@ -181,25 +273,108 @@
 <script src="https://cdn.plot.ly/plotly-2.27.0.min.js" charset="utf-8"></script>
 
 <style>
-/* Hero Section Styles - Chart-Centered Layout */
 .hero-section {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  min-height: 80vh;
-  padding: var(--space-8) 0;
-  gap: var(--space-6);
-  text-align: center;
+  position: relative;
+  padding: var(--space-hero) var(--space-4) var(--space-12);
+  background: var(--gradient-hero);
+  color: var(--color-text-primary);
+  overflow: hidden;
+  isolation: isolate;
 }
 
-.hero-content {
+.hero-background {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  opacity: 0.45;
+}
+
+.orb-1 {
+  width: 420px;
+  height: 420px;
+  top: -180px;
+  left: -120px;
+  background: radial-gradient(circle, rgba(0, 210, 255, 0.55), rgba(0, 210, 255, 0));
+}
+
+.orb-2 {
+  width: 320px;
+  height: 320px;
+  bottom: -140px;
+  right: -120px;
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.6), rgba(99, 102, 241, 0));
+}
+
+.orb-3 {
+  width: 240px;
+  height: 240px;
+  top: 40%;
+  right: 30%;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.45), rgba(56, 189, 248, 0));
+}
+
+.grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+                    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 80px 80px;
+  mix-blend-mode: screen;
+  opacity: 0.35;
+}
+
+.hero-inner {
+  position: relative;
+  z-index: 1;
+  width: min(1200px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: var(--space-12);
+  align-items: center;
+}
+
+.hero-copy {
   display: flex;
   flex-direction: column;
+  gap: var(--space-5);
+}
+
+.hero-brand {
+  display: flex;
+  align-items: center;
   gap: var(--space-4);
-  max-width: 800px;
-  margin: 0 auto;
-  order: 2;
+}
+
+.hero-logo {
+  height: 72px;
+  width: auto;
+  filter: drop-shadow(0 12px 28px rgba(0, 210, 255, 0.25));
+}
+
+.hero-brand-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.brand-name {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.brand-tagline {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .hero-badge {
@@ -207,176 +382,255 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-4);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  background: rgba(4, 8, 20, 0.55);
+  border: 1px solid rgba(0, 210, 255, 0.35);
   border-radius: var(--radius-full);
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
-  width: fit-content;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
 .status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-success);
-  animation: pulse 2s infinite;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--color-accent-primary);
+  box-shadow: 0 0 12px rgba(0, 210, 255, 0.8);
+  animation: pulse 2.4s infinite;
 }
 
 .status-dot.offline {
   background: var(--color-error);
+  box-shadow: 0 0 12px rgba(248, 113, 113, 0.75);
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.85); opacity: 0.65; }
 }
 
 .hero-title {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
-  line-height: var(--line-height-tight);
-  color: var(--color-text-primary);
-  margin: 0 0 var(--space-3) 0;
+  font-size: var(--font-size-4xl);
+  line-height: 1.1;
+  margin: 0;
+  text-shadow: 0 12px 24px rgba(5, 12, 28, 0.35);
 }
 
 .hero-subtitle {
-  font-size: var(--font-size-base);
+  font-size: 1.05rem;
   line-height: var(--line-height-relaxed);
   color: var(--color-text-secondary);
-  margin: 0 0 var(--space-4) 0;
+  max-width: 580px;
+  margin: 0;
+}
+
+.hero-highlights {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+
+.hero-highlights li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+.hero-highlights li::before {
+  content: '';
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.8), rgba(99, 102, 241, 0.8));
+  box-shadow: 0 0 0 2px rgba(0, 210, 255, 0.25);
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+.hero-actions .btn {
+  box-shadow: var(--shadow-button-premium);
+}
+
+.hero-meta {
+  display: flex;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-top: var(--space-4);
+}
+
+.meta-item {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: rgba(4, 12, 28, 0.6);
+  border: 1px solid rgba(0, 210, 255, 0.15);
+  min-width: 160px;
+}
+
+.meta-label {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
+}
+
+.meta-value {
+  display: block;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  margin-top: var(--space-1);
 }
 
 .hero-stats {
-  display: flex;
-  gap: var(--space-6);
-  padding: var(--space-4) 0;
-  justify-content: center;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  padding: var(--space-4);
+  background: rgba(4, 12, 28, 0.65);
+  border: 1px solid rgba(0, 210, 255, 0.15);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-card-premium);
 }
 
-.stat-item {
+.stat-card {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+  padding: var(--space-3);
+  border-radius: var(--radius-xl);
+  background: rgba(8, 18, 36, 0.8);
+  border: 1px solid rgba(0, 210, 255, 0.12);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.stat-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-lg);
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.25), rgba(99, 102, 241, 0.35));
+  color: var(--color-text-primary);
+}
+
+.stat-content {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
 }
 
-.stat-value {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-}
-
 .stat-label {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-tertiary);
+  font-size: var(--font-size-xs);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.12em;
+  color: var(--color-text-tertiary);
 }
 
-.hero-actions {
-  display: flex;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: var(--space-4);
-}
-
-.hero-visual {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  order: 1;
-  width: 100%;
-  max-width: 900px;
-  margin: 0 auto var(--space-8) auto;
-  padding: 0 var(--space-4);
-  box-sizing: border-box;
-}
-
-.hero-visual > * {
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.preview-chart {
-  width: 100%;
-  max-width: 800px;
-  min-height: 450px;
-  background: var(--gradient-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-2xl);
-  position: relative;
-  overflow: visible;
-  box-shadow: var(--shadow-2xl);
-  margin: 0 auto;
-  box-sizing: border-box;
-  padding-bottom: var(--space-4);
-}
-
-.chart-header {
-  padding: var(--space-4) var(--space-4) var(--space-2) var(--space-4);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.chart-header h3 {
-  margin: 0;
+.stat-value {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }
 
+.hero-visual {
+  position: relative;
+}
+
+.preview-chart {
+  width: 100%;
+  background: linear-gradient(160deg, rgba(8, 18, 36, 0.92), rgba(12, 30, 58, 0.98));
+  border: 1px solid rgba(0, 210, 255, 0.15);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-2xl);
+  position: relative;
+  overflow: hidden;
+  backdrop-filter: blur(16px);
+}
+
+.chart-header {
+  padding: var(--space-5) var(--space-5) var(--space-3);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  border-bottom: 1px solid rgba(0, 210, 255, 0.12);
+}
+
+.chart-eyebrow {
+  margin: 0 0 var(--space-1) 0;
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: var(--color-text-tertiary);
+}
+
+.chart-header h3 {
+  margin: 0;
+  font-size: var(--font-size-lg);
+}
+
 .current-status {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-end;
   gap: var(--space-2);
 }
 
 .current-value {
   font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }
 
 .activity-badge {
-  padding: var(--space-1) var(--space-2);
+  padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-full);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .activity-badge.low {
-  background: var(--color-success);
-  color: white;
+  background: rgba(34, 197, 94, 0.15);
+  color: #4ade80;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.35);
 }
 
 .activity-badge.moderate {
-  background: var(--color-warning);
-  color: white;
+  background: rgba(250, 204, 21, 0.18);
+  color: #fde047;
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.35);
 }
 
 .activity-badge.high {
-  background: var(--color-error);
-  color: white;
-}
-
-.home-graph-card {
-  overflow: hidden;
+  background: rgba(248, 113, 113, 0.2);
+  color: #fca5a5;
+  box-shadow: 0 0 12px rgba(248, 113, 113, 0.35);
 }
 
 #home-preview-plot {
   width: 100%;
-  box-sizing: border-box;
-  height: clamp(280px, 55vw, 520px);
-  max-height: 520px;
-  min-height: 260px;
-  transition: height 200ms ease;
+  height: clamp(280px, 52vw, 520px);
+  display: none;
+}
+
+#home-preview-plot.loaded {
+  display: block;
+  animation: fadeIn 0.6s ease;
 }
 
 #home-preview-loading {
@@ -386,161 +640,294 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: transparent;
-  z-index: 10;
+  gap: var(--space-3);
+  color: var(--color-text-secondary);
 }
 
-#home-preview-loading.hidden { 
-  display: none; 
+.chart-loading-overlay svg {
+  opacity: 0.75;
+  animation: pulse 2.4s infinite;
 }
 
-.chart-loading-overlay {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: transparent;
-  z-index: 10;
-}
-
-.chart-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-4);
-  color: var(--color-text-tertiary);
-  text-align: center;
-  height: 100%;
-  padding: var(--space-6);
-}
-
-.chart-placeholder svg {
-  opacity: 0.6;
-  animation: pulse 2s infinite;
-}
-
-#home-preview-plot {
-  display: none;
-}
-
-#home-preview-plot.loaded {
-  display: block;
-  animation: fadeIn 0.5s ease-in;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-/* Features Section */
 .features-section {
-  padding: var(--space-20) 0;
-  border-top: 1px solid var(--color-divider);
+  padding: var(--space-20) var(--space-4);
+  background: linear-gradient(160deg, rgba(10, 16, 34, 0.92), rgba(6, 10, 24, 0.98));
+  border-top: 1px solid rgba(0, 210, 255, 0.08);
+}
+
+.section-heading {
+  max-width: 760px;
+  margin: 0 auto var(--space-12) auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-size: var(--font-size-3xl);
+}
+
+.section-heading p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
+}
+
+.section-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  border: 1px solid rgba(0, 210, 255, 0.35);
+  background: rgba(4, 12, 28, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
 }
 
 .features-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--space-8);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-6);
+  width: min(1100px, 100%);
+  margin: 0 auto;
 }
 
 .feature-card {
-  padding: var(--space-8);
-  background: var(--gradient-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  text-align: center;
-  transition: all var(--transition-normal);
+  background: rgba(8, 18, 36, 0.75);
+  border: 1px solid rgba(0, 210, 255, 0.1);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-card-premium);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  transition: transform 220ms ease, box-shadow 220ms ease;
 }
 
 .feature-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-xl);
+  transform: translateY(-6px);
+  box-shadow: 0 26px 60px rgba(0, 210, 255, 0.2);
 }
 
 .feature-icon {
-  display: flex;
-  justify-content: center;
-  margin-bottom: var(--space-4);
-  color: var(--color-accent-primary);
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius-xl);
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.25), rgba(99, 102, 241, 0.35));
+  color: var(--color-text-primary);
 }
 
 .feature-card h3 {
+  margin: 0;
   font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  margin: 0 0 var(--space-3) 0;
 }
 
 .feature-card p {
+  margin: 0;
   color: var(--color-text-secondary);
   line-height: var(--line-height-relaxed);
-  margin: 0;
 }
 
-/* Button Styles */
-.btn {
+.about-section {
+  padding: var(--space-20) var(--space-4);
+  background: rgba(4, 8, 20, 0.95);
+  border-top: 1px solid rgba(0, 210, 255, 0.08);
+}
+
+.about-grid {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: var(--space-12);
+  align-items: start;
+}
+
+.about-copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.about-copy h2 {
+  margin: 0;
+  font-size: var(--font-size-3xl);
+}
+
+.about-copy p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+.about-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+.metric-card {
+  padding: var(--space-4);
+  border-radius: var(--radius-xl);
+  background: rgba(8, 18, 36, 0.85);
+  border: 1px solid rgba(0, 210, 255, 0.12);
+  text-align: center;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.metric-value {
+  display: block;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.metric-label {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.about-feature-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.about-feature {
+  padding: var(--space-5);
+  background: rgba(8, 18, 36, 0.8);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(0, 210, 255, 0.1);
+  box-shadow: var(--shadow-card-premium);
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.about-feature:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 22px 50px rgba(0, 210, 255, 0.18);
+}
+
+.about-feature h3 {
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--font-size-lg);
+}
+
+.about-feature p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+.developer-section {
+  padding: var(--space-20) var(--space-4);
+  background: linear-gradient(180deg, rgba(6, 10, 24, 0.98), rgba(10, 16, 34, 0.92));
+  border-top: 1px solid rgba(0, 210, 255, 0.08);
+}
+
+.developer-content {
+  width: min(1100px, 100%);
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+
+.developer-header {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.developer-header h2 {
+  margin: 0;
+  font-size: var(--font-size-3xl);
+}
+
+.developer-header p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+.developer-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+
+.developer-card {
+  background: rgba(8, 18, 36, 0.75);
+  border: 1px solid rgba(0, 210, 255, 0.12);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-card-premium);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.developer-card h3 {
+  margin: 0;
+  font-size: var(--font-size-xl);
+}
+
+.developer-card p {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-relaxed);
+}
+
+.developer-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.skill-tag {
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  background: rgba(0, 210, 255, 0.12);
+  border: 1px solid rgba(0, 210, 255, 0.35);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.linkedin-link {
   display: inline-flex;
   align-items: center;
-  justify-content: center;
   gap: var(--space-2);
-  padding: var(--space-3) var(--space-4);
-  border: none;
-  border-radius: var(--radius-lg);
-  font-weight: var(--font-weight-medium);
+  align-self: flex-start;
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-full);
+  background: linear-gradient(135deg, #00A0DC, #006699);
+  color: white;
   text-decoration: none;
-  cursor: pointer;
-  transition: all var(--transition-normal);
-  min-height: 44px; /* Touch target minimum */
-  min-width: 44px;
+  font-weight: var(--font-weight-medium);
+  transition: transform 200ms ease, box-shadow 200ms ease;
 }
 
-.btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none !important;
+.linkedin-link:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 18px 40px rgba(0, 160, 220, 0.35);
 }
 
-.btn-primary {
-  background: var(--gradient-primary);
-  color: var(--color-text-inverse);
-  box-shadow: var(--shadow-md);
-}
-
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-}
-
-.btn-secondary {
-  background: var(--color-surface);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: var(--color-surface-hover);
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.btn-lg {
-  padding: var(--space-4) var(--space-6);
-  font-size: var(--font-size-base);
-  min-height: 48px; /* Larger touch target for primary actions */
-}
-
-.btn-sm {
-  padding: var(--space-2) var(--space-3);
-  font-size: var(--font-size-sm);
-  min-height: 36px;
-}
-
-/* Toast Notifications */
 .toast-container {
   position: fixed;
   top: var(--space-6);
@@ -553,15 +940,16 @@
 
 .toast {
   padding: var(--space-4) var(--space-6);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xl);
+  background: rgba(8, 18, 36, 0.92);
+  border: 1px solid rgba(0, 210, 255, 0.15);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card-premium);
   display: flex;
   align-items: center;
   gap: var(--space-3);
   min-width: 300px;
   animation: slideInRight var(--transition-normal) ease-out;
+  color: var(--color-text-primary);
 }
 
 .toast.success {
@@ -587,422 +975,110 @@
   }
 }
 
-/* Responsive Design */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 1024px) {
-  .hero-section {
-    padding: var(--space-6) var(--space-4);
-    min-height: 70vh;
-  }
-  
-  .hero-visual {
-    max-width: 100%;
-    margin-bottom: var(--space-6);
-    padding: 0 var(--space-2);
-  }
-  
-  .preview-chart {
-    max-width: 100%;
-    margin: 0 auto;
+  .hero-inner,
+  .about-grid,
+  .developer-grid {
+    grid-template-columns: 1fr;
   }
 
-  #home-preview-plot {
-    height: clamp(260px, 60vw, 460px);
+  .hero-section {
+    padding: var(--space-16) var(--space-4);
+  }
+
+  .hero-meta {
+    justify-content: flex-start;
+  }
+
+  .hero-stats {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .features-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .about-feature-list {
+    grid-template-columns: 1fr;
+  }
+
+  .about-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 768px) {
   .hero-section {
-    padding: var(--space-4) var(--space-4);
-    min-height: 60vh;
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    margin: 0;
-    overflow-x: hidden;
+    padding: var(--space-12) var(--space-4);
   }
-  
-  .hero-visual {
-    margin-bottom: var(--space-4);
-    width: 100%;
-    padding: 0;
-  }
-  
+
   .hero-title {
-    font-size: var(--font-size-2xl);
+    font-size: var(--font-size-3xl);
   }
-  
+
   .hero-subtitle {
-    font-size: var(--font-size-sm);
+    font-size: var(--font-size-base);
   }
-  
+
   .hero-stats {
-    gap: var(--space-3);
-    flex-direction: column;
-    align-items: center;
+    grid-template-columns: 1fr;
   }
-  
-  .hero-actions {
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-  }
-  
-  .hero-actions .btn {
-    width: 100%;
-    max-width: 280px;
-  }
-  
+
   .features-grid {
     grid-template-columns: 1fr;
-    gap: var(--space-6);
-  }
-  
-  .preview-chart {
-    max-width: 100%;
-    margin: 0 auto;
   }
 
-  #home-preview-plot {
-    height: clamp(240px, 70vw, 420px);
+  .about-metrics {
+    grid-template-columns: 1fr;
   }
-}
 
-@media (max-width: 480px) {
-  .hero-section {
-    padding: var(--space-3) var(--space-3);
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    margin: 0;
-    overflow-x: hidden;
-    min-height: 50vh;
+  .features-section,
+  .about-section,
+  .developer-section {
+    padding: var(--space-12) var(--space-4);
   }
-  
-  .hero-visual {
-    margin-bottom: var(--space-3);
-    padding: 0;
-  }
-  
-  .hero-title {
-    font-size: var(--font-size-xl);
-  }
-  
-  .hero-subtitle {
-    font-size: var(--font-size-xs);
-  }
-  
-  .hero-stats {
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-2);
-  }
-  
-  .stat-item {
-    text-align: center;
-  }
-  
+
   .toast {
     min-width: 280px;
     margin: 0 var(--space-4);
   }
-  
-  .preview-chart {
-    max-width: 100%;
-    width: 100%;
-    box-sizing: border-box;
-    margin: 0 auto;
-  }
-
-  #home-preview-plot {
-    height: clamp(220px, 75vh, 360px);
-  }
-}
-
-/* iPhone 15 Pro Specific Content Layout */
-@media only screen and (max-width: 393px) and (-webkit-min-device-pixel-ratio: 3) {
-  html, body {
-    width: 100%;
-    overflow-x: hidden;
-    -webkit-text-size-adjust: 100%;
-  }
-  
-  .hero-section {
-    padding: var(--space-4) var(--space-3);
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    margin: 0;
-    overflow-x: hidden;
-  }
-  
-  .hero-content {
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-  
-  .hero-visual {
-    padding: 0;
-  }
-  
-  .hero-title {
-    font-size: var(--font-size-2xl);
-    line-height: 1.2;
-  }
-  
-  .hero-subtitle {
-    font-size: var(--font-size-sm);
-    margin-bottom: var(--space-4);
-  }
-  
-  .hero-actions {
-    flex-direction: column;
-    gap: var(--space-3);
-    width: 100%;
-  }
-  
-  .hero-actions .btn {
-    width: 100%;
-    justify-content: center;
-  }
-  
-  .preview-chart {
-    width: 100%;
-    margin: 0 auto;
-    box-sizing: border-box;
-    max-width: 100%;
-  }
-
-  #home-preview-plot {
-    height: clamp(220px, 80vw, 340px);
-    min-height: 220px;
-  }
-  
-  .features-section {
-    padding: var(--space-4) var(--space-3);
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-    margin: 0;
-    overflow-x: hidden;
-  }
-  
-  .features-grid {
-    grid-template-columns: 1fr;
-    gap: var(--space-4);
-  }
-  
-  .feature-card {
-    padding: var(--space-4);
-    width: 100%;
-    max-width: 100%;
-    box-sizing: border-box;
-  }
-}
-
-/* About Section Styles */
-.about-section {
-  padding: var(--space-12) var(--space-4);
-  background: var(--color-surface);
-  border-top: 1px solid var(--color-border);
-}
-
-.about-container {
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.about-content h2 {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  text-align: center;
-  margin-bottom: var(--space-8);
-}
-
-.about-content > p {
-  font-size: var(--font-size-lg);
-  line-height: var(--line-height-relaxed);
-  color: var(--color-text-secondary);
-  text-align: center;
-  max-width: 800px;
-  margin: 0 auto var(--space-8) auto;
-}
-
-.about-features {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--space-6);
-  margin-top: var(--space-8);
-}
-
-.about-feature {
-  background: var(--gradient-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-6);
-  text-align: center;
-  transition: all 0.3s ease;
-}
-
-.about-feature:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-xl);
-}
-
-.about-feature h3 {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  margin-bottom: var(--space-3);
-}
-
-.about-feature p {
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-relaxed);
-  color: var(--color-text-secondary);
-  margin: 0;
-}
-
-/* Developer Section Styles */
-.developer-section {
-  padding: var(--space-12) var(--space-4);
-  background: var(--gradient-surface);
-  border-top: 1px solid var(--color-border);
-}
-
-.developer-container {
-  max-width: 1000px;
-  margin: 0 auto;
-}
-
-.developer-content h2 {
-  font-size: var(--font-size-3xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  text-align: center;
-  margin-bottom: var(--space-8);
-}
-
-.developer-info {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-
-.developer-text {
-  max-width: 700px;
-  text-align: center;
-}
-
-.developer-text h3 {
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  margin-bottom: var(--space-4);
-}
-
-.developer-text p {
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-relaxed);
-  color: var(--color-text-secondary);
-  margin-bottom: var(--space-4);
-}
-
-.developer-skills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  justify-content: center;
-  margin: var(--space-6) 0;
-}
-
-.skill-tag {
-  background: var(--color-primary);
-  color: white;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  transition: all 0.3s ease;
-}
-
-.skill-tag:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.developer-links {
-  margin-top: var(--space-6);
-}
-
-.linkedin-link {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  background: #0077b5;
-  color: white;
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-lg);
-  text-decoration: none;
-  font-weight: var(--font-weight-medium);
-  transition: all 0.3s ease;
-}
-
-.linkedin-link:hover {
-  background: #005885;
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-}
-
-/* Responsive styles for new sections */
-@media (max-width: 768px) {
-  .about-section,
-  .developer-section {
-    padding: var(--space-8) var(--space-4);
-  }
-  
-  .about-content h2,
-  .developer-content h2 {
-    font-size: var(--font-size-2xl);
-  }
-  
-  .about-content > p {
-    font-size: var(--font-size-base);
-  }
-  
-  .about-features {
-    grid-template-columns: 1fr;
-    gap: var(--space-4);
-  }
-  
-  .developer-text h3 {
-    font-size: var(--font-size-xl);
-  }
-  
-  .developer-skills {
-    gap: var(--space-1);
-  }
-  
-  .skill-tag {
-    font-size: var(--font-size-xs);
-    padding: var(--space-1) var(--space-2);
-  }
 }
 
 @media (max-width: 480px) {
-  .about-section,
-  .developer-section {
-    padding: var(--space-6) var(--space-3);
+  .hero-title {
+    font-size: var(--font-size-2xl);
   }
-  
-  .about-feature {
-    padding: var(--space-4);
+
+  .hero-logo {
+    height: 60px;
   }
-  
-  .linkedin-link {
-    padding: var(--space-2) var(--space-3);
+
+  .hero-highlights li {
     font-size: var(--font-size-sm);
+  }
+
+  .meta-item {
+    width: 100%;
+  }
+
+  .hero-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .hero-actions .btn {
+    width: 100%;
   }
 }
 </style>
@@ -1026,15 +1102,15 @@ function showToast(message, type = 'info', duration = 5000) {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  
+
   const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
   toast.innerHTML = `
     <span class="toast-icon">${icon}</span>
     <span class="toast-message">${message}</span>
   `;
-  
+
   container.appendChild(toast);
-  
+
   setTimeout(() => {
     toast.style.animation = 'slideOutRight 300ms ease-in forwards';
     setTimeout(() => container.removeChild(toast), 300);
@@ -1081,85 +1157,85 @@ function attachPlotResizeObserver(target) {
 
 async function fetchCurva() {
   try {
-    const response = await fetch('/api/curva', {
+    const response = await fetch('/api/curva?limit=168', {
       cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache'
-      }
+      headers: { 'Cache-Control': 'no-cache' }
     });
     const data = await response.json();
-    
-    if (data.ok && data.data && data.data.length > 0) {
-      console.log(`curva loaded: ${data.rows}, last_ts: ${data.last_ts}`);
-      return data;
-    } else {
+
+    if (!data.ok || !data.data || !data.data.length) {
       throw new Error('Nessun dato disponibile');
     }
+
+    return data;
   } catch (error) {
-    console.error('Error fetching curva:', error);
+    console.error('Errore nel recupero dei dati curva:', error);
     throw error;
   }
 }
 
-function drawPlot(data, container = 'home-preview-plot') {
+function drawPlot(data, targetId) {
   if (!window.Plotly) {
-    console.error('Plotly library not loaded');
     return;
   }
 
-  const target = typeof container === 'string' ? document.getElementById(container) : container;
-
+  const target = document.getElementById(targetId);
   if (!target) {
-    console.warn('Plot container not found:', container);
     return;
   }
 
   const timestamps = data.data.map(row => row.timestamp);
   const values = data.data.map(row => row.value);
-  const threshold = 2.0; // Default threshold
+  const threshold = 2.0;
 
   const trace = {
     x: timestamps,
     y: values,
     type: 'scatter',
     mode: 'lines',
-    name: 'Tremor',
-    line: { color: '#00AA00', width: 2 },
+    name: 'Tremore',
+    line: { color: '#00D2FF', width: 2 },
+    hoverlabel: {
+      bgcolor: '#0B1220',
+      font: { color: '#F4F8FF' }
+    },
     showlegend: false
   };
 
   const layout = {
-    autosize: true,
+    margin: { l: 60, r: 20, t: 20, b: 50 },
+    paper_bgcolor: '#0B1220',
+    plot_bgcolor: '#0B1220',
+    font: { color: '#F4F8FF', size: 12 },
     xaxis: {
       title: 'Data/Ora',
       showgrid: true,
-      gridcolor: 'rgba(255,255,255,0.1)',
-      tickfont: { size: 9, color: '#e6e7ea' },
-      titlefont: { size: 11, color: '#e6e7ea' }
+      gridcolor: 'rgba(0, 210, 255, 0.12)',
+      tickfont: { size: 11, color: '#C0CAE6' },
+      titlefont: { size: 12, color: '#C0CAE6' },
+      showticklabels: true,
+      color: '#C0CAE6'
     },
-    yaxis: { 
-      title: 'mV', 
+    yaxis: {
+      title: 'mV',
       type: 'log',
-      range: [-1, 1], // 0.1 to 10 range
+      range: [-1, 1],
+      tickfont: { size: 11, color: '#C0CAE6' },
+      titlefont: { size: 12, color: '#C0CAE6' },
       showgrid: true,
-      gridcolor: 'rgba(255,255,255,0.1)',
-      tickfont: { size: 9, color: '#e6e7ea' },
-      titlefont: { size: 11, color: '#e6e7ea' }
+      gridcolor: 'rgba(0, 210, 255, 0.12)',
+      color: '#C0CAE6'
     },
-    plot_bgcolor: '#151821',
-    paper_bgcolor: '#151821',
-    font: { color: '#e6e7ea', size: 10 },
-    margin: { l: 20, r: 10, t: 10, b: 60 },
     shapes: [{
       type: 'line',
       x0: timestamps[0],
       x1: timestamps[timestamps.length - 1],
       y0: threshold,
       y1: threshold,
-      line: { color: '#ef4444', width: 2, dash: 'dash' }
+      line: { color: '#F87171', width: 2, dash: 'dash' }
     }]
   };
-  
+
   const config = {
     staticPlot: false,
     displayModeBar: false,
@@ -1173,20 +1249,19 @@ function drawPlot(data, container = 'home-preview-plot') {
   }
 
   Plotly.newPlot(target, [trace], layout, config).then(() => {
-    // Hide loading placeholder and show chart
     const loading = document.getElementById('home-preview-loading');
-    const plot = target;
 
     if (loading) {
       loading.style.display = 'none';
     }
-    if (plot) {
-      plot.classList.add('loaded');
-      plot.style.display = 'block';
+
+    if (target) {
+      target.classList.add('loaded');
+      target.style.display = 'block';
     }
 
-    Plotly.Plots.resize(plot);
-    attachPlotResizeObserver(plot);
+    Plotly.Plots.resize(target);
+    attachPlotResizeObserver(target);
   }).finally(() => {
     handleViewportChange();
   });
@@ -1206,7 +1281,7 @@ async function refreshPlot() {
 function showNoDataMessage() {
   const loading = document.getElementById('home-preview-loading');
   const plot = document.getElementById('home-preview-plot');
-  
+
   if (loading && plot) {
     if (plotResizeObserver) {
       plotResizeObserver.disconnect();
@@ -1232,14 +1307,13 @@ function showNoDataMessage() {
 function updateActivityBadge(currentValue) {
   const valueDisplay = document.getElementById('current-value-display');
   const badge = document.getElementById('activity-badge');
-  
+
   if (!valueDisplay || !badge || !currentValue) return;
-  
+
   valueDisplay.textContent = `${currentValue.toFixed(2)} mV`;
-  
-  // Remove existing classes
+
   badge.classList.remove('low', 'moderate', 'high');
-  
+
   if (currentValue >= 0.1 && currentValue <= 1.0) {
     badge.classList.add('low');
     badge.textContent = 'Attività Bassa';
@@ -1262,21 +1336,19 @@ async function checkStatus() {
   try {
     const response = await fetch('/api/status');
     const data = await response.json();
-    
+
     const statusDot = document.getElementById('status-dot');
     const statusText = document.getElementById('status-text');
-    
+
     if (data.ok) {
       statusDot.className = 'status-dot';
       statusText.textContent = `Online • Ultimo aggiornamento ${new Date(data.last_update || data.last_ts).toLocaleTimeString()}`;
-      
-      // Update hero stats
+
       document.getElementById('last-update').textContent = new Date(data.last_update || data.last_ts).toLocaleString();
       document.getElementById('data-points').textContent = (data.total_points || data.rows || 0).toLocaleString();
       document.getElementById('current-level').textContent = `${data.current_value?.toFixed(2) || '--'} mV`;
-      document.getElementById('hero-stats').style.display = 'flex';
-      
-      // Update chart header status
+      document.getElementById('hero-stats').style.display = 'grid';
+
       updateActivityBadge(data.current_value);
       statusRetryCount = 0;
     } else {
@@ -1287,7 +1359,7 @@ async function checkStatus() {
     const statusDot = document.getElementById('status-dot');
     const statusText = document.getElementById('status-text');
     statusDot.className = 'status-dot offline';
-    
+
     if (statusRetryCount < statusMaxRetries) {
       statusText.textContent = 'Caricamento dati da INGV, attendere...';
       statusRetryCount++;
@@ -1302,7 +1374,7 @@ async function checkStatus() {
 async function quickUpdate() {
   const btn = document.getElementById('quick-update-btn');
   const originalText = btn.innerHTML;
-  
+
   btn.disabled = true;
   btn.innerHTML = `
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin">
@@ -1310,21 +1382,20 @@ async function quickUpdate() {
     </svg>
     Aggiornamento...
   `;
-  
+
   try {
     const response = await fetch('/api/force_update', { method: 'POST' });
     const result = await response.json();
-    
+
     if (result.ok) {
       showToast(`Dati aggiornati con successo! ${result.rows} punti dati elaborati.`, 'success');
-      
-      // Refresh the home preview chart
+
       try {
         await refreshPlot();
       } catch (plotError) {
         console.error('Error refreshing home preview:', plotError);
       }
-      
+
       await checkStatus();
     } else {
       showToast(`Update failed: ${result.error}`, 'error');
@@ -1342,18 +1413,15 @@ document.getElementById('quick-update-btn').addEventListener('click', quickUpdat
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
-  // Check status first
   await checkStatus();
-  
-  // Initialize home preview chart
+
   try {
     await refreshPlot();
   } catch (error) {
     console.error('Failed to initialize chart:', error);
     showNoDataMessage();
   }
-  
-  // Auto-refresh status every 30 seconds
+
   setInterval(checkStatus, 30000);
 });
 
@@ -1363,7 +1431,7 @@ style.textContent = `
   .animate-spin {
     animation: spin 1s linear infinite;
   }
-  
+
   @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
