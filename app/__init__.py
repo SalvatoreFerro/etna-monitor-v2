@@ -3,6 +3,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
 from flask_compress import Compress
+from werkzeug.middleware.proxy_fix import ProxyFix  # Ensure proxy headers are honored for HTTPS redirects
 import os
 import redis
 
@@ -21,6 +22,14 @@ from config import Config
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+
+    # Capture the Google redirect URI from the environment so the OAuth flow
+    # uses the exact value configured on Google Cloud Console.
+    app.config["GOOGLE_REDIRECT_URI"] = os.getenv("GOOGLE_REDIRECT_URI", "")
+
+    # Honor proxy headers inserted by Render (or any reverse proxy) so that
+    # url_for(..., _external=True) builds HTTPS links with the correct host.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)  # type: ignore[attr-defined]
     
     init_db(app)
     
