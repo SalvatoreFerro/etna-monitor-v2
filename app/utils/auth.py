@@ -9,7 +9,7 @@ import warnings
 from functools import wraps
 
 import bcrypt
-from flask import flash, redirect, request, session, url_for
+from flask import flash, g, redirect, request, session, url_for
 
 from ..models.user import User
 
@@ -36,7 +36,9 @@ def check_password(plain: str, hashed: str) -> bool:
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
+        user = get_current_user()
+        if not user:
+            session.pop('user_id', None)
             flash('Please log in to access this page.', 'error')
             return redirect(url_for('auth.login', next=request.url))
         return f(*args, **kwargs)
@@ -45,11 +47,12 @@ def login_required(f):
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        if 'user_id' not in session:
+        user = get_current_user()
+        if not user:
+            session.pop('user_id', None)
             flash('Please log in to access this page.', 'error')
             return redirect(url_for('auth.login'))
-        
-        user = User.query.get(session['user_id'])
+
         if not user or not user.is_admin:
             flash('Admin access required.', 'error')
             return redirect(url_for('main.index'))
@@ -57,6 +60,17 @@ def admin_required(f):
     return decorated_function
 
 def get_current_user():
-    if 'user_id' in session:
-        return User.query.get(session['user_id'])
-    return None
+    cached_user = getattr(g, '_current_user', None)
+    if cached_user is not None or hasattr(g, '_current_user_loaded'):
+        return cached_user
+
+    user = None
+    user_id = session.get('user_id')
+    if user_id is not None:
+        user = User.query.get(user_id)
+        if user is None:
+            session.pop('user_id', None)
+
+    g._current_user_loaded = True
+    g._current_user = user
+    return user
