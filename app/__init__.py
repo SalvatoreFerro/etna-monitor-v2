@@ -25,6 +25,11 @@ def create_app():
     app.config.from_object(Config)
     app.config["CANONICAL_HOST"] = os.getenv("CANONICAL_HOST", "")
 
+    raw = os.getenv("ADMIN_EMAILS", "")
+    admin_set = {e.strip().lower() for e in raw.split(",") if e.strip()}
+    app.config["ADMIN_EMAILS_SET"] = admin_set
+    app.logger.info(f"[BOOT] ADMIN_EMAILS_SET={admin_set}")
+
     def get_current_year() -> int:
         return datetime.utcnow().year
 
@@ -75,9 +80,10 @@ def create_app():
         print("ℹ️  Telegram bot disabled (ENABLE_TELEGRAM_BOT=false)")
     
     with app.app_context():
+        from sqlalchemy import inspect, text
+        from .models import db
+
         try:
-            from sqlalchemy import inspect, text
-            from .models import db
             inspector = inspect(db.engine)
             
             if 'users' in inspector.get_table_names():
@@ -181,7 +187,16 @@ def create_app():
         except Exception as e:
             print(f"⚠️  Auto-migration failed: {e}")
             pass
-    
+
+        try:
+            with db.engine.connect() as conn:
+                for e in app.config.get("ADMIN_EMAILS_SET", set()):
+                    conn.execute(text("UPDATE users SET is_admin=1 WHERE lower(email)=:e"), {"e": e})
+                conn.commit()
+            app.logger.info("[BOOT] Admin auto-promotion applied to existing users.")
+        except Exception as ex:
+            app.logger.warning(f"[BOOT] Admin auto-promotion failed: {ex}")
+
     csp = {
         'default-src': "'self'",
         'script-src': [
