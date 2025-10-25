@@ -15,7 +15,7 @@ from .routes.auth import bp as auth_bp
 from .routes.api import api_bp
 from .routes.status import status_bp
 from .routes.billing import bp as billing_bp
-from .models import init_db
+from .models import db
 from .context_processors import inject_user
 from .services.scheduler_service import SchedulerService
 from config import Config
@@ -23,6 +23,11 @@ from config import Config
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL")
+    if not app.config["SQLALCHEMY_DATABASE_URI"]:
+        app.logger.warning("[BOOT] DATABASE_URL not set. Falling back to default SQLALCHEMY_DATABASE_URI from Config.")
+        app.config["SQLALCHEMY_DATABASE_URI"] = Config.SQLALCHEMY_DATABASE_URI
+    app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["CANONICAL_HOST"] = os.getenv("CANONICAL_HOST", "")
 
     raw = os.getenv("ADMIN_EMAILS", "")
@@ -58,7 +63,7 @@ def create_app():
     # url_for(..., _external=True) builds HTTPS links with the correct host.
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)  # type: ignore[attr-defined]
     
-    init_db(app)
+    db.init_app(app)
     
     try:
         scheduler = SchedulerService()
@@ -81,7 +86,6 @@ def create_app():
     
     with app.app_context():
         from sqlalchemy import inspect, text
-        from .models import db
 
         try:
             inspector = inspect(db.engine)
@@ -253,7 +257,10 @@ def create_app():
     app.register_blueprint(billing_bp, url_prefix="/billing")
     app.register_blueprint(api_bp)
     app.register_blueprint(status_bp)
-    
+
+    with app.app_context():
+        db.create_all()
+
     return app
 
 app = create_app()
