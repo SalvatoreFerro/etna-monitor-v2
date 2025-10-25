@@ -68,7 +68,7 @@
         </svg>
         <p>Caricamento dati da INGV, attendere...</p>
       </div>
-      <div id="home-preview-plot" style="width: 100%; height: 450px;" role="img" aria-label="Visualizzazione dati tremore"></div>
+      <div id="home-preview-plot" role="img" aria-label="Visualizzazione dati tremore"></div>
     </div>
   </div>
 </section>
@@ -373,6 +373,10 @@
 #home-preview-plot {
   width: 100%;
   box-sizing: border-box;
+  height: clamp(280px, 55vw, 520px);
+  max-height: 520px;
+  min-height: 260px;
+  transition: height 200ms ease;
 }
 
 #home-preview-loading {
@@ -600,6 +604,10 @@
     max-width: 100%;
     margin: 0 auto;
   }
+
+  #home-preview-plot {
+    height: clamp(260px, 60vw, 460px);
+  }
 }
 
 @media (max-width: 768px) {
@@ -653,6 +661,10 @@
     max-width: 100%;
     margin: 0 auto;
   }
+
+  #home-preview-plot {
+    height: clamp(240px, 70vw, 420px);
+  }
 }
 
 @media (max-width: 480px) {
@@ -699,6 +711,10 @@
     width: 100%;
     box-sizing: border-box;
     margin: 0 auto;
+  }
+
+  #home-preview-plot {
+    height: clamp(220px, 75vh, 360px);
   }
 }
 
@@ -752,15 +768,14 @@
   
   .preview-chart {
     width: 100%;
-    height: 380px;
     margin: 0 auto;
     box-sizing: border-box;
     max-width: 100%;
   }
-  
+
   #home-preview-plot {
-    height: 380px !important;
-    min-height: 380px;
+    height: clamp(220px, 80vw, 340px);
+    min-height: 220px;
   }
   
   .features-section {
@@ -1027,6 +1042,43 @@ function showToast(message, type = 'info', duration = 5000) {
 }
 
 // Chart Rendering Functions
+let plotResizeObserver;
+
+const handleViewportChange = () => {
+  const plot = document.getElementById('home-preview-plot');
+
+  if (plot && window.Plotly && plot.data) {
+    Plotly.Plots.resize(plot);
+  }
+};
+
+window.addEventListener('orientationchange', handleViewportChange);
+window.addEventListener('resize', handleViewportChange);
+
+function attachPlotResizeObserver(target) {
+  if (!target || !window.Plotly) {
+    return;
+  }
+
+  if (typeof ResizeObserver === 'undefined') {
+    return;
+  }
+
+  if (plotResizeObserver) {
+    plotResizeObserver.disconnect();
+  }
+
+  plotResizeObserver = new ResizeObserver(entries => {
+    entries.forEach(entry => {
+      window.requestAnimationFrame(() => {
+        Plotly.Plots.resize(entry.target);
+      });
+    });
+  });
+
+  plotResizeObserver.observe(target);
+}
+
 async function fetchCurva() {
   try {
     const response = await fetch('/api/curva', {
@@ -1054,11 +1106,18 @@ function drawPlot(data, container = 'home-preview-plot') {
     console.error('Plotly library not loaded');
     return;
   }
-  
+
+  const target = typeof container === 'string' ? document.getElementById(container) : container;
+
+  if (!target) {
+    console.warn('Plot container not found:', container);
+    return;
+  }
+
   const timestamps = data.data.map(row => row.timestamp);
   const values = data.data.map(row => row.value);
   const threshold = 2.0; // Default threshold
-  
+
   const trace = {
     x: timestamps,
     y: values,
@@ -1068,11 +1127,10 @@ function drawPlot(data, container = 'home-preview-plot') {
     line: { color: '#00AA00', width: 2 },
     showlegend: false
   };
-  
+
   const layout = {
     autosize: true,
-    height: 450,
-    xaxis: { 
+    xaxis: {
       title: 'Data/Ora',
       showgrid: true,
       gridcolor: 'rgba(255,255,255,0.1)',
@@ -1109,12 +1167,16 @@ function drawPlot(data, container = 'home-preview-plot') {
     scrollZoom: true,
     doubleClick: 'reset'
   };
-  
-  Plotly.newPlot(container, [trace], layout, config).then(() => {
+
+  if (plotResizeObserver) {
+    plotResizeObserver.disconnect();
+  }
+
+  Plotly.newPlot(target, [trace], layout, config).then(() => {
     // Hide loading placeholder and show chart
     const loading = document.getElementById('home-preview-loading');
-    const plot = document.getElementById(container);
-    
+    const plot = target;
+
     if (loading) {
       loading.style.display = 'none';
     }
@@ -1122,6 +1184,11 @@ function drawPlot(data, container = 'home-preview-plot') {
       plot.classList.add('loaded');
       plot.style.display = 'block';
     }
+
+    Plotly.Plots.resize(plot);
+    attachPlotResizeObserver(plot);
+  }).finally(() => {
+    handleViewportChange();
   });
 }
 
@@ -1141,6 +1208,10 @@ function showNoDataMessage() {
   const plot = document.getElementById('home-preview-plot');
   
   if (loading && plot) {
+    if (plotResizeObserver) {
+      plotResizeObserver.disconnect();
+    }
+
     loading.innerHTML = `
       <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
         <path d="M3 3v18h18"/>
@@ -1153,6 +1224,7 @@ function showNoDataMessage() {
     `;
     loading.style.display = 'flex';
     plot.style.display = 'none';
+    plot.classList.remove('loaded');
   }
 }
 
