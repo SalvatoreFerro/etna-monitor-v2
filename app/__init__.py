@@ -7,6 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix  # Ensure proxy headers are h
 import os
 import redis
 from datetime import datetime
+from urllib.parse import urlparse, urlunparse
 
 from .routes.main import bp as main_bp
 from .routes.dashboard import bp as dashboard_bp
@@ -18,17 +19,31 @@ from .routes.billing import bp as billing_bp
 from .models import db
 from .context_processors import inject_user
 from .services.scheduler_service import SchedulerService
-from config import Config
+from config import Config, get_database_uri_from_env
+
+
+def _mask_database_uri(uri: str) -> str:
+    try:
+        parsed = urlparse(uri)
+        if parsed.password:
+            netloc = parsed.netloc.replace(parsed.password, "***")
+            parsed = parsed._replace(netloc=netloc)
+        return urlunparse(parsed)
+    except Exception:
+        return "<unavailable>"
 
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
 
-    database_url = os.getenv("INTERNAL_DATABASE_URL") or os.getenv("DATABASE_URL")
+    database_url, database_source = get_database_uri_from_env()
     if database_url:
-        if database_url.startswith("postgres://"):
-            database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
         app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+        if database_source:
+            masked_url = _mask_database_uri(database_url)
+            app.logger.info(
+                f"[BOOT] SQLALCHEMY_DATABASE_URI resolved from {database_source}: {masked_url}"
+            )
     else:
         app.logger.warning(
             "[BOOT] DATABASE_URL not set. Falling back to default SQLALCHEMY_DATABASE_URI from Config."
