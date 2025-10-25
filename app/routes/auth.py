@@ -165,12 +165,15 @@ def auth_callback():
             user.email = email or user.email
             user.name = profile.get("name")
             user.picture_url = profile.get("picture")
+            if user.password_hash is None:
+                user.password_hash = ""
         else:
             user = User(
                 email=email,
                 google_id=google_id,
                 name=profile.get("name"),
                 picture_url=profile.get("picture"),
+                password_hash="",
             )
             db.session.add(user)
 
@@ -191,6 +194,8 @@ def auth_callback():
             existing_user.email = email or existing_user.email
             existing_user.name = profile.get("name")
             existing_user.picture_url = profile.get("picture")
+            if existing_user.password_hash is None:
+                existing_user.password_hash = ""
 
             db.session.add(existing_user)
             db.session.commit()

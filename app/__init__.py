@@ -147,6 +147,13 @@ def create_app():
                     except Exception as e:
                         print(f"⚠️  Auto-migration: Could not update password_hash nullability: {e}")
 
+                try:
+                    with db.engine.connect() as conn:
+                        conn.execute(text("UPDATE users SET password_hash='' WHERE password_hash IS NULL"))
+                        conn.commit()
+                except Exception as e:
+                    print(f"⚠️  Auto-migration: Could not sanitize password_hash values: {e}")
+
             db.create_all()
 
         except Exception as e:
