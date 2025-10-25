@@ -32,7 +32,7 @@
 
         <div class="hero-actions">
           {% if not session.user_id %}
-            <a href="{{ url_for('auth.register') }}" class="btn btn-premium" aria-label="Inizia la prova gratuita di EtnaMonitor">Inizia prova gratuita</a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-premium" aria-label="Accedi con Google per iniziare la prova gratuita">Accedi con Google</a>
           {% elif current_user.premium %}
             <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-premium" aria-label="Gestisci il tuo abbonamento premium">Gestisci abbonamento</a>
           {% else %}
@@ -96,7 +96,7 @@
 
         <footer class="plan-footer">
           {% if not session.user_id %}
-            <a href="{{ url_for('auth.register') }}" class="btn btn-secondary glass" aria-label="Registrati con piano gratuito">Inizia ora</a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-secondary glass" aria-label="Accedi con Google per attivare il piano gratuito">Accedi con Google</a>
           {% elif not current_user.premium %}
             <button class="btn btn-secondary glass" disabled aria-disabled="true">Piano attuale</button>
           {% else %}
@@ -131,7 +131,7 @@
 
         <footer class="plan-footer">
           {% if not session.user_id %}
-            <a href="{{ url_for('auth.register') }}" class="btn btn-premium" aria-label="Prova il piano premium gratuitamente">Inizia prova gratuita</a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-premium" aria-label="Accedi con Google per provare il piano premium">Accedi con Google</a>
           {% elif current_user.premium %}
             <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-secondary glass" aria-label="Gestisci il tuo abbonamento premium">Gestisci abbonamento</a>
           {% else %}
@@ -242,7 +242,7 @@
     </div>
     <div class="cta-actions">
       <a href="mailto:hello@etnamonitor.io" class="btn btn-secondary glass" aria-label="Richiedi una demo personalizzata">Prenota una demo</a>
-      <a href="{{ url_for('auth.register') }}" class="btn btn-premium" aria-label="Attiva subito EtnaMonitor">Attiva subito</a>
+      <a href="{{ url_for('auth.login') }}" class="btn btn-premium" aria-label="Accedi con Google per attivare EtnaMonitor">Accedi con Google</a>
     </div>
   </section>
 </main>

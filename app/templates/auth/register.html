@@ -1,26 +1,31 @@
 {% extends "layout.html" %}
 {% block content %}
-  <section class="card card-premium animate-premium-fade">
-    <h2>Registrati</h2>
+  <section class="card card-premium login-google-card animate-premium-fade">
+    <div class="login-card-header">
+      <h1>Crea il tuo profilo con Google</h1>
+      <p>Non servono credenziali dedicate: collega semplicemente il tuo account Google e penseremo noi a creare il profilo EtnaMonitor.</p>
+    </div>
+
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }}">{{ message }}</div>
-        {% endfor %}
+        <div class="login-flash-group">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
       {% endif %}
     {% endwith %}
-    
-    <form method="POST">
-      <div class="form-group">
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required class="input-base">
-      </div>
-      <div class="form-group">
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required minlength="6" class="input-base">
-      </div>
-      <button type="submit" class="btn btn-premium">Registrati</button>
+
+    <form method="post" action="{{ url_for('auth.auth_google') }}" class="google-login-form">
+      <button type="submit" class="btn btn-google btn-google-dark">
+        <span class="btn-icon" aria-hidden="true"><i class="fab fa-google"></i></span>
+        <span class="btn-text">Registrati con Google</span>
+      </button>
     </form>
-    <p><a href="{{ url_for('auth.login') }}">Hai già un account? Accedi qui</a></p>
+
+    <div class="login-benefits">
+      <p>Già registrato? Usa lo stesso pulsante: il sistema riconoscerà automaticamente il tuo account Google e ti farà accedere.</p>
+      <p class="login-hint">La sincronizzazione del profilo include nome e immagine pubblici del tuo account Google.</p>
+    </div>
   </section>
 {% endblock %}

@@ -36,7 +36,7 @@ def login():
     return render_template("auth/login.html", next_page=request.args.get("next"))
 
 
-@bp.route("/auth/google", methods=["GET"])
+@bp.route("/auth/google", methods=["GET", "POST"])
 def auth_google():
     """Kick off the Google OAuth flow."""
     client_id = current_app.config.get("GOOGLE_CLIENT_ID")
@@ -47,7 +47,7 @@ def auth_google():
     state = secrets.token_urlsafe(32)
     session["oauth_state"] = state
 
-    next_page = request.args.get("next")
+    next_page = request.args.get("next") or request.form.get("next")
     if next_page:
         session["post_login_redirect"] = next_page
 

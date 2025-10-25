@@ -1,26 +1,36 @@
 {% extends "layout.html" %}
 {% block content %}
-  <section class="card card-premium animate-premium-fade">
-    <h2>Accedi</h2>
+  <section class="card card-premium login-google-card animate-premium-fade">
+    <div class="login-card-header">
+      <h1>Accedi con Google</h1>
+      <p>Collega EtnaMonitor al tuo account Google per sbloccare dashboard, avvisi e strumenti premium senza ricordare password.</p>
+    </div>
+
     {% with messages = get_flashed_messages(with_categories=true) %}
       {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }}">{{ message }}</div>
-        {% endfor %}
+        <div class="login-flash-group">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
       {% endif %}
     {% endwith %}
-    
-    <form method="POST">
-      <div class="form-group">
-        <label for="email">Email:</label>
-        <input type="email" id="email" name="email" required class="input-base">
-      </div>
-      <div class="form-group">
-        <label for="password">Password:</label>
-        <input type="password" id="password" name="password" required class="input-base">
-      </div>
-      <button type="submit" class="btn btn-premium">Accedi</button>
+
+    <form method="post" action="{{ url_for('auth.auth_google') }}" class="google-login-form">
+      {% if next_page %}
+        <input type="hidden" name="next" value="{{ next_page }}">
+      {% endif %}
+      <button type="submit" class="btn btn-google btn-google-dark">
+        <span class="btn-icon" aria-hidden="true"><i class="fab fa-google"></i></span>
+        <span class="btn-text">Continua con Google</span>
+      </button>
     </form>
-    <p><a href="{{ url_for('auth.register') }}">Non hai un account? Registrati qui</a></p>
+
+    <div class="login-benefits">
+      <p>
+        L'autenticazione OAuth di Google gestisce la registrazione automaticamente: al primo accesso creeremo il tuo profilo EtnaMonitor utilizzando nome e immagine Google.
+      </p>
+      <p class="login-hint">Hai già effettuato l'accesso altrove? Seleziona l'account Google corretto per continuare.</p>
+    </div>
   </section>
 {% endblock %}
