@@ -147,8 +147,8 @@ def create_app():
                     print(f"🎉 Auto-migration: Added {columns_added} billing columns to users table")
 
                 premium_donation_columns = [
-                    ('is_premium', 'BOOLEAN DEFAULT 0 NOT NULL'),
-                    ('premium_lifetime', 'BOOLEAN DEFAULT 0 NOT NULL'),
+                    ('is_premium', 'BOOLEAN DEFAULT FALSE NOT NULL'),
+                    ('premium_lifetime', 'BOOLEAN DEFAULT FALSE NOT NULL'),
                     ('premium_since', 'TIMESTAMP'),
                     ('donation_tx', 'VARCHAR(255)')
                 ]
