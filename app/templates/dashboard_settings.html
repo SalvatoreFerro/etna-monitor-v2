@@ -3,64 +3,167 @@
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
 <style>
+.settings-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: var(--space-7) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.settings-header {
+  padding: var(--space-6);
+  border-radius: var(--radius-2xl);
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.settings-header h1 {
+  margin: 0;
+  font-size: clamp(1.75rem, 2vw, 2.5rem);
+}
+
+.settings-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.settings-card {
+  padding: var(--space-5);
+  border-radius: var(--radius-2xl);
+  background: rgba(24, 26, 32, 0.65);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.account-details {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.account-details dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: var(--space-2) var(--space-4);
+  margin: 0;
+}
+
+.account-details dt {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.account-details dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: var(--font-size-sm);
+  background: rgba(79, 70, 229, 0.12);
+  color: var(--accent);
+  width: fit-content;
+}
+
+.feature-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.feature-list li {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.feature-list svg {
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.actions-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.secondary-card {
+  background: rgba(26, 30, 40, 0.45);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.secondary-card h3 {
+  margin: 0;
+}
+
+.muted-text {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.inline-link {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.inline-link:hover,
+.inline-link:focus {
+  text-decoration: underline;
+}
+
+@media only screen and (max-width: 768px) {
+  .settings-container {
+    padding: var(--space-6) var(--space-4);
+  }
+
+  .settings-header,
+  .settings-card {
+    padding: var(--space-5);
+  }
+
+  .actions-group {
+    flex-direction: column;
+  }
+}
+
 @media only screen and (max-width: 393px) and (-webkit-min-device-pixel-ratio: 3) {
   .settings-container {
     padding: 12px max(4px, env(safe-area-inset-right)) 12px max(4px, env(safe-area-inset-left));
     width: 100%;
     box-sizing: border-box;
   }
-  
+
   .settings-header {
     padding: 16px max(4px, env(safe-area-inset-right)) 16px max(4px, env(safe-area-inset-left));
-    margin-bottom: 12px;
-    width: 100%;
-    box-sizing: border-box;
   }
-  
-  .settings-header h1 {
-    font-size: var(--font-size-xl);
-    margin-bottom: var(--space-2);
-  }
-  
-  .settings-content {
+
+  .settings-card {
     padding: 16px max(4px, env(safe-area-inset-right)) 16px max(4px, env(safe-area-inset-left));
-    width: 100%;
-    box-sizing: border-box;
   }
-  
-  .settings-form {
+
+  .actions-group {
     width: 100%;
-    box-sizing: border-box;
   }
-  
-  .form-group {
-    margin-bottom: var(--space-4);
-    width: 100%;
-    box-sizing: border-box;
-  }
-  
-  .input-base {
-    width: 100%;
-    box-sizing: border-box;
-    font-size: var(--font-size-sm);
-  }
-  
-  .btn {
+
+  .actions-group .btn {
     width: 100%;
     justify-content: center;
-    margin-bottom: var(--space-3);
-  }
-  
-  .navigation-actions {
-    width: 100%;
-    box-sizing: border-box;
-  }
-  
-  .upgrade-prompt {
-    text-align: center;
-    padding: var(--space-4);
-    width: 100%;
-    box-sizing: border-box;
   }
 }
 </style>
@@ -68,42 +171,145 @@
 
 {% block content %}
 <div class="settings-container">
-  <div class="settings-header card-premium animate-premium-fade">
-    <h1>Impostazioni Dashboard</h1>
-    <p>Personalizza le tue preferenze di monitoraggio</p>
+  <div class="settings-header animate-premium-fade">
+    <span class="pill">Area personale</span>
+    <h1>Impostazioni account</h1>
+    <p>Gestisci i dettagli del tuo profilo e scopri le funzionalità disponibili per il tuo piano.</p>
   </div>
-  
-  <div class="settings-content card-premium animate-premium-slide">
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        {% for category, message in messages %}
-          <div class="alert alert-{{ category }}">{{ message }}</div>
-        {% endfor %}
-      {% endif %}
-    {% endwith %}
-    
-    {% if user.premium %}
-      <form method="POST" class="settings-form">
-        <div class="form-group">
-          <label for="threshold">Soglia Personalizzata Alert (mV):</label>
-          <input type="number" id="threshold" name="threshold" class="input-base"
-                 value="{{ user.threshold or default_threshold }}" 
-                 step="0.1" min="0.1" max="100.0" required>
-          <small>Range: 0.1 - 100.0 mV</small>
-        </div>
-        <button type="submit" class="btn btn-premium">Aggiorna Soglia</button>
-      </form>
-    {% else %}
-      <div class="upgrade-prompt">
-        <p>Account Premium richiesto per soglie personalizzate.</p>
-        <p>Soglia predefinita attuale: <strong>{{ default_threshold }} mV</strong></p>
-        <a href="/pricing" class="btn btn-premium">Passa a Premium</a>
+
+  <div class="settings-grid">
+    <section class="settings-card animate-premium-slide">
+      <header>
+        <h2>Riepilogo account</h2>
+        <p class="muted-text">Informazioni principali sul tuo profilo e sullo stato dell'abbonamento.</p>
+      </header>
+      <div class="account-details">
+        <div class="pill">Piano {{ 'Premium' if user.premium else 'Free' }}</div>
+        <dl>
+          <dt>Email</dt>
+          <dd>{{ user.email }}</dd>
+          {% if user.name %}
+          <dt>Nome</dt>
+          <dd>{{ user.name }}</dd>
+          {% endif %}
+          {% if user.created_at %}
+          <dt>Registrato il</dt>
+          <dd>{{ user.created_at.strftime('%d/%m/%Y') }}</dd>
+          {% endif %}
+          <dt>Soglia attuale</dt>
+          <dd>
+            {% if user.premium %}
+              {{ '%.1f'|format(user.threshold or default_threshold) }} mV · gestisci dalla
+              <a class="inline-link" href="{{ url_for('dashboard.dashboard_home') }}#threshold-settings">dashboard</a>
+            {% else %}
+              {{ default_threshold }} mV predefiniti (aggiornabili con Premium)
+            {% endif %}
+          </dd>
+          <dt>Notifiche Telegram</dt>
+          <dd>
+            {% if user.premium %}
+              {% if user.chat_id %}
+                Connesso · gestisci dalla <a class="inline-link" href="{{ url_for('dashboard.dashboard_home') }}#alert-settings">dashboard</a>
+              {% else %}
+                Non connesso · collega Telegram dalla <a class="inline-link" href="{{ url_for('dashboard.dashboard_home') }}#alert-settings">dashboard</a>
+              {% endif %}
+            {% else %}
+              Disponibile con il piano Premium
+            {% endif %}
+          </dd>
+        </dl>
       </div>
-    {% endif %}
-    
-    <div class="navigation-actions">
-      <a href="{{ url_for('dashboard.dashboard_home') }}" class="btn btn-secondary glass">Torna alla Dashboard</a>
-    </div>
+
+      <div class="actions-group">
+        <a href="{{ url_for('dashboard.dashboard_home') }}" class="btn btn-secondary glass">Apri Dashboard</a>
+        <a href="{{ url_for('dashboard.dashboard_home') }}#threshold-settings" class="btn btn-premium">Gestisci soglia</a>
+        <a href="{{ url_for('dashboard.dashboard_home') }}#alert-settings" class="btn btn-secondary glass">Configura avvisi</a>
+      </div>
+    </section>
+
+    <section class="settings-card secondary-card animate-premium-slide">
+      <header>
+        <h2>{% if user.premium %}Strumenti avanzati Premium{% else %}Perché passare a Premium{% endif %}</h2>
+        <p class="muted-text">
+          {% if user.premium %}
+            Sfrutta tutte le funzionalità dedicate al monitoraggio pro avanzato.
+          {% else %}
+            Sblocca strumenti esclusivi per un monitoraggio completo e in tempo reale.
+          {% endif %}
+        </p>
+      </header>
+      <ul class="feature-list">
+        <li>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 10.5L7.5 14L16 6" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div>
+            <h3>Soglie personalizzate</h3>
+            <p class="muted-text">Imposta il livello di allerta direttamente dalla dashboard per adattare gli avvisi al tuo scenario.</p>
+          </div>
+        </li>
+        <li>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 10.5L7.5 14L16 6" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div>
+            <h3>Avvisi in tempo reale</h3>
+            <p class="muted-text">Ricevi notifiche email e Telegram sugli eventi critici senza ritardi.</p>
+          </div>
+        </li>
+        <li>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 10.5L7.5 14L16 6" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div>
+            <h3>Storico eventi</h3>
+            <p class="muted-text">Consulta le variazioni recenti registrate dalla piattaforma per un'analisi rapida.</p>
+          </div>
+        </li>
+      </ul>
+
+      {% if not user.premium %}
+      <a href="/pricing" class="btn btn-premium">Scopri i piani Premium</a>
+      {% else %}
+      <p class="muted-text">Hai già accesso a tutte le funzionalità Premium: personalizzale dalla dashboard in qualsiasi momento.</p>
+      {% endif %}
+    </section>
   </div>
+
+  <section class="settings-card animate-premium-fade">
+    <header>
+      <h2>Supporto e risorse</h2>
+      <p class="muted-text">Consigli pratici per sfruttare al meglio Etna Monitor.</p>
+    </header>
+    <ul class="feature-list">
+      <li>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 10.5L7.5 14L16 6" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div>
+          <h3>Dashboard live</h3>
+          <p class="muted-text">Monitora il tremore in tempo reale e aggiorna il grafico con l'intervallo che preferisci.</p>
+        </div>
+      </li>
+      <li>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 10.5L7.5 14L16 6" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div>
+          <h3>Preferenze alert</h3>
+          <p class="muted-text">Attiva gli avvisi più importanti per te direttamente dalla dashboard.</p>
+        </div>
+      </li>
+      <li>
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 10.5L7.5 14L16 6" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div>
+          <h3>Supporto dedicato</h3>
+          <p class="muted-text">Hai bisogno di aiuto? Scrivici a <a class="inline-link" href="mailto:help@etnamonitor.io">help@etnamonitor.io</a>.</p>
+        </div>
+      </li>
+    </ul>
+  </section>
 </div>
 {% endblock %}

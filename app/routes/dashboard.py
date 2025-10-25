@@ -68,38 +68,11 @@ def dashboard_home():
                          status=status,
                          recent_events=recent_events)
 
-@bp.route("/settings", methods=["GET", "POST"])
+@bp.route("/settings")
 @login_required
 def settings():
     user = get_current_user()
-    
-    if request.method == "POST":
-        if user.premium:
-            threshold = request.form.get("threshold")
-            try:
-                threshold_value = float(threshold)
-                if 0.1 <= threshold_value <= 100.0:
-                    old_threshold = user.threshold
-                    user.threshold = threshold_value
-                    db.session.commit()
-                    
-                    event = Event(
-                        user_id=user.id,
-                        event_type='threshold_change',
-                        threshold=threshold_value,
-                        message=f'Threshold changed from {old_threshold} to {threshold_value} mV'
-                    )
-                    db.session.add(event)
-                    db.session.commit()
-                    
-                    flash("Threshold updated successfully!", "success")
-                else:
-                    flash("Threshold must be between 0.1 and 100.0 mV", "error")
-            except (ValueError, TypeError):
-                flash("Invalid threshold value", "error")
-        else:
-            flash("Premium account required for custom thresholds", "error")
-    
+
     return render_template("dashboard_settings.html", user=user, default_threshold=Config.ALERT_THRESHOLD_DEFAULT)
 
 @bp.route("/telegram/connect", methods=["POST"])
