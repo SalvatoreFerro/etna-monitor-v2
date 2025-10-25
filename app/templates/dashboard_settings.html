@@ -184,7 +184,7 @@
         <p class="muted-text">Informazioni principali sul tuo profilo e sullo stato dell'abbonamento.</p>
       </header>
       <div class="account-details">
-        <div class="pill">Piano {{ 'Premium' if user.premium else 'Free' }}</div>
+        <div class="pill">Piano {{ 'Premium' if user.has_premium_access else 'Free' }}</div>
         <dl>
           <dt>Email</dt>
           <dd>{{ user.email }}</dd>
@@ -198,7 +198,7 @@
           {% endif %}
           <dt>Soglia attuale</dt>
           <dd>
-            {% if user.premium %}
+            {% if user.has_premium_access %}
               {{ '%.1f'|format(user.threshold or default_threshold) }} mV · gestisci dalla
               <a class="inline-link" href="{{ url_for('dashboard.dashboard_home') }}#threshold-settings">dashboard</a>
             {% else %}
@@ -207,7 +207,7 @@
           </dd>
           <dt>Notifiche Telegram</dt>
           <dd>
-            {% if user.premium %}
+            {% if user.has_premium_access %}
               {% if user.chat_id %}
                 Connesso · gestisci dalla <a class="inline-link" href="{{ url_for('dashboard.dashboard_home') }}#alert-settings">dashboard</a>
               {% else %}
@@ -229,9 +229,9 @@
 
     <section class="settings-card secondary-card animate-premium-slide">
       <header>
-        <h2>{% if user.premium %}Strumenti avanzati Premium{% else %}Perché passare a Premium{% endif %}</h2>
+        <h2>{% if user.has_premium_access %}Strumenti avanzati Premium{% else %}Perché passare a Premium{% endif %}</h2>
         <p class="muted-text">
-          {% if user.premium %}
+          {% if user.has_premium_access %}
             Sfrutta tutte le funzionalità dedicate al monitoraggio pro avanzato.
           {% else %}
             Sblocca strumenti esclusivi per un monitoraggio completo e in tempo reale.
@@ -268,7 +268,7 @@
         </li>
       </ul>
 
-      {% if not user.premium %}
+      {% if not user.has_premium_access %}
       <a href="/pricing" class="btn btn-premium">Scopri i piani Premium</a>
       {% else %}
       <p class="muted-text">Hai già accesso a tutte le funzionalità Premium: personalizzale dalla dashboard in qualsiasi momento.</p>

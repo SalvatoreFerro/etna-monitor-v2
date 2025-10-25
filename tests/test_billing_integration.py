@@ -34,7 +34,7 @@ def user(app):
         )
         db.session.add(user)
         db.session.commit()
-        return user
+        return user.id
 
 @pytest.fixture
 def premium_user(app):
@@ -47,7 +47,7 @@ def premium_user(app):
         )
         db.session.add(user)
         db.session.commit()
-        return user
+        return user.id
 
 def test_create_checkout_session_requires_login(client):
     response = client.post('/billing/create-checkout-session')
@@ -60,7 +60,7 @@ def test_create_checkout_session_success(mock_customer, mock_session, client, us
     mock_session.return_value = MagicMock(url='https://checkout.stripe.com/test')
     
     with client.session_transaction() as sess:
-        sess['user_id'] = user.id
+        sess['user_id'] = user
     
     response = client.post('/billing/create-checkout-session')
     
@@ -71,7 +71,7 @@ def test_create_checkout_session_success(mock_customer, mock_session, client, us
 
 def test_customer_portal_requires_stripe_customer(client, user):
     with client.session_transaction() as sess:
-        sess['user_id'] = user.id
+        sess['user_id'] = user
     
     response = client.get('/billing/customer-portal')
     assert response.status_code == 302
@@ -81,7 +81,7 @@ def test_customer_portal_success(mock_portal, client, premium_user):
     mock_portal.return_value = MagicMock(url='https://billing.stripe.com/test')
     
     with client.session_transaction() as sess:
-        sess['user_id'] = premium_user.id
+        sess['user_id'] = premium_user
     
     response = client.get('/billing/customer-portal')
     assert response.status_code == 302
@@ -94,7 +94,7 @@ def test_stripe_webhook_checkout_completed(client, user, app):
             'object': {
                 'id': 'cs_test123',
                 'subscription': 'sub_test123',
-                'metadata': {'user_id': str(user.id)}
+                'metadata': {'user_id': str(user)}
             }
         }
     }
@@ -109,6 +109,25 @@ def test_stripe_webhook_checkout_completed(client, user, app):
         assert response.status_code == 200
         
         with app.app_context():
-            updated_user = User.query.get(user.id)
-            assert updated_user.premium is True
+            updated_user = User.query.get(user)
+            assert updated_user.has_premium_access is True
+            assert updated_user.is_premium is True
             assert updated_user.subscription_status == 'active'
+
+
+def test_confirm_donation_records_transaction(client, user, app):
+    with client.session_transaction() as sess:
+        sess['user_id'] = user
+        sess['_csrf_token'] = 'token123'
+
+    response = client.post(
+        '/billing/confirm_donation',
+        data={'csrf_token': 'token123', 'tx_id': 'PAYPAL123', 'amount': '12.50'}
+    )
+
+    assert response.status_code == 302
+
+    with app.app_context():
+        updated_user = User.query.get(user)
+        assert updated_user.donation_tx == 'PAYPAL123'
+        assert updated_user.has_premium_access is False

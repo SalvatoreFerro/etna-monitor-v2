@@ -34,7 +34,7 @@ def dashboard_home():
             empty_df.to_csv(curva_file, index=False)
             df = empty_df
         
-        threshold = user.threshold if user.premium and user.threshold else Config.ALERT_THRESHOLD_DEFAULT
+        threshold = user.threshold if user.has_premium_access and user.threshold else Config.ALERT_THRESHOLD_DEFAULT
         
         fig = make_tremor_figure(df['timestamp'], df['value'], threshold)
         fig.update_layout(
@@ -55,7 +55,7 @@ def dashboard_home():
         threshold = Config.ALERT_THRESHOLD_DEFAULT
     
     recent_events = []
-    if user.premium:
+    if user.has_premium_access:
         recent_events = Event.query.filter_by(user_id=user.id)\
                                  .order_by(Event.timestamp.desc())\
                                  .limit(10).all()
@@ -80,7 +80,7 @@ def settings():
 def connect_telegram():
     user = get_current_user()
     
-    if not user.premium:
+    if not user.has_premium_access:
         flash("Premium account required for Telegram notifications", "error")
         return redirect(url_for('dashboard.dashboard_home'))
     
@@ -116,7 +116,7 @@ def connect_telegram():
 def disconnect_telegram():
     user = get_current_user()
     
-    if not user.premium:
+    if not user.has_premium_access:
         flash("Premium account required", "error")
         return redirect(url_for('dashboard.dashboard_home'))
     
@@ -139,7 +139,7 @@ def disconnect_telegram():
 def toggle_alerts():
     user = get_current_user()
     
-    if not user.premium:
+    if not user.has_premium_access:
         flash("Premium account required", "error")
         return redirect(url_for('dashboard.dashboard_home'))
     

@@ -33,7 +33,7 @@
         <div class="hero-actions">
           {% if not session.user_id %}
             <a href="{{ url_for('auth.login') }}" class="btn btn-premium" aria-label="Accedi con Google per iniziare la prova gratuita">Accedi con Google</a>
-          {% elif current_user.premium %}
+          {% elif current_user.has_premium_access %}
             <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-premium" aria-label="Gestisci il tuo abbonamento premium">Gestisci abbonamento</a>
           {% else %}
             <button id="upgrade-btn" class="btn btn-premium" aria-label="Aggiorna il tuo piano a Premium">Aggiorna ora</button>
@@ -97,7 +97,7 @@
         <footer class="plan-footer">
           {% if not session.user_id %}
             <a href="{{ url_for('auth.login') }}" class="btn btn-secondary glass" aria-label="Accedi con Google per attivare il piano gratuito">Accedi con Google</a>
-          {% elif not current_user.premium %}
+          {% elif not current_user.has_premium_access %}
             <button class="btn btn-secondary glass" disabled aria-disabled="true">Piano attuale</button>
           {% else %}
             <button class="btn btn-secondary glass" disabled aria-disabled="true">Disponibile downgrade</button>
@@ -132,7 +132,7 @@
         <footer class="plan-footer">
           {% if not session.user_id %}
             <a href="{{ url_for('auth.login') }}" class="btn btn-premium" aria-label="Accedi con Google per provare il piano premium">Accedi con Google</a>
-          {% elif current_user.premium %}
+          {% elif current_user.has_premium_access %}
             <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-secondary glass" aria-label="Gestisci il tuo abbonamento premium">Gestisci abbonamento</a>
           {% else %}
             <button id="upgrade-btn" class="btn btn-premium" aria-label="Aggiorna al piano premium">Aggiorna ora</button>

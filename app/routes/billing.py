@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, redirect, url_for, render_template, session, flash
+from flask import Blueprint, request, jsonify, redirect, url_for, render_template, session, flash, current_app
 import stripe
 import os
 import json
@@ -7,8 +7,10 @@ from ..utils.auth import login_required, get_current_user
 from ..models import db
 from ..models.user import User
 from ..models.billing import Invoice, EventLog
+from ..utils.csrf import validate_csrf_token
+from ..services.notifications import notify_admin_new_donation
 
-bp = Blueprint("billing", __name__)
+bp = Blueprint("billing", __name__, url_prefix="/billing")
 
 stripe.api_key = os.getenv('STRIPE_SECRET_KEY')
 
@@ -95,6 +97,9 @@ def stripe_webhook():
         user = User.query.get(user_id)
         if user:
             user.premium = True
+            user.is_premium = True
+            if not user.premium_since:
+                user.premium_since = datetime.utcnow()
             user.subscription_status = 'active'
             user.subscription_id = session['subscription']
             db.session.commit()
@@ -120,6 +125,8 @@ def stripe_webhook():
         user = User.query.filter_by(subscription_id=subscription['id']).first()
         if user:
             user.premium = False
+            if not user.premium_lifetime:
+                user.is_premium = False
             user.subscription_status = 'canceled'
             db.session.commit()
     
@@ -141,3 +148,39 @@ def stripe_webhook():
             db.session.commit()
     
     return 'Success', 200
+
+
+@bp.route('/donate', methods=['GET'])
+@login_required
+def donate():
+    user = get_current_user()
+    return render_template('billing/donate.html', user=user)
+
+
+@bp.route('/confirm_donation', methods=['POST'])
+@login_required
+def confirm_donation():
+    if not validate_csrf_token(request.form.get('csrf_token')):
+        flash('Token di sicurezza non valido. Riprova.', 'error')
+        return redirect(url_for('billing.donate'))
+
+    user = get_current_user()
+    tx_id = (request.form.get('tx_id') or '').strip()
+    amount = (request.form.get('amount') or '').strip()
+
+    if not tx_id:
+        flash('Inserisci un ID transazione valido.', 'error')
+        return redirect(url_for('billing.donate'))
+
+    user.donation_tx = tx_id
+    db.session.commit()
+
+    if amount:
+        current_app.logger.info(
+            "New PayPal donation recorded", extra={"user_email": user.email, "tx_id": tx_id, "amount": amount}
+        )
+
+    notify_admin_new_donation(user.email, tx_id)
+
+    flash('Richiesta registrata, attiveremo il premium dopo verifica.', 'success')
+    return redirect(url_for('billing.donate'))

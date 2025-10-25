@@ -70,6 +70,9 @@
   <div class="admin-header card-premium animate-premium-fade">
     <h1><i class="fas fa-users-cog"></i> Pannello Admin</h1>
     <p>Gestisci utenti e impostazioni di sistema</p>
+    <div class="admin-links" style="margin-top: 12px; display: flex; gap: 12px; flex-wrap: wrap;">
+      <a href="{{ url_for('admin.donations') }}" class="btn btn-premium btn-sm"><i class="fas fa-donate"></i> Donazioni in verifica</a>
+    </div>
   </div>
   
   <div class="admin-content card-premium animate-premium-slide">
@@ -96,8 +99,8 @@
             <tr>
               <td>{{ user.email }}</td>
               <td>
-                <span class="badge {{ 'premium' if user.premium else 'free' }}">
-                  {{ 'Premium ⭐' if user.premium else 'Gratuito' }}
+                <span class="badge {{ 'premium' if user.has_premium_access else 'free' }}">
+                  {{ 'Premium ⭐' if user.has_premium_access else 'Gratuito' }}
                 </span>
                 {% if user.is_admin %}
                   <span class="badge admin">Admin</span>
@@ -108,8 +111,8 @@
               <td>
                 <div class="action-buttons">
                   <button onclick="togglePremium({{ user.id }})" class="btn btn-premium btn-sm">
-                    <i class="fas fa-{{ 'star' if not user.premium else 'star-half-alt' }}"></i>
-                    {{ 'Aggiorna' if not user.premium else 'Declassa' }}
+                    <i class="fas fa-{{ 'star' if not user.has_premium_access else 'star-half-alt' }}"></i>
+                    {{ 'Aggiorna' if not user.has_premium_access else 'Declassa' }}
                   </button>
                   {% if not user.is_admin %}
                     <button onclick="deleteUser({{ user.id }})" class="btn btn-danger btn-sm">
