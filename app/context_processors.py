@@ -1,5 +1,11 @@
+from flask import current_app
+
 from .utils.auth import get_current_user
-from .models.sponsor_banner import SponsorBanner
+
+try:
+    from .models.sponsor_banner import SponsorBanner
+except Exception:  # pragma: no cover - optional dependency guard
+    SponsorBanner = None  # type: ignore
 
 
 def inject_user():
@@ -19,10 +25,20 @@ def inject_user():
 
 
 def inject_sponsor_banners():
-    banners = (
-        SponsorBanner.query.filter_by(active=True)
-        .order_by(SponsorBanner.created_at.desc())
-        .limit(12)
-        .all()
-    )
+    if SponsorBanner is None:
+        return {"sponsor_banners": []}
+
+    try:
+        banners = (
+            SponsorBanner.query.filter_by(active=True)
+            .order_by(SponsorBanner.created_at.desc())
+            .limit(12)
+            .all()
+        )
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        current_app.logger.warning(
+            "Unable to load sponsor banners: %s", exc
+        )
+        banners = []
+
     return {"sponsor_banners": banners}

@@ -10,6 +10,30 @@ def init_db(app):
 
 from .user import User
 from .event import Event
-from .sponsor_banner import SponsorBanner
 
-__all__ = ['db', 'init_db', 'User', 'Event', 'SponsorBanner']
+try:
+    from .sponsor_banner import (
+        SponsorBanner,
+        SponsorBannerClick,
+        SponsorBannerImpression,
+    )
+except Exception:  # pragma: no cover - optional dependency guard
+    SponsorBanner = None  # type: ignore
+    SponsorBannerClick = None  # type: ignore
+    SponsorBannerImpression = None  # type: ignore
+
+__all__ = [
+    'db',
+    'init_db',
+    'User',
+    'Event',
+]
+
+if SponsorBanner is not None:
+    __all__.extend(
+        [
+            'SponsorBanner',
+            'SponsorBannerImpression',
+            'SponsorBannerClick',
+        ]
+    )

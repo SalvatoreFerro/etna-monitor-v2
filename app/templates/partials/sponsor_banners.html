@@ -8,8 +8,12 @@
     <div class="sponsor-banners__viewport" role="group" aria-roledescription="carousel">
       <div class="sponsor-banners__track" data-banner-count="{{ sponsor_banners|length }}">
         {% for banner in sponsor_banners %}
+          {% set banner_href = banner.target_url %}
+          {% if ads_tracking_enabled %}
+            {% set banner_href = url_for('ads.banner_click', banner_id=banner.id, page=request.path, fallback=banner.target_url) %}
+          {% endif %}
           <article class="sponsor-card" data-index="{{ loop.index0 }}" role="group" aria-roledescription="slide" aria-label="{{ banner.title }}">
-            <a href="{{ banner.target_url }}" class="sponsor-card__link" target="_blank" rel="noopener">
+            <a href="{{ banner_href }}" class="sponsor-card__link" target="_blank" rel="noopener sponsored">
               <figure class="sponsor-card__figure">
                 <img src="{{ banner.image_url }}" alt="{{ banner.title }}" loading="lazy" />
               </figure>
@@ -19,6 +23,9 @@
                   <p class="sponsor-card__description">{{ banner.description }}</p>
                 {% endif %}
               </div>
+              {% if ads_tracking_enabled %}
+                <img src="{{ url_for('ads.banner_impression', banner_id=banner.id, page=request.path) }}" width="1" height="1" alt="" aria-hidden="true" loading="lazy" class="sponsor-card__pixel">
+              {% endif %}
             </a>
           </article>
         {% endfor %}
