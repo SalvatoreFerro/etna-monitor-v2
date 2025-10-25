@@ -39,6 +39,7 @@
             <button id="upgrade-btn" class="btn btn-premium" aria-label="Aggiorna il tuo piano a Premium">Aggiorna ora</button>
           {% endif %}
           <a href="#plans" class="btn btn-secondary glass" aria-label="Confronta i piani EtnaMonitor">Confronta i piani</a>
+          <a href="#donazioni" class="btn btn-secondary glass btn-lifetime" aria-label="Scopri come attivare Premium Lifetime via donazione">Premium Lifetime</a>
         </div>
       </div>
 
@@ -136,6 +137,35 @@
             <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-secondary glass" aria-label="Gestisci il tuo abbonamento premium">Gestisci abbonamento</a>
           {% else %}
             <button id="upgrade-btn" class="btn btn-premium" aria-label="Aggiorna al piano premium">Aggiorna ora</button>
+          {% endif %}
+        </footer>
+      </article>
+
+      <article class="plan-card plan-card-lifetime" aria-label="Piano Premium Lifetime">
+        <header class="plan-header">
+          <div class="plan-labels">
+            <span class="plan-badge">Nuovo</span>
+            <span class="plan-name">Premium Lifetime</span>
+            <span class="plan-tag">Upgrade manuale via donazione</span>
+          </div>
+          <div class="plan-price">
+            <span class="currency">€</span><span class="amount">9.99</span>
+            <span class="period">una tantum</span>
+          </div>
+        </header>
+
+        <ul class="plan-features" role="list">
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-infinity"></i></span> Accesso Premium perpetuo senza rinnovi</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-hand-holding-heart"></i></span> Supporto manuale del team EtnaMonitor</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-id-card"></i></span> Attivazione tramite ID transazione PayPal</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-envelope-open-text"></i></span> Priorità nelle richieste e negli aggiornamenti</li>
+        </ul>
+
+        <footer class="plan-footer">
+          {% if not session.user_id %}
+            <a href="{{ url_for('auth.login', next=url_for('billing.donate')) }}" class="btn btn-premium" aria-label="Accedi con Google per richiedere il Premium Lifetime">Accedi e richiedi</a>
+          {% else %}
+            <a href="{{ url_for('billing.donate') }}" class="btn btn-premium" aria-label="Richiedi l'attivazione Premium Lifetime">Richiedi attivazione</a>
           {% endif %}
         </footer>
       </article>
