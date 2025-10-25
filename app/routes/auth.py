@@ -36,7 +36,7 @@ def login():
     return render_template("auth/login.html", next_page=request.args.get("next"))
 
 
-@bp.route("/auth/google", methods=["GET", "POST"])
+@bp.route("/google", methods=["GET", "POST"])
 def auth_google():
     """Kick off the Google OAuth flow."""
     client_id = current_app.config.get("GOOGLE_CLIENT_ID")
@@ -72,7 +72,7 @@ def auth_google():
     return redirect(f"{authorization_endpoint}?{urlencode(params)}")
 
 
-@bp.route("/auth/callback", methods=["GET"])
+@bp.route("/callback", methods=["GET"])
 def auth_callback():
     """Exchange the authorization code for user info and log the user in."""
     error = request.args.get("error")
