@@ -146,6 +146,24 @@ def create_app():
                 if columns_added > 0:
                     print(f"🎉 Auto-migration: Added {columns_added} billing columns to users table")
 
+                premium_donation_columns = [
+                    ('is_premium', 'BOOLEAN DEFAULT 0 NOT NULL'),
+                    ('premium_lifetime', 'BOOLEAN DEFAULT 0 NOT NULL'),
+                    ('premium_since', 'TIMESTAMP'),
+                    ('donation_tx', 'VARCHAR(255)')
+                ]
+
+                for column_name, column_def in premium_donation_columns:
+                    if column_name not in existing_columns:
+                        try:
+                            with db.engine.connect() as conn:
+                                conn.execute(text(f'ALTER TABLE users ADD COLUMN {column_name} {column_def}'))
+                                conn.commit()
+                            existing_columns.append(column_name)
+                            print(f"✅ Auto-migration: Added column {column_name} to users table")
+                        except Exception as e:
+                            print(f"⚠️  Auto-migration: Could not add column {column_name}: {e}")
+
                 auth_columns = [
                     ('google_id', 'VARCHAR(255)'),
                     ('name', 'VARCHAR(255)'),
