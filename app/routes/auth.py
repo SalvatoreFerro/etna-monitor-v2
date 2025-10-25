@@ -177,6 +177,13 @@ def auth_callback():
             )
             db.session.add(user)
 
+        admin_set = current_app.config.get("ADMIN_EMAILS_SET", set())
+        if email and email.lower() in admin_set:
+            user.is_admin = True
+        current_app.logger.info(
+            f"[LOGIN] user={email} is_admin={getattr(user, 'is_admin', None)} in_set={email and email.lower() in admin_set}"
+        )
+
         try:
             db.session.commit()
         except IntegrityError:
@@ -198,6 +205,13 @@ def auth_callback():
                 existing_user.password_hash = ""
 
             db.session.add(existing_user)
+
+            admin_set = current_app.config.get("ADMIN_EMAILS_SET", set())
+            if email and email.lower() in admin_set:
+                existing_user.is_admin = True
+            current_app.logger.info(
+                f"[LOGIN] user={email} is_admin={getattr(existing_user, 'is_admin', None)} in_set={email and email.lower() in admin_set}"
+            )
             db.session.commit()
             user = existing_user
 
