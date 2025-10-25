@@ -99,4 +99,34 @@ def test_premium_toggle(client, admin_user, app):
     
     with app.app_context():
         user = User.query.get(user_id)
-        assert user.premium is True
+        assert user.has_premium_access is True
+
+
+def test_admin_activate_premium_lifetime(client, admin_user, app):
+    with app.app_context():
+        donor = User(
+            email="donor@test.com",
+            password_hash=hash_password("pass"),
+            donation_tx="PAY12345"
+        )
+        db.session.add(donor)
+        db.session.commit()
+        donor_id = donor.id
+
+    with client.session_transaction() as sess:
+        sess['user_id'] = admin_user
+        sess['_csrf_token'] = 'csrf-token'
+
+    response = client.post(
+        f'/admin/activate_premium/{donor_id}',
+        data={'csrf_token': 'csrf-token'}
+    )
+
+    assert response.status_code == 302
+
+    with app.app_context():
+        updated = User.query.get(donor_id)
+        assert updated.has_premium_access is True
+        assert updated.premium_lifetime is True
+        assert updated.premium_since is not None
+        assert updated.donation_tx == "PAY12345"

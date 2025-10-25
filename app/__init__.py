@@ -18,6 +18,7 @@ from .routes.status import status_bp
 from .routes.billing import bp as billing_bp
 from .models import db
 from .context_processors import inject_user
+from .utils.csrf import generate_csrf_token
 from .services.scheduler_service import SchedulerService
 from config import Config, get_database_uri_from_env
 
@@ -35,6 +36,7 @@ def _mask_database_uri(uri: str) -> str:
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    app.jinja_env.globals['csrf_token'] = generate_csrf_token
 
     database_url, database_source = get_database_uri_from_env()
     if database_url:
@@ -143,6 +145,24 @@ def create_app():
 
                 if columns_added > 0:
                     print(f"🎉 Auto-migration: Added {columns_added} billing columns to users table")
+
+                premium_donation_columns = [
+                    ('is_premium', 'BOOLEAN DEFAULT 0 NOT NULL'),
+                    ('premium_lifetime', 'BOOLEAN DEFAULT 0 NOT NULL'),
+                    ('premium_since', 'TIMESTAMP'),
+                    ('donation_tx', 'VARCHAR(255)')
+                ]
+
+                for column_name, column_def in premium_donation_columns:
+                    if column_name not in existing_columns:
+                        try:
+                            with db.engine.connect() as conn:
+                                conn.execute(text(f'ALTER TABLE users ADD COLUMN {column_name} {column_def}'))
+                                conn.commit()
+                            existing_columns.append(column_name)
+                            print(f"✅ Auto-migration: Added column {column_name} to users table")
+                        except Exception as e:
+                            print(f"⚠️  Auto-migration: Could not add column {column_name}: {e}")
 
                 auth_columns = [
                     ('google_id', 'VARCHAR(255)'),
@@ -276,7 +296,7 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
     app.register_blueprint(admin_bp, url_prefix="/admin")
-    app.register_blueprint(billing_bp, url_prefix="/billing")
+    app.register_blueprint(billing_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(status_bp)
 

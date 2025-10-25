@@ -220,7 +220,8 @@
                 </button>
                 <div class="user-menu-dropdown">
                   <a href="/dashboard/settings" class="dropdown-item">Impostazioni</a>
-                  {% if not current_user.premium %}
+                  <a href="{{ url_for('billing.donate') }}" class="dropdown-item">Sostienici</a>
+                  {% if not (current_user and current_user.has_premium_access) %}
                     <a href="/pricing" class="dropdown-item">Passa a Premium</a>
                   {% endif %}
                   <div class="dropdown-divider"></div>

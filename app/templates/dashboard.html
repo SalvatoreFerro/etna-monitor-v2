@@ -31,11 +31,11 @@
           </p>
 
           <div class="dashboard-plan">
-            <span class="badge {{ 'premium' if user.premium else 'free' }}">
-              {{ 'Premium ⭐' if user.premium else 'Free' }}
+            <span class="badge {{ 'premium' if user.has_premium_access else 'free' }}">
+              {{ 'Premium ⭐' if user.has_premium_access else 'Free' }}
             </span>
             <span class="plan-caption">
-              {{ 'Accesso a notifiche avanzate, esportazione dati e soglie dinamiche.' if user.premium else 'Aggiorna per sbloccare automazioni, avvisi Telegram e cronologia completa.' }}
+              {{ 'Accesso a notifiche avanzate, esportazione dati e soglie dinamiche.' if user.has_premium_access else 'Aggiorna per sbloccare automazioni, avvisi Telegram e cronologia completa.' }}
             </span>
           </div>
         </div>
@@ -93,7 +93,7 @@
 
         <div class="chart-toolbar">
           <div class="chart-actions">
-            {% if user.premium %}
+            {% if user.has_premium_access %}
             <button id="update-btn" class="btn btn-premium">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
@@ -112,7 +112,7 @@
               <option value="all">Tutti i dati</option>
             </select>
 
-            {% if user.premium %}
+            {% if user.has_premium_access %}
             <div class="export-controls" role="group" aria-label="Opzioni di esportazione">
               <button id="export-csv" class="btn btn-secondary btn-sm glass" aria-label="Esporta dati come file CSV">CSV</button>
               <button id="export-png" class="btn btn-secondary btn-sm glass" aria-label="Esporta grafico come immagine PNG">PNG</button>
@@ -142,7 +142,7 @@
             <p>Gestisci il livello di allerta per notifiche e visualizzazioni.</p>
           </header>
 
-          {% if user.premium %}
+          {% if user.has_premium_access %}
           <div class="threshold-controls">
             <label for="threshold-slider">Soglia personalizzata</label>
             <div class="slider-container">
@@ -182,7 +182,7 @@
       </div>
     </div>
 
-    {% if user.premium %}
+    {% if user.has_premium_access %}
     <div class="premium-grid">
       <article class="card-premium alerts-card animate-premium-fade" id="alert-settings">
         <header class="card-header">
