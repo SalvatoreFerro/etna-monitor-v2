@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, redirect, request
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
@@ -6,6 +6,7 @@ from flask_compress import Compress
 from werkzeug.middleware.proxy_fix import ProxyFix  # Ensure proxy headers are honored for HTTPS redirects
 import os
 import redis
+from datetime import datetime
 
 from .routes.main import bp as main_bp
 from .routes.dashboard import bp as dashboard_bp
@@ -22,6 +23,27 @@ from config import Config
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    app.config["CANONICAL_HOST"] = os.getenv("CANONICAL_HOST", "")
+
+    def get_current_year() -> int:
+        return datetime.utcnow().year
+
+    @app.before_request
+    def enforce_canonical_host():
+        if app.config.get("FLASK_ENV") == "production":
+            canonical_host = app.config.get("CANONICAL_HOST")
+            if canonical_host:
+                incoming_host = request.headers.get("X-Forwarded-Host", request.host)
+                if incoming_host and incoming_host != canonical_host:
+                    url = request.url.replace(f"//{incoming_host}", f"//{canonical_host}", 1)
+                    return redirect(url, code=301)
+
+    @app.context_processor
+    def inject_current_year():
+        return {
+            "current_year": get_current_year(),
+            "get_current_year": get_current_year,
+        }
 
     # Capture the Google redirect URI from the environment so the OAuth flow
     # uses the exact value configured on Google Cloud Console.
