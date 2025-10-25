@@ -18,6 +18,7 @@ from .routes.status import status_bp
 from .routes.billing import bp as billing_bp
 from .models import db
 from .context_processors import inject_user
+from .utils.csrf import generate_csrf_token
 from .services.scheduler_service import SchedulerService
 from config import Config, get_database_uri_from_env
 
@@ -35,6 +36,7 @@ def _mask_database_uri(uri: str) -> str:
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    app.jinja_env.globals['csrf_token'] = generate_csrf_token
 
     database_url, database_source = get_database_uri_from_env()
     if database_url:
@@ -276,7 +278,7 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
     app.register_blueprint(admin_bp, url_prefix="/admin")
-    app.register_blueprint(billing_bp, url_prefix="/billing")
+    app.register_blueprint(billing_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(status_bp)
 

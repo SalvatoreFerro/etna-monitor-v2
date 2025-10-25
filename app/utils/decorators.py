@@ -12,7 +12,7 @@ def requires_premium(f):
             flash('Please log in to access this feature.', 'error')
             return redirect(url_for('auth.login'))
         
-        if not user.premium:
+        if not user.has_premium_access:
             if request.is_json:
                 return jsonify({
                     "error": "Premium subscription required",
@@ -34,7 +34,7 @@ def requires_plan(plan_level):
                     return jsonify({"error": "Authentication required"}), 401
                 return redirect(url_for('auth.login'))
             
-            if plan_level == "premium" and not user.premium:
+            if plan_level == "premium" and not user.has_premium_access:
                 if request.is_json:
                     return jsonify({
                         "error": "Premium subscription required",

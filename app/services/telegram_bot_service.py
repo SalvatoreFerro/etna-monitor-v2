@@ -87,7 +87,7 @@ class TelegramBotService:
                 user = User.query.filter_by(chat_id=chat_id).first()
                 
                 if user:
-                    if user.premium:
+                    if user.has_premium_access:
                         message = f"✅ Ciao {username}! Il tuo account Premium è già collegato.\n\nRiceverai notifiche quando il tremore supera la tua soglia personalizzata ({user.threshold or 2.0} mV)."
                     else:
                         message = f"👋 Ciao {username}! Il tuo account è collegato ma non è Premium.\n\nPer ricevere notifiche personalizzate, attiva Premium su etna-monitor-v2.onrender.com"
@@ -138,7 +138,7 @@ class TelegramBotService:
                 user = User.query.filter_by(chat_id=chat_id).first()
                 
                 if user:
-                    status = "Premium ✅" if user.premium else "Free"
+                    status = "Premium ✅" if user.has_premium_access else "Free"
                     threshold = user.threshold or 2.0
                     message = f"📊 **Stato Account**\n\nEmail: {user.email}\nTipo: {status}\nSoglia: {threshold} mV\nChat ID: {chat_id}"
                 else:

@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="card card-premium animate-premium-fade" style="max-width: 720px; margin: 0 auto;">
+  <header class="card-header">
+    <h1>Sostienici / Diventa Premium</h1>
+    <p>Donazione minima €9,99 → Premium Lifetime</p>
+  </header>
+
+  <div class="card-body">
+    <p>
+      Sostieni lo sviluppo di EtnaMonitor con una donazione minima di <strong>€9,99</strong> e otterrai
+      l'attivazione manuale del piano <strong>Premium Lifetime</strong>.
+    </p>
+
+    <div class="donation-cta" style="margin: 24px 0;">
+      <h2>Donazione PayPal</h2>
+      <p>Effettua la donazione tramite PayPal con il pulsante qui sotto.</p>
+      <div class="paypal-donate" style="margin-top: 16px;">
+        <form action="https://www.paypal.com/donate" method="post" target="_top">
+          <input type="hidden" name="hosted_button_id" value="2T6DKB7U2ZSK8" />
+          <input type="image" src="https://www.paypalobjects.com/it_IT/IT/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Fai una donazione con il pulsante PayPal" />
+          <img alt="" border="0" src="https://www.paypal.com/it_IT/i/scr/pixel.gif" width="1" height="1" />
+        </form>
+      </div>
+    </div>
+
+    <div class="donation-confirm card-premium" style="padding: 24px;">
+      <h2>Ho donato</h2>
+      <p>Incolla l'ID transazione PayPal per permetterci di verificare e attivare il tuo piano.</p>
+      <form method="POST" action="{{ url_for('billing.confirm_donation') }}" class="stacked-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="form-group">
+          <label for="tx_id">ID transazione PayPal</label>
+          <input type="text" id="tx_id" name="tx_id" class="input-base" placeholder="Es. 4G12345678901234" required>
+        </div>
+        <div class="form-group">
+          <label for="amount">Importo donato (opzionale)</label>
+          <input type="number" id="amount" name="amount" class="input-base" step="0.01" min="0" placeholder="Es. 9.99">
+        </div>
+        <button type="submit" class="btn btn-premium">Ho donato, invia ID</button>
+      </form>
+      {% if user and user.donation_tx %}
+        <p class="muted" style="margin-top: 16px;">Ultima richiesta inviata: <strong>{{ user.donation_tx }}</strong></p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endblock %}

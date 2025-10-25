@@ -2,6 +2,9 @@ import requests
 import pandas as pd
 import os
 from datetime import datetime, timedelta
+
+from sqlalchemy import or_
+
 from app.models import db
 from app.models.user import User
 from app.models.event import Event
@@ -58,7 +61,7 @@ class TelegramService:
             moving_avg = self.calculate_moving_average(recent_data['value'].tolist())
             
             premium_users = User.query.filter(
-                User.premium == True,
+                or_(User.premium.is_(True), User.is_premium.is_(True)),
                 User.chat_id.isnot(None),
                 User.chat_id != ''
             ).all()
