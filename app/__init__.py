@@ -17,7 +17,7 @@ from .routes.api import api_bp
 from .routes.status import status_bp
 from .routes.billing import bp as billing_bp
 from .models import db
-from .context_processors import inject_user
+from .context_processors import inject_user, inject_sponsor_banners
 from .utils.csrf import generate_csrf_token
 from .services.scheduler_service import SchedulerService
 from config import Config, get_database_uri_from_env
@@ -291,6 +291,7 @@ def create_app():
         )
     
     app.context_processor(inject_user)
+    app.context_processor(inject_sponsor_banners)
     
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp, url_prefix="/auth")

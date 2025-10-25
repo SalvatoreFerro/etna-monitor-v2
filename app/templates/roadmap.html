@@ -35,8 +35,8 @@
               <path d="M16 11v5" />
             </svg>
           </div>
-          <h3>EtnaView — Mappa dei punti panoramici</h3>
-          <p>Una mappa interattiva che mostrerà in tempo reale i punti con la migliore visibilità sull’Etna, basata su meteo e tremore.</p>
+          <h3>EtnaView — Mappe dei venti</h3>
+          <p>Una mappa meteo dinamica che evidenzia direzione e intensità dei venti per pianificare osservazioni, voli droni e attività sul campo.</p>
         </article>
         <article class="roadmap-card" role="listitem">
           <div class="card-icon" aria-hidden="true">
@@ -62,6 +62,31 @@
           <h3>Statistiche Storiche</h3>
           <p>Accesso ai dati giornalieri e settimanali per comprendere meglio l’evoluzione del tremore nel tempo.</p>
         </article>
+        <article class="roadmap-card" role="listitem">
+          <div class="card-icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v6l4 2" />
+              <path d="M20.4 7a9 9 0 1 1-1.45-1.89" />
+              <path d="M16 21a2 2 0 0 0 4 0v-2" />
+            </svg>
+          </div>
+          <h3>AI Prediction Lab</h3>
+          <p>Modelli predittivi che analizzano trend del tremore e segnali storici per suggerire scenari di rischio con notifiche smart.</p>
+        </article>
+        <article class="roadmap-card" role="listitem">
+          <div class="card-icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 5h18" />
+              <path d="M3 10h18" />
+              <path d="M3 15h18" />
+              <path d="M3 20h18" />
+              <path d="M8 5v15" />
+              <path d="M16 5v15" />
+            </svg>
+          </div>
+          <h3>Hub Webcam Etna</h3>
+          <p>Streaming multi-camera con overlay tremor, immagini storiche e strumenti di confronto tra punti di osservazione.</p>
+        </article>
       </div>
     </section>
 
@@ -72,6 +97,27 @@
       </header>
       <div class="evaluation-callout glass">
         <p>Nuove idee verranno proposte e votate dalla community di utenti Premium.</p>
+      </div>
+    </section>
+
+    <section class="roadmap-section" aria-labelledby="section-sponsors">
+      <header class="section-header">
+        <h2 id="section-sponsors">Come accelerare la roadmap</h2>
+        <p>Ogni donazione o partnership finanzia infrastruttura, sviluppo e analisi dati in tempo reale.</p>
+      </header>
+      <div class="roadmap-support glass">
+        <div class="support-copy">
+          <h3>Contribuisci a nuove release</h3>
+          <p>Le prossime milestone includono export avanzati, modelli AI e un archivio eventi multimediale. Con il tuo supporto arrivano prima.</p>
+          <div class="support-actions">
+            <a href="{{ url_for('main.pricing') }}#donazioni" class="btn btn-premium">Fai una donazione PayPal</a>
+            <a href="{{ url_for('main.sponsor') }}" class="btn btn-secondary glass">Diventa sponsor</a>
+          </div>
+        </div>
+        <div class="support-note">
+          <h4>Hai un'idea?</h4>
+          <p>Scrivi a <a href="mailto:team@etnamonitor.it">team@etnamonitor.it</a> e raccontaci come vorresti usare EtnaMonitor.</p>
+        </div>
       </div>
     </section>
 
