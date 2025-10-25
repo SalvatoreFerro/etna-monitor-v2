@@ -60,13 +60,15 @@ def dashboard_home():
                                  .order_by(Event.timestamp.desc())\
                                  .limit(10).all()
     
-    return render_template("dashboard.html", 
-                         user=user, 
+    return render_template("dashboard.html",
+                         user=user,
                          graph_json=graph_json,
                          latest_value=latest_value,
                          threshold=threshold,
                          status=status,
-                         recent_events=recent_events)
+                         recent_events=recent_events,
+                         page_title="Dashboard tremore Etna – EtnaMonitor",
+                         page_description="Grafico del tremore vulcanico dell'Etna, soglie personalizzate e storico eventi per utenti Premium.")
 
 @bp.route("/settings")
 @login_required

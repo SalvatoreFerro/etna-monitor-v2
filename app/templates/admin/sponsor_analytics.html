@@ -1,0 +1,306 @@
+{% extends "layout.html" %}
+
+{% block head %}
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<section class="admin-container" style="padding: clamp(16px, 4vw, 40px);">
+  <header class="admin-header card-premium animate-premium-fade" style="margin-bottom: clamp(16px, 3vw, 32px);">
+    <h1><i class="fas fa-chart-line"></i> Sponsor Analytics</h1>
+    <p>Analizza impression, click e CTR dei banner sponsorizzati con filtri personalizzabili.</p>
+    <div style="margin-top: 12px; display: flex; gap: 12px; flex-wrap: wrap;">
+      <a href="{{ url_for('admin.admin_home') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-arrow-left"></i> Torna alla dashboard admin</a>
+      <a href="{{ url_for('admin.banner_list') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-image"></i> Gestisci banner</a>
+    </div>
+  </header>
+
+  <div class="card-premium animate-premium-slide" style="margin-bottom: clamp(20px, 4vw, 36px);">
+    <form method="get" class="analytics-filters">
+      <div class="analytics-filters__grid">
+        <div class="form-group">
+          <label for="start_date">Dal</label>
+          <input type="date" id="start_date" name="start_date" class="input-base" value="{{ filters.start_date }}">
+        </div>
+        <div class="form-group">
+          <label for="end_date">Al</label>
+          <input type="date" id="end_date" name="end_date" class="input-base" value="{{ filters.end_date }}">
+        </div>
+        <div class="form-group">
+          <label for="banner">Banner</label>
+          <select id="banner" name="banner" class="input-base">
+            <option value="">Tutti i banner</option>
+            {% for banner in banners %}
+              <option value="{{ banner.id }}" {% if filters.banner_id == banner.id %}selected{% endif %}>{{ banner.title }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="page">Pagina</label>
+          <input type="text" id="page" name="page" class="input-base" placeholder="Esempio: /dashboard" value="{{ filters.page }}">
+        </div>
+      </div>
+      <div class="analytics-filters__actions">
+        <button type="submit" class="btn btn-premium"><i class="fas fa-filter"></i> Applica filtri</button>
+        <a href="{{ url_for('admin.sponsor_analytics', **request.args.to_dict(flat=True), export='csv') }}" class="btn btn-secondary glass"><i class="fas fa-file-download"></i> Esporta CSV</a>
+      </div>
+    </form>
+  </div>
+
+  <div class="analytics-summary">
+    <article class="analytics-card">
+      <h3>Impression</h3>
+      <p class="analytics-value">{{ summary.impressions }}</p>
+      <span class="analytics-muted">Totale nel periodo selezionato</span>
+    </article>
+    <article class="analytics-card">
+      <h3>Click</h3>
+      <p class="analytics-value">{{ summary.clicks }}</p>
+      <span class="analytics-muted">Interazioni registrate</span>
+    </article>
+    <article class="analytics-card">
+      <h3>CTR</h3>
+      <p class="analytics-value">{{ '%.2f'|format(summary.ctr) }}%</p>
+      <span class="analytics-muted">Click-through rate medio</span>
+    </article>
+  </div>
+
+  <div class="card-premium animate-premium-fade" style="margin-bottom: clamp(20px, 4vw, 36px);">
+    <header class="analytics-section-header">
+      <div>
+        <h2>Andamento giornaliero</h2>
+        <p class="analytics-muted">Confronto impression e click giorno per giorno.</p>
+      </div>
+    </header>
+    <div id="sponsor-analytics-chart" class="analytics-chart" aria-label="Grafico impression e click giornalieri"></div>
+    <div class="table-responsive">
+      <table class="table table-premium">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Impression</th>
+            <th>Click</th>
+            <th>CTR</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in daily_rows %}
+            <tr>
+              <td>{{ row.date }}</td>
+              <td>{{ row.impressions }}</td>
+              <td>{{ row.clicks }}</td>
+              <td>{{ '%.2f'|format(row.ctr) }}%</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="analytics-grid">
+    <div class="card-premium animate-premium-slide">
+      <header class="analytics-section-header">
+        <div>
+          <h2>Pagine principali</h2>
+          <p class="analytics-muted">Top placement per impression e click.</p>
+        </div>
+      </header>
+      <div class="table-responsive">
+        <table class="table table-premium">
+          <thead>
+            <tr>
+              <th>Pagina</th>
+              <th>Impression</th>
+              <th>Click</th>
+              <th>CTR</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in page_stats %}
+              <tr>
+                <td>{{ row.page }}</td>
+                <td>{{ row.impressions }}</td>
+                <td>{{ row.clicks }}</td>
+                <td>{{ '%.2f'|format(row.ctr) }}%</td>
+              </tr>
+            {% endfor %}
+            {% if not page_stats %}
+              <tr>
+                <td colspan="4" class="analytics-muted" style="text-align: center;">Nessun dato disponibile nel periodo.</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card-premium animate-premium-slide">
+      <header class="analytics-section-header">
+        <div>
+          <h2>Performance per banner</h2>
+          <p class="analytics-muted">Analisi di impression, click e CTR per sponsor.</p>
+        </div>
+      </header>
+      <div class="table-responsive">
+        <table class="table table-premium">
+          <thead>
+            <tr>
+              <th>Banner</th>
+              <th>Impression</th>
+              <th>Click</th>
+              <th>CTR</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in banner_stats %}
+              <tr>
+                <td>{{ row.title }}</td>
+                <td>{{ row.impressions }}</td>
+                <td>{{ row.clicks }}</td>
+                <td>{{ '%.2f'|format(row.ctr) }}%</td>
+              </tr>
+            {% endfor %}
+            {% if not banner_stats %}
+              <tr>
+                <td colspan="4" class="analytics-muted" style="text-align: center;">Nessun dato disponibile nel periodo.</td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  (function() {
+    const chartContainer = document.getElementById('sponsor-analytics-chart');
+    if (!chartContainer || typeof Plotly === 'undefined') {
+      return;
+    }
+
+    const data = {{ chart_data | tojson }};
+    const impressionsTrace = {
+      x: data.labels,
+      y: data.impressions,
+      type: 'scatter',
+      mode: 'lines+markers',
+      name: 'Impression',
+      line: { color: '#00D2FF', width: 3 },
+      marker: { size: 6 }
+    };
+
+    const clicksTrace = {
+      x: data.labels,
+      y: data.clicks,
+      type: 'scatter',
+      mode: 'lines+markers',
+      name: 'Click',
+      line: { color: '#6366F1', width: 3 },
+      marker: { size: 6 }
+    };
+
+    Plotly.newPlot(chartContainer, [impressionsTrace, clicksTrace], {
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      plot_bgcolor: 'rgba(0,0,0,0)',
+      font: { color: '#E7ECFF' },
+      margin: { t: 24, r: 24, b: 48, l: 48 },
+      hovermode: 'x unified',
+      legend: { orientation: 'h', y: -0.2 },
+      yaxis: { title: 'Conteggio' },
+      xaxis: { title: 'Data' }
+    }, { responsive: true });
+  })();
+</script>
+{% endblock %}
+
+<style>
+  .analytics-filters {
+    display: grid;
+    gap: 20px;
+  }
+
+  .analytics-filters__grid {
+    display: grid;
+    gap: 16px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+
+  .analytics-filters__actions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .analytics-summary {
+    display: grid;
+    gap: clamp(12px, 2vw, 20px);
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    margin-bottom: clamp(20px, 4vw, 36px);
+  }
+
+  .analytics-card {
+    padding: clamp(16px, 3vw, 24px);
+    border-radius: 20px;
+    background: rgba(13, 19, 33, 0.72);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    display: grid;
+    gap: 8px;
+  }
+
+  .analytics-card h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--color-text-secondary);
+  }
+
+  .analytics-value {
+    margin: 0;
+    font-size: 2rem;
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+  }
+
+  .analytics-muted {
+    color: var(--color-text-tertiary);
+    font-size: 0.9rem;
+  }
+
+  .analytics-section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .analytics-chart {
+    min-height: 360px;
+  }
+
+  .analytics-grid {
+    display: grid;
+    gap: clamp(16px, 3vw, 24px);
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  }
+
+  .table-responsive {
+    overflow-x: auto;
+  }
+
+  .table-premium th,
+  .table-premium td {
+    white-space: nowrap;
+  }
+
+  @media (max-width: 768px) {
+    .analytics-filters__actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .analytics-value {
+      font-size: 1.75rem;
+    }
+  }
+</style>

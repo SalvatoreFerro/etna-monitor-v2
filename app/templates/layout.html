@@ -121,25 +121,33 @@
   ~ "ni6sL4kRueW4Sehak+Hgleypqyc56gY/IwN19gGyhTvbo5sVLQS3wMtj59qqQPwACIQVP4kTsUbLxfOFO2qyx6ZJR1aLPw5L1O6l"
   ~ "AAAA" %}
 <!doctype html>
-<html lang="en">
+<html lang="it">
   <head>
+    {% set computed_title = page_title or default_page_title %}
+    {% set computed_description = page_description or default_page_description %}
+    {% set computed_og_title = page_og_title or computed_title %}
+    {% set computed_og_description = page_og_description or computed_description %}
+    {% set computed_og_image = page_og_image or default_og_image %}
+    {% set computed_canonical = canonical_url %}
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, shrink-to-fit=no" />
-    <meta name="description" content="Monitoraggio in tempo reale del tremore vulcanico dell'Etna utilizzando dati sismici INGV" />
+    <meta name="description" content="{{ computed_description }}" />
     <meta name="theme-color" content="#00D2FF" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="EtnaMonitor" />
-    
-    <title>{% block title %}EtnaMonitor - Monitoraggio Tremore Vulcanico{% endblock %}</title>
-    
+
+    <title>{% block title %}{{ computed_title }}{% endblock %}</title>
+
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
-    
+
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32x32.png') }}" />
     <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16x16.png') }}" />
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}" />
-    
+
+    <link rel="canonical" href="{{ computed_canonical }}" />
+
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}" />
@@ -150,17 +158,47 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700&display=swap" rel="stylesheet">
     
-    <meta property="og:title" content="EtnaMonitor - Monitoraggio Tremore Vulcanico" />
-    <meta property="og:description" content="Monitoraggio in tempo reale del tremore vulcanico dell'Etna utilizzando dati sismici INGV" />
+    <meta property="og:title" content="{{ computed_og_title }}" />
+    <meta property="og:description" content="{{ computed_og_description }}" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="{{ request.url }}" />
-    <meta property="og:image" content="{{ url_for('static', filename='images/og-image.png', _external=True) }}" />
-    
+    <meta property="og:url" content="{{ computed_canonical }}" />
+    <meta property="og:image" content="{{ computed_og_image }}" />
+
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="EtnaMonitor - Monitoraggio Tremore Vulcanico" />
-    <meta name="twitter:description" content="Monitoraggio in tempo reale del tremore vulcanico dell'Etna utilizzando dati sismici INGV" />
-    <meta name="twitter:image" content="{{ url_for('static', filename='images/twitter-card.png', _external=True) }}" />
-    
+    <meta name="twitter:title" content="{{ computed_og_title }}" />
+    <meta name="twitter:description" content="{{ computed_og_description }}" />
+    <meta name="twitter:image" content="{{ computed_og_image }}" />
+
+    {% if analytics.plausible_domain %}
+      <script defer data-domain="{{ analytics.plausible_domain }}" src="https://plausible.io/js/script.js"></script>
+    {% elif analytics.ga_measurement_id %}
+      <script>
+        window.__EM_GA_MEASUREMENT_ID = "{{ analytics.ga_measurement_id }}";
+      </script>
+    {% endif %}
+
+    {% set structured_data_default = default_structured_data_base + [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": computed_og_title,
+        "url": computed_canonical,
+        "description": computed_og_description,
+      }
+    ] %}
+    {% if page_structured_data is defined and page_structured_data %}
+      {% set structured_data_payload = page_structured_data %}
+    {% else %}
+      {% set structured_data_payload = structured_data_default %}
+    {% endif %}
+    {% block page_structured_data %}
+      {% if structured_data_payload %}
+        <script type="application/ld+json">
+{{ structured_data_payload | tojson(indent=2) | safe }}
+        </script>
+      {% endif %}
+    {% endblock %}
+
     {% block head %}{% endblock %}
   </head>
   <body>
@@ -324,7 +362,19 @@
         </div>
       </div>
     </div>
-    
+
+    {% if analytics.ga_measurement_id %}
+      <div class="consent-banner" id="consent-banner" hidden>
+        <div class="consent-banner__content">
+          <p>Utilizziamo Google Analytics in forma anonimizzata per migliorare EtnaMonitor. Puoi scegliere se attivare la raccolta di statistiche.</p>
+          <div class="consent-banner__actions">
+            <button type="button" class="btn btn-secondary glass" id="consent-decline">Rifiuta</button>
+            <button type="button" class="btn btn-premium" id="consent-accept">Accetta</button>
+          </div>
+        </div>
+      </div>
+    {% endif %}
+
     <script>
     // Register service worker
     if ('serviceWorker' in navigator) {
@@ -483,6 +533,69 @@
       });
     });
     </script>
+    {% if analytics.ga_measurement_id %}
+    <script>
+    (function() {
+      const measurementId = window.__EM_GA_MEASUREMENT_ID;
+      if (!measurementId) {
+        return;
+      }
+      const storageKey = 'em_ga_consent';
+      const banner = document.getElementById('consent-banner');
+      const acceptBtn = document.getElementById('consent-accept');
+      const declineBtn = document.getElementById('consent-decline');
+
+      function ensureDataLayer(defaultStatus) {
+        window.dataLayer = window.dataLayer || [];
+        window.gtag = window.gtag || function(){ window.dataLayer.push(arguments); };
+        window.gtag('consent', 'default', defaultStatus);
+      }
+
+      function loadGa() {
+        if (window.__emGaLoaded) {
+          window.gtag('consent', 'update', { analytics_storage: 'granted' });
+          return;
+        }
+
+        ensureDataLayer({ ad_storage: 'denied', analytics_storage: 'denied' });
+
+        const script = document.createElement('script');
+        script.async = true;
+        script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
+        script.onload = function() {
+          window.gtag('js', new Date());
+          window.gtag('config', measurementId, { anonymize_ip: true });
+          window.gtag('consent', 'update', { analytics_storage: 'granted' });
+        };
+        document.head.appendChild(script);
+        window.__emGaLoaded = true;
+      }
+
+      function denyGa() {
+        ensureDataLayer({ ad_storage: 'denied', analytics_storage: 'denied' });
+      }
+
+      const storedConsent = localStorage.getItem(storageKey);
+      if (storedConsent === 'accepted') {
+        loadGa();
+      } else {
+        denyGa();
+        if (banner && acceptBtn && declineBtn) {
+          banner.hidden = false;
+          acceptBtn.addEventListener('click', function() {
+            localStorage.setItem(storageKey, 'accepted');
+            banner.hidden = true;
+            loadGa();
+          });
+          declineBtn.addEventListener('click', function() {
+            localStorage.setItem(storageKey, 'declined');
+            banner.hidden = true;
+          });
+        }
+      }
+    })();
+    </script>
+    {% endif %}
     {% include 'partials/footer.html' %}
   </body>
 </html>

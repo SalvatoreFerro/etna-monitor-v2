@@ -1,4 +1,4 @@
-from flask import Flask, redirect, request
+from flask import Flask, redirect, request, url_for
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
@@ -17,10 +17,12 @@ from .routes.api import api_bp
 from .routes.status import status_bp
 from .routes.billing import bp as billing_bp
 from .models import db
-from .context_processors import inject_user, inject_sponsor_banners
 from .utils.csrf import generate_csrf_token
 from .services.scheduler_service import SchedulerService
 from config import Config, get_database_uri_from_env
+
+
+limiter = None
 
 
 def _mask_database_uri(uri: str) -> str:
@@ -34,6 +36,7 @@ def _mask_database_uri(uri: str) -> str:
         return "<unavailable>"
 
 def create_app():
+    global limiter
     app = Flask(__name__)
     app.config.from_object(Config)
     app.jinja_env.globals['csrf_token'] = generate_csrf_token
@@ -53,6 +56,11 @@ def create_app():
         app.config["SQLALCHEMY_DATABASE_URI"] = Config.SQLALCHEMY_DATABASE_URI
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["CANONICAL_HOST"] = os.getenv("CANONICAL_HOST", "")
+
+    enable_seo_routes = os.getenv("ENABLE_SEO_ROUTES", "0") == "1"
+    enable_ads_routes = os.getenv("ENABLE_ADS_ROUTES", "0") == "1"
+    app.config["ENABLE_SEO_ROUTES"] = enable_seo_routes
+    app.config["ENABLE_ADS_ROUTES"] = enable_ads_routes
 
     raw = os.getenv("ADMIN_EMAILS", "")
     admin_set = {e.strip().lower() for e in raw.split(",") if e.strip()}
@@ -77,6 +85,59 @@ def create_app():
         return {
             "current_year": get_current_year(),
             "get_current_year": get_current_year,
+        }
+
+    def _canonical_base() -> str:
+        canonical_host = app.config.get("CANONICAL_HOST") or request.host
+        scheme = request.scheme if request.scheme in {"http", "https"} else "https"
+        return f"{scheme}://{canonical_host}"
+
+    @app.context_processor
+    def inject_meta_defaults():
+        canonical_base = _canonical_base()
+        canonical_url = f"{canonical_base}{request.path}"
+        default_title = "EtnaMonitor – Monitoraggio Etna in tempo reale"
+        default_description = (
+            "Monitoraggio in tempo reale del tremore vulcanico dell'Etna con dati INGV, "
+            "grafici interattivi e avvisi per gli appassionati."
+        )
+        default_og_image = url_for(
+            "static", filename="icons/icon-512.png", _external=True
+        )
+        logo_url = url_for("static", filename="icons/apple-touch-icon.png", _external=True)
+        structured_base = [
+            {
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                "name": "EtnaMonitor",
+                "url": canonical_base,
+                "logo": logo_url,
+            },
+            {
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                "name": "EtnaMonitor",
+                "url": canonical_base,
+                "potentialAction": {
+                    "@type": "SearchAction",
+                    "target": f"{canonical_base}/search?q={{search_term_string}}",
+                    "query-input": "required name=search_term_string",
+                },
+            },
+        ]
+
+        return {
+            "default_page_title": default_title,
+            "default_page_description": default_description,
+            "default_og_image": default_og_image,
+            "canonical_url": canonical_url,
+            "canonical_base_url": canonical_base,
+            "default_structured_data_base": structured_base,
+            "analytics": {
+                "plausible_domain": app.config.get("PLAUSIBLE_DOMAIN"),
+                "ga_measurement_id": app.config.get("GA_MEASUREMENT_ID"),
+            },
+            "ads_tracking_enabled": bool(app.config.get("ADS_ROUTES_ENABLED")),
         }
 
     # Capture the Google redirect URI from the environment so the OAuth flow
@@ -281,18 +342,48 @@ def create_app():
             key_func=get_remote_address,
             app=app,
             storage_uri=redis_url,
-            default_limits=["200 per day", "50 per hour"]
+            default_limits=["200 per day", "50 per hour"],
         )
     else:
         limiter = Limiter(
             key_func=get_remote_address,
             app=app,
-            default_limits=["200 per day", "50 per hour"]
+            default_limits=["200 per day", "50 per hour"],
         )
     
-    app.context_processor(inject_user)
-    app.context_processor(inject_sponsor_banners)
+    from .context_processors import inject_user as inject_user_context
+
+    app.context_processor(inject_user_context)
+
+    try:
+        from .context_processors import (
+            inject_sponsor_banners as inject_sponsor_banners_context,
+        )
+    except Exception as exc:  # pragma: no cover - optional dependency guard
+        app.logger.warning("Sponsor banner context disabled: %s", exc)
+    else:
+        app.context_processor(inject_sponsor_banners_context)
     
+    seo_blueprint = None
+    if enable_seo_routes:
+        try:
+            from .routes.seo import bp as seo_blueprint
+        except Exception as exc:  # pragma: no cover - optional dependency guard
+            app.logger.warning("SEO routes disabled: %s", exc)
+            seo_blueprint = None
+        else:
+            app.logger.info("SEO routes enabled")
+
+    ads_blueprint = None
+    if enable_ads_routes:
+        try:
+            from .routes.ads import bp as ads_blueprint
+        except Exception as exc:  # pragma: no cover - optional dependency guard
+            app.logger.warning("Ads routes disabled: %s", exc)
+            ads_blueprint = None
+        else:
+            app.logger.info("Ads routes enabled")
+
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
@@ -300,6 +391,18 @@ def create_app():
     app.register_blueprint(billing_bp)
     app.register_blueprint(api_bp)
     app.register_blueprint(status_bp)
+
+    if seo_blueprint is not None:
+        app.register_blueprint(seo_blueprint)
+        app.config["SEO_ROUTES_ENABLED"] = True
+    else:
+        app.config["SEO_ROUTES_ENABLED"] = False
+
+    if ads_blueprint is not None:
+        app.register_blueprint(ads_blueprint)
+        app.config["ADS_ROUTES_ENABLED"] = True
+    else:
+        app.config["ADS_ROUTES_ENABLED"] = False
 
     with app.app_context():
         db.create_all()

@@ -1,17 +1,62 @@
-from datetime import datetime
+import csv
+import io
+from datetime import datetime, timedelta
 
-from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for
-from sqlalchemy import or_
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, make_response
+from sqlalchemy import func, or_
 
 from ..utils.auth import admin_required
 from ..models import db
 from ..models.user import User
 from ..models.event import Event
-from ..models.sponsor_banner import SponsorBanner
+try:
+    from ..models.sponsor_banner import (
+        SponsorBanner,
+        SponsorBannerClick,
+        SponsorBannerImpression,
+    )
+except Exception:  # pragma: no cover - optional dependency guard
+    SponsorBanner = None  # type: ignore
+    SponsorBannerClick = None  # type: ignore
+    SponsorBannerImpression = None  # type: ignore
 from ..services.telegram_service import TelegramService
 from ..utils.csrf import validate_csrf_token
 
 bp = Blueprint("admin", __name__)
+
+
+def _parse_date_param(value, default):
+    if not value:
+        return default
+    try:
+        return datetime.strptime(value, "%Y-%m-%d").date()
+    except ValueError:
+        return default
+
+
+def _apply_tracking_filters(query, model, start_dt, end_dt, banner_id, page_filter):
+    if start_dt:
+        query = query.filter(model.ts >= start_dt)
+    if end_dt:
+        query = query.filter(model.ts <= end_dt)
+    if banner_id:
+        query = query.filter(model.banner_id == banner_id)
+    if page_filter:
+        like_value = f"%{page_filter.lower()}%"
+        query = query.filter(model.page.isnot(None))
+        query = query.filter(func.lower(model.page).like(like_value))
+    return query
+
+
+def _normalize_day(value):
+    if isinstance(value, datetime):
+        return value.date()
+    if isinstance(value, str):
+        try:
+            return datetime.strptime(value, "%Y-%m-%d").date()
+        except ValueError:
+            return None
+    return value
 
 
 @bp.route("/")
@@ -149,9 +194,310 @@ def activate_premium(user_id: int):
     return redirect(url_for('admin.donations'))
 
 
+@bp.route("/sponsor-analytics")
+@admin_required
+def sponsor_analytics():
+    if (
+        SponsorBanner is None
+        or SponsorBannerImpression is None
+        or SponsorBannerClick is None
+    ):
+        flash('Funzionalità sponsor non disponibile.', 'error')
+        return redirect(url_for('admin.admin_home'))
+
+    today = datetime.utcnow().date()
+    end_date = _parse_date_param(request.args.get("end_date"), today)
+    start_default = end_date - timedelta(days=30)
+    start_date = _parse_date_param(request.args.get("start_date"), start_default)
+    if start_date > end_date:
+        start_date = end_date
+
+    start_dt = datetime.combine(start_date, datetime.min.time())
+    end_dt = datetime.combine(end_date, datetime.max.time())
+
+    banner_raw = request.args.get("banner")
+    selected_banner_id = None
+    if banner_raw:
+        try:
+            selected_banner_id = int(banner_raw)
+        except ValueError:
+            selected_banner_id = None
+
+    page_filter = (request.args.get("page") or "").strip()
+
+    total_impressions = (
+        _apply_tracking_filters(
+            SponsorBannerImpression.query,
+            SponsorBannerImpression,
+            start_dt,
+            end_dt,
+            selected_banner_id,
+            page_filter,
+        )
+        .with_entities(func.count(SponsorBannerImpression.id))
+        .scalar()
+        or 0
+    )
+
+    total_clicks = (
+        _apply_tracking_filters(
+            SponsorBannerClick.query,
+            SponsorBannerClick,
+            start_dt,
+            end_dt,
+            selected_banner_id,
+            page_filter,
+        )
+        .with_entities(func.count(SponsorBannerClick.id))
+        .scalar()
+        or 0
+    )
+
+    impressions_daily_rows = (
+        _apply_tracking_filters(
+            db.session.query(
+                func.date(SponsorBannerImpression.ts).label("day"),
+                func.count(SponsorBannerImpression.id).label("count"),
+            ).select_from(SponsorBannerImpression),
+            SponsorBannerImpression,
+            start_dt,
+            end_dt,
+            selected_banner_id,
+            page_filter,
+        )
+        .group_by("day")
+        .order_by("day")
+        .all()
+    )
+
+    clicks_daily_rows = (
+        _apply_tracking_filters(
+            db.session.query(
+                func.date(SponsorBannerClick.ts).label("day"),
+                func.count(SponsorBannerClick.id).label("count"),
+            ).select_from(SponsorBannerClick),
+            SponsorBannerClick,
+            start_dt,
+            end_dt,
+            selected_banner_id,
+            page_filter,
+        )
+        .group_by("day")
+        .order_by("day")
+        .all()
+    )
+
+    daily_map = {}
+    for row in impressions_daily_rows:
+        day = _normalize_day(row.day)
+        if day:
+            daily_map[day] = {"impressions": int(row.count or 0), "clicks": 0}
+
+    for row in clicks_daily_rows:
+        day = _normalize_day(row.day)
+        if day:
+            stats = daily_map.setdefault(day, {"impressions": 0, "clicks": 0})
+            stats["clicks"] = int(row.count or 0)
+
+    chart_labels = []
+    chart_impressions = []
+    chart_clicks = []
+    cursor = start_date
+    while cursor <= end_date:
+        stats = daily_map.get(cursor, {"impressions": 0, "clicks": 0})
+        chart_labels.append(cursor.isoformat())
+        chart_impressions.append(stats["impressions"])
+        chart_clicks.append(stats["clicks"])
+        cursor += timedelta(days=1)
+
+    impressions_by_page_rows = (
+        _apply_tracking_filters(
+            db.session.query(
+                SponsorBannerImpression.page.label("page"),
+                func.count(SponsorBannerImpression.id).label("impressions"),
+            ).select_from(SponsorBannerImpression),
+            SponsorBannerImpression,
+            start_dt,
+            end_dt,
+            selected_banner_id,
+            page_filter,
+        )
+        .group_by(SponsorBannerImpression.page)
+        .all()
+    )
+
+    clicks_by_page_rows = (
+        _apply_tracking_filters(
+            db.session.query(
+                SponsorBannerClick.page.label("page"),
+                func.count(SponsorBannerClick.id).label("clicks"),
+            ).select_from(SponsorBannerClick),
+            SponsorBannerClick,
+            start_dt,
+            end_dt,
+            selected_banner_id,
+            page_filter,
+        )
+        .group_by(SponsorBannerClick.page)
+        .all()
+    )
+
+    page_stats_map = {}
+    for row in impressions_by_page_rows:
+        key = row.page or "Non specificata"
+        page_stats_map[key] = {
+            "page": key,
+            "impressions": int(row.impressions or 0),
+            "clicks": 0,
+        }
+
+    for row in clicks_by_page_rows:
+        key = row.page or "Non specificata"
+        stats = page_stats_map.setdefault(
+            key,
+            {"page": key, "impressions": 0, "clicks": 0},
+        )
+        stats["clicks"] = int(row.clicks or 0)
+
+    for stats in page_stats_map.values():
+        stats["ctr"] = (stats["clicks"] / stats["impressions"] * 100) if stats["impressions"] else 0
+
+    page_stats = sorted(page_stats_map.values(), key=lambda item: item["impressions"], reverse=True)
+
+    banner_impressions_rows = (
+        _apply_tracking_filters(
+            db.session.query(
+                SponsorBanner.id.label("banner_id"),
+                SponsorBanner.title.label("title"),
+                func.count(SponsorBannerImpression.id).label("impressions"),
+            )
+            .select_from(SponsorBannerImpression)
+            .join(SponsorBanner, SponsorBanner.id == SponsorBannerImpression.banner_id),
+            SponsorBannerImpression,
+            start_dt,
+            end_dt,
+            selected_banner_id,
+            page_filter,
+        )
+        .group_by(SponsorBanner.id, SponsorBanner.title)
+        .all()
+    )
+
+    banner_clicks_rows = (
+        _apply_tracking_filters(
+            db.session.query(
+                SponsorBanner.id.label("banner_id"),
+                SponsorBanner.title.label("title"),
+                func.count(SponsorBannerClick.id).label("clicks"),
+            )
+            .select_from(SponsorBannerClick)
+            .join(SponsorBanner, SponsorBanner.id == SponsorBannerClick.banner_id),
+            SponsorBannerClick,
+            start_dt,
+            end_dt,
+            selected_banner_id,
+            page_filter,
+        )
+        .group_by(SponsorBanner.id, SponsorBanner.title)
+        .all()
+    )
+
+    banner_stats_map = {}
+    for row in banner_impressions_rows:
+        key = row.banner_id
+        banner_stats_map[key] = {
+            "banner_id": key,
+            "title": row.title or f"Banner #{key}",
+            "impressions": int(row.impressions or 0),
+            "clicks": 0,
+        }
+
+    for row in banner_clicks_rows:
+        key = row.banner_id
+        stats = banner_stats_map.setdefault(
+            key,
+            {
+                "banner_id": key,
+                "title": row.title or f"Banner #{key}",
+                "impressions": 0,
+                "clicks": 0,
+            },
+        )
+        stats["title"] = row.title or stats["title"]
+        stats["clicks"] = int(row.clicks or 0)
+
+    for stats in banner_stats_map.values():
+        stats["ctr"] = (stats["clicks"] / stats["impressions"] * 100) if stats["impressions"] else 0
+
+    banner_stats = sorted(banner_stats_map.values(), key=lambda item: item["impressions"], reverse=True)
+
+    daily_rows = []
+    for label, impressions, clicks in zip(chart_labels, chart_impressions, chart_clicks):
+        ctr_value = (clicks / impressions * 100) if impressions else 0
+        daily_rows.append(
+            {
+                "date": label,
+                "impressions": impressions,
+                "clicks": clicks,
+                "ctr": ctr_value,
+            }
+        )
+
+    summary = {
+        "impressions": total_impressions,
+        "clicks": total_clicks,
+        "ctr": (total_clicks / total_impressions * 100) if total_impressions else 0,
+    }
+
+    if request.args.get("export") == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow(["data", "impression", "click", "ctr_%"])
+        for row in daily_rows:
+            writer.writerow([row["date"], row["impressions"], row["clicks"], f"{row['ctr']:.2f}"])
+
+        response = make_response(output.getvalue())
+        response.headers["Content-Type"] = "text/csv"
+        response.headers[
+            "Content-Disposition"
+        ] = f"attachment; filename=sponsor-analytics-{start_date.isoformat()}-{end_date.isoformat()}.csv"
+        return response
+
+    banners = SponsorBanner.query.order_by(SponsorBanner.title.asc()).all()
+    selected_banner = None
+    if selected_banner_id:
+        selected_banner = next((b for b in banners if b.id == selected_banner_id), None)
+
+    return render_template(
+        "admin/sponsor_analytics.html",
+        banners=banners,
+        selected_banner=selected_banner,
+        filters={
+            "start_date": start_date.isoformat(),
+            "end_date": end_date.isoformat(),
+            "banner_id": selected_banner_id,
+            "page": page_filter,
+        },
+        summary=summary,
+        chart_data={
+            "labels": chart_labels,
+            "impressions": chart_impressions,
+            "clicks": chart_clicks,
+        },
+        daily_rows=daily_rows,
+        page_stats=page_stats,
+        banner_stats=banner_stats,
+        page_title="Sponsor Analytics – Admin EtnaMonitor",
+    )
+
+
 @bp.route("/banners", methods=["GET"])
 @admin_required
 def banner_list():
+    if SponsorBanner is None:
+        flash('Gestione sponsor non disponibile.', 'error')
+        return redirect(url_for('admin.admin_home'))
+
     banners = SponsorBanner.query.order_by(SponsorBanner.created_at.desc()).all()
     return render_template("admin/banners.html", banners=banners)
 
@@ -159,6 +505,10 @@ def banner_list():
 @bp.route("/banners", methods=["POST"])
 @admin_required
 def banner_create():
+    if SponsorBanner is None:
+        flash('Gestione sponsor non disponibile.', 'error')
+        return redirect(url_for('admin.banner_list'))
+
     if not validate_csrf_token(request.form.get('csrf_token')):
         flash('Token di sicurezza non valido.', 'error')
         return redirect(url_for('admin.banner_list'))
@@ -190,6 +540,10 @@ def banner_create():
 @bp.route("/banners/<int:banner_id>/toggle", methods=["POST"])
 @admin_required
 def banner_toggle(banner_id: int):
+    if SponsorBanner is None:
+        flash('Gestione sponsor non disponibile.', 'error')
+        return redirect(url_for('admin.banner_list'))
+
     if not validate_csrf_token(request.form.get('csrf_token')):
         flash('Token di sicurezza non valido.', 'error')
         return redirect(url_for('admin.banner_list'))
@@ -205,6 +559,10 @@ def banner_toggle(banner_id: int):
 @bp.route("/banners/<int:banner_id>/delete", methods=["POST"])
 @admin_required
 def banner_delete(banner_id: int):
+    if SponsorBanner is None:
+        flash('Gestione sponsor non disponibile.', 'error')
+        return redirect(url_for('admin.banner_list'))
+
     if not validate_csrf_token(request.form.get('csrf_token')):
         flash('Token di sicurezza non valido.', 'error')
         return redirect(url_for('admin.banner_list'))
@@ -220,6 +578,10 @@ def banner_delete(banner_id: int):
 @bp.route("/banners/<int:banner_id>/update", methods=["POST"])
 @admin_required
 def banner_update(banner_id: int):
+    if SponsorBanner is None:
+        flash('Gestione sponsor non disponibile.', 'error')
+        return redirect(url_for('admin.banner_list'))
+
     if not validate_csrf_token(request.form.get('csrf_token')):
         flash('Token di sicurezza non valido.', 'error')
         return redirect(url_for('admin.banner_list'))
