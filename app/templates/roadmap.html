@@ -1,0 +1,89 @@
+{% extends "layout.html" %}
+
+{% block title %}Roadmap EtnaMonitor{% endblock %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/roadmap.css') }}">
+{% endblock %}
+
+{% block content %}
+  <main id="main-content" class="roadmap-page" aria-labelledby="roadmap-title">
+    <section class="roadmap-hero glass" role="banner">
+      <div class="roadmap-hero-content">
+        <h1 id="roadmap-title">Roadmap EtnaMonitor</h1>
+        <p class="roadmap-subtitle">Scopri le prossime funzionalità in arrivo sulla piattaforma</p>
+        <p class="roadmap-intro">EtnaMonitor evolve costantemente per offrire dati, strumenti e alert sempre più precisi.</p>
+      </div>
+      <div class="roadmap-hero-visual" aria-hidden="true">
+        <span class="hero-orb orb-one"></span>
+        <span class="hero-orb orb-two"></span>
+        <span class="hero-grid"></span>
+      </div>
+    </section>
+
+    <section class="roadmap-section" aria-labelledby="section-development">
+      <header class="section-header">
+        <h2 id="section-development">In sviluppo</h2>
+        <p>Le esperienze su cui il nostro team sta lavorando per offrire sempre più controllo e insight.</p>
+      </header>
+      <div class="roadmap-cards" role="list">
+        <article class="roadmap-card" role="listitem">
+          <div class="card-icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 11a4 4 0 0 1 4-4 4.5 4.5 0 0 1 8.9-1.3A4 4 0 0 1 21 10a4 4 0 0 1-1 7H6a4 4 0 0 1-3-6z" />
+              <path d="M13 13v3" />
+              <path d="M16 11v5" />
+            </svg>
+          </div>
+          <h3>EtnaView — Mappa dei punti panoramici</h3>
+          <p>Una mappa interattiva che mostrerà in tempo reale i punti con la migliore visibilità sull’Etna, basata su meteo e tremore.</p>
+        </article>
+        <article class="roadmap-card" role="listitem">
+          <div class="card-icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M22 12a10 10 0 1 0-4.1 8" />
+              <path d="M22 12a10 10 0 0 1-10 10" />
+              <path d="M7 12c0-1.657 1.343-3 3-3" />
+              <path d="M14 15.5v.5" />
+              <path d="M14 12c0-1.104.672-2 1.5-2S17 10.896 17 12c0 1.105-.672 2-1.5 2S14 13.105 14 12Z" />
+            </svg>
+          </div>
+          <h3>Avvisi Locali Telegram</h3>
+          <p>Notifiche mirate solo alle zone più vicine ai fenomeni vulcanici, per una comunicazione più utile e non invasiva.</p>
+        </article>
+        <article class="roadmap-card" role="listitem">
+          <div class="card-icon" aria-hidden="true">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 3v18h18" />
+              <path d="M7 13l3 3 5-7 4 5" />
+              <path d="M15 10h5v5" />
+            </svg>
+          </div>
+          <h3>Statistiche Storiche</h3>
+          <p>Accesso ai dati giornalieri e settimanali per comprendere meglio l’evoluzione del tremore nel tempo.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="roadmap-section" aria-labelledby="section-evaluation">
+      <header class="section-header">
+        <h2 id="section-evaluation">In valutazione</h2>
+        <p>Concept e proposte su cui stiamo raccogliendo feedback dalla community.</p>
+      </header>
+      <div class="evaluation-callout glass">
+        <p>Nuove idee verranno proposte e votate dalla community di utenti Premium.</p>
+      </div>
+    </section>
+
+    <footer class="roadmap-footer glass" role="contentinfo">
+      <div class="footer-content">
+        <h2>Vuoi supportare il progetto?</h2>
+        <p>Diventa un utente Premium o scrivici le tue idee.</p>
+        <div class="footer-actions">
+          <a href="/pricing" class="btn btn-primary">Passa a Premium</a>
+          <a href="mailto:team@etnamonitor.it" class="btn btn-secondary glass">Condividi un'idea</a>
+        </div>
+      </div>
+    </footer>
+  </main>
+{% endblock %}

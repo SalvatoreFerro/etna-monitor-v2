@@ -36,6 +36,11 @@ def pricing():
     return render_template("pricing.html")
 
 
+@bp.route("/roadmap")
+def roadmap():
+    return render_template("roadmap.html")
+
+
 @bp.route("/privacy")
 def privacy():
     return render_template("privacy.html")
