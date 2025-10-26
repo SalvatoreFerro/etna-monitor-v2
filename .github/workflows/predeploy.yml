@@ -1,19 +1,27 @@
-name: Pre-deploy checks
+name: CI
 
 on:
-  pull_request:
   push:
-    branches:
-      - main
+  pull_request:
 
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: testdb
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd="pg_isready -U postgres" --health-interval=5s --health-timeout=5s --health-retries=5
     env:
       SECRET_KEY: test-secret-key
       DISABLE_SCHEDULER: "1"
       TELEGRAM_BOT_MODE: off
-      DATABASE_URL: sqlite:///ci.db
+      DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/testdb
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -29,8 +37,15 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run database migrations
-        run: |
-          alembic upgrade head
+        run: alembic upgrade head
 
       - name: Run tests
         run: pytest -q
+
+      - name: Import smoke test
+        run: |
+          python - <<'PY'
+import importlib
+importlib.import_module("app")
+print("app import OK")
+PY

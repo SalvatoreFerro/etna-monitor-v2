@@ -1,4 +1,4 @@
-from flask import Flask, redirect, request, url_for
+from flask import Flask, g, redirect, request, url_for
 from flask_login import LoginManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -8,6 +8,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix  # Ensure proxy headers are h
 import os
 import redis
 from datetime import datetime
+from time import perf_counter
 from urllib.parse import urlparse, urlunparse
 from pathlib import Path
 try:  # pragma: no cover - optional dependency guard
@@ -36,6 +37,7 @@ from .utils.csrf import generate_csrf_token
 from .services.scheduler_service import SchedulerService
 from .utils.logger import configure_logging
 from config import Config, get_database_uri_from_env
+from .extensions import cache
 login_manager = LoginManager()
 limiter = None
 migrate = Migrate()
@@ -51,6 +53,9 @@ def _mask_database_uri(uri: str) -> str:
     except Exception:
         return "<unavailable>"
 
+SLOW_REQUEST_THRESHOLD_MS = 300
+
+
 def create_app(config_overrides: dict | None = None):
     global limiter
     app = Flask(__name__)
@@ -62,9 +67,15 @@ def create_app(config_overrides: dict | None = None):
     configure_logging(app.config.get("LOG_DIR"))
     app.logger.info("[BOOT] Logging configured. Writing to %s", Path(app.config.get("LOG_DIR", "logs")) / "app.log")
 
+    secret_from_env = os.getenv("SECRET_KEY")
+    if secret_from_env:
+        app.config["SECRET_KEY"] = secret_from_env
     secret_key = app.config.get("SECRET_KEY")
     if not secret_key or secret_key in {"dev", "change-me"}:
         raise RuntimeError("SECRET_KEY environment variable must be set to a secure, non-default value.")
+
+    app.config.setdefault("SESSION_COOKIE_SECURE", True)
+    app.config.setdefault("SESSION_COOKIE_SAMESITE", "Lax")
 
     app.config.setdefault("LAST_CSV_READ_AT", None)
     app.config.setdefault("LAST_CSV_LAST_TS", None)
@@ -97,6 +108,15 @@ def create_app(config_overrides: dict | None = None):
             )
             app.config["SQLALCHEMY_DATABASE_URI"] = Config.SQLALCHEMY_DATABASE_URI
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+    engine_defaults = {
+        "pool_size": 2,
+        "max_overflow": 2,
+        "pool_pre_ping": True,
+        "pool_recycle": 180,
+    }
+    existing_engine_options = dict(app.config.get("SQLALCHEMY_ENGINE_OPTIONS", {}))
+    engine_defaults.update(existing_engine_options)
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = engine_defaults
     app.config["CANONICAL_HOST"] = os.getenv("CANONICAL_HOST", "")
 
     enable_seo_routes = os.getenv("ENABLE_SEO_ROUTES", "0") == "1"
@@ -121,6 +141,10 @@ def create_app(config_overrides: dict | None = None):
                 if incoming_host and incoming_host != canonical_host:
                     url = request.url.replace(f"//{incoming_host}", f"//{canonical_host}", 1)
                     return redirect(url, code=301)
+
+    @app.before_request
+    def start_request_timer():  # pragma: no cover - tiny helper
+        g._request_started_at = perf_counter()
 
     @app.context_processor
     def inject_current_year():
@@ -224,20 +248,12 @@ def create_app(config_overrides: dict | None = None):
         "running": False,
         "mode": telegram_mode,
         "last_error": None,
+        "managed_by": "worker" if telegram_mode == "polling" else "app",
     }
-    if telegram_mode == "polling":
-        try:
-            from .services.telegram_bot_service import TelegramBotService
-
-            telegram_bot = TelegramBotService()
-            telegram_bot.init_app(app)
-            telegram_status["running"] = True
-            app.logger.info("[BOOT] Telegram bot initialized in polling mode")
-        except Exception as exc:
-            telegram_status["last_error"] = str(exc)
-            app.logger.exception("[BOOT] Telegram bot initialization failed")
-    elif telegram_mode == "webhook":
+    if telegram_mode == "webhook":
         app.logger.info("[BOOT] Telegram bot configured for webhook mode; polling is disabled")
+    elif telegram_mode == "polling":
+        app.logger.info("[BOOT] Telegram bot polling managed by background worker")
     else:
         app.logger.info("[BOOT] Telegram bot disabled (mode=%s)", telegram_mode)
 
@@ -291,6 +307,12 @@ def create_app(config_overrides: dict | None = None):
         force_https=os.getenv('FLASK_ENV') == 'production'
     )
     
+    cache_config = {
+        "CACHE_TYPE": "SimpleCache",
+        "CACHE_DEFAULT_TIMEOUT": 90,
+    }
+    cache.init_app(app, config=cache_config)
+
     Compress(app)
     
     redis_url = os.getenv('REDIS_URL')
@@ -365,6 +387,21 @@ def create_app(config_overrides: dict | None = None):
         app.config["ADS_ROUTES_ENABLED"] = True
     else:
         app.config["ADS_ROUTES_ENABLED"] = False
+
+    @app.after_request
+    def finalize_response(response):  # pragma: no cover - thin instrumentation
+        started_at = getattr(g, "_request_started_at", None)
+        if started_at is not None:
+            elapsed_ms = (perf_counter() - started_at) * 1000
+            if elapsed_ms > SLOW_REQUEST_THRESHOLD_MS:
+                app.logger.warning(
+                    "[SLOW] %s %s took %.1f ms", request.method, request.path, elapsed_ms
+                )
+        if request.path.startswith("/static/"):
+            response.headers.setdefault(
+                "Cache-Control", "public, max-age=604800, immutable"
+            )
+        return response
 
     return app
 

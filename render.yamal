@@ -3,5 +3,5 @@ services:
     name: etna-monitor
     env: python
     buildCommand: ""
-    startCommand: python app.py
+    startCommand: gunicorn app:app --workers 1 --threads 8 --timeout 120 --keep-alive 5
     plan: free
