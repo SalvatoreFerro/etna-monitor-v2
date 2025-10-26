@@ -20,7 +20,7 @@ from flask import (
 
 from flask_login import login_user, logout_user
 
-from sqlalchemy import func, inspect
+from sqlalchemy import func, inspect, text
 from sqlalchemy.exc import (
     IntegrityError,
     OperationalError,
@@ -37,6 +37,7 @@ legacy_bp = Blueprint("legacy_auth", __name__ + "_legacy")
 
 
 _GOOGLE_ID_COLUMN_SUPPORTED: bool | None = None
+_PLAN_TYPE_COLUMN_READY: bool | None = None
 
 
 def _supports_google_id_column(force_refresh: bool = False) -> bool:
@@ -62,6 +63,86 @@ def _supports_google_id_column(force_refresh: bool = False) -> bool:
         _GOOGLE_ID_COLUMN_SUPPORTED = True
 
     return _GOOGLE_ID_COLUMN_SUPPORTED
+
+
+def _ensure_plan_type_column(force_refresh: bool = False) -> bool:
+    """Ensure the ``plan_type`` column exists with a safe default.
+
+    Production databases can lag behind migrations immediately after a deploy.
+    When SQLAlchemy reflects the ``User`` model it expects the ``plan_type``
+    column to be present; if the column is missing a ``ProgrammingError`` is
+    raised and OAuth callbacks fail.  To make the login flow resilient we
+    inspect the schema at runtime and, when necessary, create the column with a
+    default of ``'free'``.
+    """
+
+    global _PLAN_TYPE_COLUMN_READY
+
+    if not force_refresh and _PLAN_TYPE_COLUMN_READY:
+        return True
+
+    try:
+        inspector = inspect(db.engine)
+        has_plan_type = any(
+            column.get("name") == "plan_type"
+            for column in inspector.get_columns(User.__tablename__)
+        )
+        if has_plan_type:
+            _PLAN_TYPE_COLUMN_READY = True
+            return True
+    except SQLAlchemyError:
+        current_app.logger.exception(
+            "[LOGIN] Could not inspect users table for plan_type column"
+        )
+        # Fall through to attempt creating the column defensively.
+
+    try:
+        with db.engine.begin() as connection:
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE users
+                    ADD COLUMN IF NOT EXISTS plan_type VARCHAR(20)
+                    DEFAULT 'free'
+                """
+                )
+            )
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE users
+                    ALTER COLUMN plan_type SET DEFAULT 'free'
+                """
+                )
+            )
+            connection.execute(
+                text(
+                    """
+                    UPDATE users
+                    SET plan_type = 'free'
+                    WHERE plan_type IS NULL OR plan_type = ''
+                """
+                )
+            )
+            connection.execute(
+                text(
+                    """
+                    ALTER TABLE users
+                    ALTER COLUMN plan_type SET NOT NULL
+                """
+                )
+            )
+        _PLAN_TYPE_COLUMN_READY = True
+        current_app.logger.info(
+            "[LOGIN] plan_type column was missing and has been created automatically"
+        )
+        return True
+    except SQLAlchemyError:
+        current_app.logger.exception(
+            "[LOGIN] Failed to create plan_type column defensively"
+        )
+        _PLAN_TYPE_COLUMN_READY = False
+        return False
 
 
 def _disable_google_id_column_usage():
@@ -126,6 +207,17 @@ def _query_with_retry(query_callable):
 
     try:
         return query_callable()
+    except ProgrammingError as exc:
+        message = str(exc.orig if hasattr(exc, "orig") else exc).lower()
+        if "plan_type" in message and "does not exist" in message:
+            current_app.logger.error(
+                "[LOGIN] plan_type column missing during query; attempting self-healing",
+                exc_info=exc,
+            )
+            db.session.rollback()
+            if _ensure_plan_type_column(force_refresh=True):
+                return query_callable()
+        raise
     except OperationalError as exc:
         current_app.logger.warning(
             "[LOGIN] Database connection error, refreshing pool and retrying once.",
