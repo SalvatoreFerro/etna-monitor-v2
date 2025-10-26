@@ -4,6 +4,8 @@ from datetime import datetime
 import pandas as pd
 from flask import Blueprint, current_app, jsonify, render_template, url_for
 
+from ..utils.auth import get_current_user
+
 from app.models import db
 from app.models.user import User
 from sqlalchemy import or_
@@ -47,6 +49,19 @@ def pricing():
         "pricing.html",
         page_title="Prezzi e piani – EtnaMonitor",
         page_description="Scopri i piani Free e Premium di EtnaMonitor per accedere a grafici avanzati e avvisi sul tremore dell'Etna.",
+    )
+
+
+@bp.route("/etna-3d")
+def etna3d():
+    user = get_current_user()
+    plan_type = (getattr(user, "plan_type", "free") or "free") if user else "free"
+
+    return render_template(
+        "etna3d.html",
+        plan_type=plan_type,
+        page_title="Modello 3D dell'Etna – EtnaMonitor",
+        page_description="Esplora il modello 3D interattivo dell'Etna con visualizzazione Sketchfab in tema scuro.",
     )
 
 

@@ -1,0 +1,52 @@
+{% extends "layout.html" %}
+
+{% block head %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/etna3d.css') }}">
+{% endblock %}
+
+{% block content %}
+  <section class="etna3d-page" aria-labelledby="etna3d-title">
+    <div class="etna3d-container">
+      <div class="etna3d-card">
+        {% if plan_type == 'premium' %}
+          <span class="etna3d-badge">Premium</span>
+        {% endif %}
+        <header class="etna3d-header">
+          <h1 id="etna3d-title" class="etna3d-title">Modello 3D dell'Etna</h1>
+          <p class="etna3d-subtitle">Vista interattiva della morfologia del vulcano</p>
+          {% if plan_type != 'premium' %}
+            <div class="etna3d-banner">
+              <span>Strumenti avanzati disponibili con Premium</span>
+              <a href="{{ url_for('main.pricing') }}">Scopri Premium</a>
+            </div>
+          {% endif %}
+        </header>
+
+        <div class="etna3d-embed">
+<div class="sketchfab-embed-wrapper" style="position:relative;padding-bottom:56.25%;height:0;overflow:hidden;border-radius:12px;box-shadow:0 0 25px rgba(255,255,255,.08);">
+  <iframe
+    title="Mount Etna, Sicily, Italy (x2)"
+    frameborder="0"
+    allowfullscreen
+    mozallowfullscreen="true"
+    webkitallowfullscreen="true"
+    allow="autoplay; fullscreen; xr-spatial-tracking"
+    xr-spatial-tracking
+    execution-while-out-of-viewport
+    execution-while-not-rendered
+    web-share
+    style="position:absolute;top:0;left:0;width:100%;height:100%;border:0;"
+    src="https://sketchfab.com/models/2f95f88582f54bf9a3c2496a7853eb05/embed?ui_theme=dark&autostart=1&animated=1">
+  </iframe>
+</div>
+<p class="credits small etna3d-credits" style="margin-top:10px;color:#9aa0a6;">
+  Modello:
+  <a href="https://sketchfab.com/3d-models/mount-etna-sicily-italy-x2-2f95f88582f54bf9a3c2496a7853eb05" target="_blank" rel="noopener" style="color:#8ab4f8;">Mount Etna, Sicily, Italy (x2)</a>
+  by <a href="https://sketchfab.com/Gweedore" target="_blank" rel="noopener" style="color:#8ab4f8;">Carraig Nua Geoscience</a> — su
+  <a href="https://sketchfab.com" target="_blank" rel="noopener" style="color:#8ab4f8;">Sketchfab</a>.
+</p>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
