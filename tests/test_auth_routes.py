@@ -1,4 +1,12 @@
+import os
+
 import pytest
+from sqlalchemy.pool import StaticPool
+
+os.environ.setdefault("SECRET_KEY", "test-secret-key")
+os.environ.setdefault("DISABLE_SCHEDULER", "1")
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+
 from app import create_app
 from app.models import db
 from app.models.user import User
@@ -6,10 +14,15 @@ from app.utils.auth import hash_password
 
 @pytest.fixture
 def app():
-    app = create_app()
-    app.config['TESTING'] = True
-    app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///:memory:'
-    
+    app = create_app({
+        'TESTING': True,
+        'SQLALCHEMY_DATABASE_URI': 'sqlite:///:memory:',
+        'SQLALCHEMY_ENGINE_OPTIONS': {
+            "connect_args": {"check_same_thread": False},
+            "poolclass": StaticPool,
+        },
+    })
+
     with app.app_context():
         db.create_all()
         yield app
@@ -17,7 +30,8 @@ def app():
 
 @pytest.fixture
 def client(app):
-    return app.test_client()
+    with app.test_client() as client:
+        yield client
 
 @pytest.fixture
 def admin_user(app):

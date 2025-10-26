@@ -27,8 +27,15 @@ class SchedulerService:
         
         self.scheduler.start()
         logger.info("Scheduler started - checking alerts every hour")
-        
-        atexit.register(lambda: self.scheduler.shutdown())
+
+        def _shutdown():
+            if self.scheduler and self.scheduler.running:
+                try:
+                    self.scheduler.shutdown(wait=False)
+                except Exception:  # pragma: no cover - defensive cleanup
+                    logger.exception("Scheduler shutdown encountered an error")
+
+        atexit.register(_shutdown)
     
     def _check_alerts_with_context(self):
         """Run alert checking within Flask app context"""

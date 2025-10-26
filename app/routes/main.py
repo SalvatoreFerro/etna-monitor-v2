@@ -1,34 +1,37 @@
-from flask import Blueprint, render_template, jsonify, url_for
-import pandas as pd
 import os
-import pathlib
-from pathlib import Path
-from backend.utils.extract_png import process_png_to_csv
-from ..utils.decorators import requires_premium
+from datetime import datetime
+
+import pandas as pd
+from flask import Blueprint, current_app, jsonify, render_template, url_for
+
+from app.models import db
+from app.models.user import User
+from sqlalchemy import or_
+
+from ..utils.metrics import get_csv_metrics, record_csv_error, record_csv_read
 
 bp = Blueprint("main", __name__)
 
 @bp.route("/")
 def index():
     csv_path = os.getenv("CSV_PATH", "/var/tmp/curva.csv")
-    
+    timestamps: list[str] = []
+    values: list[float] = []
+
     if os.path.exists(csv_path):
         try:
             df = pd.read_csv(csv_path, parse_dates=["timestamp"])
             if not df.empty:
-                timestamps = df["timestamp"].dt.strftime('%Y-%m-%d %H:%M:%S').tolist()
+                timestamps = df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S").tolist()
                 values = df["value"].tolist()
-            else:
-                timestamps = []
-                values = []
-        except Exception as e:
-            print(f"Error reading CSV: {e}")
-            timestamps = []
-            values = []
+            record_csv_read(len(df), df["timestamp"].max() if not df.empty else None)
+        except Exception as exc:
+            current_app.logger.exception("Failed to read tremor CSV for index page")
+            record_csv_error(str(exc))
     else:
-        timestamps = []
-        values = []
-    
+        current_app.logger.warning("Tremor CSV not found at %s", csv_path)
+        record_csv_error(f"Missing CSV at {csv_path}")
+
     return render_template(
         "index.html",
         labels=timestamps,
@@ -93,4 +96,33 @@ def cookies():
 
 @bp.route("/healthz")
 def healthcheck():
-    return jsonify({"status": "ok"}), 200
+    uptime = None
+    start_time = current_app.config.get("START_TIME")
+    if isinstance(start_time, datetime):
+        uptime = (datetime.utcnow() - start_time).total_seconds()
+
+    csv_metrics = get_csv_metrics()
+
+    premium_count = 0
+    try:
+        premium_count = (
+            db.session.query(User)
+            .filter(or_(User.premium.is_(True), User.is_premium.is_(True)))
+            .count()
+        )
+    except Exception as exc:  # pragma: no cover - defensive logging
+        current_app.logger.warning("[HEALTH] Failed to count premium users: %s", exc)
+
+    telegram_status = current_app.config.get("TELEGRAM_BOT_STATUS", {})
+
+    payload = {
+        "ok": True,
+        "uptime_seconds": uptime,
+        "csv": csv_metrics,
+        "telegram_bot": telegram_status,
+        "premium_users": premium_count,
+        "build_sha": current_app.config.get("BUILD_SHA"),
+    }
+
+    current_app.logger.info("[HEALTH] ok=%s premium_users=%s", payload["ok"], premium_count)
+    return jsonify(payload), 200

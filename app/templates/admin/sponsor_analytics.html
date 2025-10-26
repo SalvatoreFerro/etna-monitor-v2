@@ -3,7 +3,7 @@
 {% block head %}
   {{ super() }}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
-  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <script src="{{ url_for('static', filename='vendor/plotly.min.js') }}" nonce="{{ script_nonce }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -176,7 +176,7 @@
   </div>
 </section>
 
-<script>
+<script nonce="{{ script_nonce }}">
   (function() {
     const chartContainer = document.getElementById('sponsor-analytics-chart');
     if (!chartContainer || typeof Plotly === 'undefined') {

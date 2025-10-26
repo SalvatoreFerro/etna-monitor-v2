@@ -1,11 +1,15 @@
+import logging
 import os
-import cv2
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-import requests
 import time
 from datetime import datetime, timedelta
+
+import cv2
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import requests
+
+from app.utils.logger import configure_logging
 
 os.makedirs("grafici", exist_ok=True)
 os.makedirs("log", exist_ok=True)
@@ -14,7 +18,9 @@ os.makedirs("static", exist_ok=True)
 URL_INGV = "https://www.ct.ingv.it/RMS_Etna/2.png"
 GRAFICO_LOCALE = "grafici/etna_latest.png"
 CSV_LOG = os.path.join(os.getenv("LOG_DIR", "log"), "log.csv")
-TOKEN_TELEGRAM = "7688152214:AAGJoZFWowVv0aOwNkcsGET6lhmKGoTK1WU"  # ← cambia con il tuo token reale
+configure_logging()
+logger = logging.getLogger(__name__)
+TOKEN_TELEGRAM = os.getenv("TELEGRAM_BOT_TOKEN", "")
 
 def scarica_grafico():
     headers = {
@@ -55,6 +61,10 @@ def estrai_dati_da_png(filepath):
     return pd.DataFrame(data, columns=["timestamp", "mV"])
 
 def invia_notifica(messaggio):
+    if not TOKEN_TELEGRAM:
+        logger.warning("Telegram token not configured; skipping notification")
+        return
+
     if not os.path.exists("utenti.csv"):
         return
     with open("utenti.csv", "r") as f:
@@ -81,11 +91,11 @@ def aggiorna_log():
 
 if __name__ == "__main__":
     while True:
-        print("🔄 Download e aggiornamento...")
+        logger.info("Download e aggiornamento in corso...")
         if scarica_grafico():
             aggiorna_log()
-            print("✅ Completato.")
+            logger.info("Aggiornamento completato")
         else:
-            print("❌ Errore nel download PNG.")
-        print("⏳ In attesa 30 minuti...")
+            logger.error("Errore nel download del PNG")
+        logger.info("Attesa di 30 minuti prima del prossimo ciclo")
         time.sleep(1800)

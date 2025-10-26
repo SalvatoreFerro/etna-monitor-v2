@@ -1,9 +1,18 @@
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 import csv
+import logging
 import os
 
-TOKEN = "7688152214:AAGJoZFWowVv0aOwNkcsGET6lhmKGoTK1WU"
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+
+from app.utils.logger import configure_logging
+
+configure_logging()
+logger = logging.getLogger(__name__)
+
+TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+if not TOKEN:
+    raise RuntimeError("TELEGRAM_BOT_TOKEN environment variable is required to run the registration bot.")
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     chat_id = update.effective_chat.id
@@ -30,5 +39,5 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 app = ApplicationBuilder().token(TOKEN).build()
 app.add_handler(CommandHandler("start", start))
 
-print("🤖 Bot attivo! Ora attendendo iscrizioni...")
+logger.info("Telegram registration bot running")
 app.run_polling()

@@ -9,6 +9,7 @@ from app.models import db
 from app.models.user import User
 from app.models.event import Event
 from app.utils.logger import get_logger
+from app.utils.metrics import record_csv_error, record_csv_read
 from config import Config
 
 logger = get_logger(__name__)
@@ -49,11 +50,14 @@ class TelegramService:
             
             if not os.path.exists(curva_file):
                 logger.warning("No tremor data available for alert checking")
+                record_csv_error("curva.csv not found")
                 return
-            
+
             df = pd.read_csv(curva_file, parse_dates=['timestamp'])
+            record_csv_read(len(df), df['timestamp'].max() if not df.empty else None)
             if df.empty:
                 logger.warning("Empty tremor data file")
+                record_csv_error("curva.csv is empty")
                 return
             
             recent_data = df.tail(10)
@@ -92,4 +96,5 @@ class TelegramService:
                             logger.info(f"Alert sent to user {user.email}")
             
         except Exception as e:
-            logger.error(f"Error in alert checking: {e}")
+            record_csv_error(str(e))
+            logger.exception("Error in alert checking")

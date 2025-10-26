@@ -60,8 +60,8 @@ class TelegramBotService:
             self.loop = asyncio.new_event_loop()
             asyncio.set_event_loop(self.loop)
             self.loop.run_until_complete(self._start_polling())
-        except Exception as e:
-            logger.error(f"Bot polling error: {e}")
+        except Exception:
+            logger.exception("Bot polling error")
     
     async def _start_polling(self):
         """Start bot polling"""
@@ -74,8 +74,8 @@ class TelegramBotService:
             while True:
                 await asyncio.sleep(1)
                 
-        except Exception as e:
-            logger.error(f"Bot polling failed: {e}")
+        except Exception:
+            logger.exception("Bot polling failed")
     
     async def _handle_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command"""
@@ -106,8 +106,8 @@ class TelegramBotService:
                 db.session.add(event)
                 db.session.commit()
                 
-            except Exception as e:
-                logger.error(f"Error handling /start: {e}")
+            except Exception:
+                logger.exception("Error handling /start command")
                 await update.message.reply_text("❌ Errore temporaneo. Riprova più tardi.")
     
     async def _handle_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -125,7 +125,7 @@ class TelegramBotService:
 3. Collega il bot dal Dashboard
 4. Ricevi avvisi quando il tremore supera la tua soglia
 
-**Supporto:** support@etnamonitor.com"""
+**Supporto:** salvoferro16@gmail.com"""
         
         await update.message.reply_text(help_text)
     
@@ -146,6 +146,6 @@ class TelegramBotService:
                 
                 await update.message.reply_text(message)
                 
-            except Exception as e:
-                logger.error(f"Error handling /status: {e}")
+            except Exception:
+                logger.exception("Error handling /status command")
                 await update.message.reply_text("❌ Errore nel recuperare lo stato.")

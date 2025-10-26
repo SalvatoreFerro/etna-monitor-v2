@@ -113,7 +113,7 @@
 
 <div class="audit-status" data-audit-status aria-live="polite"></div>
 
-<script>
+<script nonce="{{ script_nonce }}">
   const ADMIN_AUDIT_ENDPOINT = "{{ url_for('admin_stats.get_audit_feed') }}";
 
   function togglePremium(userId) {

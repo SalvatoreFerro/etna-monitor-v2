@@ -45,9 +45,15 @@ def health() -> str:
     return "ok"
 
 
+def _get_secret_key() -> str:
+    secret = current_app.config.get("SECRET_KEY")
+    if not secret:
+        raise RuntimeError("SECRET_KEY is required for ad tracking")
+    return secret
+
+
 def _get_serializer() -> URLSafeSerializer:
-    secret = current_app.config.get("SECRET_KEY", "dev")
-    return URLSafeSerializer(secret_key=secret, salt="ads-tracking")
+    return URLSafeSerializer(secret_key=_get_secret_key(), salt="ads-tracking")
 
 
 def _get_or_create_session_id() -> Tuple[str, bool]:
@@ -70,8 +76,7 @@ def _get_or_create_session_id() -> Tuple[str, bool]:
 
 
 def _hash_ip(ip: str | None) -> str:
-    secret = current_app.config.get("SECRET_KEY", "dev")
-    value = f"{secret}:{ip or 'unknown'}"
+    value = f"{_get_secret_key()}:{ip or 'unknown'}"
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 

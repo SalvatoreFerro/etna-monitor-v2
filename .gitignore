@@ -10,6 +10,7 @@ venv/
 
 # Build & cache
 *.log
+logs/
 *.sqlite3
 
 # Node (if used later)

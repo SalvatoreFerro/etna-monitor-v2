@@ -5,7 +5,7 @@
 **IMPORTANT**: Render must be configured to use ONLY this start command:
 
 ```
-gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app
+python startup.py
 ```
 
 ## Current Issue
@@ -26,7 +26,7 @@ This causes:
 2. Navigate to "Settings" 
 3. Find "Start Command" or "Build & Deploy" section
 4. **Remove any custom start command**
-5. Ensure it uses the Procfile: `web: gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app`
+5. Ensure it uses the Procfile: `web: python startup.py`
 
 ## Environment Variables
 
@@ -43,7 +43,7 @@ Mount a disk at `/data` for CSV file persistence.
 
 ## Health Check
 
-Set health check path to: `/healthz`
+Set health check path to: `/healthz` (the endpoint now include uptime, CSV metrics e stato bot)
 
 ## Verification
 
