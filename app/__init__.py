@@ -63,6 +63,74 @@ def _mask_database_uri(uri: str) -> str:
 SLOW_REQUEST_THRESHOLD_MS = 300
 
 
+def _ensure_user_schema(app: Flask) -> None:
+    """Ensure all columns required by ``app.models.user.User`` exist."""
+    column_definitions = {
+        "telegram_chat_id": "VARCHAR(64)",
+        "telegram_opt_in": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "free_alert_consumed": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "free_alert_event_id": "VARCHAR(255)",
+        "last_alert_sent_at": "TIMESTAMP",
+        "alert_count_30d": "INTEGER NOT NULL DEFAULT 0",
+        "consent_ts": "TIMESTAMP",
+        "privacy_version": "VARCHAR(32)",
+        "threshold": "DOUBLE PRECISION",
+        "email_alerts": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "stripe_customer_id": "VARCHAR(100)",
+        "subscription_status": "VARCHAR(20) NOT NULL DEFAULT 'free'",
+        "subscription_id": "VARCHAR(100)",
+        "current_period_end": "TIMESTAMP",
+        "trial_end": "TIMESTAMP",
+        "billing_email": "VARCHAR(120)",
+        "company_name": "VARCHAR(200)",
+        "vat_id": "VARCHAR(50)",
+        "google_id": "VARCHAR(255)",
+        "name": "VARCHAR(255)",
+        "picture_url": "VARCHAR(512)",
+        "premium": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "is_premium": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "premium_lifetime": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "premium_since": "TIMESTAMP",
+        "donation_tx": "VARCHAR(255)",
+        "chat_id": "VARCHAR(50)",
+        "plan_type": "VARCHAR(20) NOT NULL DEFAULT 'free'",
+    }
+
+    checks = []
+    for column_name, ddl in column_definitions.items():
+        checks.append(
+            f"""
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name='users' AND column_name='{column_name}'
+            ) THEN
+                ALTER TABLE users ADD COLUMN {column_name} {ddl};
+            END IF;
+            """.strip()
+        )
+
+    guard_sql = "\n".join(checks)
+
+    try:
+        with db.engine.connect() as conn:
+            conn.execute(
+                text(
+                    f"""
+                    DO $$
+                    BEGIN
+                    {guard_sql}
+                    END$$;
+                    """
+                )
+            )
+            conn.commit()
+        app.logger.info(
+            "[BOOT] Schema guard completed: all missing user columns created."
+        )
+    except Exception as ex:  # pragma: no cover - defensive fallback
+        app.logger.warning("[BOOT] Schema guard failed: %s", ex)
+
+
 def create_app(config_overrides: dict | None = None):
     global limiter
     app = Flask(__name__)
@@ -301,6 +369,8 @@ def create_app(config_overrides: dict | None = None):
     app.config["TELEGRAM_BOT_STATUS"] = telegram_status
 
     with app.app_context():
+        _ensure_user_schema(app)
+
         # Auto-promozione admin
         try:
             with db.engine.connect() as conn:
@@ -313,64 +383,6 @@ def create_app(config_overrides: dict | None = None):
             app.logger.info("[BOOT] Admin auto-promotion applied to existing users.")
         except Exception as ex:
             app.logger.warning("[BOOT] Admin auto-promotion failed: %s", ex)
-
-        # Schema guard: crea colonne Telegram se mancanti (idempotente)
-        try:
-            with db.engine.connect() as conn:
-                conn.execute(
-                    text(
-                        """
-                        DO $$
-                        BEGIN
-                            IF NOT EXISTS (
-                                SELECT 1 FROM information_schema.columns
-                                WHERE table_name='users' AND column_name='telegram_chat_id'
-                            ) THEN
-                                ALTER TABLE users ADD COLUMN telegram_chat_id BIGINT;
-                            END IF;
-
-                            IF NOT EXISTS (
-                                SELECT 1 FROM information_schema.columns
-                                WHERE table_name='users' AND column_name='telegram_opt_in'
-                            ) THEN
-                                ALTER TABLE users ADD COLUMN telegram_opt_in BOOLEAN NOT NULL DEFAULT FALSE;
-                            END IF;
-
-                            IF NOT EXISTS (
-                                SELECT 1 FROM information_schema.columns
-                                WHERE table_name='users' AND column_name='free_alert_consumed'
-                            ) THEN
-                                ALTER TABLE users ADD COLUMN free_alert_consumed INTEGER NOT NULL DEFAULT 0;
-                            END IF;
-
-                            IF NOT EXISTS (
-                                SELECT 1 FROM information_schema.columns
-                                WHERE table_name='users' AND column_name='free_alert_event_id'
-                            ) THEN
-                                ALTER TABLE users ADD COLUMN free_alert_event_id INTEGER;
-                            END IF;
-
-                            IF NOT EXISTS (
-                                SELECT 1 FROM information_schema.columns
-                                WHERE table_name='users' AND column_name='last_alert_sent_at'
-                            ) THEN
-                                ALTER TABLE users ADD COLUMN last_alert_sent_at TIMESTAMPTZ;
-                            END IF;
-
-                            IF NOT EXISTS (
-                                SELECT 1 FROM information_schema.columns
-                                WHERE table_name='users' AND column_name='alert_count_30d'
-                            ) THEN
-                                ALTER TABLE users ADD COLUMN alert_count_30d INTEGER NOT NULL DEFAULT 0;
-                            END IF;
-                        END$$;
-                        """
-                    )
-                )
-                conn.commit()
-            app.logger.info("[BOOT] Schema guard: telegram_* columns ensured.")
-        except Exception as ex:
-            app.logger.warning("[BOOT] Schema guard failed: %s", ex)
 
     csp = {
         "default-src": "'self'",
