@@ -1,3 +1,4 @@
+from flask import Flask, g, redirect, request, url_for, current_app
 from flask import Flask, g, redirect, request, url_for
 from flask_login import LoginManager
 from flask_limiter import Limiter
@@ -22,6 +23,8 @@ except ModuleNotFoundError:  # pragma: no cover - fallback for restricted enviro
             app.logger.warning(
                 "[BOOT] Flask-Migrate not available. Database migrations commands are disabled."
             )
+
+from sqlalchemy.orm import load_only
 
 from .routes.main import bp as main_bp
 from .routes.experience import bp as experience_bp
@@ -225,8 +228,24 @@ def create_app(config_overrides: dict | None = None):
     @login_manager.user_loader
     def load_user(user_id: str):  # pragma: no cover - thin integration wrapper
         try:
-            return db.session.get(User, int(user_id))
-        except (TypeError, ValueError):
+            return (
+                db.session.query(User)
+                .options(
+                    load_only(
+                        User.id,
+                        User.email,
+                        User.google_id,
+                        User.name,
+                        User.picture_url,
+                        User.is_admin,
+                        User.is_premium,
+                    )
+                )
+                .filter(User.id == int(user_id))
+                .first()
+            )
+        except Exception as e:  # pragma: no cover - defensive guard
+            current_app.logger.error("[LOGIN] user_loader failed: %s", e, exc_info=True)
             return None
 
     app.config["MIGRATIONS_AVAILABLE"] = _migrate_available
@@ -253,6 +272,7 @@ def create_app(config_overrides: dict | None = None):
     if telegram_mode == "webhook":
         app.logger.info("[BOOT] Telegram bot configured for webhook mode; polling is disabled")
     elif telegram_mode == "polling":
+        app.logger.info("[BOOT] Telegram bot polling managed by background worker ✅")
         app.logger.info("[BOOT] Telegram bot polling managed by background worker")
     else:
         app.logger.info("[BOOT] Telegram bot disabled (mode=%s)", telegram_mode)
@@ -265,7 +285,10 @@ def create_app(config_overrides: dict | None = None):
 
             with db.engine.connect() as conn:
                 for email in app.config.get("ADMIN_EMAILS_SET", set()):
-                    conn.execute(text("UPDATE users SET is_admin=1 WHERE lower(email)=:e"), {"e": email})
+                    conn.execute(
+                        text("UPDATE users SET is_admin = TRUE WHERE lower(email) = :e"),
+                        {"e": email},
+                    )
                 conn.commit()
             app.logger.info("[BOOT] Admin auto-promotion applied to existing users.")
         except Exception as ex:
