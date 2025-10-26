@@ -335,6 +335,34 @@ def create_app(config_overrides: dict | None = None):
                             ) THEN
                                 ALTER TABLE users ADD COLUMN telegram_opt_in BOOLEAN NOT NULL DEFAULT FALSE;
                             END IF;
+
+                            IF NOT EXISTS (
+                                SELECT 1 FROM information_schema.columns
+                                WHERE table_name='users' AND column_name='free_alert_consumed'
+                            ) THEN
+                                ALTER TABLE users ADD COLUMN free_alert_consumed INTEGER NOT NULL DEFAULT 0;
+                            END IF;
+
+                            IF NOT EXISTS (
+                                SELECT 1 FROM information_schema.columns
+                                WHERE table_name='users' AND column_name='free_alert_event_id'
+                            ) THEN
+                                ALTER TABLE users ADD COLUMN free_alert_event_id INTEGER;
+                            END IF;
+
+                            IF NOT EXISTS (
+                                SELECT 1 FROM information_schema.columns
+                                WHERE table_name='users' AND column_name='last_alert_sent_at'
+                            ) THEN
+                                ALTER TABLE users ADD COLUMN last_alert_sent_at TIMESTAMPTZ;
+                            END IF;
+
+                            IF NOT EXISTS (
+                                SELECT 1 FROM information_schema.columns
+                                WHERE table_name='users' AND column_name='alert_count_30d'
+                            ) THEN
+                                ALTER TABLE users ADD COLUMN alert_count_30d INTEGER NOT NULL DEFAULT 0;
+                            END IF;
                         END$$;
                         """
                     )
