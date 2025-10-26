@@ -1,0 +1,110 @@
+.etna3d-page {
+  padding: 48px 0 72px;
+}
+
+.etna3d-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.etna3d-card {
+  position: relative;
+  padding: 32px 28px 40px;
+  background: rgba(10, 17, 35, 0.92);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 20px 45px rgba(2, 8, 20, 0.6);
+}
+
+.etna3d-title {
+  margin: 0;
+  font-size: 2.1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.etna3d-subtitle {
+  margin-top: 12px;
+  margin-bottom: 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.etna3d-badge {
+  position: absolute;
+  top: 18px;
+  right: 22px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(0, 210, 255, 0.16);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.etna3d-banner {
+  margin-top: 18px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(0, 210, 255, 0.08);
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.etna3d-banner a {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.etna3d-embed {
+  margin-top: 28px;
+}
+
+.etna3d-credits {
+  margin-top: 14px;
+  font-size: 0.85rem;
+  color: #9aa0a6;
+}
+
+.etna3d-credits a {
+  color: #8ab4f8;
+  text-decoration: none;
+}
+
+@media (max-width: 768px) {
+  .etna3d-card {
+    padding: 24px 20px 32px;
+  }
+
+  .etna3d-title {
+    font-size: 1.7rem;
+  }
+
+  .etna3d-subtitle {
+    font-size: 1rem;
+  }
+
+  .etna3d-badge {
+    top: 16px;
+    right: 16px;
+    font-size: 0.78rem;
+    padding: 5px 12px;
+  }
+
+  .etna3d-banner {
+    font-size: 0.9rem;
+    gap: 8px;
+  }
+}
