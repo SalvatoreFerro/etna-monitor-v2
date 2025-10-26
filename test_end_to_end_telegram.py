@@ -33,7 +33,7 @@ def test_end_to_end_flow():
         premium_users = User.query.filter(
             User.premium == True,
             User.chat_id.isnot(None),
-            User.chat_id != ''
+            User.chat_id > 0
         ).all()
         print(f'✅ Premium users with chat_id: {len(premium_users)}')
         

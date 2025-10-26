@@ -95,7 +95,7 @@ class TelegramBotService:
     async def _handle_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /start command."""
 
-        chat_id = str(update.effective_chat.id)
+        chat_id = int(update.effective_chat.id)
         username = update.effective_user.username or update.effective_user.full_name or "Utente"
 
         with self.app.app_context():
@@ -170,7 +170,7 @@ class TelegramBotService:
 
     async def _handle_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /status command"""
-        chat_id = str(update.effective_chat.id)
+        chat_id = int(update.effective_chat.id)
 
         with self.app.app_context():
             try:

@@ -10,6 +10,14 @@ class User(UserMixin, db.Model):
     __tablename__ = 'users'
     __table_args__ = (
         db.CheckConstraint("email = lower(email)", name="ck_users_email_lowercase"),
+        db.CheckConstraint(
+            "telegram_chat_id IS NULL OR telegram_chat_id > 0",
+            name="ck_users_telegram_chat_id_positive",
+        ),
+        db.CheckConstraint(
+            "chat_id IS NULL OR chat_id > 0",
+            name="ck_users_chat_id_positive",
+        ),
     )
 
     id = db.Column(db.Integer, primary_key=True)
@@ -26,14 +34,14 @@ class User(UserMixin, db.Model):
         nullable=False,
         server_default=db.text("false"),
     )
-    chat_id = db.Column(db.String(50), nullable=True)
+    chat_id = db.Column(db.BigInteger, nullable=True)
     plan_type = db.Column(
         db.String(20),
         nullable=False,
         server_default="free",
         default="free",
     )
-    telegram_chat_id = db.Column(db.String(64), unique=True, nullable=True)
+    telegram_chat_id = db.Column(db.BigInteger, unique=True, nullable=True)
     telegram_opt_in = db.Column(
         db.Boolean,
         nullable=False,

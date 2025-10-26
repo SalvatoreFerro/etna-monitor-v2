@@ -87,13 +87,23 @@ def settings():
 def connect_telegram():
     user = get_current_user()
     
-    chat_id = request.form.get("chat_id", "").strip()
-    if not chat_id:
+    raw_chat_id = request.form.get("chat_id")
+    chat_id = None
+    if raw_chat_id is not None:
+        raw_chat_id = str(raw_chat_id).strip()
+        if raw_chat_id:
+            try:
+                chat_id = int(raw_chat_id)
+            except ValueError:
+                logger.warning("Invalid chat ID format submitted: %s", raw_chat_id)
+                flash("Invalid chat ID format", "error")
+                return redirect(url_for('dashboard.dashboard_home'))
+
+    if chat_id is None:
         flash("Please provide your Telegram chat ID", "error")
         return redirect(url_for('dashboard.dashboard_home'))
 
     try:
-        int(chat_id)
         user.chat_id = chat_id
         user.telegram_chat_id = chat_id
         user.telegram_opt_in = True
@@ -114,8 +124,6 @@ def connect_telegram():
             flash("Telegram collegato. Riceverai un alert gratuito di prova alla prima occasione utile.", "info")
         else:
             flash("Telegram collegato. Attiva Premium per ricevere nuovi alert.", "warning")
-    except ValueError:
-        flash("Invalid chat ID format", "error")
     except Exception as e:
         flash("Error connecting Telegram", "error")
         logger.error(f"Telegram connection error: {e}")

@@ -67,7 +67,7 @@ def message_spy(monkeypatch):
     return sent
 
 
-def _create_user(email: str, plan: str, chat_id: str = "12345", **kwargs) -> User:
+def _create_user(email: str, plan: str, chat_id: int = 12345, **kwargs) -> User:
     user = User(
         email=email,
         plan_type=plan,
