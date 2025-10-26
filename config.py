@@ -67,7 +67,9 @@ class Config:
     # during OAuth callbacks when the database closes an idle connection.
     SQLALCHEMY_ENGINE_OPTIONS = {
         "pool_pre_ping": True,
-        "pool_recycle": int(os.getenv("SQLALCHEMY_POOL_RECYCLE", "1800")),
+        "pool_recycle": int(os.getenv("SQLALCHEMY_POOL_RECYCLE", "280")),
+        "pool_size": int(os.getenv("SQLALCHEMY_POOL_SIZE", "5")),
+        "max_overflow": int(os.getenv("SQLALCHEMY_MAX_OVERFLOW", "5")),
     }
 
     INGV_URL = os.getenv("INGV_URL", "https://www.ct.ingv.it/RMS_Etna/2.png")

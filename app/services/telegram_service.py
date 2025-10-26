@@ -258,10 +258,10 @@ class TelegramService:
         threshold: float,
         now: datetime,
     ) -> None:
-        if not user.free_alert_consumed and user.free_alert_event_id != event_id:
+        if (user.free_alert_consumed or 0) == 0 and user.free_alert_event_id != event_id:
             message = self._build_free_trial_message(current_value, moving_avg, threshold)
             if self.send_message(user.telegram_chat_id, message):
-                user.free_alert_consumed = True
+                user.free_alert_consumed = (user.free_alert_consumed or 0) + 1
                 user.free_alert_event_id = event_id
                 user.last_alert_sent_at = now
                 alert_event = Event(

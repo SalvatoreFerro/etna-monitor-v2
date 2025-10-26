@@ -117,7 +117,7 @@ class TelegramBotService:
 
                     if user.has_premium_access:
                         plan_line = "✅ Premium attivo: riceverai tutti gli alert."
-                    elif not user.free_alert_consumed:
+                    elif (user.free_alert_consumed or 0) == 0:
                         plan_line = "⚪ Piano Free: 1 alert gratuito disponibile."
                     else:
                         plan_line = "🔴 Piano Free: alert di prova già utilizzato."
@@ -187,7 +187,7 @@ class TelegramBotService:
                     threshold = user.threshold or Config.ALERT_THRESHOLD_DEFAULT
                     free_state = (
                         "Alert di prova disponibile"
-                        if not user.free_alert_consumed
+                        if (user.free_alert_consumed or 0) == 0
                         else "Alert di prova già utilizzato"
                     )
                     message = (

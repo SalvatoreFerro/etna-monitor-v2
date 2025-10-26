@@ -1,5 +1,6 @@
 from flask import current_app
 
+from .models import db
 from .utils.auth import get_current_user
 
 try:
@@ -37,8 +38,9 @@ def inject_sponsor_banners():
         )
     except Exception as exc:  # pragma: no cover - defensive fallback
         current_app.logger.warning(
-            "Unable to load sponsor banners: %s", exc
+            "Unable to load sponsor banners: %s", exc,
         )
+        db.session.rollback()
         banners = []
 
     return {"sponsor_banners": banners}

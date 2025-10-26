@@ -8,6 +8,10 @@
 python startup.py
 ```
 
+The `startup.py` entrypoint now boots a Flask app context and executes
+`alembic upgrade head` before Gunicorn starts, ensuring the latest schema is
+in place on every deploy.
+
 ## Current Issue
 
 Render is executing this incorrect command:
@@ -23,7 +27,7 @@ This causes:
 ## Fix in Render Dashboard
 
 1. Go to your Render service dashboard
-2. Navigate to "Settings" 
+2. Navigate to "Settings"
 3. Find "Start Command" or "Build & Deploy" section
 4. **Remove any custom start command**
 5. Ensure it uses the Procfile: `web: python startup.py`

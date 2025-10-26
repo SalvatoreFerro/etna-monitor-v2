@@ -189,7 +189,7 @@ def users_list():
 @admin_required
 def reset_free_trial(user_id: int):
     user = User.query.get_or_404(user_id)
-    user.free_alert_consumed = False
+    user.free_alert_consumed = 0
     user.free_alert_event_id = None
     user.last_alert_sent_at = None
     db.session.commit()

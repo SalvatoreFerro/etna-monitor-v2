@@ -20,7 +20,7 @@ from flask import (
 
 from flask_login import login_user, logout_user
 
-from sqlalchemy import Boolean, func, inspect
+from sqlalchemy import func, inspect
 from sqlalchemy.exc import (
     IntegrityError,
     ProgrammingError,
@@ -209,6 +209,14 @@ def _create_user_with_existing_columns(
         values["password_hash"] = ""
     if _include("created_at", assume_safe=True):
         values["created_at"] = datetime.now(timezone.utc)
+    if _include("plan_type", assume_safe=True):
+        values["plan_type"] = "free"
+    if _include("subscription_status", assume_safe=True):
+        values["subscription_status"] = "free"
+    if _include("email_alerts"):
+        values["email_alerts"] = False
+    if _include("telegram_opt_in"):
+        values["telegram_opt_in"] = False
     if google_id and not inspection_failed and "google_id" in available:
         values["google_id"] = google_id
     if name and _include("name"):
@@ -219,51 +227,10 @@ def _create_user_with_existing_columns(
         values["is_admin"] = True
 
     if _include("free_alert_consumed"):
-        column_type = column_types.get("free_alert_consumed")
+        values["free_alert_consumed"] = 0
 
-        coerced_value: object = 0
-
-        try:
-            if isinstance(column_type, Boolean):
-                coerced_value = False
-            else:
-                # ``inspect`` may return backend specific types (e.g. ``INTEGER``)
-                # that do not inherit from ``Integer`` directly. Rely on the
-                # dialect visit name or the string representation as a fallback.
-                type_name = (getattr(column_type, "__visit_name__", "") or "").lower()
-                if not type_name:
-                    type_name = str(column_type or "").lower()
-
-                if any(token in type_name for token in ("int", "serial")):
-                    coerced_value = 0
-                else:
-                    coerced_value = False
-        except Exception:  # pragma: no cover - extremely defensive
-            coerced_value = 0
-
-        values["free_alert_consumed"] = coerced_value
-        def _type_name(type_) -> str:
-            if type_ is None:
-                return ""
-            if isinstance(type_, str):
-                return type_.lower()
-            visit_name = getattr(type_, "__visit_name__", None)
-            if visit_name:
-                return str(visit_name).lower()
-            python_type = getattr(type_, "python_type", None)
-            if python_type is bool:
-                return "boolean"
-            if python_type is int:
-                return "integer"
-            if isinstance(type_, type):
-                return type_.__name__.lower()
-            return type_.__class__.__name__.lower()
-
-        type_name = _type_name(column_type)
-        if type_name in {"integer", "bigint", "smallint"}:
-            values["free_alert_consumed"] = 0
-        else:
-            values["free_alert_consumed"] = False
+    if _include("alert_count_30d"):
+        values["alert_count_30d"] = 0
 
     insert_stmt = User.__table__.insert().values(**values)
     try:

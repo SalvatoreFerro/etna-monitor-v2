@@ -6,8 +6,6 @@ from ..models.event import Event
 from ..utils.plot import make_tremor_figure
 from ..utils.metrics import record_csv_error, record_csv_read
 from config import Config
-import pandas as pd
-import plotly
 import json
 import os
 from pathlib import Path
@@ -20,6 +18,9 @@ bp = Blueprint("dashboard", __name__)
 @bp.route("/")
 @login_required
 def dashboard_home():
+    import pandas as pd
+    import plotly
+
     user = get_current_user()
     
     DATA_DIR = os.getenv("DATA_DIR", "data")
@@ -109,7 +110,7 @@ def connect_telegram():
 
         if user.has_premium_access:
             flash("Telegram collegato. Riceverai gli alert Premium.", "success")
-        elif not user.free_alert_consumed:
+        elif (user.free_alert_consumed or 0) == 0:
             flash("Telegram collegato. Riceverai un alert gratuito di prova alla prima occasione utile.", "info")
         else:
             flash("Telegram collegato. Attiva Premium per ricevere nuovi alert.", "warning")
