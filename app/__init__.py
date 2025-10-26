@@ -12,6 +12,7 @@ from datetime import datetime
 from time import perf_counter
 from urllib.parse import urlparse, urlunparse
 from pathlib import Path
+from sqlalchemy import text
 try:  # pragma: no cover - optional dependency guard
     from flask_migrate import Migrate
     _migrate_available = True
@@ -219,6 +220,14 @@ def create_app(config_overrides: dict | None = None):
     
     db.init_app(app)
     migrate.init_app(app, db)
+    if _migrate_available and os.getenv("AUTO_MIGRATE", "1").lower() in {"1", "true", "yes"}:
+        try:  # pragma: no cover - integration with alembic CLI
+            from flask_migrate import upgrade as alembic_upgrade
+
+            alembic_upgrade()
+            app.logger.info("[BOOT] Alembic auto-migrate: upgrade head OK.")
+        except Exception as ex:  # pragma: no cover - defensive logging
+            app.logger.warning("[BOOT] Alembic auto-migrate failed: %s", ex)
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
     login_manager.session_protection = "strong"
@@ -281,8 +290,6 @@ def create_app(config_overrides: dict | None = None):
 
     with app.app_context():
         try:
-            from sqlalchemy import text
-
             with db.engine.connect() as conn:
                 for email in app.config.get("ADMIN_EMAILS_SET", set()):
                     conn.execute(
@@ -293,6 +300,35 @@ def create_app(config_overrides: dict | None = None):
             app.logger.info("[BOOT] Admin auto-promotion applied to existing users.")
         except Exception as ex:
             app.logger.warning("[BOOT] Admin auto-promotion failed: %s", ex)
+
+        try:
+            with db.engine.connect() as conn:
+                conn.execute(
+                    text(
+                        """
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name='users' AND column_name='telegram_chat_id'
+                ) THEN
+                    ALTER TABLE users ADD COLUMN telegram_chat_id BIGINT;
+                END IF;
+
+                IF NOT EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name='users' AND column_name='telegram_opt_in'
+                ) THEN
+                    ALTER TABLE users ADD COLUMN telegram_opt_in BOOLEAN NOT NULL DEFAULT FALSE;
+                END IF;
+            END$$;
+                        """
+                    )
+                )
+                conn.commit()
+            app.logger.info("[BOOT] Schema guard: telegram_* columns ensured.")
+        except Exception as ex:
+            app.logger.warning("[BOOT] Schema guard failed: %s", ex)
 
     csp = {
         'default-src': "'self'",
