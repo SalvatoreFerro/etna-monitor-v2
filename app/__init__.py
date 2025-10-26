@@ -314,33 +314,26 @@ def create_app(config_overrides: dict | None = None):
         except Exception as ex:
             app.logger.warning("[BOOT] Admin auto-promotion failed: %s", ex)
 
-        # Schema guard: crea colonne Telegram se mancanti (idempotente)
+        # Schema guard: crea colonne Telegram, alert e privacy se mancanti (idempotente)
         try:
             with db.engine.connect() as conn:
                 conn.execute(
                     text(
                         """
-                        DO $$
-                        BEGIN
-                            IF NOT EXISTS (
-                                SELECT 1 FROM information_schema.columns
-                                WHERE table_name='users' AND column_name='telegram_chat_id'
-                            ) THEN
-                                ALTER TABLE users ADD COLUMN telegram_chat_id BIGINT;
-                            END IF;
-
-                            IF NOT EXISTS (
-                                SELECT 1 FROM information_schema.columns
-                                WHERE table_name='users' AND column_name='telegram_opt_in'
-                            ) THEN
-                                ALTER TABLE users ADD COLUMN telegram_opt_in BOOLEAN NOT NULL DEFAULT FALSE;
-                            END IF;
-                        END$$;
+                        ALTER TABLE users
+                            ADD COLUMN IF NOT EXISTS telegram_chat_id BIGINT,
+                            ADD COLUMN IF NOT EXISTS telegram_opt_in BOOLEAN NOT NULL DEFAULT FALSE,
+                            ADD COLUMN IF NOT EXISTS free_alert_consumed INTEGER NOT NULL DEFAULT 0,
+                            ADD COLUMN IF NOT EXISTS free_alert_event_id INTEGER,
+                            ADD COLUMN IF NOT EXISTS last_alert_sent_at TIMESTAMP,
+                            ADD COLUMN IF NOT EXISTS alert_count_30d INTEGER NOT NULL DEFAULT 0,
+                            ADD COLUMN IF NOT EXISTS consent_ts TIMESTAMP,
+                            ADD COLUMN IF NOT EXISTS privacy_version INTEGER NOT NULL DEFAULT 1;
                         """
                     )
                 )
                 conn.commit()
-            app.logger.info("[BOOT] Schema guard: telegram_* columns ensured.")
+            app.logger.info("[BOOT] Schema guard: alert_* and privacy_* columns ensured.")
         except Exception as ex:
             app.logger.warning("[BOOT] Schema guard failed: %s", ex)
 

@@ -1,7 +1,6 @@
-"""add telegram fields to users (IF NOT EXISTS)"""
+"""Ensure Telegram, alert and privacy columns exist on users (idempotent)."""
 
 from alembic import op
-from sqlalchemy import text
 
 revision = "20251026_add_telegram_fields_if_missing"
 down_revision = "202410020001_align_users_schema_to_model"
@@ -11,26 +10,17 @@ depends_on = None
 
 def upgrade() -> None:
     op.execute(
-        text(
-            """
-    DO $$
-    BEGIN
-        IF NOT EXISTS (
-            SELECT 1 FROM information_schema.columns
-            WHERE table_name='users' AND column_name='telegram_chat_id'
-        ) THEN
-            ALTER TABLE users ADD COLUMN telegram_chat_id BIGINT;
-        END IF;
-
-        IF NOT EXISTS (
-            SELECT 1 FROM information_schema.columns
-            WHERE table_name='users' AND column_name='telegram_opt_in'
-        ) THEN
-            ALTER TABLE users ADD COLUMN telegram_opt_in BOOLEAN NOT NULL DEFAULT FALSE;
-        END IF;
-    END$$;
-            """
-        )
+        """
+        ALTER TABLE users
+            ADD COLUMN IF NOT EXISTS telegram_chat_id BIGINT,
+            ADD COLUMN IF NOT EXISTS telegram_opt_in BOOLEAN NOT NULL DEFAULT FALSE,
+            ADD COLUMN IF NOT EXISTS free_alert_consumed INTEGER NOT NULL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS free_alert_event_id INTEGER,
+            ADD COLUMN IF NOT EXISTS last_alert_sent_at TIMESTAMP,
+            ADD COLUMN IF NOT EXISTS alert_count_30d INTEGER NOT NULL DEFAULT 0,
+            ADD COLUMN IF NOT EXISTS consent_ts TIMESTAMP,
+            ADD COLUMN IF NOT EXISTS privacy_version INTEGER NOT NULL DEFAULT 1;
+        """
     )
 
 

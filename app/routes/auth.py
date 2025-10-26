@@ -571,8 +571,22 @@ def auth_callback():
             flash("Servizio in aggiornamento, riprova tra qualche minuto.", "error")
             return redirect(url_for("auth.login"))
 
-        login_user(user)
-        session["user_id"] = user.id
+        user_id = user.id
+        try:
+            user_min = (
+                db.session.query(User)
+                .options(load_only(User.id))
+                .filter(User.id == user_id)
+                .first()
+            )
+        except SQLAlchemyError as exc:  # pragma: no cover - defensive path
+            current_app.logger.warning(
+                "[LOGIN] Slim reload failed, using hydrated user instance: %s", exc
+            )
+            user_min = None
+
+        login_user(user_min or user)
+        session["user_id"] = user_id
         session["google_access_token"] = access_token
         if refresh_token:
             session["google_refresh_token"] = refresh_token
