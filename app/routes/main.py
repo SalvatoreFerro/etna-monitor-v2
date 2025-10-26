@@ -3,7 +3,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
-from flask import Blueprint, current_app, jsonify, render_template, url_for
+from flask import Blueprint, current_app, jsonify, render_template, send_from_directory, url_for
 
 from ..utils.auth import get_current_user
 
@@ -46,6 +46,13 @@ def index():
         page_description="Grafici aggiornati del tremore vulcanico dell'Etna con dati INGV e avvisi personalizzati per gli appassionati.",
         page_og_image=url_for("static", filename="icons/icon-512.png", _external=True),
     )
+
+
+@bp.route("/ads.txt")
+@cache.cached(timeout=3600)
+def ads_txt():
+    project_root = Path(current_app.root_path).parent
+    return send_from_directory(project_root, "ads.txt", mimetype="text/plain")
 
 @bp.route("/pricing")
 def pricing():
