@@ -14,6 +14,8 @@ from flask import (
     url_for,
 )
 
+from sqlalchemy.exc import SQLAlchemyError
+
 from ..models import db
 from ..models.partner import PARTNER_CATEGORIES, Partner
 from ..utils.auth import get_current_user
@@ -44,15 +46,23 @@ def experience_home():
 
     selected_category = normalize_category(request.args.get("category"))
 
-    query = Partner.query.filter(Partner.visible.is_(True))
-    if selected_category:
-        query = query.filter(Partner.category == selected_category)
+    try:
+        query = Partner.query.filter(Partner.visible.is_(True))
+        if selected_category:
+            query = query.filter(Partner.category == selected_category)
 
-    partners = (
-        query.order_by(Partner.verified.desc(), Partner.created_at.desc())
-        .limit(200)
-        .all()
-    )
+        partners = (
+            query.order_by(Partner.verified.desc(), Partner.created_at.desc())
+            .limit(200)
+            .all()
+        )
+    except SQLAlchemyError:
+        current_app.logger.exception("Failed to load partners for experience page")
+        flash(
+            "Al momento non è possibile mostrare i partner disponibili. Riprova più tardi.",
+            "warning",
+        )
+        partners = []
 
     if selected_category and not partners:
         flash(

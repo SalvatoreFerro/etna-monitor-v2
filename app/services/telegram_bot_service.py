@@ -29,6 +29,7 @@ class TelegramBotService:
             self.application = None
             self.bot_thread = None
             self.loop = None
+            self.mode = "off"
             self._initialized = True
         
     def init_app(self, app):
@@ -36,8 +37,13 @@ class TelegramBotService:
         if hasattr(self, 'app') and self.app is not None:
             logger.info("TelegramBotService already initialized, skipping")
             return
-            
+
         self.app = app
+        self.mode = (app.config.get("TELEGRAM_BOT_MODE") or "off").lower()
+        if self.mode != "polling":
+            logger.info("Telegram bot mode set to %s; polling will not start", self.mode)
+            return
+
         if self.bot_token:
             self._setup_bot()
             self._start_bot_thread()

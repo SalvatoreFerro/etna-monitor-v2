@@ -41,6 +41,21 @@ DEFAULT_SQLITE_URI = "sqlite:///etna_monitor.db"
 RESOLVED_DATABASE_URI, RESOLVED_DATABASE_SOURCE = get_database_uri_from_env(DEFAULT_SQLITE_URI)
 
 
+def _resolve_telegram_bot_mode() -> str:
+    """Return the normalized Telegram bot mode from environment variables."""
+
+    mode = (os.getenv("TELEGRAM_BOT_MODE") or "").strip().lower()
+    if mode:
+        if mode in {"off", "polling", "webhook"}:
+            return mode
+        return "off"
+
+    legacy_flag = (os.getenv("ENABLE_TELEGRAM_BOT") or "").strip().lower()
+    if legacy_flag in {"1", "true", "yes"}:
+        return "polling"
+    return "off"
+
+
 class Config:
     SECRET_KEY = os.getenv("SECRET_KEY", "dev")
     SQLALCHEMY_DATABASE_URI = RESOLVED_DATABASE_URI or DEFAULT_SQLITE_URI
@@ -64,6 +79,7 @@ class Config:
 
     TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+    TELEGRAM_BOT_MODE = _resolve_telegram_bot_mode()
     PAYPAL_DONATION_LINK = os.getenv("PAYPAL_DONATION_LINK", "")
 
     PRIVACY_POLICY_VERSION = os.getenv("PRIVACY_POLICY_VERSION", "2024-07")
