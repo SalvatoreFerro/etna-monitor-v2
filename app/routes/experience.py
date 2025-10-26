@@ -58,6 +58,7 @@ def experience_home():
         )
     except SQLAlchemyError:
         current_app.logger.exception("Failed to load partners for experience page")
+        db.session.rollback()
         flash(
             "Al momento non è possibile mostrare i partner disponibili. Riprova più tardi.",
             "warning",

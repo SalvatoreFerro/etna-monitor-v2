@@ -93,7 +93,7 @@ def test_free_user_receives_single_trial_alert(app_ctx, message_spy):
         service.check_and_send_alerts()
 
         db.session.refresh(user)
-        assert user.free_alert_consumed is True
+        assert user.free_alert_consumed == 1
         assert user.free_alert_event_id is not None
         assert user.alert_count_30d == 1
         assert len(message_spy) == 1

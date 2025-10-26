@@ -7,7 +7,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix  # Ensure proxy headers are h
 import os
 import redis
 import warnings
-from datetime import datetime
+from datetime import datetime, timedelta
 from time import perf_counter
 from urllib.parse import urlparse, urlunparse
 from pathlib import Path
@@ -69,7 +69,7 @@ def _ensure_user_schema(app: Flask) -> None:
     column_definitions = {
         "telegram_chat_id": "VARCHAR(64)",
         "telegram_opt_in": "BOOLEAN NOT NULL DEFAULT FALSE",
-        "free_alert_consumed": "BOOLEAN NOT NULL DEFAULT FALSE",
+        "free_alert_consumed": "INTEGER NOT NULL DEFAULT 0",
         "free_alert_event_id": "VARCHAR(255)",
         "last_alert_sent_at": "TIMESTAMP",
         "alert_count_30d": "INTEGER NOT NULL DEFAULT 0",
@@ -161,6 +161,135 @@ def _ensure_partners_table(app: Flask) -> None:
         app.logger.warning("[BOOT] partners table ensure failed: %s", ex)
 
 
+def _ensure_sponsor_tables(app: Flask) -> None:
+    """Ensure sponsor banner tables exist to avoid runtime failures."""
+
+    dialect = db.engine.dialect.name
+    if dialect == "sqlite":
+        statements = [
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS sponsor_banners (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    image_url TEXT NOT NULL,
+                    target_url TEXT NOT NULL,
+                    description TEXT,
+                    active INTEGER NOT NULL DEFAULT 1,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            ),
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS sponsor_banner_impressions (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    banner_id INTEGER NOT NULL,
+                    ts DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    page TEXT,
+                    session_id TEXT,
+                    user_id INTEGER,
+                    ip_hash TEXT,
+                    FOREIGN KEY(banner_id) REFERENCES sponsor_banners(id) ON DELETE CASCADE,
+                    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
+                )
+                """
+            ),
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS sponsor_banner_clicks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    banner_id INTEGER NOT NULL,
+                    ts DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    page TEXT,
+                    session_id TEXT,
+                    user_id INTEGER,
+                    ip_hash TEXT,
+                    FOREIGN KEY(banner_id) REFERENCES sponsor_banners(id) ON DELETE CASCADE,
+                    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE SET NULL
+                )
+                """
+            ),
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS ix_banner_impression_session
+                ON sponsor_banner_impressions (banner_id, session_id, ts)
+                """
+            ),
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS ix_banner_click_session
+                ON sponsor_banner_clicks (banner_id, session_id, ts)
+                """
+            ),
+        ]
+    else:
+        statements = [
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS sponsor_banners (
+                    id SERIAL PRIMARY KEY,
+                    title VARCHAR(120) NOT NULL,
+                    image_url VARCHAR(512) NOT NULL,
+                    target_url VARCHAR(512) NOT NULL,
+                    description VARCHAR(255),
+                    active BOOLEAN NOT NULL DEFAULT TRUE,
+                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            ),
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS sponsor_banner_impressions (
+                    id SERIAL PRIMARY KEY,
+                    banner_id INTEGER NOT NULL REFERENCES sponsor_banners(id) ON DELETE CASCADE,
+                    ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    page VARCHAR(255),
+                    session_id VARCHAR(64),
+                    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                    ip_hash VARCHAR(64)
+                )
+                """
+            ),
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS sponsor_banner_clicks (
+                    id SERIAL PRIMARY KEY,
+                    banner_id INTEGER NOT NULL REFERENCES sponsor_banners(id) ON DELETE CASCADE,
+                    ts TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    page VARCHAR(255),
+                    session_id VARCHAR(64),
+                    user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                    ip_hash VARCHAR(64)
+                )
+                """
+            ),
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS ix_banner_impression_session
+                ON sponsor_banner_impressions (banner_id, session_id, ts)
+                """
+            ),
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS ix_banner_click_session
+                ON sponsor_banner_clicks (banner_id, session_id, ts)
+                """
+            ),
+        ]
+
+    try:
+        with db.engine.connect() as conn:
+            for statement in statements:
+                conn.execute(statement)
+            conn.commit()
+        app.logger.info("[BOOT] Sponsor banner tables ensured ✅")
+    except Exception:
+        app.logger.exception("[BOOT] Sponsor banner table ensure failed")
+
+
 def create_app(config_overrides: dict | None = None):
     global limiter
     app = Flask(__name__)
@@ -194,6 +323,7 @@ def create_app(config_overrides: dict | None = None):
     app.config.setdefault("LAST_CSV_ROW_COUNT", 0)
     app.config.setdefault("LAST_CSV_ERROR", None)
     app.config["START_TIME"] = datetime.utcnow()
+    app.send_file_max_age_default = timedelta(hours=6)
 
     override_database_uri = None
     if config_overrides and "SQLALCHEMY_DATABASE_URI" in config_overrides:
@@ -222,10 +352,10 @@ def create_app(config_overrides: dict | None = None):
 
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     engine_defaults = {
-        "pool_size": 2,
-        "max_overflow": 2,
+        "pool_size": 5,
+        "max_overflow": 5,
         "pool_pre_ping": True,
-        "pool_recycle": 180,
+        "pool_recycle": 280,
     }
     existing_engine_options = dict(app.config.get("SQLALCHEMY_ENGINE_OPTIONS", {}))
     engine_defaults.update(existing_engine_options)
@@ -446,19 +576,25 @@ def create_app(config_overrides: dict | None = None):
     with app.app_context():
         _ensure_user_schema(app)
         _ensure_partners_table(app)
+        _ensure_sponsor_tables(app)
 
         # Auto-promozione admin
         try:
             with db.engine.connect() as conn:
                 for email in app.config.get("ADMIN_EMAILS_SET", set()):
+                    normalized_email = (email or "").strip().lower()
+                    if not normalized_email:
+                        continue
                     conn.execute(
-                        text("UPDATE users SET is_admin = TRUE WHERE lower(email) = :e"),
-                        {"e": email},
+                        text(
+                            "UPDATE users SET is_admin = TRUE WHERE lower(email) = :e"
+                        ),
+                        {"e": normalized_email},
                     )
                 conn.commit()
             app.logger.info("[BOOT] Admin auto-promotion applied to existing users.")
-        except Exception as ex:
-            app.logger.warning("[BOOT] Admin auto-promotion failed: %s", ex)
+        except Exception:
+            app.logger.exception("[BOOT] Admin auto-promotion failed")
 
     csp = build_csp()
     app.config["BASE_CONTENT_SECURITY_POLICY"] = build_csp()

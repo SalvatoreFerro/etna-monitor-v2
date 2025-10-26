@@ -95,6 +95,10 @@ def test_google_callback_creates_user(monkeypatch, client, app):
         user = User.query.filter_by(google_id="google-user").one()
         assert user.email == "new-user@example.com"
         assert user.plan_type == "free"
+        assert user.free_alert_consumed == 0
+        assert user.alert_count_30d == 0
+        assert user.subscription_status == "free"
+        assert user.email_alerts is False
 
 
 def test_google_callback_handles_missing_google_id(monkeypatch, client, app):
@@ -196,6 +200,53 @@ def test_google_callback_heals_missing_plan_type(monkeypatch, client, app):
     with app.app_context():
         user = User.query.filter_by(email="plan-type@example.com").one()
         assert user.plan_type == "free"
+        assert user.free_alert_consumed == 0
+        assert user.alert_count_30d == 0
+        assert user.subscription_status == "free"
+        assert user.email_alerts is False
+
+
+def test_google_callback_links_existing_user_without_touching_admin(monkeypatch, client, app):
+    token_response = DummyResponse(200, {"access_token": "access"})
+    userinfo_response = DummyResponse(
+        200,
+        {
+            "sub": "existing-google-id",
+            "email": "existing-admin@example.com",
+            "name": "Existing Admin",
+        },
+    )
+
+    responses = iter([token_response, userinfo_response])
+
+    def fake_google_request(*args, **kwargs):
+        return next(responses)
+
+    monkeypatch.setattr("app.routes.auth._google_oauth_request", fake_google_request)
+
+    with app.app_context():
+        user = User(
+            email="existing-admin@example.com",
+            password_hash="",
+            is_admin=True,
+        )
+        db.session.add(user)
+        db.session.commit()
+
+        assert user.google_id is None
+
+    app.config["ADMIN_EMAILS_SET"] = {"existing-admin@example.com"}
+
+    with client.session_transaction() as session:
+        session["oauth_state"] = "state-token"
+
+    response = client.get("/auth/callback?code=auth-code&state=state-token")
+    assert response.status_code == 302
+
+    with app.app_context():
+        user = User.query.filter_by(email="existing-admin@example.com").one()
+        assert user.google_id == "existing-google-id"
+        assert user.is_admin is True
 
 
 def test_google_callback_fallback_without_introspection(monkeypatch, client, app):

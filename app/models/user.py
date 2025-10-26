@@ -20,13 +20,18 @@ class User(UserMixin, db.Model):
     premium_lifetime = db.Column(db.Boolean, default=False, nullable=False)
     premium_since = db.Column(db.DateTime, nullable=True)
     donation_tx = db.Column(db.String(255), nullable=True)
-    is_admin = db.Column(db.Boolean, default=False, nullable=False)
+    is_admin = db.Column(
+        db.Boolean,
+        default=False,
+        nullable=False,
+        server_default=db.text("false"),
+    )
     chat_id = db.Column(db.String(50), nullable=True)
     plan_type = db.Column(
         db.String(20),
         nullable=False,
-        server_default='free',
-        default='free'
+        server_default="free",
+        default="free",
     )
     telegram_chat_id = db.Column(db.String(64), unique=True, nullable=True)
     telegram_opt_in = db.Column(
@@ -36,10 +41,10 @@ class User(UserMixin, db.Model):
         server_default=db.text('false')
     )
     free_alert_consumed = db.Column(
-        db.Boolean,
+        db.Integer,
         nullable=False,
-        default=False,
-        server_default=db.text('false')
+        default=0,
+        server_default="0",
     )
     free_alert_event_id = db.Column(db.String(255), nullable=True)
     last_alert_sent_at = db.Column(db.DateTime, nullable=True)
@@ -47,14 +52,24 @@ class User(UserMixin, db.Model):
         db.Integer,
         nullable=False,
         default=0,
-        server_default=db.text('0')
+        server_default="0",
     )
     consent_ts = db.Column(db.DateTime, nullable=True)
     privacy_version = db.Column(db.String(32), nullable=True)
     threshold = db.Column(db.Float, nullable=True)
-    email_alerts = db.Column(db.Boolean, default=False, nullable=False)
+    email_alerts = db.Column(
+        db.Boolean,
+        default=False,
+        nullable=False,
+        server_default=db.text("false"),
+    )
     stripe_customer_id = db.Column(db.String(100), nullable=True)
-    subscription_status = db.Column(db.String(20), default='free', nullable=False)
+    subscription_status = db.Column(
+        db.String(20),
+        default="free",
+        nullable=False,
+        server_default="free",
+    )
     subscription_id = db.Column(db.String(100), nullable=True)
     current_period_end = db.Column(db.DateTime, nullable=True)
     trial_end = db.Column(db.DateTime, nullable=True)
