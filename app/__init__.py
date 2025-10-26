@@ -7,6 +7,7 @@ from flask_compress import Compress
 from werkzeug.middleware.proxy_fix import ProxyFix  # Ensure proxy headers are honored for HTTPS redirects
 import os
 import redis
+import warnings
 from datetime import datetime
 from time import perf_counter
 from urllib.parse import urlparse, urlunparse
@@ -124,11 +125,40 @@ def _ensure_user_schema(app: Flask) -> None:
                 )
             )
             conn.commit()
-        app.logger.info(
-            "[BOOT] Schema guard completed: all missing user columns created."
-        )
+        app.logger.info("[BOOT] Schema guard completed")
     except Exception as ex:  # pragma: no cover - defensive fallback
         app.logger.warning("[BOOT] Schema guard failed: %s", ex)
+
+
+def _ensure_partners_table(app: Flask) -> None:
+    """Ensure the partners table exists with the expected schema."""
+
+    create_sql = text(
+        """
+        CREATE TABLE IF NOT EXISTS partners (
+            id SERIAL PRIMARY KEY,
+            name TEXT,
+            category TEXT,
+            description TEXT,
+            website TEXT,
+            contact TEXT,
+            image_url TEXT,
+            lat DOUBLE PRECISION,
+            lon DOUBLE PRECISION,
+            verified BOOLEAN DEFAULT FALSE,
+            visible BOOLEAN DEFAULT TRUE,
+            created_at TIMESTAMP DEFAULT NOW()
+        );
+        """
+    )
+
+    try:
+        with db.engine.connect() as conn:
+            conn.execute(create_sql)
+            conn.commit()
+        app.logger.info("[BOOT] partners table ensured ✅")
+    except Exception as ex:  # pragma: no cover - defensive fallback
+        app.logger.warning("[BOOT] partners table ensure failed: %s", ex)
 
 
 def create_app(config_overrides: dict | None = None):
@@ -144,6 +174,8 @@ def create_app(config_overrides: dict | None = None):
         "[BOOT] Logging configured. Writing to %s",
         Path(app.config.get("LOG_DIR", "logs")) / "app.log",
     )
+
+    warnings.filterwarnings("ignore", message="Using the in-memory storage")
 
     secret_from_env = os.getenv("SECRET_KEY")
     if secret_from_env:
@@ -370,6 +402,7 @@ def create_app(config_overrides: dict | None = None):
 
     with app.app_context():
         _ensure_user_schema(app)
+        _ensure_partners_table(app)
 
         # Auto-promozione admin
         try:
