@@ -15,19 +15,20 @@ Obiettivi principali:
 ## Indice
 1. [Architettura del Sistema](#architettura-del-sistema)
 2. [Funzionalità Chiave](#funzionalità-chiave)
-3. [Dipendenze & Requisiti](#dipendenze--requisiti)
-4. [Setup Locale (Step-by-step)](#setup-locale-step-by-step)
-5. [Configurazione (.env.example)](#configurazione-envexample)
-6. [Pipeline Dati (PNG INGV → CSV → Grafico)](#pipeline-dati-png-ingv--csv--grafico)
-7. [Notifiche Telegram](#notifiche-telegram)
-8. [Gestione Utenti e Premium](#gestione-utenti-e-premium)
-9. [Logging & Monitoraggio](#logging--monitoraggio)
-10. [Deploy (Ambiente di Produzione)](#deploy-ambiente-di-produzione)
-11. [Sicurezza & Privacy](#sicurezza--privacy)
-12. [Troubleshooting (FAQ Tecnica)](#troubleshooting-faq-tecnica)
-13. [Roadmap](#roadmap)
-14. [Licenza & Note Legali](#licenza--note-legali)
-15. [Contatti](#contatti)
+3. [Etna Experience](#etna-experience)
+4. [Dipendenze & Requisiti](#dipendenze--requisiti)
+5. [Setup Locale (Step-by-step)](#setup-locale-step-by-step)
+6. [Configurazione (.env.example)](#configurazione-envexample)
+7. [Pipeline Dati (PNG INGV → CSV → Grafico)](#pipeline-dati-png-ingv--csv--grafico)
+8. [Notifiche Telegram](#notifiche-telegram)
+9. [Gestione Utenti e Premium](#gestione-utenti-e-premium)
+10. [Logging & Monitoraggio](#logging--monitoraggio)
+11. [Deploy (Ambiente di Produzione)](#deploy-ambiente-di-produzione)
+12. [Sicurezza & Privacy](#sicurezza--privacy)
+13. [Troubleshooting (FAQ Tecnica)](#troubleshooting-faq-tecnica)
+14. [Roadmap](#roadmap)
+15. [Licenza & Note Legali](#licenza--note-legali)
+16. [Contatti](#contatti)
 
 ---
 
@@ -70,6 +71,24 @@ flowchart LR
 - **Notifiche Telegram**: invio al superamento soglia, gestione hysteresis/debounce per evitare spam, alert riassuntivi.
 - **Log eventi recenti**: elenco con timestamp, valore misurato, soglia applicata, esito alert visibile dalla dashboard.
 - **Admin**: pannello opzionale per consultare utenti, promuovere/demozionare Premium e monitorare stato notifiche.
+
+## Etna Experience
+EtnaMonitor diventa anche una vetrina territoriale grazie alla nuova sezione **Etna Experience**, pensata per mettere in contatto turisti, guide e strutture partner.
+
+### Pagina pubblica `/experience`
+- Accessibile a tutti, presenta un layout a card con immagini, categoria, descrizione e link esterni in tema dark.
+- Filtri rapidi per categoria (Guide, Hotel, Ristoranti, Tour, Altro) con badge “Partner Verified” per gli inserzionisti approvati.
+- Call-to-action per proporre nuove attività e pulsante teaser dedicato ai futuri consigli automatici basati sull'attività del vulcano.
+
+### Candidature `/become-partner`
+- Modulo pubblico con validazione server-side per raccogliere richieste da nuovi partner.
+- Le candidature vengono salvate nel database con visibilità disattivata finché un amministratore non le approva.
+- Supporto a link sito, contatti diretti e immagine promozionale tramite URL.
+
+### Gestione amministrativa `/admin/partners`
+- Vista riservata agli admin per consultare, approvare o eliminare i partner.
+- Toggle istantaneo per stato “verified” e visibilità, oltre alla possibilità di aggiungere rapidamente nuove schede.
+- Tutte le operazioni avvengono tramite le nuove API amministrative e si appoggiano alla tabella `partners` gestita via Alembic.
 
 ## Dipendenze & Requisiti
 - **Runtime**: Python 3.11+, pip, virtualenv.

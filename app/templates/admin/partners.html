@@ -1,0 +1,298 @@
+{% extends "layout.html" %}
+
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<section class="admin-page admin-container" aria-labelledby="partners-admin-title">
+  <header class="admin-card admin-card--hero admin-header" id="partners-admin-title">
+    <div>
+      <h1><i class="fas fa-handshake"></i> Partner Etna Experience</h1>
+      <p>Gestisci le strutture e le guide presenti nella sezione pubblica Etna Experience.</p>
+    </div>
+    <nav class="admin-actions" aria-label="Azioni rapide">
+      <a href="{{ url_for('experience.experience_home') }}" class="btn btn-secondary glass btn-sm" target="_blank" rel="noopener">
+        <i class="fas fa-external-link-alt"></i> Apri Etna Experience
+      </a>
+      <button type="button" class="btn btn-premium btn-sm" id="toggle-partner-form">
+        <i class="fas fa-plus"></i> Aggiungi Partner
+      </button>
+    </nav>
+  </header>
+
+  <div class="admin-card admin-card--table" id="partner-form-wrapper" hidden>
+    <header class="admin-section-header">
+      <div>
+        <h2><i class="fas fa-pen"></i> Nuova scheda partner</h2>
+        <p>Compila i campi per pubblicare un nuovo partner o salvare una candidatura in bozza.</p>
+      </div>
+      <button type="button" class="btn btn-secondary glass btn-sm" id="close-partner-form">
+        <i class="fas fa-times"></i> Chiudi
+      </button>
+    </header>
+    <form method="post" action="{{ url_for('admin.partners_create') }}" class="partner-admin-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="partner-form-grid">
+        <div class="form-field">
+          <label for="partner-name">Nome attività *</label>
+          <input type="text" id="partner-name" name="name" required maxlength="160">
+        </div>
+        <div class="form-field">
+          <label for="partner-category">Categoria *</label>
+          <select id="partner-category" name="category" required>
+            {% for value, label in categories %}
+              <option value="{{ value }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-field">
+          <label for="partner-website">Sito web</label>
+          <input type="url" id="partner-website" name="website" placeholder="https://">
+        </div>
+        <div class="form-field">
+          <label for="partner-contact">Contatto diretto</label>
+          <input type="text" id="partner-contact" name="contact" placeholder="Email o telefono">
+        </div>
+        <div class="form-field">
+          <label for="partner-image">Immagine (URL)</label>
+          <input type="url" id="partner-image" name="image_url" placeholder="https://">
+        </div>
+        <div class="form-field">
+          <label for="partner-description">Descrizione</label>
+          <textarea id="partner-description" name="description" rows="4" maxlength="800" placeholder="In evidenza sul portale pubblico."></textarea>
+        </div>
+        <div class="form-field">
+          <label for="partner-lat">Latitudine</label>
+          <input type="number" step="any" id="partner-lat" name="lat" placeholder="37.75">
+        </div>
+        <div class="form-field">
+          <label for="partner-lon">Longitudine</label>
+          <input type="number" step="any" id="partner-lon" name="lon" placeholder="15.00">
+        </div>
+      </div>
+      <div class="partner-form-flags">
+        <label class="partner-flag">
+          <input type="checkbox" name="verified">
+          Partner verificato
+        </label>
+        <label class="partner-flag">
+          <input type="checkbox" name="visible" checked>
+          Visibile nella pagina pubblica
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-premium">Salva partner</button>
+        <button type="reset" class="btn btn-secondary glass">Svuota campi</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="admin-card admin-card--table">
+    <header class="admin-section-header">
+      <div>
+        <h2><i class="fas fa-list"></i> Elenco partner</h2>
+        <p>Stato verificato e visibilità sono aggiornabili in tempo reale.</p>
+      </div>
+      <span class="admin-caption">Totale: {{ partners|length }}</span>
+    </header>
+    <div class="admin-table-wrapper">
+      <table class="table table-premium admin-table">
+        <thead>
+          <tr>
+            <th>Partner</th>
+            <th>Categoria</th>
+            <th>Verificato</th>
+            <th>Visibilità</th>
+            <th>Creato</th>
+            <th>Azioni</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for partner in partners %}
+            <tr data-partner-row="{{ partner.id }}">
+              <td>
+                <div class="partner-meta">
+                  <strong>{{ partner.name }}</strong>
+                  {% if partner.description %}
+                    <p class="partner-note">{{ partner.description }}</p>
+                  {% endif %}
+                  <div class="partner-links">
+                    {% if partner.website %}
+                      <a href="{{ partner.website }}" target="_blank" rel="noopener">Sito ufficiale</a>
+                    {% endif %}
+                    {% if partner.contact %}
+                      <span class="partner-contact">{{ partner.contact }}</span>
+                    {% endif %}
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="badge {{ 'premium' if partner.verified else 'glass' }}">{{ partner.category_label() }}</span>
+              </td>
+              <td>
+                <div class="partner-status">
+                  <span class="status-chip {{ 'status-chip--success' if partner.verified else 'status-chip--muted' }}" data-partner-id="{{ partner.id }}" data-field="verified">
+                    {{ 'Verificato' if partner.verified else 'Non verificato' }}
+                  </span>
+                  <button type="button" class="btn btn-secondary glass btn-sm partner-toggle" data-partner-id="{{ partner.id }}" data-field="verified" data-active="{{ 'true' if partner.verified else 'false' }}">
+                    {{ 'Rimuovi badge' if partner.verified else 'Verifica' }}
+                  </button>
+                </div>
+              </td>
+              <td>
+                <div class="partner-status">
+                  <span class="status-chip {{ 'status-chip--success' if partner.visible else 'status-chip--warning' }}" data-partner-id="{{ partner.id }}" data-field="visible">
+                    {{ 'Visibile' if partner.visible else 'Nascosto' }}
+                  </span>
+                  <button type="button" class="btn btn-secondary glass btn-sm partner-toggle" data-partner-id="{{ partner.id }}" data-field="visible" data-active="{{ 'true' if partner.visible else 'false' }}">
+                    {{ 'Nascondi' if partner.visible else 'Rendi visibile' }}
+                  </button>
+                </div>
+              </td>
+              <td>
+                {% if partner.created_at %}
+                  {{ partner.created_at.strftime('%d/%m/%Y %H:%M') }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+              <td>
+                <div class="partner-actions">
+                  <button type="button" class="btn btn-danger btn-sm partner-delete" data-partner-id="{{ partner.id }}" data-partner-name="{{ partner.name }}">
+                    <i class="fas fa-trash"></i> Elimina
+                  </button>
+                </div>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="6">
+                <div class="empty-state">
+                  <i class="fas fa-mug-hot" aria-hidden="true"></i>
+                  <h3>Nessun partner registrato</h3>
+                  <p>Utilizza il pulsante “Aggiungi Partner” per popolare la vetrina Etna Experience.</p>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<script nonce="{{ script_nonce }}">
+document.addEventListener('DOMContentLoaded', () => {
+  const csrfToken = '{{ csrf_token() }}';
+  const toggleFormBtn = document.getElementById('toggle-partner-form');
+  const closeFormBtn = document.getElementById('close-partner-form');
+  const formWrapper = document.getElementById('partner-form-wrapper');
+
+  const updateFormVisibility = (show) => {
+    if (!formWrapper || !toggleFormBtn) return;
+    if (show) {
+      formWrapper.removeAttribute('hidden');
+      toggleFormBtn.textContent = 'Nascondi form';
+    } else {
+      formWrapper.setAttribute('hidden', '');
+      toggleFormBtn.innerHTML = '<i class="fas fa-plus"></i> Aggiungi Partner';
+    }
+  };
+
+  toggleFormBtn?.addEventListener('click', () => {
+    const isHidden = formWrapper?.hasAttribute('hidden');
+    updateFormVisibility(Boolean(isHidden));
+  });
+
+  closeFormBtn?.addEventListener('click', () => updateFormVisibility(false));
+
+  const statusLabels = {
+    verified: { true: 'Verificato', false: 'Non verificato' },
+    visible: { true: 'Visibile', false: 'Nascosto' }
+  };
+
+  const buttonLabels = {
+    verified: { true: 'Rimuovi badge', false: 'Verifica' },
+    visible: { true: 'Nascondi', false: 'Rendi visibile' }
+  };
+
+  const chipClasses = {
+    verified: { true: 'status-chip--success', false: 'status-chip--muted' },
+    visible: { true: 'status-chip--success', false: 'status-chip--warning' }
+  };
+
+  const toggleButtons = document.querySelectorAll('.partner-toggle');
+  toggleButtons.forEach((button) => {
+    button.addEventListener('click', async () => {
+      const partnerId = button.dataset.partnerId;
+      const field = button.dataset.field;
+      if (!partnerId || !field) return;
+
+      button.disabled = true;
+      try {
+        const response = await fetch(`/admin/partners/${partnerId}/toggle`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ field, csrf_token: csrfToken })
+        });
+
+        const payload = await response.json();
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.message || 'Aggiornamento non riuscito');
+        }
+
+        const partner = payload.partner;
+        const chip = document.querySelector(`.status-chip[data-partner-id="${partnerId}"][data-field="${field}"]`);
+        if (chip) {
+          chip.textContent = statusLabels[field][partner[field]];
+          chip.classList.remove('status-chip--success', 'status-chip--muted', 'status-chip--warning');
+          chip.classList.add(chipClasses[field][partner[field]]);
+        }
+
+        button.dataset.active = String(partner[field]);
+        button.textContent = buttonLabels[field][partner[field]];
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        button.disabled = false;
+      }
+    });
+  });
+
+  const deleteButtons = document.querySelectorAll('.partner-delete');
+  deleteButtons.forEach((button) => {
+    button.addEventListener('click', async () => {
+      const partnerId = button.dataset.partnerId;
+      const partnerName = button.dataset.partnerName || 'questo partner';
+      if (!partnerId) return;
+      if (!confirm(`Eliminare definitivamente ${partnerName}?`)) {
+        return;
+      }
+
+      button.disabled = true;
+      try {
+        const response = await fetch(`/admin/partners/${partnerId}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ csrf_token: csrfToken })
+        });
+        const payload = await response.json();
+        if (!response.ok || !payload.success) {
+          throw new Error(payload.message || 'Impossibile eliminare il partner');
+        }
+
+        const row = document.querySelector(`tr[data-partner-row="${partnerId}"]`);
+        row?.remove();
+      } catch (error) {
+        alert(error.message);
+      } finally {
+        button.disabled = false;
+      }
+    });
+  });
+});
+</script>
+{% endblock %}
+
