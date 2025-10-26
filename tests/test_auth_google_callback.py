@@ -14,6 +14,15 @@ from app.models import db
 from app.models.user import User
 
 
+@pytest.fixture(autouse=True)
+def reset_google_id_cache():
+    from app.routes import auth as auth_routes
+
+    auth_routes._GOOGLE_ID_COLUMN_SUPPORTED = None
+    yield
+    auth_routes._GOOGLE_ID_COLUMN_SUPPORTED = None
+
+
 class DummyResponse:
     def __init__(self, status_code, payload):
         self.status_code = status_code
@@ -84,3 +93,46 @@ def test_google_callback_creates_user(monkeypatch, client, app):
         user = User.query.filter_by(google_id="google-user").one()
         assert user.email == "new-user@example.com"
         assert user.plan_type == "free"
+
+
+def test_google_callback_handles_missing_google_id(monkeypatch, client, app):
+    from sqlalchemy.exc import ProgrammingError
+
+    token_response = DummyResponse(200, {"access_token": "access"})
+    userinfo_response = DummyResponse(
+        200,
+        {
+            "sub": "legacy-google-user",
+            "email": "legacy-user@example.com",
+            "name": "Legacy User",
+        },
+    )
+
+    responses = iter([token_response, userinfo_response])
+
+    def fake_google_request(*args, **kwargs):
+        return next(responses)
+
+    from app.routes import auth as auth_routes
+
+    monkeypatch.setattr("app.routes.auth._google_oauth_request", fake_google_request)
+
+    original_query_with_retry = auth_routes._query_with_retry
+
+    def fake_query_with_retry(query_callable):
+        if "google_id" in getattr(query_callable.__code__, "co_freevars", ()):  # pragma: no cover - guard
+            raise ProgrammingError("SELECT", {}, Exception("missing column"))
+        return original_query_with_retry(query_callable)
+
+    monkeypatch.setattr(auth_routes, "_query_with_retry", fake_query_with_retry)
+
+    with client.session_transaction() as session:
+        session["oauth_state"] = "state-token"
+
+    response = client.get("/auth/callback?code=auth-code&state=state-token")
+    assert response.status_code == 302
+    assert "/dashboard" in response.headers["Location"]
+
+    with app.app_context():
+        user = User.query.filter_by(email="legacy-user@example.com").one()
+        assert user.google_id is None

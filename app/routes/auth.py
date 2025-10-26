@@ -17,13 +17,59 @@ from flask import (
     url_for,
 )
 
+from sqlalchemy import inspect
+from sqlalchemy.exc import (
+    IntegrityError,
+    OperationalError,
+    ProgrammingError,
+    SQLAlchemyError,
+)
+
 from ..models import db
 from ..models.user import User
 from ..utils.auth import check_password, hash_password
-from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 
 bp = Blueprint("auth", __name__)
 legacy_bp = Blueprint("legacy_auth", __name__ + "_legacy")
+
+
+_GOOGLE_ID_COLUMN_SUPPORTED: bool | None = None
+
+
+def _supports_google_id_column(force_refresh: bool = False) -> bool:
+    """Return ``True`` when the users table exposes the ``google_id`` column."""
+
+    global _GOOGLE_ID_COLUMN_SUPPORTED
+
+    if not force_refresh and _GOOGLE_ID_COLUMN_SUPPORTED is not None:
+        return _GOOGLE_ID_COLUMN_SUPPORTED
+
+    try:
+        inspector = inspect(db.engine)
+        _GOOGLE_ID_COLUMN_SUPPORTED = any(
+            column.get("name") == "google_id"
+            for column in inspector.get_columns(User.__tablename__)
+        )
+    except SQLAlchemyError:
+        # Failing the inspection should not break the login flow; assume the
+        # column exists so the previous behaviour remains unchanged.
+        current_app.logger.exception(
+            "[LOGIN] Could not inspect users table for google_id column"
+        )
+        _GOOGLE_ID_COLUMN_SUPPORTED = True
+
+    return _GOOGLE_ID_COLUMN_SUPPORTED
+
+
+def _disable_google_id_column_usage():
+    """Record that the database does not support the google_id column."""
+
+    global _GOOGLE_ID_COLUMN_SUPPORTED
+    if _GOOGLE_ID_COLUMN_SUPPORTED is not False:
+        current_app.logger.warning(
+            "[LOGIN] Disabling google_id usage due to runtime database error"
+        )
+        _GOOGLE_ID_COLUMN_SUPPORTED = False
 
 
 def _google_oauth_request(
@@ -281,12 +327,28 @@ def auth_callback():
             flash("Google profile is missing required information.", "error")
             return redirect(url_for("auth.login"))
 
-        user = _query_with_retry(lambda: User.query.filter_by(google_id=google_id).first())
+        user = None
+        google_id_supported = _supports_google_id_column()
+
+        if google_id_supported:
+            try:
+                user = _query_with_retry(
+                    lambda: User.query.filter_by(google_id=google_id).first()
+                )
+            except ProgrammingError:
+                current_app.logger.exception(
+                    "[LOGIN] google_id lookup failed; falling back to email only"
+                )
+                _disable_google_id_column_usage()
+                google_id_supported = False
+                user = None
+
         if not user and email:
             user = _query_with_retry(lambda: User.query.filter_by(email=email).first())
 
         if user:
-            user.google_id = google_id
+            if google_id_supported:
+                user.google_id = google_id
             user.email = email or user.email
             user.name = profile.get("name")
             user.picture_url = profile.get("picture")
@@ -295,12 +357,13 @@ def auth_callback():
         else:
             user = User(
                 email=email,
-                google_id=google_id,
                 name=profile.get("name"),
                 picture_url=profile.get("picture"),
                 password_hash="",
                 plan_type="free",
             )
+            if google_id_supported:
+                user.google_id = google_id
             db.session.add(user)
 
         admin_set = current_app.config.get("ADMIN_EMAILS_SET", set())
@@ -330,7 +393,8 @@ def auth_callback():
             if not existing_user:
                 raise
 
-            existing_user.google_id = google_id
+            if google_id_supported:
+                existing_user.google_id = google_id
             existing_user.email = email or existing_user.email
             existing_user.name = profile.get("name")
             existing_user.picture_url = profile.get("picture")
