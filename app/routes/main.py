@@ -11,11 +11,13 @@ from app.models import db
 from app.models.user import User
 from sqlalchemy import or_, text
 
+from ..extensions import cache
 from ..utils.metrics import get_csv_metrics, record_csv_error, record_csv_read
 
 bp = Blueprint("main", __name__)
 
 @bp.route("/")
+@cache.cached(timeout=90)
 def index():
     csv_path = os.getenv("CSV_PATH", "/var/tmp/curva.csv")
     timestamps: list[str] = []
