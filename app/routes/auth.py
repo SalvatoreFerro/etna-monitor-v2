@@ -20,7 +20,7 @@ from flask import (
 
 from flask_login import login_user, logout_user
 
-from sqlalchemy import func, inspect
+from sqlalchemy import Boolean, BigInteger, Integer, SmallInteger, func, inspect
 from sqlalchemy.exc import (
     IntegrityError,
     ProgrammingError,
@@ -180,11 +180,13 @@ def _create_user_with_existing_columns(
     """Insert a new user using only the columns currently available."""
 
     inspection_failed = False
+    column_types: dict[str, object] = {}
     try:
         inspector = inspect(db.engine)
-        available = {
-            column.get("name")
-            for column in inspector.get_columns(User.__tablename__)
+        columns = inspector.get_columns(User.__tablename__)
+        available = {column.get("name") for column in columns}
+        column_types = {
+            column.get("name"): column.get("type") for column in columns
         }
     except SQLAlchemyError as exc:
         inspection_failed = True
@@ -215,6 +217,36 @@ def _create_user_with_existing_columns(
         values["picture_url"] = picture_url
     if is_admin and _include("is_admin"):
         values["is_admin"] = True
+
+    if _include("free_alert_consumed"):
+        column_type = column_types.get("free_alert_consumed")
+
+        coerced_value: object = False
+
+        try:
+            if isinstance(column_type, Boolean):
+                coerced_value = False
+            elif isinstance(column_type, (Integer, SmallInteger, BigInteger)):
+                coerced_value = 0
+            else:
+                python_type = None
+                try:
+                    python_type = column_type.python_type  # type: ignore[attr-defined]
+                except (AttributeError, NotImplementedError):
+                    python_type = None
+
+                if python_type is int:
+                    coerced_value = 0
+                elif python_type is bool:
+                    coerced_value = False
+                elif python_type is not None:
+                    coerced_value = python_type(False)  # best-effort coercion
+                else:
+                    coerced_value = False
+        except Exception:  # pragma: no cover - extremely defensive
+            coerced_value = False
+
+        values["free_alert_consumed"] = coerced_value
 
     insert_stmt = User.__table__.insert().values(**values)
     try:
