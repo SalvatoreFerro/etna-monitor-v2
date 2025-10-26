@@ -4,7 +4,7 @@ from typing import Optional
 
 import pandas as pd
 import requests
-from sqlalchemy import func
+from sqlalchemy import and_, func, or_
 
 from app.models import db
 from app.models.event import Event
@@ -26,18 +26,34 @@ class TelegramService:
         self.bot_token = Config.TELEGRAM_BOT_TOKEN
         self.api_url = f"https://api.telegram.org/bot{self.bot_token}"
     
-    def send_message(self, chat_id: str, text: str) -> bool:
+    def send_message(self, chat_id: int | str | None, text: str) -> bool:
         """Send Telegram message to user"""
-        if not self.bot_token or not chat_id:
+        if not self.bot_token:
+            logger.warning("Missing bot token or chat_id")
+            return False
+
+        parsed_chat_id: Optional[int] = None
+        if isinstance(chat_id, int):
+            parsed_chat_id = chat_id if chat_id > 0 else None
+        elif isinstance(chat_id, str):
+            stripped = chat_id.strip()
+            if stripped:
+                try:
+                    parsed_chat_id = int(stripped)
+                except ValueError:
+                    logger.warning("Invalid chat_id format received: %s", chat_id)
+                    parsed_chat_id = None
+
+        if parsed_chat_id is None:
             logger.warning("Missing bot token or chat_id")
             return False
         
         try:
-            response = requests.post(f"{self.api_url}/sendMessage", 
-                                   json={"chat_id": chat_id, "text": text}, 
+            response = requests.post(f"{self.api_url}/sendMessage",
+                                   json={"chat_id": parsed_chat_id, "text": text},
                                    timeout=10)
             response.raise_for_status()
-            logger.info(f"Telegram message sent to {chat_id}")
+            logger.info(f"Telegram message sent to {parsed_chat_id}")
             return True
         except Exception as e:
             logger.error(f"Failed to send Telegram message: {e}")
@@ -116,8 +132,16 @@ class TelegramService:
     def _get_subscribed_users(self):
         return (
             User.query.filter(
-                User.telegram_chat_id.isnot(None),
-                User.telegram_chat_id != '',
+                or_(
+                    and_(
+                        User.telegram_chat_id.isnot(None),
+                        User.telegram_chat_id > 0,
+                    ),
+                    and_(
+                        User.chat_id.isnot(None),
+                        User.chat_id > 0,
+                    ),
+                ),
                 User.telegram_opt_in.is_(True),
             )
             .order_by(User.id.asc())
@@ -144,6 +168,8 @@ class TelegramService:
             if moving_avg < threshold:
                 continue
 
+            chat_id = user.telegram_chat_id or user.chat_id
+
             if user.has_premium_access:
                 self._process_premium_user(
                     user,
@@ -153,6 +179,7 @@ class TelegramService:
                     threshold,
                     now,
                     last_alert,
+                    chat_id,
                 )
             else:
                 self._process_free_user(
@@ -162,6 +189,7 @@ class TelegramService:
                     moving_avg,
                     threshold,
                     now,
+                    chat_id,
                 )
 
     def _resolve_threshold(self, user: User) -> float:
@@ -224,6 +252,7 @@ class TelegramService:
         threshold: float,
         now: datetime,
         last_alert: Optional[Event],
+        chat_id: Optional[int],
     ) -> None:
         if self._is_rate_limited(user, now):
             logger.debug("Rate limit active for %s", user.email)
@@ -234,7 +263,7 @@ class TelegramService:
             return
 
         message = self._build_premium_message(current_value, moving_avg, threshold)
-        if self.send_message(user.telegram_chat_id, message):
+        if self.send_message(chat_id, message):
             user.last_alert_sent_at = now
             alert_event = Event(
                 user_id=user.id,
@@ -257,10 +286,11 @@ class TelegramService:
         moving_avg: float,
         threshold: float,
         now: datetime,
+        chat_id: Optional[int],
     ) -> None:
         if (user.free_alert_consumed or 0) == 0 and user.free_alert_event_id != event_id:
             message = self._build_free_trial_message(current_value, moving_avg, threshold)
-            if self.send_message(user.telegram_chat_id, message):
+            if self.send_message(chat_id, message):
                 user.free_alert_consumed = (user.free_alert_consumed or 0) + 1
                 user.free_alert_event_id = event_id
                 user.last_alert_sent_at = now
@@ -287,9 +317,9 @@ class TelegramService:
                 logger.error("Failed to deliver free trial alert to %s", user.email)
             return
 
-        self._send_upsell(user, now)
+        self._send_upsell(user, now, chat_id)
 
-    def _send_upsell(self, user: User, now: datetime) -> None:
+    def _send_upsell(self, user: User, now: datetime, chat_id: Optional[int]) -> None:
         last_upsell = (
             Event.query.filter_by(user_id=user.id, event_type='upsell')
             .order_by(Event.timestamp.desc())
@@ -300,7 +330,7 @@ class TelegramService:
             return
 
         message = self._build_upsell_message()
-        if self.send_message(user.telegram_chat_id, message):
+        if self.send_message(chat_id, message):
             db.session.add(
                 Event(
                     user_id=user.id,

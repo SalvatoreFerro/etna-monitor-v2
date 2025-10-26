@@ -67,7 +67,7 @@ SLOW_REQUEST_THRESHOLD_MS = 300
 def _ensure_user_schema(app: Flask) -> None:
     """Ensure all columns required by ``app.models.user.User`` exist."""
     column_definitions = {
-        "telegram_chat_id": "VARCHAR(64)",
+        "telegram_chat_id": "BIGINT",
         "telegram_opt_in": "BOOLEAN NOT NULL DEFAULT FALSE",
         "free_alert_consumed": "INTEGER NOT NULL DEFAULT 0",
         "free_alert_event_id": "VARCHAR(255)",
@@ -93,7 +93,7 @@ def _ensure_user_schema(app: Flask) -> None:
         "premium_lifetime": "BOOLEAN NOT NULL DEFAULT FALSE",
         "premium_since": "TIMESTAMP",
         "donation_tx": "VARCHAR(255)",
-        "chat_id": "VARCHAR(50)",
+        "chat_id": "BIGINT",
         "plan_type": "VARCHAR(20) NOT NULL DEFAULT 'free'",
     }
 

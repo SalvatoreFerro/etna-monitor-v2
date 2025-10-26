@@ -3,7 +3,7 @@ import io
 from datetime import datetime, timedelta
 
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, make_response, current_app
-from sqlalchemy import func, or_
+from sqlalchemy import and_, func, or_
 
 from ..utils.auth import admin_required
 from ..models import db
@@ -144,8 +144,16 @@ def test_alert():
 
         premium_users = User.query.filter(
             or_(User.premium.is_(True), User.is_premium.is_(True)),
-            User.telegram_chat_id.isnot(None),
-            User.telegram_chat_id != '',
+            or_(
+                and_(
+                    User.telegram_chat_id.isnot(None),
+                    User.telegram_chat_id > 0,
+                ),
+                and_(
+                    User.chat_id.isnot(None),
+                    User.chat_id > 0,
+                ),
+            ),
             User.telegram_opt_in.is_(True),
         ).count()
 
