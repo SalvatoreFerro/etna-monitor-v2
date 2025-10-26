@@ -2,7 +2,6 @@ from flask import Flask, g, redirect, request, url_for, current_app
 from flask_login import LoginManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask_talisman import Talisman
 from flask_compress import Compress
 from werkzeug.middleware.proxy_fix import ProxyFix  # Ensure proxy headers are honored for HTTPS redirects
 import os
@@ -44,6 +43,7 @@ from .services.scheduler_service import SchedulerService
 from .utils.logger import configure_logging
 from config import Config, get_database_uri_from_env
 from .extensions import cache
+from .security import build_csp, talisman
 
 login_manager = LoginManager()
 limiter = None
@@ -62,7 +62,6 @@ def _mask_database_uri(uri: str) -> str:
 
 
 SLOW_REQUEST_THRESHOLD_MS = 300
-
 
 def _ensure_user_schema(app: Flask) -> None:
     """Ensure all columns required by ``app.models.user.User`` exist."""
@@ -417,36 +416,15 @@ def create_app(config_overrides: dict | None = None):
         except Exception as ex:
             app.logger.warning("[BOOT] Admin auto-promotion failed: %s", ex)
 
-    csp = {
-        "default-src": "'self'",
-        "script-src": [
-            "'self'",
-            "https://js.stripe.com",
-            "https://plausible.io",
-            "https://www.googletagmanager.com",
-        ],
-        "style-src": [
-            "'self'",
-            "'unsafe-inline'",
-            "https://fonts.googleapis.com",
-            "https://cdnjs.cloudflare.com",
-        ],
-        "font-src": ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
-        "img-src": ["'self'", "data:", "https:"],
-        "connect-src": [
-            "'self'",
-            "https://api.stripe.com",
-            "https://plausible.io",
-            "https://www.google-analytics.com",
-        ],
-        "frame-src": ["https://js.stripe.com", "https://hooks.stripe.com"],
-    }
+    csp = build_csp()
+    app.config["BASE_CONTENT_SECURITY_POLICY"] = build_csp()
 
-    Talisman(
+    talisman.init_app(
         app,
         content_security_policy=csp,
         content_security_policy_nonce_in=["script-src"],
         force_https=os.getenv("FLASK_ENV") == "production",
+        frame_options="SAMEORIGIN",
     )
 
     cache_config = {"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 90}
