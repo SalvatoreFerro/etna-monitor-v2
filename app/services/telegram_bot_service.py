@@ -1,10 +1,13 @@
 import asyncio
 import threading
+from datetime import datetime
+
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+
 from app.models import db
-from app.models.user import User
 from app.models.event import Event
+from app.models.user import User
 from app.utils.logger import get_logger
 from config import Config
 from flask import current_app
@@ -78,74 +81,119 @@ class TelegramBotService:
             logger.exception("Bot polling failed")
     
     async def _handle_start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
-        """Handle /start command"""
+        """Handle /start command."""
+
         chat_id = str(update.effective_chat.id)
-        username = update.effective_user.username or "Unknown"
-        
+        username = update.effective_user.username or update.effective_user.full_name or "Utente"
+
         with self.app.app_context():
             try:
-                user = User.query.filter_by(chat_id=chat_id).first()
-                
-                if user:
-                    if user.has_premium_access:
-                        message = f"✅ Ciao {username}! Il tuo account Premium è già collegato.\n\nRiceverai notifiche quando il tremore supera la tua soglia personalizzata ({user.threshold or 2.0} mV)."
-                    else:
-                        message = f"👋 Ciao {username}! Il tuo account è collegato ma non è Premium.\n\nPer ricevere notifiche personalizzate, attiva Premium su etna-monitor-v2.onrender.com"
-                else:
-                    message = f"👋 Benvenuto su EtnaMonitor, {username}!\n\n🔗 Per collegare il tuo account:\n1. Accedi su etna-monitor-v2.onrender.com\n2. Vai nel Dashboard\n3. Inserisci questo Chat ID: {chat_id}\n\n⚠️ Solo gli utenti Premium possono ricevere notifiche personalizzate."
-                
-                await update.message.reply_text(message)
-                
-                event = Event(
-                    user_id=user.id if user else None,
-                    event_type='bot_interaction',
-                    value=0,
-                    threshold=0,
-                    message=f'Bot /start command from {username} (chat_id: {chat_id})'
+                user = (
+                    User.query.filter(
+                        (User.telegram_chat_id == chat_id) | (User.chat_id == chat_id)
+                    )
+                    .order_by(User.id.asc())
+                    .first()
                 )
-                db.session.add(event)
-                db.session.commit()
-                
+
+                if user:
+                    user.telegram_chat_id = chat_id
+                    user.chat_id = chat_id
+                    user.telegram_opt_in = True
+                    user.consent_ts = user.consent_ts or datetime.utcnow()
+                    user.privacy_version = Config.PRIVACY_POLICY_VERSION
+
+                    if user.has_premium_access:
+                        plan_line = "✅ Premium attivo: riceverai tutti gli alert."
+                    elif not user.free_alert_consumed:
+                        plan_line = "⚪ Piano Free: 1 alert gratuito disponibile."
+                    else:
+                        plan_line = "🔴 Piano Free: alert di prova già utilizzato."
+
+                    message = (
+                        f"👋 Ciao {username}!\n\n"
+                        f"{plan_line}\n"
+                        "Controlla la tua dashboard su etna-monitor-v2.onrender.com per gestire le notifiche."
+                    )
+
+                    db.session.add(
+                        Event(
+                            user_id=user.id,
+                            event_type='bot_start',
+                            message=f"/start dal bot per chat {chat_id}",
+                        )
+                    )
+                    db.session.commit()
+                else:
+                    message = (
+                        f"👋 Benvenuto su EtnaMonitor, {username}!\n\n"
+                        "Per collegare il bot:"
+                        "\n1. Accedi su etna-monitor-v2.onrender.com"
+                        f"\n2. Inserisci questo Chat ID nella dashboard: {chat_id}"
+                        "\n3. Avvia nuovamente /start"
+                        "\n\nGli utenti Free ricevono 1 alert gratuito di prova; attiva Premium per notifiche illimitate."
+                    )
+
+                await update.message.reply_text(message)
+
             except Exception:
                 logger.exception("Error handling /start command")
                 await update.message.reply_text("❌ Errore temporaneo. Riprova più tardi.")
     
     async def _handle_help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /help command"""
-        help_text = """🌋 **EtnaMonitor Bot**
+        help_text = (
+            "🌋 **EtnaMonitor Bot**\n\n"
+            "**Comandi disponibili:**\n"
+            "/start - Collega il tuo account\n"
+            "/help - Mostra questo messaggio\n"
+            "/status - Verifica stato collegamento\n\n"
+            "**Piani disponibili:**\n"
+            "• Free: 1 alert gratuito di prova con soglia standard.\n"
+            "• Premium: alert illimitati, soglia personalizzata, log eventi.\n\n"
+            "**Supporto:** salvoferro16@gmail.com"
+        )
 
-**Comandi disponibili:**
-/start - Collega il tuo account
-/help - Mostra questo messaggio
-/status - Verifica stato collegamento
-
-**Come funziona:**
-1. Registrati su etna-monitor-v2.onrender.com
-2. Attiva Premium per notifiche personalizzate
-3. Collega il bot dal Dashboard
-4. Ricevi avvisi quando il tremore supera la tua soglia
-
-**Supporto:** salvoferro16@gmail.com"""
-        
         await update.message.reply_text(help_text)
-    
+
     async def _handle_status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /status command"""
         chat_id = str(update.effective_chat.id)
-        
+
         with self.app.app_context():
             try:
-                user = User.query.filter_by(chat_id=chat_id).first()
-                
+                user = (
+                    User.query.filter(
+                        (User.telegram_chat_id == chat_id) | (User.chat_id == chat_id)
+                    )
+                    .order_by(User.id.asc())
+                    .first()
+                )
+
                 if user:
-                    status = "Premium ✅" if user.has_premium_access else "Free"
-                    threshold = user.threshold or 2.0
-                    message = f"📊 **Stato Account**\n\nEmail: {user.email}\nTipo: {status}\nSoglia: {threshold} mV\nChat ID: {chat_id}"
+                    plan = "Premium ✅" if user.has_premium_access else "Free"
+                    threshold = user.threshold or Config.ALERT_THRESHOLD_DEFAULT
+                    free_state = (
+                        "Alert di prova disponibile"
+                        if not user.free_alert_consumed
+                        else "Alert di prova già utilizzato"
+                    )
+                    message = (
+                        "📊 **Stato Account**\n\n"
+                        f"Email: {user.email}\n"
+                        f"Piano: {plan}\n"
+                        f"Soglia attiva: {threshold:.2f} mV\n"
+                        f"Alert gratuiti: {free_state}\n"
+                        f"Chat ID: {chat_id}"
+                    )
                 else:
-                    message = f"❌ Account non collegato\n\nChat ID: {chat_id}\nCollega il tuo account su etna-monitor-v2.onrender.com"
-                
+                    message = (
+                        f"❌ Account non collegato\n\nChat ID: {chat_id}\n"
+                        "Aggiungi l'ID nella dashboard e avvia nuovamente /start."
+                    )
+
                 await update.message.reply_text(message)
-                
+
             except Exception:
                 logger.exception("Error handling /status command")
                 await update.message.reply_text("❌ Errore nel recuperare lo stato.")

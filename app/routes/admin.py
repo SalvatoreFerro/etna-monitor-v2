@@ -130,8 +130,9 @@ def test_alert():
 
         premium_users = User.query.filter(
             or_(User.premium.is_(True), User.is_premium.is_(True)),
-            User.chat_id.isnot(None),
-            User.chat_id != ''
+            User.telegram_chat_id.isnot(None),
+            User.telegram_chat_id != '',
+            User.telegram_opt_in.is_(True),
         ).count()
 
         recent_alerts = Event.query.filter_by(event_type='alert').count()
@@ -162,9 +163,31 @@ def users_list():
             "email": user.email,
             "premium": user.has_premium_access,
             "is_admin": user.is_admin,
-            "chat_id": user.chat_id,
-            "threshold": user.threshold
+            "plan_type": user.current_plan,
+            "chat_id": user.telegram_chat_id or user.chat_id,
+            "telegram_opt_in": user.telegram_opt_in,
+            "free_alert_consumed": user.free_alert_consumed,
+            "threshold": user.threshold,
         } for user in users])
+
+
+@bp.route("/reset_free_trial/<int:user_id>", methods=["POST"])
+@admin_required
+def reset_free_trial(user_id: int):
+    user = User.query.get_or_404(user_id)
+    user.free_alert_consumed = False
+    user.free_alert_event_id = None
+    user.last_alert_sent_at = None
+    db.session.commit()
+
+    if request.is_json:
+        return jsonify({
+            "success": True,
+            "message": f"Alert di prova ripristinato per {user.email}",
+        })
+
+    flash(f"Prova gratuita ripristinata per {user.email}", "success")
+    return redirect(url_for('admin.admin_home'))
 
 
 @bp.route("/donations")

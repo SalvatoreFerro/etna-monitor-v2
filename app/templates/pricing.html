@@ -73,6 +73,50 @@
       <p>Ogni piano include accesso alla piattaforma cloud EtnaMonitor con aggiornamenti costanti e supporto dedicato.</p>
     </div>
 
+    <div class="plan-comparison card-premium">
+      <table class="comparison-table" role="table">
+        <thead>
+          <tr>
+            <th>Funzionalità</th>
+            <th>Piano Free</th>
+            <th>Piano Premium</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Accesso alla dashboard</td>
+            <td>✅</td>
+            <td>✅</td>
+          </tr>
+          <tr>
+            <td>Collegamento Telegram</td>
+            <td>✅</td>
+            <td>✅</td>
+          </tr>
+          <tr>
+            <td>Alert automatici</td>
+            <td>🔔 1 gratuito di prova</td>
+            <td>🔥 Illimitati</td>
+          </tr>
+          <tr>
+            <td>Soglia personalizzata</td>
+            <td>❌</td>
+            <td>✅</td>
+          </tr>
+          <tr>
+            <td>Log eventi recenti</td>
+            <td>❌</td>
+            <td>✅</td>
+          </tr>
+          <tr>
+            <td>Supporto prioritario</td>
+            <td>❌</td>
+            <td>✅</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
     <div class="plan-grid">
       <article class="plan-card glass" aria-label="Piano Gratuito">
         <header class="plan-header">
@@ -312,6 +356,12 @@
       <a href="mailto:salvoferro16@gmail.com" class="btn btn-secondary glass" aria-label="Richiedi una demo personalizzata">Prenota una demo</a>
       <a href="{{ url_for('auth.login') }}" class="btn btn-premium" aria-label="Accedi con Google per attivare EtnaMonitor">Accedi con Google</a>
     </div>
+  </section>
+
+  <section class="donation-callout card-premium animate-premium-fade" aria-label="Informazioni sul piano Free">
+    <p>Il piano Free include un solo alert di prova per scoprire come funziona il sistema.<br>
+    Dopo il primo alert potrai passare a Premium con una piccola donazione:</p>
+    <a href="{{ config.PAYPAL_DONATION_LINK or '#' }}" class="btn btn-premium" {% if config.PAYPAL_DONATION_LINK %}target="_blank" rel="noopener"{% else %}aria-disabled="true"{% endif %}>Attiva Premium</a>
   </section>
 </main>
 

@@ -35,6 +35,7 @@
             <th>Tipo Account</th>
             <th>Soglia Personalizzata</th>
             <th>ID Chat</th>
+            <th>Prova gratuita</th>
             <th>Azioni</th>
           </tr>
         </thead>
@@ -51,7 +52,17 @@
                 {% endif %}
               </td>
               <td>{{ user.threshold or 'Predefinita (2.0)' }} mV</td>
-              <td>{{ user.chat_id or 'Non impostato' }}</td>
+              <td>{{ user.telegram_chat_id or user.chat_id or 'Non impostato' }}</td>
+              <td>
+                {% if user.free_alert_consumed %}
+                  <span class="badge warning">Consumata</span>
+                {% else %}
+                  <span class="badge success">Disponibile</span>
+                {% endif %}
+                <button onclick="resetFreeTrial({{ user.id }})" class="btn btn-secondary glass btn-sm">
+                  <i class="fas fa-undo"></i> Reset prova
+                </button>
+              </td>
               <td>
                 <div class="action-buttons">
                   <button onclick="togglePremium({{ user.id }})" class="btn btn-premium btn-sm">
@@ -148,6 +159,26 @@
         }
       });
     }
+  }
+
+  function resetFreeTrial(userId) {
+    fetch(`/admin/reset_free_trial/${userId}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      }
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        location.reload();
+      } else if (data.message) {
+        alert(data.message);
+      }
+    })
+    .catch(() => {
+      alert('Impossibile ripristinare la prova gratuita in questo momento.');
+    });
   }
 
   function testAlert(event) {
