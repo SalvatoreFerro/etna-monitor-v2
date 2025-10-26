@@ -66,12 +66,20 @@ def test_alembic_upgrade_creates_required_schema(tmp_path):
         if default is not None:
             assert "free" in str(default)
 
+        # Ensure Google OAuth support columns are created
+        assert "google_id" in user_columns
+        assert "name" in user_columns
+        assert "picture_url" in user_columns
+
         assert "partners" in inspector.get_table_names()
         partner_indexes = {
             index["name"] for index in inspector.get_indexes("partners")
         }
         assert "idx_partners_visible" in partner_indexes
         assert "idx_partners_verified_created" in partner_indexes
+
+        user_indexes = {index["name"] for index in inspector.get_indexes("users")}
+        assert "ix_users_google_id_unique" in user_indexes
 
         verified_col = {
             col["name"]: col for col in inspector.get_columns("partners")
