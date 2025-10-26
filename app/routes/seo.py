@@ -22,11 +22,14 @@ def _canonical_base_url() -> str:
 
 def _static_routes() -> Iterable[Tuple[str, str]]:
     return (
-        ("main.index", "daily"),
-        ("dashboard.dashboard_home", "hourly"),
-        ("main.roadmap", "weekly"),
-        ("main.sponsor", "weekly"),
+        ("main.index", "hourly"),
         ("main.pricing", "weekly"),
+        ("main.etna3d", "weekly"),
+        ("experience.experience_home", "weekly"),
+        ("experience.become_partner", "monthly"),
+        ("main.roadmap", "weekly"),
+        ("main.sponsor", "monthly"),
+        ("main.cookies", "yearly"),
         ("main.privacy", "yearly"),
         ("main.terms", "yearly"),
     )
@@ -68,12 +71,14 @@ def sitemap() -> Response:
 def robots_txt() -> Response:
     base_url = _canonical_base_url()
     sitemap_url = f"{base_url}/sitemap.xml"
-    content = "\n".join(
-        [
-            "User-agent: *",
-            "Disallow: /admin",
-            f"Sitemap: {sitemap_url}",
-            "",
-        ]
-    )
+    content_lines = [
+        "User-agent: *",
+        "Disallow: /admin",
+        "Disallow: /dashboard",
+        "Disallow: /auth",
+        "Disallow: /api",
+        f"Sitemap: {sitemap_url}",
+        "",
+    ]
+    content = "\n".join(content_lines)
     return Response(content, mimetype="text/plain")

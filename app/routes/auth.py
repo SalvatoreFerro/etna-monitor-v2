@@ -242,6 +242,28 @@ def _create_user_with_existing_columns(
             coerced_value = 0
 
         values["free_alert_consumed"] = coerced_value
+        def _type_name(type_) -> str:
+            if type_ is None:
+                return ""
+            if isinstance(type_, str):
+                return type_.lower()
+            visit_name = getattr(type_, "__visit_name__", None)
+            if visit_name:
+                return str(visit_name).lower()
+            python_type = getattr(type_, "python_type", None)
+            if python_type is bool:
+                return "boolean"
+            if python_type is int:
+                return "integer"
+            if isinstance(type_, type):
+                return type_.__name__.lower()
+            return type_.__class__.__name__.lower()
+
+        type_name = _type_name(column_type)
+        if type_name in {"integer", "bigint", "smallint"}:
+            values["free_alert_consumed"] = 0
+        else:
+            values["free_alert_consumed"] = False
 
     insert_stmt = User.__table__.insert().values(**values)
     try:

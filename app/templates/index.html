@@ -1,12 +1,5 @@
 {% extends "layout.html" %}
 
-{% block head %}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
-{% endblock %}
-
 {% block content %}
 <!-- Hero Section -->
 <section class="hero-section hero-premium animate-premium-fade" role="banner" aria-label="EtnaMonitor">
@@ -27,7 +20,7 @@
         </div>
       </div>
 
-      <div class="hero-badge glass" role="status" aria-live="polite">
+      <div class="hero-badge glass" role="status" aria-live="polite" id="service-status">
         <span class="status-dot" id="status-dot" aria-hidden="true"></span>
         <span id="status-text" aria-label="Service status">Controllo stato...</span>
       </div>
@@ -74,6 +67,10 @@
       </div>
 
       <nav class="hero-section-nav" aria-label="Vai alle sezioni principali">
+        <a href="#grafico-etna" class="hero-section-link">
+          <span class="hero-section-dot" aria-hidden="true"></span>
+          Grafico Etna
+        </a>
         <a href="#section-tecnologia" class="hero-section-link">
           <span class="hero-section-dot" aria-hidden="true"></span>
           Tecnologia
@@ -129,26 +126,64 @@
     </div>
 
     <div class="hero-visual">
-      <div class="preview-chart home-graph-card card-premium" id="preview-chart" role="img" aria-label="Anteprima grafico tremore vulcanico">
-        <div class="chart-header">
-          <div>
-            <p class="chart-eyebrow">Realtime Feed</p>
-            <h3>Trend tremore vulcanico • ultime 24h</h3>
-          </div>
-          <div class="current-status" id="current-status">
-            <span class="current-value" id="current-value-display">-- mV</span>
-            <span class="activity-badge" id="activity-badge">--</span>
-          </div>
+      <section id="grafico-etna" class="hero-graph-section" aria-labelledby="grafico-etna-title">
+        <div class="graph-intro">
+          <span class="section-pill">Dati INGV</span>
+          <h2 id="grafico-etna-title">Grafico tremore vulcanico dell'Etna in tempo reale</h2>
+          <p id="grafico-etna-description">
+            {% if latest_value is not none and latest_timestamp_display %}
+              L'ultimo campione INGV disponibile ({{ latest_timestamp_display }}) registra <strong>{{ '%.2f' % latest_value }} mV</strong>,
+              calcolato su una serie di {{ data_points_count }} misurazioni nelle ultime 24 ore.
+            {% else %}
+              Il grafico mostra l'andamento del tremore vulcanico dell'Etna con aggiornamenti automatici ogni cinque minuti.
+            {% endif %}
+            {% if temporal_coverage %}
+              Copertura temporale: <span class="no-wrap">{{ temporal_coverage }}</span>.
+            {% endif %}
+          </p>
+          <dl class="graph-meta">
+            <div class="graph-meta-item">
+              <dt>Ultimo aggiornamento</dt>
+              <dd>{% if latest_timestamp_display %}{{ latest_timestamp_display }}{% else %}--{% endif %}</dd>
+            </div>
+            <div class="graph-meta-item">
+              <dt>Campioni elaborati</dt>
+              <dd>{% if data_points_count %}{{ data_points_count }}{% else %}--{% endif %}</dd>
+            </div>
+            <div class="graph-meta-item">
+              <dt>Fonte</dt>
+              <dd><a href="https://www.ct.ingv.it" target="_blank" rel="noopener">INGV Osservatorio Etneo</a></dd>
+            </div>
+          </dl>
         </div>
-        <div id="home-preview-loading" class="chart-loading-overlay" aria-live="polite">
-          <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <path d="M3 3v18h18"/>
-            <path d="M7 12l3-3 3 3 5-5"/>
-          </svg>
-          <p>Caricamento dati da INGV, attendere...</p>
+        <div class="preview-chart home-graph-card card-premium" id="preview-chart" role="img" aria-describedby="grafico-etna-description" aria-label="Trend tremore vulcanico dell'Etna">
+          <div class="chart-header">
+            <div>
+              <p class="chart-eyebrow">Realtime Feed</p>
+              <h3>Trend tremore vulcanico • ultime 24h</h3>
+            </div>
+            <div class="current-status" id="current-status">
+              <span class="current-value" id="current-value-display">-- mV</span>
+              <span class="activity-badge" id="activity-badge">--</span>
+            </div>
+          </div>
+          <div id="home-preview-loading" class="chart-loading-overlay" aria-live="polite">
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+              <path d="M3 3v18h18"/>
+              <path d="M7 12l3-3 3 3 5-5"/>
+            </svg>
+            <p>Caricamento dati da INGV, attendere...</p>
+          </div>
+          <div id="home-preview-plot" role="img" aria-label="Visualizzazione dati tremore"></div>
         </div>
-        <div id="home-preview-plot" role="img" aria-label="Visualizzazione dati tremore"></div>
-      </div>
+        <div class="graph-context">
+          <p>
+            Approfondisci il monitoraggio con il <a href="{{ url_for('main.etna3d') }}">modello 3D dell'Etna</a>,
+            esplora le <a href="{{ url_for('experience.experience_home') }}">attività verificate sul territorio</a>
+            e consulta la <a href="/roadmap">roadmap</a> per scoprire le prossime funzionalità.
+          </p>
+        </div>
+      </section>
     </div>
   </div>
 </section>
