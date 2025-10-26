@@ -249,9 +249,17 @@ def create_app(config_overrides: dict | None = None):
             engine_defaults.pop("max_overflow", None)
 
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = engine_defaults
-    app.config["CANONICAL_HOST"] = os.getenv("CANONICAL_HOST", "")
+    configured_canonical = os.getenv("CANONICAL_HOST")
+    if not configured_canonical and os.getenv("FLASK_ENV") == "production":
+        configured_canonical = "etnamonitor.it"
 
-    enable_seo_routes = os.getenv("ENABLE_SEO_ROUTES", "0") == "1"
+    app.config["CANONICAL_HOST"] = configured_canonical or ""
+
+    enable_seo_routes = os.getenv("ENABLE_SEO_ROUTES", "1").lower() not in {
+        "0",
+        "false",
+        "no",
+    }
     enable_ads_routes = os.getenv("ENABLE_ADS_ROUTES", "0") == "1"
     app.config["ENABLE_SEO_ROUTES"] = enable_seo_routes
     app.config["ENABLE_ADS_ROUTES"] = enable_ads_routes
@@ -309,17 +317,26 @@ def create_app(config_overrides: dict | None = None):
                 "name": "EtnaMonitor",
                 "url": canonical_base,
                 "logo": logo_url,
+                "sameAs": [
+                    "https://www.linkedin.com/in/ferrosalvatore",
+                    "https://www.ct.ingv.it",
+                ],
+                "contactPoint": [
+                    {
+                        "@type": "ContactPoint",
+                        "contactType": "customer support",
+                        "email": "salvoferro16@gmail.com",
+                        "availableLanguage": ["it", "en"],
+                    }
+                ],
             },
             {
                 "@context": "https://schema.org",
                 "@type": "WebSite",
                 "name": "EtnaMonitor",
                 "url": canonical_base,
-                "potentialAction": {
-                    "@type": "SearchAction",
-                    "target": f"{canonical_base}/search?q={{search_term_string}}",
-                    "query-input": "required name=search_term_string",
-                },
+                "inLanguage": "it-IT",
+                "isAccessibleForFree": True,
             },
         ]
 

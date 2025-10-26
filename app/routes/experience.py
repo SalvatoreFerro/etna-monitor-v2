@@ -78,6 +78,8 @@ def experience_home():
         user=get_current_user(),
         page_title="Etna Experience – Scopri le attività e le guide dell'Etna",
         page_description="Strutture, escursioni e tour selezionati collegati all'attività vulcanica.",
+        page_og_title="Etna Experience – Scopri le attività e le guide dell'Etna",
+        page_og_description="Strutture, escursioni e tour selezionati collegati all'attività vulcanica.",
     )
 
 
@@ -125,5 +127,7 @@ def become_partner():
         categories=_available_filters()[1:],  # exclude "Tutti"
         page_title="Diventa partner – Etna Experience",
         page_description="Invia la tua attività per apparire nella sezione Etna Experience di EtnaMonitor.",
+        page_og_title="Diventa partner – Etna Experience",
+        page_og_description="Invia la tua attività per apparire nella sezione Etna Experience di EtnaMonitor.",
     )
 

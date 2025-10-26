@@ -1,14 +1,14 @@
 {
-  "name": "EtnaMonitor - Volcanic Tremor Monitoring",
+  "name": "EtnaMonitor – Monitoraggio Etna in tempo reale",
   "short_name": "EtnaMonitor",
-  "description": "Real-time volcanic tremor monitoring for Mount Etna",
+  "description": "Monitoraggio in tempo reale del tremore vulcanico dell'Etna con grafici INGV e avvisi personalizzati",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#007aff",
   "orientation": "portrait-primary",
   "categories": ["science", "monitoring", "utilities"],
-  "lang": "en",
+  "lang": "it",
   "icons": [
     {
       "src": "/static/icons/icon-192.png",
@@ -27,7 +27,7 @@
     {
       "name": "Dashboard",
       "short_name": "Dashboard",
-      "description": "View tremor monitoring dashboard",
+      "description": "Apri la dashboard interattiva di monitoraggio",
       "url": "/dashboard",
       "icons": [{"src": "/static/icons/dashboard-96.png", "sizes": "96x96"}]
     }
