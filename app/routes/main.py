@@ -8,9 +8,12 @@ from flask import (
     current_app,
     jsonify,
     render_template,
+    request,
     send_from_directory,
+    session,
     url_for,
 )
+from flask_login import current_user
 
 from ..utils.auth import get_current_user
 
@@ -24,8 +27,34 @@ from app.security import build_csp, talisman
 
 bp = Blueprint("main", __name__)
 
+
+def _index_cache_key() -> str:
+    """Return a cache key scoped to the request path and the current user."""
+
+    user_id: str | None = None
+    if current_user.is_authenticated:
+        user_id = str(current_user.get_id()) if current_user.get_id() is not None else "auth"
+    else:
+        # Flask-Login clears its session keys on logout, but the legacy session
+        # helpers still mirror the integer ``user_id``. Reuse it when present so
+        # cached pages remain isolated per authenticated session while visitors
+        # without a profile still share the anonymous entry.
+        raw_session_id = session.get("user_id")
+        if raw_session_id is not None:
+            user_id = str(raw_session_id)
+
+    if not user_id:
+        user_id = "anon"
+
+    # Include the query string (if any) to avoid collisions across anchors or
+    # tracking parameters while keeping the cache key deterministic.
+    full_path = request.full_path or request.path or "/"
+    full_path = full_path.rstrip("?")
+    return f"index::{user_id}::{full_path}"
+
+
 @bp.route("/")
-@cache.cached(timeout=90)
+@cache.cached(timeout=90, key_prefix=_index_cache_key)
 def index():
     csv_path = os.getenv("CSV_PATH", "/var/tmp/curva.csv")
     timestamps: list[str] = []
