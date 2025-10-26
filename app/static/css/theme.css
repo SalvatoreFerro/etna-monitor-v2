@@ -463,6 +463,71 @@ body, p, span, div, a, button, input, select, textarea,
   outline-offset: 2px;
 }
 
+.hero-graph-section {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.graph-intro {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.graph-intro h2 {
+  font-size: clamp(1.5rem, 2vw + 1.5rem, 2.5rem);
+  line-height: 1.2;
+  margin: 0;
+}
+
+.graph-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-5);
+  margin: 0;
+  padding: 0;
+}
+
+.graph-meta-item {
+  display: grid;
+  gap: var(--space-1);
+  min-width: 140px;
+}
+
+.graph-meta-item dt {
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.65);
+}
+
+.graph-meta-item dd {
+  margin: 0;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: var(--font-weight-semibold);
+}
+
+.graph-context {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.graph-context a {
+  color: #93c5fd;
+  font-weight: var(--font-weight-medium);
+}
+
+.graph-context a:hover,
+.graph-context a:focus-visible {
+  color: #bfdbfe;
+  text-decoration: underline;
+}
+
+.no-wrap {
+  white-space: nowrap;
+}
+
 .hero-section-dot {
   width: 10px;
   height: 10px;
@@ -1929,6 +1994,16 @@ body, p, span, div, a, button, input, select, textarea,
     width: 100% !important;
     max-width: 100% !important;
     overflow: hidden !important;
+  }
+
+  .hero-graph-section {
+    gap: var(--space-5) !important;
+  }
+
+  .graph-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
   }
   
   /* Plotly chart mobile responsiveness */

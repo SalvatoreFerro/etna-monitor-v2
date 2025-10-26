@@ -133,8 +133,9 @@
     {% set computed_og_image = page_og_image or default_og_image %}
     {% set computed_canonical = canonical_url %}
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, shrink-to-fit=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content="{{ computed_description }}" />
+    <meta name="application-name" content="EtnaMonitor" />
     <meta name="theme-color" content="#00D2FF" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -151,12 +152,13 @@
 
     <link rel="canonical" href="{{ computed_canonical }}" />
 
+    <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/banners.css') }}" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700&display=swap" rel="stylesheet">
@@ -166,6 +168,8 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="{{ computed_canonical }}" />
     <meta property="og:image" content="{{ computed_og_image }}" />
+    <meta property="og:site_name" content="EtnaMonitor" />
+    <meta property="og:locale" content="it_IT" />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="{{ computed_og_title }}" />
@@ -190,7 +194,12 @@
       }
     ] %}
     {% if page_structured_data is defined and page_structured_data %}
-      {% set structured_data_payload = page_structured_data %}
+      {% if page_structured_data is mapping %}
+        {% set extra_structured = [page_structured_data] %}
+      {% else %}
+        {% set extra_structured = page_structured_data | list %}
+      {% endif %}
+      {% set structured_data_payload = default_structured_data_base + extra_structured %}
     {% else %}
       {% set structured_data_payload = structured_data_default %}
     {% endif %}
