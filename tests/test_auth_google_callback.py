@@ -19,8 +19,10 @@ def reset_google_id_cache():
     from app.routes import auth as auth_routes
 
     auth_routes._GOOGLE_ID_COLUMN_SUPPORTED = None
+    auth_routes._PLAN_TYPE_COLUMN_READY = None
     yield
     auth_routes._GOOGLE_ID_COLUMN_SUPPORTED = None
+    auth_routes._PLAN_TYPE_COLUMN_READY = None
 
 
 class DummyResponse:
@@ -136,3 +138,63 @@ def test_google_callback_handles_missing_google_id(monkeypatch, client, app):
     with app.app_context():
         user = User.query.filter_by(email="legacy-user@example.com").one()
         assert user.google_id is None
+
+
+def test_google_callback_heals_missing_plan_type(monkeypatch, client, app):
+    from sqlalchemy.exc import ProgrammingError
+
+    token_response = DummyResponse(200, {"access_token": "access"})
+    userinfo_response = DummyResponse(
+        200,
+        {
+            "sub": "plan-type-user",
+            "email": "plan-type@example.com",
+            "name": "Plan Type",
+        },
+    )
+
+    responses = iter([token_response, userinfo_response])
+
+    def fake_google_request(*args, **kwargs):
+        return next(responses)
+
+    from app.routes import auth as auth_routes
+
+    monkeypatch.setattr("app.routes.auth._google_oauth_request", fake_google_request)
+
+    ensure_calls: list[bool] = []
+
+    def fake_ensure(force_refresh: bool = False) -> bool:
+        ensure_calls.append(force_refresh)
+        return True
+
+    monkeypatch.setattr(auth_routes, "_ensure_plan_type_column", fake_ensure)
+
+    original_query_with_retry = auth_routes._query_with_retry
+
+    call_state = {"count": 0}
+
+    def flaky_query(query_callable):
+        if call_state["count"] == 0:
+            call_state["count"] += 1
+            raise ProgrammingError(
+                "SELECT",
+                {},
+                Exception("column users.plan_type does not exist"),
+            )
+        return original_query_with_retry(query_callable)
+
+    monkeypatch.setattr(auth_routes, "_query_with_retry", flaky_query)
+
+    with client.session_transaction() as session:
+        session["oauth_state"] = "state-token"
+
+    response = client.get("/auth/callback?code=auth-code&state=state-token")
+    assert response.status_code == 302
+    assert "/dashboard" in response.headers["Location"]
+
+    assert ensure_calls == [True]
+
+    with app.app_context():
+        user = User.query.filter_by(email="plan-type@example.com").one()
+        assert user.plan_type == "free"
