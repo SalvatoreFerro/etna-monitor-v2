@@ -20,13 +20,13 @@ from flask import (
 
 from flask_login import login_user, logout_user
 
-from sqlalchemy import func, inspect, text
+from sqlalchemy import func, inspect
 from sqlalchemy.exc import (
     IntegrityError,
-    OperationalError,
     ProgrammingError,
     SQLAlchemyError,
 )
+from sqlalchemy.orm import load_only
 
 from ..models import db
 from ..models.user import User
@@ -37,7 +37,7 @@ legacy_bp = Blueprint("legacy_auth", __name__ + "_legacy")
 
 
 _GOOGLE_ID_COLUMN_SUPPORTED: bool | None = None
-_PLAN_TYPE_COLUMN_READY: bool | None = None
+_LOGIN_COLUMN_CACHE: tuple | None = None
 
 
 def _supports_google_id_column(force_refresh: bool = False) -> bool:
@@ -65,86 +65,6 @@ def _supports_google_id_column(force_refresh: bool = False) -> bool:
     return _GOOGLE_ID_COLUMN_SUPPORTED
 
 
-def _ensure_plan_type_column(force_refresh: bool = False) -> bool:
-    """Ensure the ``plan_type`` column exists with a safe default.
-
-    Production databases can lag behind migrations immediately after a deploy.
-    When SQLAlchemy reflects the ``User`` model it expects the ``plan_type``
-    column to be present; if the column is missing a ``ProgrammingError`` is
-    raised and OAuth callbacks fail.  To make the login flow resilient we
-    inspect the schema at runtime and, when necessary, create the column with a
-    default of ``'free'``.
-    """
-
-    global _PLAN_TYPE_COLUMN_READY
-
-    if not force_refresh and _PLAN_TYPE_COLUMN_READY:
-        return True
-
-    try:
-        inspector = inspect(db.engine)
-        has_plan_type = any(
-            column.get("name") == "plan_type"
-            for column in inspector.get_columns(User.__tablename__)
-        )
-        if has_plan_type:
-            _PLAN_TYPE_COLUMN_READY = True
-            return True
-    except SQLAlchemyError:
-        current_app.logger.exception(
-            "[LOGIN] Could not inspect users table for plan_type column"
-        )
-        # Fall through to attempt creating the column defensively.
-
-    try:
-        with db.engine.begin() as connection:
-            connection.execute(
-                text(
-                    """
-                    ALTER TABLE users
-                    ADD COLUMN IF NOT EXISTS plan_type VARCHAR(20)
-                    DEFAULT 'free'
-                """
-                )
-            )
-            connection.execute(
-                text(
-                    """
-                    ALTER TABLE users
-                    ALTER COLUMN plan_type SET DEFAULT 'free'
-                """
-                )
-            )
-            connection.execute(
-                text(
-                    """
-                    UPDATE users
-                    SET plan_type = 'free'
-                    WHERE plan_type IS NULL OR plan_type = ''
-                """
-                )
-            )
-            connection.execute(
-                text(
-                    """
-                    ALTER TABLE users
-                    ALTER COLUMN plan_type SET NOT NULL
-                """
-                )
-            )
-        _PLAN_TYPE_COLUMN_READY = True
-        current_app.logger.info(
-            "[LOGIN] plan_type column was missing and has been created automatically"
-        )
-        return True
-    except SQLAlchemyError:
-        current_app.logger.exception(
-            "[LOGIN] Failed to create plan_type column defensively"
-        )
-        _PLAN_TYPE_COLUMN_READY = False
-        return False
-
-
 def _disable_google_id_column_usage():
     """Record that the database does not support the google_id column."""
 
@@ -154,6 +74,163 @@ def _disable_google_id_column_usage():
             "[LOGIN] Disabling google_id usage due to runtime database error"
         )
         _GOOGLE_ID_COLUMN_SUPPORTED = False
+
+
+def _login_query_columns() -> tuple:
+    """Return the minimal set of ``User`` columns safe for login queries."""
+
+    global _LOGIN_COLUMN_CACHE
+    if _LOGIN_COLUMN_CACHE is not None:
+        return _LOGIN_COLUMN_CACHE
+
+    safe_defaults = (
+        User.id,
+        User.email,
+        User.google_id,
+        User.name,
+        User.picture_url,
+        User.password_hash,
+        User.is_premium,
+        User.premium,
+        User.premium_lifetime,
+        User.telegram_opt_in,
+    )
+
+    try:
+        inspector = inspect(db.engine)
+        available = {
+            column.get("name")
+            for column in inspector.get_columns(User.__tablename__)
+        }
+    except SQLAlchemyError as exc:  # pragma: no cover - best-effort path
+        current_app.logger.warning(
+            "[LOGIN] Could not inspect users table columns: %s", exc
+        )
+        _LOGIN_COLUMN_CACHE = safe_defaults
+        return _LOGIN_COLUMN_CACHE
+
+    preferred = safe_defaults + (
+        User.plan_type,
+        User.is_admin,
+        User.subscription_status,
+        User.subscription_id,
+        User.current_period_end,
+        User.trial_end,
+        User.billing_email,
+        User.company_name,
+        User.vat_id,
+        User.free_alert_event_id,
+        User.free_alert_consumed,
+        User.last_alert_sent_at,
+        User.alert_count_30d,
+        User.consent_ts,
+        User.privacy_version,
+    )
+
+    selected = []
+    for attr in preferred:
+        if attr.key in available:
+            selected.append(attr)
+
+    if not selected:
+        selected = list(safe_defaults)
+
+    deduped: list = []
+    seen = set()
+    for attr in selected:
+        if attr.key in seen:
+            continue
+        seen.add(attr.key)
+        deduped.append(attr)
+
+    _LOGIN_COLUMN_CACHE = tuple(deduped)
+    return _LOGIN_COLUMN_CACHE
+
+
+def find_user_by_google_id(session, gid: str):
+    if not gid:
+        return None
+
+    columns = _login_query_columns()
+    query = session.query(User)
+    if columns:
+        query = query.options(load_only(*columns))
+    return query.filter(User.google_id == gid).first()
+
+
+def find_user_by_email(session, email: str):
+    if not email:
+        return None
+
+    columns = _login_query_columns()
+    query = session.query(User)
+    if columns:
+        query = query.options(load_only(*columns))
+    return query.filter(func.lower(User.email) == email.lower()).first()
+
+
+def _create_user_with_existing_columns(
+    *,
+    email: str,
+    google_id: str,
+    name: str | None,
+    picture_url: str | None,
+    is_admin: bool,
+):
+    """Insert a new user using only the columns currently available."""
+
+    try:
+        inspector = inspect(db.engine)
+        available = {
+            column.get("name")
+            for column in inspector.get_columns(User.__tablename__)
+        }
+    except SQLAlchemyError as exc:
+        current_app.logger.error(
+            "[LOGIN] Unable to inspect users table before fallback insert: %s",
+            exc,
+            exc_info=True,
+        )
+        return None
+
+    values: dict[str, object] = {"email": email}
+
+    if "password_hash" in available:
+        values["password_hash"] = ""
+    if "created_at" in available:
+        values["created_at"] = datetime.now(timezone.utc)
+    if google_id and "google_id" in available:
+        values["google_id"] = google_id
+    if name and "name" in available:
+        values["name"] = name
+    if picture_url and "picture_url" in available:
+        values["picture_url"] = picture_url
+    if is_admin and "is_admin" in available:
+        values["is_admin"] = True
+
+    insert_stmt = User.__table__.insert().values(**values)
+    try:
+        db.session.execute(insert_stmt)
+        db.session.commit()
+    except SQLAlchemyError as exc:
+        db.session.rollback()
+        current_app.logger.error(
+            "[LOGIN] Fallback insert failed: %s", exc, exc_info=True
+        )
+        return None
+
+    try:
+        if google_id and "google_id" in available:
+            return find_user_by_google_id(db.session, google_id)
+        return find_user_by_email(db.session, email)
+    except SQLAlchemyError as exc:
+        current_app.logger.error(
+            "[LOGIN] Failed to reload user after fallback insert: %s",
+            exc,
+            exc_info=True,
+        )
+        db.session.rollback()
+        return None
 
 
 def _google_oauth_request(
@@ -196,42 +273,6 @@ def _google_oauth_request(
                 headers=headers,
                 timeout=timeout,
             )
-
-# ---------------------------------------------------------------------------
-# Database helpers
-# ---------------------------------------------------------------------------
-
-
-def _query_with_retry(query_callable):
-    """Execute a SQLAlchemy query and retry once after refreshing the pool."""
-
-    try:
-        return query_callable()
-    except ProgrammingError as exc:
-        message = str(exc.orig if hasattr(exc, "orig") else exc).lower()
-        if "plan_type" in message and "does not exist" in message:
-            current_app.logger.error(
-                "[LOGIN] plan_type column missing during query; attempting self-healing",
-                exc_info=exc,
-            )
-            db.session.rollback()
-            if _ensure_plan_type_column(force_refresh=True):
-                return query_callable()
-        raise
-    except OperationalError as exc:
-        current_app.logger.warning(
-            "[LOGIN] Database connection error, refreshing pool and retrying once.",
-            exc_info=exc,
-        )
-        db.session.rollback()
-        try:
-            db.engine.dispose()
-        except Exception:
-            current_app.logger.exception(
-                "[LOGIN] Failed to dispose SQLAlchemy engine after connection error"
-            )
-        return query_callable()
-
 
 # ---------------------------------------------------------------------------
 # Legacy password-based helpers (DEPRECATED)
@@ -431,32 +472,38 @@ def auth_callback():
 
         if google_id_supported and google_id:
             try:
-                user = _query_with_retry(
-                    lambda: User.query.filter_by(google_id=google_id).first()
+                user = find_user_by_google_id(db.session, google_id)
+            except SQLAlchemyError as exc:
+                current_app.logger.error(
+                    "[LOGIN] google_id lookup failed: %s", exc, exc_info=True
                 )
-            except ProgrammingError:
-                current_app.logger.exception(
-                    "[LOGIN] google_id lookup failed; falling back to email only"
-                )
+                db.session.rollback()
                 _disable_google_id_column_usage()
                 google_id_supported = False
                 user = None
 
-        if not user and email:
-            user = _query_with_retry(
-                lambda: User.query.filter(func.lower(User.email) == email).first()
-            )
-            if user and google_id_supported and google_id:
+        if not user:
+            try:
+                user = find_user_by_email(db.session, email)
+            except SQLAlchemyError as exc:
+                current_app.logger.error(
+                    "[LOGIN] email lookup failed: %s", exc, exc_info=True
+                )
+                db.session.rollback()
+                user = None
+
+            if user and google_id_supported and google_id and not getattr(user, "google_id", None):
                 user.google_id = google_id
 
+        created_new_user = False
         if user:
             if google_id_supported and google_id:
                 user.google_id = google_id
-            if not user.name and name:
+            if name and not getattr(user, "name", None):
                 user.name = name
-            if not user.picture_url and picture_url:
+            if picture_url and not getattr(user, "picture_url", None):
                 user.picture_url = picture_url
-            if user.password_hash is None:
+            if getattr(user, "password_hash", None) is None:
                 user.password_hash = ""
         else:
             user = User(
@@ -464,15 +511,15 @@ def auth_callback():
                 name=name or None,
                 picture_url=picture_url or None,
                 password_hash="",
-                plan_type="free",
-                created_at=datetime.now(timezone.utc),
             )
             if google_id_supported and google_id:
                 user.google_id = google_id
             db.session.add(user)
+            created_new_user = True
 
         admin_set = current_app.config.get("ADMIN_EMAILS_SET", set())
-        if user.id is None and email and email in admin_set:
+        should_promote_admin = email and email in admin_set
+        if should_promote_admin and getattr(user, "is_admin", False) is False:
             user.is_admin = True
 
         try:
@@ -486,10 +533,40 @@ def auth_callback():
             )
             flash("Servizio in aggiornamento, riprova tra qualche minuto.", "error")
             return redirect(url_for("auth.login"))
-        except SQLAlchemyError:
+        except ProgrammingError as exc:
             db.session.rollback()
-            current_app.logger.exception(
-                "[LOGIN] Database error during Google OAuth commit"
+            message = str(exc.orig if hasattr(exc, "orig") else exc).lower()
+            current_app.logger.error(
+                "[LOGIN] ProgrammingError during OAuth commit: %s", message, exc_info=exc
+            )
+            if created_new_user:
+                fallback_user = _create_user_with_existing_columns(
+                    email=email,
+                    google_id=google_id,
+                    name=name or None,
+                    picture_url=picture_url or None,
+                    is_admin=bool(should_promote_admin),
+                )
+                if fallback_user is None:
+                    flash(
+                        "Servizio in aggiornamento, riprova tra qualche minuto.",
+                        "error",
+                    )
+                    return redirect(url_for("auth.login"))
+                current_app.logger.info(
+                    "[LOGIN] Fallback user insert succeeded after schema mismatch"
+                )
+                user = fallback_user
+            else:
+                flash(
+                    "Servizio in aggiornamento, riprova tra qualche minuto.", "error"
+                )
+                return redirect(url_for("auth.login"))
+        except SQLAlchemyError as exc:
+            db.session.rollback()
+            current_app.logger.error(
+                "[LOGIN] Database error during Google OAuth commit: %s", exc,
+                exc_info=exc,
             )
             flash("Servizio in aggiornamento, riprova tra qualche minuto.", "error")
             return redirect(url_for("auth.login"))
