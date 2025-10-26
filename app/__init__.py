@@ -1,5 +1,4 @@
 from flask import Flask, g, redirect, request, url_for, current_app
-from flask import Flask, g, redirect, request, url_for
 from flask_login import LoginManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -13,6 +12,8 @@ from time import perf_counter
 from urllib.parse import urlparse, urlunparse
 from pathlib import Path
 from sqlalchemy import text
+
+# Alembic può non essere disponibile: gestiscilo in modo sicuro
 try:  # pragma: no cover - optional dependency guard
     from flask_migrate import Migrate
     _migrate_available = True
@@ -42,6 +43,7 @@ from .services.scheduler_service import SchedulerService
 from .utils.logger import configure_logging
 from config import Config, get_database_uri_from_env
 from .extensions import cache
+
 login_manager = LoginManager()
 limiter = None
 migrate = Migrate()
@@ -57,6 +59,7 @@ def _mask_database_uri(uri: str) -> str:
     except Exception:
         return "<unavailable>"
 
+
 SLOW_REQUEST_THRESHOLD_MS = 300
 
 
@@ -66,17 +69,22 @@ def create_app(config_overrides: dict | None = None):
     app.config.from_object(Config)
     if config_overrides:
         app.config.update(config_overrides)
-    app.jinja_env.globals['csrf_token'] = generate_csrf_token
+    app.jinja_env.globals["csrf_token"] = generate_csrf_token
 
     configure_logging(app.config.get("LOG_DIR"))
-    app.logger.info("[BOOT] Logging configured. Writing to %s", Path(app.config.get("LOG_DIR", "logs")) / "app.log")
+    app.logger.info(
+        "[BOOT] Logging configured. Writing to %s",
+        Path(app.config.get("LOG_DIR", "logs")) / "app.log",
+    )
 
     secret_from_env = os.getenv("SECRET_KEY")
     if secret_from_env:
         app.config["SECRET_KEY"] = secret_from_env
     secret_key = app.config.get("SECRET_KEY")
     if not secret_key or secret_key in {"dev", "change-me"}:
-        raise RuntimeError("SECRET_KEY environment variable must be set to a secure, non-default value.")
+        raise RuntimeError(
+            "SECRET_KEY environment variable must be set to a secure, non-default value."
+        )
 
     app.config.setdefault("SESSION_COOKIE_SECURE", True)
     app.config.setdefault("SESSION_COOKIE_SAMESITE", "Lax")
@@ -111,6 +119,7 @@ def create_app(config_overrides: dict | None = None):
                 "[BOOT] DATABASE_URL not set. Falling back to default SQLALCHEMY_DATABASE_URI from Config."
             )
             app.config["SQLALCHEMY_DATABASE_URI"] = Config.SQLALCHEMY_DATABASE_URI
+
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     engine_defaults = {
         "pool_size": 2,
@@ -143,7 +152,9 @@ def create_app(config_overrides: dict | None = None):
             if canonical_host:
                 incoming_host = request.headers.get("X-Forwarded-Host", request.host)
                 if incoming_host and incoming_host != canonical_host:
-                    url = request.url.replace(f"//{incoming_host}", f"//{canonical_host}", 1)
+                    url = request.url.replace(
+                        f"//{incoming_host}", f"//{canonical_host}", 1
+                    )
                     return redirect(url, code=301)
 
     @app.before_request
@@ -152,10 +163,7 @@ def create_app(config_overrides: dict | None = None):
 
     @app.context_processor
     def inject_current_year():
-        return {
-            "current_year": get_current_year(),
-            "get_current_year": get_current_year,
-        }
+        return {"current_year": get_current_year(), "get_current_year": get_current_year}
 
     def _canonical_base() -> str:
         canonical_host = app.config.get("CANONICAL_HOST") or request.host
@@ -171,10 +179,10 @@ def create_app(config_overrides: dict | None = None):
             "Monitoraggio in tempo reale del tremore vulcanico dell'Etna con dati INGV, "
             "grafici interattivi e avvisi per gli appassionati."
         )
-        default_og_image = url_for(
-            "static", filename="icons/icon-512.png", _external=True
+        default_og_image = url_for("static", filename="icons/icon-512.png", _external=True)
+        logo_url = url_for(
+            "static", filename="icons/apple-touch-icon.png", _external=True
         )
-        logo_url = url_for("static", filename="icons/apple-touch-icon.png", _external=True)
         structured_base = [
             {
                 "@context": "https://schema.org",
@@ -210,24 +218,25 @@ def create_app(config_overrides: dict | None = None):
             "ads_tracking_enabled": bool(app.config.get("ADS_ROUTES_ENABLED")),
         }
 
-    # Capture the Google redirect URI from the environment so the OAuth flow
-    # uses the exact value configured on Google Cloud Console.
+    # Google OAuth redirect URI (deve combaciare con quello su Google Cloud Console)
     app.config["GOOGLE_REDIRECT_URI"] = os.getenv("GOOGLE_REDIRECT_URI", "")
 
-    # Honor proxy headers inserted by Render (or any reverse proxy) so that
-    # url_for(..., _external=True) builds HTTPS links with the correct host.
+    # Rispetta gli header del proxy (Render) per URL esterni corretti
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)  # type: ignore[attr-defined]
-    
+
     db.init_app(app)
     migrate.init_app(app, db)
-    if _migrate_available and os.getenv("AUTO_MIGRATE", "1").lower() in {"1", "true", "yes"}:
+
+    # Auto-migrazione opzionale (DISABILITATA di default). Richiede app context.
+    if _migrate_available and os.getenv("AUTO_MIGRATE", "0").lower() in {"1", "true", "yes"}:
         try:  # pragma: no cover - integration with alembic CLI
             from flask_migrate import upgrade as alembic_upgrade
-
-            alembic_upgrade()
+            with app.app_context():
+                alembic_upgrade()
             app.logger.info("[BOOT] Alembic auto-migrate: upgrade head OK.")
         except Exception as ex:  # pragma: no cover - defensive logging
             app.logger.warning("[BOOT] Alembic auto-migrate failed: %s", ex)
+
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
     login_manager.session_protection = "strong"
@@ -261,7 +270,9 @@ def create_app(config_overrides: dict | None = None):
 
     disable_scheduler = os.getenv("DISABLE_SCHEDULER", "0").lower() in {"1", "true", "yes"}
     if disable_scheduler:
-        app.logger.info("[BOOT] Scheduler disabled via DISABLE_SCHEDULER environment variable")
+        app.logger.info(
+            "[BOOT] Scheduler disabled via DISABLE_SCHEDULER environment variable"
+        )
     else:
         try:
             scheduler = SchedulerService()
@@ -279,16 +290,18 @@ def create_app(config_overrides: dict | None = None):
         "managed_by": "worker" if telegram_mode == "polling" else "app",
     }
     if telegram_mode == "webhook":
-        app.logger.info("[BOOT] Telegram bot configured for webhook mode; polling is disabled")
+        app.logger.info(
+            "[BOOT] Telegram bot configured for webhook mode; polling is disabled"
+        )
     elif telegram_mode == "polling":
         app.logger.info("[BOOT] Telegram bot polling managed by background worker ✅")
-        app.logger.info("[BOOT] Telegram bot polling managed by background worker")
     else:
         app.logger.info("[BOOT] Telegram bot disabled (mode=%s)", telegram_mode)
 
     app.config["TELEGRAM_BOT_STATUS"] = telegram_status
 
     with app.app_context():
+        # Auto-promozione admin
         try:
             with db.engine.connect() as conn:
                 for email in app.config.get("ADMIN_EMAILS_SET", set()):
@@ -301,27 +314,28 @@ def create_app(config_overrides: dict | None = None):
         except Exception as ex:
             app.logger.warning("[BOOT] Admin auto-promotion failed: %s", ex)
 
+        # Schema guard: crea colonne Telegram se mancanti (idempotente)
         try:
             with db.engine.connect() as conn:
                 conn.execute(
                     text(
                         """
-            DO $$
-            BEGIN
-                IF NOT EXISTS (
-                    SELECT 1 FROM information_schema.columns
-                    WHERE table_name='users' AND column_name='telegram_chat_id'
-                ) THEN
-                    ALTER TABLE users ADD COLUMN telegram_chat_id BIGINT;
-                END IF;
+                        DO $$
+                        BEGIN
+                            IF NOT EXISTS (
+                                SELECT 1 FROM information_schema.columns
+                                WHERE table_name='users' AND column_name='telegram_chat_id'
+                            ) THEN
+                                ALTER TABLE users ADD COLUMN telegram_chat_id BIGINT;
+                            END IF;
 
-                IF NOT EXISTS (
-                    SELECT 1 FROM information_schema.columns
-                    WHERE table_name='users' AND column_name='telegram_opt_in'
-                ) THEN
-                    ALTER TABLE users ADD COLUMN telegram_opt_in BOOLEAN NOT NULL DEFAULT FALSE;
-                END IF;
-            END$$;
+                            IF NOT EXISTS (
+                                SELECT 1 FROM information_schema.columns
+                                WHERE table_name='users' AND column_name='telegram_opt_in'
+                            ) THEN
+                                ALTER TABLE users ADD COLUMN telegram_opt_in BOOLEAN NOT NULL DEFAULT FALSE;
+                            END IF;
+                        END$$;
                         """
                     )
                 )
@@ -331,50 +345,43 @@ def create_app(config_overrides: dict | None = None):
             app.logger.warning("[BOOT] Schema guard failed: %s", ex)
 
     csp = {
-        'default-src': "'self'",
-        'script-src': [
+        "default-src": "'self'",
+        "script-src": [
             "'self'",
             "https://js.stripe.com",
             "https://plausible.io",
             "https://www.googletagmanager.com",
         ],
-        'style-src': [
+        "style-src": [
             "'self'",
             "'unsafe-inline'",
             "https://fonts.googleapis.com",
-            "https://cdnjs.cloudflare.com"
+            "https://cdnjs.cloudflare.com",
         ],
-        'font-src': [
-            "'self'",
-            "https://fonts.gstatic.com",
-            "https://cdnjs.cloudflare.com"
-        ],
-        'img-src': ["'self'", "data:", "https:"],
-        'connect-src': [
+        "font-src": ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
+        "img-src": ["'self'", "data:", "https:"],
+        "connect-src": [
             "'self'",
             "https://api.stripe.com",
             "https://plausible.io",
             "https://www.google-analytics.com",
         ],
-        'frame-src': ["https://js.stripe.com", "https://hooks.stripe.com"]
+        "frame-src": ["https://js.stripe.com", "https://hooks.stripe.com"],
     }
 
     Talisman(
         app,
         content_security_policy=csp,
-        content_security_policy_nonce_in=['script-src'],
-        force_https=os.getenv('FLASK_ENV') == 'production'
+        content_security_policy_nonce_in=["script-src"],
+        force_https=os.getenv("FLASK_ENV") == "production",
     )
-    
-    cache_config = {
-        "CACHE_TYPE": "SimpleCache",
-        "CACHE_DEFAULT_TIMEOUT": 90,
-    }
+
+    cache_config = {"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 90}
     cache.init_app(app, config=cache_config)
 
     Compress(app)
-    
-    redis_url = os.getenv('REDIS_URL')
+
+    redis_url = os.getenv("REDIS_URL")
     if redis_url:
         limiter = Limiter(
             key_func=get_remote_address,
@@ -390,7 +397,7 @@ def create_app(config_overrides: dict | None = None):
         )
 
     app.extensions["limiter"] = limiter
-    
+
     from .context_processors import inject_user as inject_user_context
 
     app.context_processor(inject_user_context)
@@ -403,7 +410,7 @@ def create_app(config_overrides: dict | None = None):
         app.logger.warning("Sponsor banner context disabled: %s", exc)
     else:
         app.context_processor(inject_sponsor_banners_context)
-    
+
     seo_blueprint = None
     if enable_seo_routes:
         try:
@@ -463,5 +470,6 @@ def create_app(config_overrides: dict | None = None):
         return response
 
     return app
+
 
 app = create_app()
