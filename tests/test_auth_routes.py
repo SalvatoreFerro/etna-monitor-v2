@@ -144,3 +144,28 @@ def test_admin_activate_premium_lifetime(client, admin_user, app):
         assert updated.premium_lifetime is True
         assert updated.premium_since is not None
         assert updated.donation_tx == "PAY12345"
+
+
+def test_homepage_cache_respects_login_state(client, app):
+    with app.app_context():
+        cached_user = User(
+            email="cache-test@example.com",
+            password_hash=hash_password("cache-pass"),
+        )
+        db.session.add(cached_user)
+        db.session.commit()
+
+    response_anon = client.get('/')
+    assert response_anon.status_code == 200
+    assert b'Accedi con Google' in response_anon.data
+
+    login_response = client.post('/login', data={
+        'email': 'cache-test@example.com',
+        'password': 'cache-pass'
+    })
+    assert login_response.status_code == 302
+
+    response_logged_in = client.get('/')
+    assert response_logged_in.status_code == 200
+    assert b'Esci' in response_logged_in.data
+    assert b'Accedi con Google' not in response_logged_in.data
