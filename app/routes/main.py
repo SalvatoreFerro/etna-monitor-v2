@@ -51,6 +51,8 @@ def index():
 
                 temporal_start = pd.to_datetime(df["timestamp"].iloc[0]).to_pydatetime()
                 temporal_end = pd.to_datetime(df["timestamp"].iloc[-1]).to_pydatetime()
+                temporal_start = df["timestamp"].iloc[0]
+                temporal_end = df["timestamp"].iloc[-1]
                 temporal_start_iso = temporal_start.strftime("%Y-%m-%dT%H:%M:%SZ")
                 temporal_end_iso = temporal_end.strftime("%Y-%m-%dT%H:%M:%SZ")
                 temporal_coverage = (
@@ -64,6 +66,8 @@ def index():
                 last_timestamp_dt = temporal_end
 
             record_csv_read(len(df), last_timestamp_dt)
+
+            record_csv_read(len(df), df["timestamp"].max() if not df.empty else None)
         except Exception as exc:
             current_app.logger.exception("Failed to read tremor CSV for index page")
             record_csv_error(str(exc))
