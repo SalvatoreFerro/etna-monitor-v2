@@ -1,0 +1,129 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="experience-hero">
+  <div class="experience-hero__content">
+    <h1>Etna Experience – Scopri le attività e le guide dell'Etna</h1>
+    <p>Strutture, escursioni e tour selezionati collegati all'attività vulcanica.</p>
+    <div class="experience-cta">
+      <a href="#partners" class="btn btn-premium">Esplora i partner</a>
+      <button class="btn btn-secondary" type="button" disabled>
+        Prossimamente: consigli automatici basati sull'attività dell'Etna 🔥
+      </button>
+    </div>
+  </div>
+  <div class="experience-hero__visual" aria-hidden="true">
+    <div class="lava-glow"></div>
+    <div class="lava-glow lava-glow--secondary"></div>
+  </div>
+</section>
+
+<section class="experience-partners" id="partners">
+  <header class="experience-partners__header">
+    <div class="filters" role="tablist" aria-label="Filtra partner per categoria">
+      {% for value, label in filter_labels %}
+        {% set is_active = (not selected_category and value == 'all') or (selected_category == value) %}
+        <button
+          type="button"
+          class="filter-chip {{ 'active' if is_active }}"
+          data-filter="{{ value }}"
+          role="tab"
+          aria-selected="{{ 'true' if is_active else 'false' }}"
+        >
+          {{ label }}
+        </button>
+      {% endfor %}
+    </div>
+  </header>
+
+  <div class="partners-grid">
+    {% if partners %}
+      {% for partner in partners %}
+        <article class="partner-card" data-category="{{ partner.category }}">
+          <div class="partner-card__image">
+            {% if partner.image_url %}
+              <img src="{{ partner.image_url }}" alt="{{ partner.name }}" loading="lazy" referrerpolicy="no-referrer">
+            {% else %}
+              <div class="partner-card__placeholder" aria-hidden="true">
+                <i class="fas fa-mountain"></i>
+              </div>
+            {% endif %}
+            {% if partner.verified %}
+              <span class="partner-card__badge" title="Partner verificato">Partner Verified</span>
+            {% endif %}
+          </div>
+          <div class="partner-card__content">
+            <div class="partner-card__meta">
+              <span class="partner-card__category">{{ partner.category_label() }}</span>
+              {% if partner.contact %}
+                <span class="partner-card__contact">{{ partner.contact }}</span>
+              {% endif %}
+            </div>
+            <h3>{{ partner.name }}</h3>
+            {% if partner.description %}
+              <p class="partner-card__description">{{ partner.description }}</p>
+            {% endif %}
+          </div>
+          <div class="partner-card__actions">
+            {% if partner.website %}
+              <a href="{{ partner.website }}" class="btn btn-primary" target="_blank" rel="noopener">
+                Visita il sito
+                <i class="fas fa-external-link-alt" aria-hidden="true"></i>
+              </a>
+            {% else %}
+              <span class="btn btn-disabled" aria-disabled="true">Contatta la struttura</span>
+            {% endif %}
+          </div>
+        </article>
+      {% endfor %}
+    {% else %}
+      <div class="empty-state">
+        <i class="fas fa-binoculars" aria-hidden="true"></i>
+        <h3>Nessun partner disponibile</h3>
+        <p>Stiamo selezionando nuove esperienze da mostrare qui. Torna a trovarci presto!</p>
+      </div>
+    {% endif %}
+  </div>
+
+  <footer class="experience-footer">
+    <p>Vuoi apparire nella sezione Etna Experience?</p>
+    <a href="{{ url_for('experience.become_partner') }}" class="btn btn-premium">Vuoi apparire qui?</a>
+  </footer>
+</section>
+
+<script nonce="{{ script_nonce }}">
+document.addEventListener('DOMContentLoaded', () => {
+  const buttons = Array.from(document.querySelectorAll('[data-filter]'));
+  const cards = Array.from(document.querySelectorAll('.partner-card'));
+
+  if (!buttons.length || !cards.length) {
+    return;
+  }
+
+  const applyFilter = (category) => {
+    cards.forEach((card) => {
+      const cardCategory = card.dataset.category;
+      const matches = category === 'all' || cardCategory === category;
+      card.classList.toggle('hidden', !matches);
+    });
+  };
+
+  const initial = buttons.find((btn) => btn.classList.contains('active'));
+  applyFilter(initial ? initial.dataset.filter : 'all');
+
+  buttons.forEach((button) => {
+    button.addEventListener('click', () => {
+      buttons.forEach((btn) => {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-selected', 'false');
+      });
+
+      button.classList.add('active');
+      button.setAttribute('aria-selected', 'true');
+      applyFilter(button.dataset.filter);
+    });
+  });
+});
+</script>
+{% endblock %}
+

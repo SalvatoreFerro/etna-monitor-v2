@@ -1,0 +1,66 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="experience-form">
+  <div class="experience-form__intro">
+    <h1>Diventa partner di Etna Experience</h1>
+    <p>Compila il modulo per proporre la tua attività: guideremo i visitatori alla scoperta delle migliori esperienze intorno all'Etna.</p>
+  </div>
+
+  <form method="post" class="partner-form" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <div class="form-grid">
+      <div class="form-field">
+        <label for="name">Nome attività *</label>
+        <input type="text" id="name" name="name" maxlength="160" required placeholder="Es. Etna Summit Tours" value="{{ request.form.name or '' }}">
+      </div>
+
+      <div class="form-field">
+        <label for="category">Categoria *</label>
+        <select id="category" name="category" required>
+          {% for value, label in categories %}
+            <option value="{{ value }}" {% if request.form.category == value %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-field">
+        <label for="website">Sito web o link principale</label>
+        <input type="url" id="website" name="website" placeholder="https://" value="{{ request.form.website or '' }}">
+      </div>
+
+      <div class="form-field">
+        <label for="contact">Contatto diretto</label>
+        <input type="text" id="contact" name="contact" placeholder="Email o telefono" value="{{ request.form.contact or '' }}">
+      </div>
+    </div>
+
+    <div class="form-field">
+      <label for="image_url">Immagine di presentazione (URL)</label>
+      <input type="url" id="image_url" name="image_url" placeholder="https://" value="{{ request.form.image_url or '' }}">
+      <small>Se preferisci, puoi inviare l'immagine via email a <a href="mailto:info@etnamonitor.it">info@etnamonitor.it</a>.</small>
+    </div>
+
+    <div class="form-field">
+      <label for="description">Descrizione *</label>
+      <textarea id="description" name="description" rows="5" maxlength="800" required placeholder="Racconta cosa rende unica la tua esperienza.">{{ request.form.description or '' }}</textarea>
+    </div>
+
+    <div class="form-consent">
+      <label>
+        <input type="checkbox" name="privacy_consent" value="1" {% if request.form.privacy_consent %}checked{% endif %} required>
+        Acconsento al trattamento dei dati per la valutazione della mia candidatura.
+      </label>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-premium">Invia candidatura</button>
+      <a href="{{ url_for('experience.experience_home') }}" class="btn btn-secondary">Torna a Etna Experience</a>
+    </div>
+
+    <p class="form-hint">Le candidature vengono revisionate manualmente dal team di EtnaMonitor. Riceverai un contatto entro 2-3 giorni lavorativi.</p>
+  </form>
+</section>
+{% endblock %}
+

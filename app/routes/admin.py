@@ -2,13 +2,14 @@ import csv
 import io
 from datetime import datetime, timedelta
 
-from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, make_response
+from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, make_response, current_app
 from sqlalchemy import func, or_
 
 from ..utils.auth import admin_required
 from ..models import db
 from ..models.user import User
 from ..models.event import Event
+from ..models.partner import Partner
 try:
     from ..models.sponsor_banner import (
         SponsorBanner,
@@ -21,6 +22,7 @@ except Exception:  # pragma: no cover - optional dependency guard
     SponsorBannerImpression = None  # type: ignore
 from ..services.telegram_service import TelegramService
 from ..utils.csrf import validate_csrf_token
+from ..utils.partners import extract_partner_payload
 
 bp = Blueprint("admin", __name__)
 
@@ -57,6 +59,18 @@ def _normalize_day(value):
         except ValueError:
             return None
     return value
+
+
+def _serialize_partner(partner: Partner) -> dict:
+    return {
+        "id": partner.id,
+        "name": partner.name,
+        "category": partner.category,
+        "category_label": partner.category_label(),
+        "verified": bool(partner.verified),
+        "visible": bool(partner.visible),
+        "website": partner.website,
+    }
 
 
 @bp.route("/")
@@ -200,6 +214,109 @@ def donations():
         User.premium.is_(False)
     ).order_by(User.created_at.desc()).all()
     return render_template("admin/donations.html", users=pending_users)
+
+
+@bp.route("/partners", methods=["GET"])
+@admin_required
+def partners_dashboard():
+    partners = Partner.query.order_by(Partner.created_at.desc()).all()
+    category_labels = [
+        ("Guide", "Guide"),
+        ("Hotel", "Hotel"),
+        ("Ristorante", "Ristoranti"),
+        ("Tour", "Tour"),
+        ("Altro", "Altro"),
+    ]
+    return render_template(
+        "admin/partners.html",
+        partners=partners,
+        categories=category_labels,
+    )
+
+
+@bp.route("/partners", methods=["POST"])
+@admin_required
+def partners_create():
+    if not validate_csrf_token(request.form.get("csrf_token")):
+        flash("Token CSRF non valido. Riprova.", "error")
+        return redirect(url_for("admin.partners_dashboard"))
+
+    payload, errors = extract_partner_payload(request.form, is_admin=True)
+
+    if errors:
+        for message in errors:
+            flash(message, "error")
+        return redirect(url_for("admin.partners_dashboard"))
+
+    partner = Partner(**payload)
+    db.session.add(partner)
+
+    try:
+        db.session.commit()
+    except Exception:  # pragma: no cover - defensive
+        current_app.logger.exception("Failed to create partner from admin")
+        db.session.rollback()
+        flash(
+            "Errore durante la creazione del partner. Verifica i dati inseriti e riprova.",
+            "error",
+        )
+    else:
+        flash(f"Partner '{partner.name}' aggiunto con successo.", "success")
+
+    return redirect(url_for("admin.partners_dashboard"))
+
+
+@bp.route("/partners/<int:partner_id>/toggle", methods=["POST"])
+@admin_required
+def partners_toggle(partner_id: int):
+    data = request.get_json(silent=True) or {}
+    if not validate_csrf_token(data.get("csrf_token")):
+        return jsonify({"success": False, "message": "Token CSRF non valido."}), 400
+
+    field = data.get("field")
+    if field not in {"visible", "verified"}:
+        return jsonify({"success": False, "message": "Campo non gestito."}), 400
+
+    partner = Partner.query.get_or_404(partner_id)
+    current_value = bool(getattr(partner, field))
+    new_value = data.get("value")
+    if new_value is None:
+        new_value = not current_value
+    else:
+        new_value = bool(new_value)
+
+    setattr(partner, field, new_value)
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception(
+            "Failed to toggle %s for partner %s", field, partner_id
+        )
+        return jsonify({"success": False, "message": "Errore durante l'aggiornamento."}), 500
+
+    return jsonify({"success": True, "partner": _serialize_partner(partner)})
+
+
+@bp.route("/partners/<int:partner_id>", methods=["DELETE"])
+@admin_required
+def partners_delete(partner_id: int):
+    data = request.get_json(silent=True) or {}
+    if not validate_csrf_token(data.get("csrf_token")):
+        return jsonify({"success": False, "message": "Token CSRF non valido."}), 400
+
+    partner = Partner.query.get_or_404(partner_id)
+    db.session.delete(partner)
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Failed to delete partner %s", partner_id)
+        return jsonify({"success": False, "message": "Errore durante l'eliminazione."}), 500
+
+    return jsonify({"success": True})
 
 
 @bp.route("/activate_premium/<int:user_id>", methods=["POST"])

@@ -22,6 +22,7 @@ except ModuleNotFoundError:  # pragma: no cover - fallback for restricted enviro
             )
 
 from .routes.main import bp as main_bp
+from .routes.experience import bp as experience_bp
 from .routes.dashboard import bp as dashboard_bp
 from .routes.admin import bp as admin_bp
 from .routes.auth import bp as auth_bp, legacy_bp as legacy_auth_bp
@@ -323,6 +324,7 @@ def create_app(config_overrides: dict | None = None):
             app.logger.info("Ads routes enabled")
 
     app.register_blueprint(main_bp)
+    app.register_blueprint(experience_bp)
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(legacy_auth_bp)
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")

@@ -8,6 +8,7 @@ def init_db(app):
 
 from .user import User
 from .event import Event
+from .partner import Partner
 
 try:
     from .sponsor_banner import (
@@ -25,6 +26,7 @@ __all__ = [
     'init_db',
     'User',
     'Event',
+    'Partner',
 ]
 
 if SponsorBanner is not None:
