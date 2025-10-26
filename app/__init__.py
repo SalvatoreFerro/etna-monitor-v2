@@ -27,6 +27,7 @@ except ModuleNotFoundError:  # pragma: no cover - fallback for restricted enviro
             )
 
 from sqlalchemy.orm import load_only
+from sqlalchemy.pool import QueuePool, StaticPool
 
 from .routes.main import bp as main_bp
 from .routes.experience import bp as experience_bp
@@ -228,6 +229,25 @@ def create_app(config_overrides: dict | None = None):
     }
     existing_engine_options = dict(app.config.get("SQLALCHEMY_ENGINE_OPTIONS", {}))
     engine_defaults.update(existing_engine_options)
+
+    poolclass = engine_defaults.get("poolclass")
+    if poolclass:
+        try:
+            is_static_pool = issubclass(poolclass, StaticPool)
+            is_queue_pool = issubclass(poolclass, QueuePool)
+        except TypeError:
+            is_static_pool = False
+            is_queue_pool = False
+
+        if is_static_pool:
+            # StaticPool does not accept queue sizing parameters.
+            for key in ("pool_size", "max_overflow", "pool_recycle"):
+                engine_defaults.pop(key, None)
+        elif not is_queue_pool:
+            # For custom pools drop sizing knobs that may not be supported.
+            engine_defaults.pop("pool_size", None)
+            engine_defaults.pop("max_overflow", None)
+
     app.config["SQLALCHEMY_ENGINE_OPTIONS"] = engine_defaults
     app.config["CANONICAL_HOST"] = os.getenv("CANONICAL_HOST", "")
 
