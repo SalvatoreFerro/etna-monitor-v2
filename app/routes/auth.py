@@ -3,6 +3,9 @@ from urllib.parse import urlencode
 
 import requests
 import traceback
+from requests import Response
+from requests import Session
+from requests.exceptions import ProxyError
 from flask import (
     Blueprint,
     current_app,
@@ -21,6 +24,48 @@ from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 bp = Blueprint("auth", __name__)
 legacy_bp = Blueprint("legacy_auth", __name__ + "_legacy")
+
+
+def _google_oauth_request(
+    method: str,
+    url: str,
+    *,
+    data: dict | None = None,
+    headers: dict | None = None,
+    timeout: int = 10,
+) -> Response:
+    """Perform a Google OAuth HTTP request with proxy fallbacks.
+
+    Render and other hosting platforms may inject outbound proxy settings via
+    environment variables. In some environments those proxies block calls to
+    Google domains, leading to ``ProxyError`` exceptions and a failed sign-in
+    experience. To make the login flow resilient we retry once without the
+    inherited proxy configuration when a proxy failure is detected.
+    """
+
+    try:
+        with Session() as session:
+            return session.request(
+                method,
+                url,
+                data=data,
+                headers=headers,
+                timeout=timeout,
+            )
+    except ProxyError as proxy_exc:
+        current_app.logger.warning(
+            "Google OAuth request blocked by proxy. Retrying without proxies.",
+            exc_info=proxy_exc,
+        )
+        with Session() as session:
+            session.trust_env = False
+            return session.request(
+                method,
+                url,
+                data=data,
+                headers=headers,
+                timeout=timeout,
+            )
 
 # ---------------------------------------------------------------------------
 # Legacy password-based helpers (DEPRECATED)
@@ -163,7 +208,12 @@ def auth_callback():
     }
 
     try:
-        token_response = requests.post(token_endpoint, data=token_payload, timeout=10)
+        token_response = _google_oauth_request(
+            "POST",
+            token_endpoint,
+            data=token_payload,
+            timeout=10,
+        )
         if token_response.status_code != 200:
             current_app.logger.error(
                 "Google token endpoint failed with status %s: %s",
@@ -182,7 +232,8 @@ def auth_callback():
             return redirect(url_for("auth.login"))
 
         userinfo_endpoint = "https://www.googleapis.com/oauth2/v3/userinfo"
-        userinfo_response = requests.get(
+        userinfo_response = _google_oauth_request(
+            "GET",
             userinfo_endpoint,
             headers={"Authorization": f"Bearer {access_token}"},
             timeout=10,
