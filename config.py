@@ -46,6 +46,14 @@ class Config:
     SQLALCHEMY_DATABASE_URI = RESOLVED_DATABASE_URI or DEFAULT_SQLITE_URI
     SQLALCHEMY_DATABASE_URI_SOURCE = RESOLVED_DATABASE_SOURCE
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # Enable SQLAlchemy's connection health checks so that stale or
+    # terminated connections are transparently replaced instead of surfacing
+    # as ``OperationalError`` exceptions (e.g. ``SSL error: decryption failed``)
+    # during OAuth callbacks when the database closes an idle connection.
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,
+        "pool_recycle": int(os.getenv("SQLALCHEMY_POOL_RECYCLE", "1800")),
+    }
 
     INGV_URL = os.getenv("INGV_URL", "https://www.ct.ingv.it/RMS_Etna/2.png")
     ALERT_THRESHOLD_DEFAULT = float(os.getenv("ALERT_THRESHOLD_DEFAULT", "2.0"))
