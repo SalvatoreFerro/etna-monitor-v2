@@ -20,7 +20,7 @@ from flask import (
 from ..models import db
 from ..models.user import User
 from ..utils.auth import check_password, hash_password
-from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.exc import IntegrityError, OperationalError, SQLAlchemyError
 
 bp = Blueprint("auth", __name__)
 legacy_bp = Blueprint("legacy_auth", __name__ + "_legacy")
@@ -66,6 +66,31 @@ def _google_oauth_request(
                 headers=headers,
                 timeout=timeout,
             )
+
+# ---------------------------------------------------------------------------
+# Database helpers
+# ---------------------------------------------------------------------------
+
+
+def _query_with_retry(query_callable):
+    """Execute a SQLAlchemy query and retry once after refreshing the pool."""
+
+    try:
+        return query_callable()
+    except OperationalError as exc:
+        current_app.logger.warning(
+            "[LOGIN] Database connection error, refreshing pool and retrying once.",
+            exc_info=exc,
+        )
+        db.session.rollback()
+        try:
+            db.engine.dispose()
+        except Exception:
+            current_app.logger.exception(
+                "[LOGIN] Failed to dispose SQLAlchemy engine after connection error"
+            )
+        return query_callable()
+
 
 # ---------------------------------------------------------------------------
 # Legacy password-based helpers (DEPRECATED)
@@ -256,9 +281,9 @@ def auth_callback():
             flash("Google profile is missing required information.", "error")
             return redirect(url_for("auth.login"))
 
-        user = User.query.filter_by(google_id=google_id).first()
+        user = _query_with_retry(lambda: User.query.filter_by(google_id=google_id).first())
         if not user and email:
-            user = User.query.filter_by(email=email).first()
+            user = _query_with_retry(lambda: User.query.filter_by(email=email).first())
 
         if user:
             user.google_id = google_id
@@ -294,9 +319,13 @@ def auth_callback():
             db.session.rollback()
             existing_user = None
             if email:
-                existing_user = User.query.filter_by(email=email).first()
+                existing_user = _query_with_retry(
+                    lambda: User.query.filter_by(email=email).first()
+                )
             if not existing_user and google_id:
-                existing_user = User.query.filter_by(google_id=google_id).first()
+                existing_user = _query_with_retry(
+                    lambda: User.query.filter_by(google_id=google_id).first()
+                )
 
             if not existing_user:
                 raise
@@ -366,3 +395,4 @@ def logout():
     session.clear()
     flash("Sei stato disconnesso.", "info")
     return redirect(url_for("main.index"))
+
