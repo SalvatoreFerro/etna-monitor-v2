@@ -221,6 +221,27 @@ def _create_user_with_existing_columns(
     if _include("free_alert_consumed"):
         column_type = column_types.get("free_alert_consumed")
 
+        coerced_value: object = 0
+
+        try:
+            if isinstance(column_type, Boolean):
+                coerced_value = False
+            else:
+                # ``inspect`` may return backend specific types (e.g. ``INTEGER``)
+                # that do not inherit from ``Integer`` directly. Rely on the
+                # dialect visit name or the string representation as a fallback.
+                type_name = (getattr(column_type, "__visit_name__", "") or "").lower()
+                if not type_name:
+                    type_name = str(column_type or "").lower()
+
+                if any(token in type_name for token in ("int", "serial")):
+                    coerced_value = 0
+                else:
+                    coerced_value = False
+        except Exception:  # pragma: no cover - extremely defensive
+            coerced_value = 0
+
+        values["free_alert_consumed"] = coerced_value
         def _type_name(type_) -> str:
             if type_ is None:
                 return ""
