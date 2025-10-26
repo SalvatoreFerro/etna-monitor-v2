@@ -1,4 +1,5 @@
 from flask import Flask, g, redirect, request, url_for, current_app
+from flask import Flask, g, redirect, request, url_for
 from flask_login import LoginManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -281,6 +282,7 @@ def create_app(config_overrides: dict | None = None):
         app.logger.info("[BOOT] Telegram bot configured for webhook mode; polling is disabled")
     elif telegram_mode == "polling":
         app.logger.info("[BOOT] Telegram bot polling managed by background worker ✅")
+        app.logger.info("[BOOT] Telegram bot polling managed by background worker")
     else:
         app.logger.info("[BOOT] Telegram bot disabled (mode=%s)", telegram_mode)
 
