@@ -17,7 +17,7 @@ from flask import (
 from ..models import db
 from ..models.user import User
 from ..utils.auth import check_password, hash_password
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
 bp = Blueprint("auth", __name__)
 legacy_bp = Blueprint("legacy_auth", __name__ + "_legacy")
@@ -223,6 +223,7 @@ def auth_callback():
                 name=profile.get("name"),
                 picture_url=profile.get("picture"),
                 password_hash="",
+                plan_type="free",
             )
             db.session.add(user)
 
@@ -232,6 +233,9 @@ def auth_callback():
         current_app.logger.info(
             f"[LOGIN] user={email} is_admin={getattr(user, 'is_admin', None)} in_set={email and email.lower() in admin_set}"
         )
+
+        if getattr(user, "plan_type", None) is None:
+            user.plan_type = "free"
 
         try:
             db.session.commit()
@@ -261,8 +265,27 @@ def auth_callback():
             current_app.logger.info(
                 f"[LOGIN] user={email} is_admin={getattr(existing_user, 'is_admin', None)} in_set={email and email.lower() in admin_set}"
             )
-            db.session.commit()
+
+            if getattr(existing_user, "plan_type", None) is None:
+                existing_user.plan_type = "free"
+            try:
+                db.session.commit()
+            except SQLAlchemyError:
+                db.session.rollback()
+                current_app.logger.exception(
+                    "[LOGIN] Database error while merging Google account"
+                )
+                flash("Servizio in aggiornamento, riprova tra qualche minuto.", "error")
+                return redirect(url_for("auth.login"))
+
             user = existing_user
+        except SQLAlchemyError:
+            db.session.rollback()
+            current_app.logger.exception(
+                "[LOGIN] Database error during Google OAuth commit"
+            )
+            flash("Servizio in aggiornamento, riprova tra qualche minuto.", "error")
+            return redirect(url_for("auth.login"))
 
         # Persist the OAuth session information to simplify future API calls or
         # refresh flows. Tokens remain in the server-side session.

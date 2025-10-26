@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from pathlib import Path
 
 import pandas as pd
 from flask import Blueprint, current_app, jsonify, render_template, url_for
@@ -8,7 +9,7 @@ from ..utils.auth import get_current_user
 
 from app.models import db
 from app.models.user import User
-from sqlalchemy import or_
+from sqlalchemy import or_, text
 
 from ..utils.metrics import get_csv_metrics, record_csv_error, record_csv_read
 
@@ -138,6 +139,45 @@ def healthcheck():
         "premium_users": premium_count,
         "build_sha": current_app.config.get("BUILD_SHA"),
     }
+
+    if current_app.debug:
+        db_status = {
+            "database_revision": None,
+            "expected_head": None,
+            "is_up_to_date": None,
+            "error": None,
+        }
+
+        migrations_path = Path(current_app.root_path).parent / "migrations"
+        try:
+            from alembic.config import Config  # type: ignore import
+            from alembic.script import ScriptDirectory  # type: ignore import
+
+            if migrations_path.exists():
+                cfg = Config()
+                cfg.set_main_option("script_location", str(migrations_path))
+                script_dir = ScriptDirectory.from_config(cfg)
+                db_status["expected_head"] = script_dir.get_current_head()
+            else:
+                raise FileNotFoundError(f"Migrations path not found: {migrations_path}")
+        except Exception as exc:  # pragma: no cover - diagnostic only
+            current_app.logger.warning("[HEALTH] Failed to inspect Alembic head: %s", exc)
+            db_status["error"] = f"alembic:{exc}"
+
+        try:
+            with db.engine.connect() as connection:
+                result = connection.execute(text("SELECT version_num FROM alembic_version"))
+                db_revision = result.scalar()
+            db_status["database_revision"] = db_revision
+            if db_status["expected_head"]:
+                db_status["is_up_to_date"] = db_revision == db_status["expected_head"]
+        except Exception as exc:  # pragma: no cover - diagnostic only
+            current_app.logger.warning("[HEALTH] Failed to fetch alembic_version: %s", exc)
+            existing_error = db_status.get("error")
+            suffix = f"database:{exc}"
+            db_status["error"] = f"{existing_error}; {suffix}" if existing_error else suffix
+
+        payload["db_status"] = db_status
 
     current_app.logger.info("[HEALTH] ok=%s premium_users=%s", payload["ok"], premium_count)
     return jsonify(payload), 200
