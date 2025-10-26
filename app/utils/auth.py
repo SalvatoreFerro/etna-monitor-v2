@@ -11,6 +11,7 @@ from functools import wraps
 import bcrypt
 from flask import flash, g, redirect, request, session, url_for
 
+from ..models import db
 from ..models.user import User
 
 _PASSWORD_DEPRECATION_MSG = (
@@ -60,17 +61,19 @@ def admin_required(f):
     return decorated_function
 
 def get_current_user():
+    """Return the current session user, caching only successful lookups."""
+
+    user_id = session.get('user_id')
     cached_user = getattr(g, '_current_user', None)
-    if cached_user is not None or hasattr(g, '_current_user_loaded'):
+
+    if cached_user is not None and getattr(cached_user, 'id', None) == user_id:
         return cached_user
 
     user = None
-    user_id = session.get('user_id')
     if user_id is not None:
-        user = User.query.get(user_id)
+        user = db.session.get(User, user_id)
         if user is None:
             session.pop('user_id', None)
 
-    g._current_user_loaded = True
     g._current_user = user
     return user

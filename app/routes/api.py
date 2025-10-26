@@ -1,7 +1,9 @@
 import os
+
 import pandas as pd
-from flask import Blueprint, jsonify, request
-from pathlib import Path
+from flask import Blueprint, current_app, jsonify, request
+
+from ..utils.metrics import record_csv_error, record_csv_read
 from backend.utils.extract_png import process_png_to_csv
 
 api_bp = Blueprint("api", __name__)
@@ -15,32 +17,35 @@ def get_curva():
         try:
             ingv_url = os.getenv('INGV_URL', 'https://www.ct.ingv.it/RMS_Etna/2.png')
             result = process_png_to_csv(ingv_url, csv_path)
-            print(f"Auto-generated data: {result['rows']} points")
+            current_app.logger.info("[API] Auto-generated curva.csv with %s rows", result['rows'])
         except Exception as e:
-            print(f"Failed to auto-generate data: {e}")
+            current_app.logger.exception("[API] Failed to auto-generate curva.csv")
+            record_csv_error(str(e))
             return jsonify({
-                "ok": True, 
-                "data": [], 
+                "ok": True,
+                "data": [],
                 "last_ts": None,
                 "rows": 0
             })
-    
+
     try:
         df = pd.read_csv(csv_path, parse_dates=["timestamp"])
+        last_ts = df["timestamp"].max() if not df.empty else None
+        record_csv_read(len(df), last_ts)
+
         if df.empty:
             return jsonify({
-                "ok": True, 
-                "data": [], 
+                "ok": True,
+                "data": [],
                 "last_ts": None,
                 "rows": 0
             })
-        
+
         data = df.to_dict(orient="records")
-        last_ts = df["timestamp"].max()
-        
+
         response = jsonify({
-            "ok": True, 
-            "data": data, 
+            "ok": True,
+            "data": data,
             "last_ts": last_ts.isoformat() if pd.notna(last_ts) else None,
             "rows": len(data)
         })
@@ -52,9 +57,11 @@ def get_curva():
         return response
         
     except Exception as e:
+        current_app.logger.exception("[API] Failed to read curva.csv")
+        record_csv_error(str(e))
         return jsonify({
-            "ok": False, 
-            "error": str(e), 
+            "ok": False,
+            "error": str(e),
             "csv_path": csv_path
         }), 500
 
@@ -67,11 +74,13 @@ def get_status():
     try:
         if os.path.exists(csv_path):
             df = pd.read_csv(csv_path, parse_dates=["timestamp"])
+            last_ts = df["timestamp"].max() if not df.empty else None
+            record_csv_read(len(df), last_ts)
             if not df.empty:
                 current_value = float(df["value"].iloc[-1])
                 above_threshold = current_value > threshold
-                last_update = df["timestamp"].max().isoformat()
-                
+                last_update = last_ts.isoformat() if pd.notna(last_ts) else None
+
                 return jsonify({
                     "ok": True,
                     "current_value": current_value,
@@ -80,7 +89,7 @@ def get_status():
                     "last_update": last_update,
                     "total_points": len(df)
                 })
-        
+
         return jsonify({
             "ok": True,
             "current_value": 0.0,
@@ -91,6 +100,8 @@ def get_status():
         })
         
     except Exception as e:
+        current_app.logger.exception("[API] Status endpoint failed")
+        record_csv_error(str(e))
         return jsonify({
             "ok": False,
             "error": str(e)
@@ -102,17 +113,28 @@ def force_update():
     try:
         ingv_url = os.getenv('INGV_URL', 'https://www.ct.ingv.it/RMS_Etna/2.png')
         csv_path = os.getenv('CSV_PATH', '/var/tmp/curva.csv')
-        
+
         result = process_png_to_csv(ingv_url, csv_path)
-        
+        last_ts_value = None
+        if result.get("last_ts"):
+            try:
+                parsed = pd.to_datetime(result["last_ts"])
+                last_ts_value = parsed.to_pydatetime() if hasattr(parsed, "to_pydatetime") else parsed
+            except Exception:
+                last_ts_value = None
+        record_csv_read(int(result.get("rows", 0)), last_ts_value)
+        current_app.logger.info("[API] Force update generated %s rows", result.get("rows"))
+
         return jsonify({
             "ok": True,
             "rows": result["rows"],
             "last_ts": result["last_ts"],
             "output_path": result["output_path"]
         }), 200
-        
+
     except Exception as e:
+        current_app.logger.exception("[API] Force update failed")
+        record_csv_error(str(e))
         return jsonify({
             "ok": False,
             "error": str(e)

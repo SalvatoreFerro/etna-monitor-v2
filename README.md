@@ -92,35 +92,68 @@ pip install -r requirements.txt
 # 4. Configurare l'ambiente
 cp .env.example .env  # oppure creare manualmente seguendo la sezione dedicata
 
-# 5. Avviare il backend Flask
+# 5. Applicare le migrazioni del database
+flask db upgrade  # richiede Flask-Migrate installato
+
+# 6. Avviare il backend Flask
 python app.py  # in alternativa: flask run
 
-# 6. Aprire la dashboard
+# 7. Aprire la dashboard
 open http://127.0.0.1:5000  # Windows: start, Linux: xdg-open
 ```
 
+> **Nota**: l'uso di `flask db` richiede il pacchetto `Flask-Migrate`. In ambienti senza accesso a internet
+> assicurarsi di installarlo manualmente oppure eseguire le migrazioni su una macchina con accesso al pacchetto.
+
 ## Configurazione (.env.example)
 ```env
-FLASK_ENV=development
-SECRET_KEY=<SET_A_SECURE_RANDOM_VALUE>
-TELEGRAM_BOT_TOKEN=<TELEGRAM_BOT_TOKEN>
-TELEGRAM_ALERT_INTERVAL_MIN=120
-PREMIUM_CHECK_ENABLED=true
-DEFAULT_ALERT_THRESHOLD_MV=2.0
-DATA_DIR=./data
-LOG_DIR=./logs
+# Sicurezza
+SECRET_KEY=change-me
+
+# Database
+DATABASE_URL=postgresql+psycopg2://user:password@host:5432/etnamonitor
+
+# Telegram
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+ENABLE_TELEGRAM_BOT=false
+
+# Stripe
+STRIPE_PUBLIC_KEY=
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
+STRIPE_PRICE_PREMIUM=
+
+# OAuth e analytics
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GOOGLE_REDIRECT_URI=
+PLAUSIBLE_DOMAIN=
+GA_MEASUREMENT_ID=
+
+# Generali
+ADMIN_EMAILS=
+CANONICAL_HOST=
+LOG_DIR=logs
+DATA_DIR=data
+DISABLE_SCHEDULER=false
+INGV_URL=https://www.ct.ingv.it/RMS_Etna/2.png
+ALERT_THRESHOLD_DEFAULT=2.0
 ```
 
 | Variabile | Descrizione |
 |-----------|-------------|
-| `FLASK_ENV` | Modalità di esecuzione Flask (`development` o `production`). |
-| `SECRET_KEY` | Chiave segreta per sessioni e CSRF; generare valore robusto. |
-| `TELEGRAM_BOT_TOKEN` | Token del bot ottenuto da BotFather. |
-| `TELEGRAM_ALERT_INTERVAL_MIN` | Intervallo minimo tra notifiche per singolo utente (debounce). |
-| `PREMIUM_CHECK_ENABLED` | Abilita la verifica delle funzionalità Premium. |
-| `DEFAULT_ALERT_THRESHOLD_MV` | Soglia di alert predefinita per account Free in millivolt. |
-| `DATA_DIR` | Directory per CSV e cache dati. |
-| `LOG_DIR` | Directory per file di log applicativi. |
+| `SECRET_KEY` | Chiave segreta per sessioni e CSRF; **obbligatoria** in produzione. |
+| `DATABASE_URL` | Connessione al database (PostgreSQL, MySQL o SQLite). |
+| `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` | Credenziali Telegram; lasciare vuote per disattivare il bot. |
+| `ENABLE_TELEGRAM_BOT` | Abilita l'avvio del bot Telegram all'avvio dell'app. |
+| `STRIPE_*` | Chiavi e prezzi per l'integrazione Stripe. |
+| `GOOGLE_*` | Credenziali OAuth Google. |
+| `PLAUSIBLE_DOMAIN`, `GA_MEASUREMENT_ID` | Identificativi analytics opzionali. |
+| `ADMIN_EMAILS` | Lista di email (separate da virgola) da promuovere automaticamente come admin. |
+| `LOG_DIR`, `DATA_DIR` | Directory persistenti per log e dati. |
+| `DISABLE_SCHEDULER` | Imposta `true`/`1` per evitare l'avvio dello scheduler (utile nei test). |
+| `ALERT_THRESHOLD_DEFAULT` | Soglia tremore predefinita (mV). |
 
 ## Pipeline Dati (PNG INGV → CSV → Grafico)
 1. **Download**: uno scheduler scarica periodicamente il grafico PNG pubblico fornito da INGV.

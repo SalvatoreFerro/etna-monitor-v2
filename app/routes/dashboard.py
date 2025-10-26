@@ -4,6 +4,7 @@ from ..utils.logger import get_logger
 from ..models import db
 from ..models.event import Event
 from ..utils.plot import make_tremor_figure
+from ..utils.metrics import record_csv_error, record_csv_read
 from config import Config
 import pandas as pd
 import plotly
@@ -28,6 +29,7 @@ def dashboard_home():
         if os.path.exists(curva_file):
             df = pd.read_csv(curva_file, parse_dates=['timestamp'])
             df = df.tail(100)  # Last 100 points for performance
+            record_csv_read(len(df), df['timestamp'].max() if not df.empty else None)
         else:
             Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
             empty_df = pd.DataFrame(columns=['timestamp', 'value'])
@@ -53,6 +55,8 @@ def dashboard_home():
         latest_value = 0
         status = 'unknown'
         threshold = Config.ALERT_THRESHOLD_DEFAULT
+        record_csv_error(str(e))
+        logger.exception("Dashboard data preparation failed")
     
     recent_events = []
     if user.has_premium_access:

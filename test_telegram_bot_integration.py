@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import requests
 import time
 from app import create_app
@@ -12,7 +13,7 @@ def test_bot_integration():
     app = create_app()
     
     with app.app_context():
-        bot_token = '7688152214:AAGJoZFWowVv0aOwNkcsGET6lhmKGoTK1WU'
+        bot_token = os.environ.get('TELEGRAM_BOT_TOKEN', '')
         response = requests.get(f'https://api.telegram.org/bot{bot_token}/getMe')
         if response.status_code == 200:
             bot_info = response.json()

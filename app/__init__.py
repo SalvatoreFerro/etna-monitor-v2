@@ -8,11 +8,23 @@ import os
 import redis
 from datetime import datetime
 from urllib.parse import urlparse, urlunparse
+from pathlib import Path
+try:  # pragma: no cover - optional dependency guard
+    from flask_migrate import Migrate
+    _migrate_available = True
+except ModuleNotFoundError:  # pragma: no cover - fallback for restricted environments
+    _migrate_available = False
+
+    class Migrate:  # type: ignore[override]
+        def init_app(self, app, db):
+            app.logger.warning(
+                "[BOOT] Flask-Migrate not available. Database migrations commands are disabled."
+            )
 
 from .routes.main import bp as main_bp
 from .routes.dashboard import bp as dashboard_bp
 from .routes.admin import bp as admin_bp
-from .routes.auth import bp as auth_bp
+from .routes.auth import bp as auth_bp, legacy_bp as legacy_auth_bp
 from .routes.api import api_bp
 from .routes.status import status_bp
 from .routes.billing import bp as billing_bp
@@ -20,10 +32,12 @@ from backend.routes.admin_stats import admin_stats_bp
 from .models import db
 from .utils.csrf import generate_csrf_token
 from .services.scheduler_service import SchedulerService
+from .utils.logger import configure_logging
 from config import Config, get_database_uri_from_env
 
 
 limiter = None
+migrate = Migrate()
 
 
 def _mask_database_uri(uri: str) -> str:
@@ -36,25 +50,51 @@ def _mask_database_uri(uri: str) -> str:
     except Exception:
         return "<unavailable>"
 
-def create_app():
+def create_app(config_overrides: dict | None = None):
     global limiter
     app = Flask(__name__)
     app.config.from_object(Config)
+    if config_overrides:
+        app.config.update(config_overrides)
     app.jinja_env.globals['csrf_token'] = generate_csrf_token
 
-    database_url, database_source = get_database_uri_from_env()
-    if database_url:
-        app.config["SQLALCHEMY_DATABASE_URI"] = database_url
-        if database_source:
-            masked_url = _mask_database_uri(database_url)
-            app.logger.info(
-                f"[BOOT] SQLALCHEMY_DATABASE_URI resolved from {database_source}: {masked_url}"
-            )
-    else:
-        app.logger.warning(
-            "[BOOT] DATABASE_URL not set. Falling back to default SQLALCHEMY_DATABASE_URI from Config."
+    configure_logging(app.config.get("LOG_DIR"))
+    app.logger.info("[BOOT] Logging configured. Writing to %s", Path(app.config.get("LOG_DIR", "logs")) / "app.log")
+
+    secret_key = app.config.get("SECRET_KEY")
+    if not secret_key or secret_key in {"dev", "change-me"}:
+        raise RuntimeError("SECRET_KEY environment variable must be set to a secure, non-default value.")
+
+    app.config.setdefault("LAST_CSV_READ_AT", None)
+    app.config.setdefault("LAST_CSV_LAST_TS", None)
+    app.config.setdefault("LAST_CSV_ROW_COUNT", 0)
+    app.config.setdefault("LAST_CSV_ERROR", None)
+    app.config["START_TIME"] = datetime.utcnow()
+
+    override_database_uri = None
+    if config_overrides and "SQLALCHEMY_DATABASE_URI" in config_overrides:
+        override_database_uri = config_overrides["SQLALCHEMY_DATABASE_URI"]
+
+    if override_database_uri:
+        app.config["SQLALCHEMY_DATABASE_URI"] = override_database_uri
+        masked_url = _mask_database_uri(override_database_uri)
+        app.logger.info(
+            f"[BOOT] SQLALCHEMY_DATABASE_URI configured via overrides: {masked_url}"
         )
-        app.config["SQLALCHEMY_DATABASE_URI"] = Config.SQLALCHEMY_DATABASE_URI
+    else:
+        database_url, database_source = get_database_uri_from_env()
+        if database_url:
+            app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+            if database_source:
+                masked_url = _mask_database_uri(database_url)
+                app.logger.info(
+                    f"[BOOT] SQLALCHEMY_DATABASE_URI resolved from {database_source}: {masked_url}"
+                )
+        else:
+            app.logger.warning(
+                "[BOOT] DATABASE_URL not set. Falling back to default SQLALCHEMY_DATABASE_URI from Config."
+            )
+            app.config["SQLALCHEMY_DATABASE_URI"] = Config.SQLALCHEMY_DATABASE_URI
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
     app.config["CANONICAL_HOST"] = os.getenv("CANONICAL_HOST", "")
 
@@ -150,170 +190,57 @@ def create_app():
     app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)  # type: ignore[attr-defined]
     
     db.init_app(app)
-    
-    try:
-        scheduler = SchedulerService()
-        scheduler.init_app(app)
-    except Exception as e:
-        print(f"⚠️  Scheduler initialization failed: {e}")
-        pass
-    
+    migrate.init_app(app, db)
+    app.config["MIGRATIONS_AVAILABLE"] = _migrate_available
+
+    disable_scheduler = os.getenv("DISABLE_SCHEDULER", "0").lower() in {"1", "true", "yes"}
+    if disable_scheduler:
+        app.logger.info("[BOOT] Scheduler disabled via DISABLE_SCHEDULER environment variable")
+    else:
+        try:
+            scheduler = SchedulerService()
+            scheduler.init_app(app)
+            app.logger.info("[BOOT] Scheduler initialized")
+        except Exception:
+            app.logger.exception("[BOOT] Scheduler initialization failed")
+
+    telegram_status = {"enabled": False, "running": False, "last_error": None}
     if os.getenv("ENABLE_TELEGRAM_BOT", "false").lower() == "true":
+        telegram_status["enabled"] = True
         try:
             from .services.telegram_bot_service import TelegramBotService
+
             telegram_bot = TelegramBotService()
             telegram_bot.init_app(app)
-            print("✅ Telegram bot initialized and polling started")
-        except Exception as e:
-            print(f"⚠️  Telegram bot initialization failed: {e}")
-            pass
+            telegram_status["running"] = True
+            app.logger.info("[BOOT] Telegram bot initialized and polling started")
+        except Exception as exc:
+            telegram_status["last_error"] = str(exc)
+            app.logger.exception("[BOOT] Telegram bot initialization failed")
     else:
-        print("ℹ️  Telegram bot disabled (ENABLE_TELEGRAM_BOT=false)")
-    
+        app.logger.info("[BOOT] Telegram bot disabled (ENABLE_TELEGRAM_BOT=false)")
+
+    app.config["TELEGRAM_BOT_STATUS"] = telegram_status
+
     with app.app_context():
-        from sqlalchemy import inspect, text
-
         try:
-            inspector = inspect(db.engine)
-            
-            if 'users' in inspector.get_table_names():
-                existing_columns = [col['name'] for col in inspector.get_columns('users')]
-                existing_indexes = [index['name'] for index in inspector.get_indexes('users')]
-                existing_uniques = [constraint['name'] for constraint in inspector.get_unique_constraints('users')]
+            from sqlalchemy import text
 
-                billing_columns = [
-                    ('stripe_customer_id', 'VARCHAR(100)'),
-                    ('subscription_status', 'VARCHAR(20) DEFAULT "free"'),
-                    ('subscription_id', 'VARCHAR(100)'),
-                    ('current_period_end', 'DATETIME'),
-                    ('trial_end', 'DATETIME'),
-                    ('billing_email', 'VARCHAR(120)'),
-                    ('company_name', 'VARCHAR(200)'),
-                    ('vat_id', 'VARCHAR(50)'),
-                    ('email_alerts', 'BOOLEAN DEFAULT 0 NOT NULL')
-                ]
-
-                columns_added = 0
-                for column_name, column_def in billing_columns:
-                    if column_name not in existing_columns:
-                        try:
-                            with db.engine.connect() as conn:
-                                conn.execute(text(f'ALTER TABLE users ADD COLUMN {column_name} {column_def}'))
-                                conn.commit()
-                            print(f"✅ Auto-migration: Added column {column_name} to users table")
-                            columns_added += 1
-                        except Exception as e:
-                            print(f"⚠️  Auto-migration: Could not add column {column_name}: {e}")
-
-                if columns_added > 0:
-                    print(f"🎉 Auto-migration: Added {columns_added} billing columns to users table")
-
-                premium_donation_columns = [
-                    ('is_premium', 'BOOLEAN DEFAULT FALSE NOT NULL'),
-                    ('premium_lifetime', 'BOOLEAN DEFAULT FALSE NOT NULL'),
-                    ('premium_since', 'TIMESTAMP'),
-                    ('donation_tx', 'VARCHAR(255)')
-                ]
-
-                for column_name, column_def in premium_donation_columns:
-                    if column_name not in existing_columns:
-                        try:
-                            with db.engine.connect() as conn:
-                                conn.execute(text(f'ALTER TABLE users ADD COLUMN {column_name} {column_def}'))
-                                conn.commit()
-                            existing_columns.append(column_name)
-                            print(f"✅ Auto-migration: Added column {column_name} to users table")
-                        except Exception as e:
-                            print(f"⚠️  Auto-migration: Could not add column {column_name}: {e}")
-
-                auth_columns = [
-                    ('google_id', 'VARCHAR(255)'),
-                    ('name', 'VARCHAR(255)'),
-                    ('picture_url', 'VARCHAR(512)')
-                ]
-
-                auth_columns_added = 0
-                for column_name, column_def in auth_columns:
-                    if column_name not in existing_columns:
-                        try:
-                            with db.engine.connect() as conn:
-                                conn.execute(text(f'ALTER TABLE users ADD COLUMN {column_name} {column_def}'))
-                                conn.commit()
-                            existing_columns.append(column_name)
-                            auth_columns_added += 1
-                            print(f"✅ Auto-migration: Added column {column_name} to users table")
-                        except Exception as e:
-                            print(f"⚠️  Auto-migration: Could not add column {column_name}: {e}")
-
-                if auth_columns_added > 0:
-                    print(f"🎉 Auto-migration: Added {auth_columns_added} authentication columns to users table")
-
-                try:
-                    dialect = db.engine.dialect.name
-                    with db.engine.connect() as conn:
-                        if dialect == 'postgresql' and 'uq_users_google_id' not in existing_uniques:
-                            conn.execute(text('ALTER TABLE users ADD CONSTRAINT uq_users_google_id UNIQUE (google_id)'))
-                            conn.commit()
-                            print("✅ Auto-migration: Added unique constraint uq_users_google_id")
-                        elif dialect == 'mysql' and 'uq_users_google_id' not in existing_indexes:
-                            conn.execute(text('ALTER TABLE users ADD UNIQUE INDEX uq_users_google_id (google_id)'))
-                            conn.commit()
-                            print("✅ Auto-migration: Added unique index uq_users_google_id")
-                        elif dialect == 'sqlite':
-                            conn.execute(text('CREATE UNIQUE INDEX IF NOT EXISTS uq_users_google_id ON users (google_id)'))
-                            conn.commit()
-                            print("✅ Auto-migration: Ensured unique index uq_users_google_id")
-                except Exception as e:
-                    print(f"⚠️  Auto-migration: Could not ensure unique constraint on google_id: {e}")
-
-                if 'password_hash' in existing_columns:
-                    try:
-                        dialect = db.engine.dialect.name
-                        with db.engine.connect() as conn:
-                            if dialect == 'postgresql':
-                                conn.execute(text('ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL'))
-                                conn.commit()
-                                print('✅ Auto-migration: password_hash set to nullable (PostgreSQL)')
-                            elif dialect == 'mysql':
-                                conn.execute(text('ALTER TABLE users MODIFY password_hash VARCHAR(128) NULL'))
-                                conn.commit()
-                                print('✅ Auto-migration: password_hash set to nullable (MySQL)')
-                            elif dialect == 'sqlite':
-                                print('ℹ️  Auto-migration: Skipping password_hash nullability change on SQLite')
-                    except Exception as e:
-                        print(f"⚠️  Auto-migration: Could not update password_hash nullability: {e}")
-
-                try:
-                    with db.engine.connect() as conn:
-                        conn.execute(text("UPDATE users SET password_hash='' WHERE password_hash IS NULL"))
-                        conn.commit()
-                except Exception as e:
-                    print(f"⚠️  Auto-migration: Could not sanitize password_hash values: {e}")
-
-            db.create_all()
-
-        except Exception as e:
-            print(f"⚠️  Auto-migration failed: {e}")
-            pass
-
-        try:
             with db.engine.connect() as conn:
-                for e in app.config.get("ADMIN_EMAILS_SET", set()):
-                    conn.execute(text("UPDATE users SET is_admin=1 WHERE lower(email)=:e"), {"e": e})
+                for email in app.config.get("ADMIN_EMAILS_SET", set()):
+                    conn.execute(text("UPDATE users SET is_admin=1 WHERE lower(email)=:e"), {"e": email})
                 conn.commit()
             app.logger.info("[BOOT] Admin auto-promotion applied to existing users.")
         except Exception as ex:
-            app.logger.warning(f"[BOOT] Admin auto-promotion failed: {ex}")
+            app.logger.warning("[BOOT] Admin auto-promotion failed: %s", ex)
 
     csp = {
         'default-src': "'self'",
         'script-src': [
             "'self'",
-            "'unsafe-inline'",
-            "'unsafe-eval'",  # Required for Plotly.js
-            "https://cdn.plot.ly",
-            "https://fonts.googleapis.com",
-            "https://js.stripe.com"
+            "https://js.stripe.com",
+            "https://plausible.io",
+            "https://www.googletagmanager.com",
         ],
         'style-src': [
             "'self'",
@@ -327,13 +254,21 @@ def create_app():
             "https://cdnjs.cloudflare.com"
         ],
         'img-src': ["'self'", "data:", "https:"],
-        'connect-src': ["'self'", "https://api.stripe.com"],
+        'connect-src': [
+            "'self'",
+            "https://api.stripe.com",
+            "https://plausible.io",
+            "https://www.google-analytics.com",
+        ],
         'frame-src': ["https://js.stripe.com", "https://hooks.stripe.com"]
     }
-    
-    Talisman(app, 
-             content_security_policy=csp,
-             force_https=os.getenv('FLASK_ENV') == 'production')
+
+    Talisman(
+        app,
+        content_security_policy=csp,
+        content_security_policy_nonce_in=['script-src'],
+        force_https=os.getenv('FLASK_ENV') == 'production'
+    )
     
     Compress(app)
     
@@ -351,6 +286,8 @@ def create_app():
             app=app,
             default_limits=["200 per day", "50 per hour"],
         )
+
+    app.extensions["limiter"] = limiter
     
     from .context_processors import inject_user as inject_user_context
 
@@ -387,6 +324,7 @@ def create_app():
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp, url_prefix="/auth")
+    app.register_blueprint(legacy_auth_bp)
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
     app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(billing_bp)
@@ -405,9 +343,6 @@ def create_app():
         app.config["ADS_ROUTES_ENABLED"] = True
     else:
         app.config["ADS_ROUTES_ENABLED"] = False
-
-    with app.app_context():
-        db.create_all()
 
     return app
 

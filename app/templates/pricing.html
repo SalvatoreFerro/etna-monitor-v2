@@ -2,7 +2,7 @@
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/pricing.css') }}">
-<script src="https://js.stripe.com/v3/"></script>
+<script src="https://js.stripe.com/v3/" nonce="{{ script_nonce }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -201,7 +201,7 @@
       <ol class="donation-steps">
         <li>Invia una donazione con il pulsante PayPal ufficiale.</li>
         <li>Nel messaggio PayPal indica l'email con cui accedi a EtnaMonitor.</li>
-        <li>Compila il form <em>Ho donato</em> o scrivici su <a href="mailto:team@etnamonitor.it">team@etnamonitor.it</a>.</li>
+        <li>Compila il form <em>Ho donato</em> o scrivici su <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a>.</li>
         <li>Un admin attiverà il piano Premium entro 24 ore.</li>
       </ol>
       <div class="donation-support__cta" role="group" aria-label="Donazione PayPal">
@@ -224,7 +224,7 @@
       </div>
       <div class="donation-card secondary">
         <h3>Serve aiuto?</h3>
-        <p>Scrivici a <a href="mailto:team@etnamonitor.it">team@etnamonitor.it</a> oppure sul canale Telegram @EtnaMonitorBot.</p>
+        <p>Scrivici a <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a> oppure sul canale Telegram @EtnaMonitorBot.</p>
       </div>
     </aside>
   </section>
@@ -309,13 +309,13 @@
       <p>Scopri come EtnaMonitor può integrarsi nei tuoi workflow operativi con una sessione guidata dagli specialisti vulcanologici.</p>
     </div>
     <div class="cta-actions">
-      <a href="mailto:hello@etnamonitor.io" class="btn btn-secondary glass" aria-label="Richiedi una demo personalizzata">Prenota una demo</a>
+      <a href="mailto:salvoferro16@gmail.com" class="btn btn-secondary glass" aria-label="Richiedi una demo personalizzata">Prenota una demo</a>
       <a href="{{ url_for('auth.login') }}" class="btn btn-premium" aria-label="Accedi con Google per attivare EtnaMonitor">Accedi con Google</a>
     </div>
   </section>
 </main>
 
-<script>
+<script nonce="{{ script_nonce }}">
 const stripe = Stripe('{{ config.STRIPE_PUBLIC_KEY }}');
 
 document.getElementById('upgrade-btn')?.addEventListener('click', async () => {

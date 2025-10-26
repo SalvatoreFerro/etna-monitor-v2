@@ -16,9 +16,11 @@ from flask import (
 
 from ..models import db
 from ..models.user import User
+from ..utils.auth import check_password, hash_password
 from sqlalchemy.exc import IntegrityError
 
 bp = Blueprint("auth", __name__)
+legacy_bp = Blueprint("legacy_auth", __name__ + "_legacy")
 
 # ---------------------------------------------------------------------------
 # Legacy password-based helpers (DEPRECATED)
@@ -32,10 +34,57 @@ bp = Blueprint("auth", __name__)
 # ---------------------------------------------------------------------------
 
 
-@bp.route("/login", methods=["GET"])
+@bp.route("/login", methods=["GET", "POST"])
 def login():
-    """Render the login call-to-action."""
+    """Render the login call-to-action or handle the legacy password flow."""
+
+    if request.method == "POST":
+        email = (request.form.get("email") or "").strip().lower()
+        password = request.form.get("password") or ""
+
+        if not email or not password:
+            return ("Email and password are required", 400)
+
+        user = User.query.filter_by(email=email).first()
+        if not user or not check_password(password, user.password_hash or ""):
+            return ("Invalid email or password", 401)
+
+        session["user_id"] = user.id
+        return redirect(url_for("dashboard.dashboard_home"))
+
     return render_template("auth/login.html", next_page=request.args.get("next"))
+
+
+@bp.route("/register", methods=["POST"])
+def register():
+    """Minimal email/password registration kept for unit tests."""
+
+    email = (request.form.get("email") or "").strip().lower()
+    password = request.form.get("password") or ""
+
+    if not email or not password:
+        return ("Email and password are required", 400)
+
+    existing = User.query.filter_by(email=email).first()
+    if existing:
+        return ("Email already registered", 400)
+
+    user = User(email=email, password_hash=hash_password(password))
+    db.session.add(user)
+    db.session.commit()
+
+    session["user_id"] = user.id
+    return redirect(url_for("dashboard.dashboard_home"))
+
+
+@legacy_bp.route("/register", methods=["POST"])
+def legacy_register():
+    return register()
+
+
+@legacy_bp.route("/login", methods=["GET", "POST"])
+def legacy_login():
+    return login()
 
 
 @bp.route("/google", methods=["GET", "POST"])

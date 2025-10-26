@@ -50,8 +50,8 @@ class Config:
     INGV_URL = os.getenv("INGV_URL", "https://www.ct.ingv.it/RMS_Etna/2.png")
     ALERT_THRESHOLD_DEFAULT = float(os.getenv("ALERT_THRESHOLD_DEFAULT", "2.0"))
 
-    TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "7688152214:AAGJoZFWowVv0aOwNkcsGET6lhmKGoTK1WU")
-    TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "000000000")
+    TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
 
     STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "")
     STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
@@ -65,3 +65,4 @@ class Config:
     ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")
     PLAUSIBLE_DOMAIN = os.getenv("PLAUSIBLE_DOMAIN", "")
     GA_MEASUREMENT_ID = os.getenv("GA_MEASUREMENT_ID", "")
+    LOG_DIR = os.getenv("LOG_DIR", "logs")

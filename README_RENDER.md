@@ -8,10 +8,10 @@
 pip install -r requirements.txt
 ```
 
-**Option 2 (Alternative):** If you want explicit migration in build:
+**Option 2 (Alternative):** If you need to run migrations during build (requires Flask-Migrate available on the image):
 
 ```
-pip install -r requirements.txt && python migrations/add_billing_fields.py
+pip install -r requirements.txt && FLASK_APP=app:create_app flask db upgrade
 ```
 
 ## Environment Variables
@@ -48,22 +48,12 @@ STRIPE_PRICE_PREMIUM=price_...
 
 ## Start Command
 
-**Option 1 (Recommended - Auto-migration):** Set the Start Command to:
+Set the Start Command to:
 ```
 python startup.py
 ```
 
-**Option 2 (Standard):** Set the Start Command to:
-```
-gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app
-```
-
-**Option 3 (Procfile):** Leave Start Command **EMPTY** and ensure Procfile contains:
-```
-web: python startup.py
-```
-
-The `startup.py` script automatically runs the database migration before starting the server, ensuring the billing columns are always present.
+The `startup.py` script configura i log, crea le directory richieste e invoca `flask db upgrade` prima di avviare Gunicorn.
 
 ## Health Check Configuration
 
@@ -88,7 +78,13 @@ After deployment, verify these items:
 2. **Health check**: Test endpoint:
    ```
    GET https://your-app.onrender.com/healthz
-   Response: {"ok": true} with 200 status
+   Response: {
+     "ok": true,
+     "uptime_seconds": <float>,
+     "csv": {...},
+     "premium_users": <int>,
+     "telegram_bot": {...}
+   }
    ```
 
 3. **Home page**: Verify the home page loads without 500 errors, even if CSV files don't exist (they will be created automatically)
