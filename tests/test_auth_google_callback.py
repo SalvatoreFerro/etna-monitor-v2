@@ -196,3 +196,60 @@ def test_google_callback_heals_missing_plan_type(monkeypatch, client, app):
     with app.app_context():
         user = User.query.filter_by(email="plan-type@example.com").one()
         assert user.plan_type == "free"
+
+
+def test_google_callback_fallback_without_introspection(monkeypatch, client, app):
+    from sqlalchemy.exc import ProgrammingError, SQLAlchemyError
+
+    token_response = DummyResponse(200, {"access_token": "access"})
+    userinfo_response = DummyResponse(
+        200,
+        {
+            "sub": "no-introspect",
+            "email": "no-introspect@example.com",
+            "name": "No Introspect",
+        },
+    )
+
+    responses = iter([token_response, userinfo_response])
+
+    def fake_google_request(*args, **kwargs):
+        return next(responses)
+
+    from app.routes import auth as auth_routes
+
+    monkeypatch.setattr("app.routes.auth._google_oauth_request", fake_google_request)
+
+    def failing_inspect(*args, **kwargs):
+        raise SQLAlchemyError("cannot introspect")
+
+    monkeypatch.setattr(auth_routes, "inspect", failing_inspect)
+
+    original_commit = db.session.commit
+    call_state = {"count": 0}
+
+    def flaky_commit():
+        call_state["count"] += 1
+        if call_state["count"] == 1:
+            raise ProgrammingError(
+                "INSERT",
+                {},
+                Exception("column users.google_id does not exist"),
+            )
+        return original_commit()
+
+    monkeypatch.setattr(db.session, "commit", flaky_commit)
+
+    with client.session_transaction() as session:
+        session["oauth_state"] = "state-token"
+
+    response = client.get("/auth/callback?code=auth-code&state=state-token")
+    assert response.status_code == 302
+    assert "/dashboard" in response.headers["Location"]
+
+    with app.app_context():
+        user = User.query.filter_by(email="no-introspect@example.com").one()
+        assert user.google_id is None
+        assert user.plan_type == "free"
+
+    assert auth_routes._GOOGLE_ID_COLUMN_SUPPORTED is False

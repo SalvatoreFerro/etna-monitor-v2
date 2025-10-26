@@ -179,6 +179,7 @@ def _create_user_with_existing_columns(
 ):
     """Insert a new user using only the columns currently available."""
 
+    inspection_failed = False
     try:
         inspector = inspect(db.engine)
         available = {
@@ -186,26 +187,33 @@ def _create_user_with_existing_columns(
             for column in inspector.get_columns(User.__tablename__)
         }
     except SQLAlchemyError as exc:
+        inspection_failed = True
+        available = set()
         current_app.logger.error(
             "[LOGIN] Unable to inspect users table before fallback insert: %s",
             exc,
             exc_info=True,
         )
-        return None
+        _disable_google_id_column_usage()
 
     values: dict[str, object] = {"email": email}
 
-    if "password_hash" in available:
+    def _include(column_name: str, *, assume_safe: bool = False) -> bool:
+        if inspection_failed:
+            return assume_safe
+        return column_name in available
+
+    if _include("password_hash", assume_safe=True):
         values["password_hash"] = ""
-    if "created_at" in available:
+    if _include("created_at", assume_safe=True):
         values["created_at"] = datetime.now(timezone.utc)
-    if google_id and "google_id" in available:
+    if google_id and not inspection_failed and "google_id" in available:
         values["google_id"] = google_id
-    if name and "name" in available:
+    if name and _include("name"):
         values["name"] = name
-    if picture_url and "picture_url" in available:
+    if picture_url and _include("picture_url"):
         values["picture_url"] = picture_url
-    if is_admin and "is_admin" in available:
+    if is_admin and _include("is_admin"):
         values["is_admin"] = True
 
     insert_stmt = User.__table__.insert().values(**values)
@@ -539,6 +547,7 @@ def auth_callback():
             current_app.logger.error(
                 "[LOGIN] ProgrammingError during OAuth commit: %s", message, exc_info=exc
             )
+            _disable_google_id_column_usage()
             if created_new_user:
                 fallback_user = _create_user_with_existing_columns(
                     email=email,
