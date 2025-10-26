@@ -1,12 +1,19 @@
-from datetime import datetime
+from datetime import datetime, timezone
+
+from flask_login import UserMixin
+from sqlalchemy.orm import validates
 
 from . import db
 
-class User(db.Model):
+
+class User(UserMixin, db.Model):
     __tablename__ = 'users'
-    
+    __table_args__ = (
+        db.CheckConstraint("email = lower(email)", name="ck_users_email_lowercase"),
+    )
+
     id = db.Column(db.Integer, primary_key=True)
-    email = db.Column(db.String(120), unique=True, nullable=False)
+    email = db.Column(db.String(255), unique=True, nullable=False)
     password_hash = db.Column(db.String(128), nullable=True, default="")
     premium = db.Column(db.Boolean, default=False, nullable=False)
     is_premium = db.Column(db.Boolean, default=False, nullable=False)
@@ -57,7 +64,12 @@ class User(db.Model):
     google_id = db.Column(db.String(255), unique=True, nullable=True)
     name = db.Column(db.String(255), nullable=True)
     picture_url = db.Column(db.String(512), nullable=True)
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+    created_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        server_default=db.func.now(),
+        default=lambda: datetime.now(timezone.utc),
+    )
 
     def __repr__(self):
         return f'<User {self.email}>'
@@ -89,3 +101,12 @@ class User(db.Model):
         self.premium_lifetime = True
         self.premium_since = datetime.utcnow()
         self.mark_premium_plan()
+
+    @validates("email")
+    def _normalize_email(self, key: str, value: str | None) -> str:
+        if value is None:
+            raise ValueError("Email cannot be null")
+        normalized = value.strip().lower()
+        if not normalized:
+            raise ValueError("Email cannot be empty")
+        return normalized
