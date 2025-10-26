@@ -9,7 +9,6 @@ Obiettivi principali:
 - Analisi automatica dell'ultima finestra temporale per riconoscere trend in crescita, stabili o in calo.
 - Sistema di alert tramite bot Telegram con gestione utenti Free/Premium e riduzione dello spam.
 
-![Dashboard](./docs/preview-dashboard.png)
 
 ---
 
@@ -176,14 +175,14 @@ LOG_DIR=./logs
 - Pannello admin avanzato con filtri, statistiche e gestione massiva utenti.
 
 ## Licenza & Note Legali
-- **Licenza del codice**: da definire (placeholder).
+- **Licenza del codice**: Per il riutilizzo del progetto è necessario ricevere autorizzazione scritta dal creatore del progetto.
 - **Fonti dati**: grafici pubblici INGV, soggetti ai loro termini d'uso.
 
 > EtnaMonitor utilizza esclusivamente grafici pubblici forniti dall’INGV per scopi divulgativi.  
 > Il progetto non è affiliato né approvato da INGV. Tutti gli algoritmi di analisi, la piattaforma web e i sistemi di notifica sono proprietà intellettuale del progetto EtnaMonitor.
 
 ## Contatti
-- Email: `<INFO_EMAIL>`
-- Pagina About: `https://<DOMINIO_ETNAMONITOR>/about`
+- Email: `salvoferro16@gmail.com`
+- Pagina About: `https://etnamonitor.it`
 
 ---
