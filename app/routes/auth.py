@@ -20,7 +20,7 @@ from flask import (
 
 from flask_login import login_user, logout_user
 
-from sqlalchemy import Boolean, BigInteger, Integer, SmallInteger, func, inspect
+from sqlalchemy import Boolean, func, inspect
 from sqlalchemy.exc import (
     IntegrityError,
     ProgrammingError,
@@ -221,30 +221,25 @@ def _create_user_with_existing_columns(
     if _include("free_alert_consumed"):
         column_type = column_types.get("free_alert_consumed")
 
-        coerced_value: object = False
+        coerced_value: object = 0
 
         try:
             if isinstance(column_type, Boolean):
                 coerced_value = False
-            elif isinstance(column_type, (Integer, SmallInteger, BigInteger)):
-                coerced_value = 0
             else:
-                python_type = None
-                try:
-                    python_type = column_type.python_type  # type: ignore[attr-defined]
-                except (AttributeError, NotImplementedError):
-                    python_type = None
+                # ``inspect`` may return backend specific types (e.g. ``INTEGER``)
+                # that do not inherit from ``Integer`` directly. Rely on the
+                # dialect visit name or the string representation as a fallback.
+                type_name = (getattr(column_type, "__visit_name__", "") or "").lower()
+                if not type_name:
+                    type_name = str(column_type or "").lower()
 
-                if python_type is int:
+                if any(token in type_name for token in ("int", "serial")):
                     coerced_value = 0
-                elif python_type is bool:
-                    coerced_value = False
-                elif python_type is not None:
-                    coerced_value = python_type(False)  # best-effort coercion
                 else:
                     coerced_value = False
         except Exception:  # pragma: no cover - extremely defensive
-            coerced_value = False
+            coerced_value = 0
 
         values["free_alert_consumed"] = coerced_value
 
