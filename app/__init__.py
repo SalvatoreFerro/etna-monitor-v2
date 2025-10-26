@@ -16,6 +16,7 @@ from .routes.auth import bp as auth_bp
 from .routes.api import api_bp
 from .routes.status import status_bp
 from .routes.billing import bp as billing_bp
+from backend.routes.admin_stats import admin_stats_bp
 from .models import db
 from .utils.csrf import generate_csrf_token
 from .services.scheduler_service import SchedulerService
@@ -389,6 +390,7 @@ def create_app():
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
     app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(billing_bp)
+    app.register_blueprint(admin_stats_bp, url_prefix="/admin/api")
     app.register_blueprint(api_bp)
     app.register_blueprint(status_bp)
 

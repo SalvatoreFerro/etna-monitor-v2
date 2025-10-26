@@ -1,21 +1,28 @@
 {% extends "layout.html" %}
 
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
 {% block title %}Gestione Banner Sponsor{% endblock %}
 
 {% block content %}
-<section class="admin-container" style="padding: clamp(16px, 4vw, 40px);">
-  <header class="admin-header card-premium animate-premium-fade" style="margin-bottom: clamp(16px, 3vw, 32px);">
-    <h1><i class="fas fa-image"></i> Banner sponsorizzati</h1>
-    <p>Carica, attiva o disattiva i banner visibili sulle pagine pubbliche.</p>
-    <div style="margin-top: 12px;">
-      <a href="{{ url_for('admin.admin_home') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-arrow-left"></i> Torna alla dashboard admin</a>
+<section class="admin-page admin-container" aria-labelledby="admin-banners-title">
+  <header class="admin-card admin-card--hero card-premium animate-premium-fade admin-header" id="admin-banners-title">
+    <div>
+      <h1><i class="fas fa-image"></i> Banner sponsorizzati</h1>
+      <p>Carica, attiva o disattiva i banner visibili sulle pagine pubbliche.</p>
     </div>
+    <nav class="admin-actions" aria-label="Navigazione amministratore">
+      <a href="{{ url_for('admin.admin_home') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-arrow-left"></i> Torna alla dashboard admin</a>
+    </nav>
   </header>
 
-  <div class="card-premium animate-premium-slide" style="margin-bottom: clamp(20px, 4vw, 36px);">
-    <form method="POST" action="{{ url_for('admin.banner_create') }}" class="stacked-form" style="display: grid; gap: 16px;">
+  <article class="admin-card card-premium animate-premium-slide admin-highlight-card">
+    <form method="POST" action="{{ url_for('admin.banner_create') }}" class="stacked-form">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-      <h2 style="margin: 0; font-size: 1.25rem;">Nuovo banner</h2>
+      <h2>Nuovo banner</h2>
       <div class="form-grid">
         <div class="form-group">
           <label for="title">Titolo</label>
@@ -41,10 +48,10 @@
         <button type="submit" class="btn btn-premium"><i class="fas fa-plus"></i> Crea banner</button>
       </div>
     </form>
-  </div>
+  </article>
 
-  <div class="card-premium animate-premium-fade">
-    <h2 style="margin-bottom: 16px;">Banner esistenti</h2>
+  <article class="admin-card card-premium animate-premium-fade">
+    <h2>Banner esistenti</h2>
     {% if banners %}
       <div class="banner-list">
         {% for banner in banners %}
@@ -102,97 +109,8 @@
         {% endfor %}
       </div>
     {% else %}
-      <p class="muted">Nessun banner registrato. Aggiungine uno per iniziare.</p>
+      <p class="audit-list__empty">Nessun banner registrato. Aggiungine uno per iniziare.</p>
     {% endif %}
-  </div>
+  </article>
 </section>
-
-<style>
-  .form-grid {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  }
-
-  .banner-list {
-    display: flex;
-    flex-direction: column;
-    gap: clamp(16px, 3vw, 24px);
-  }
-
-  .banner-item {
-    display: grid;
-    gap: clamp(16px, 4vw, 28px);
-    grid-template-columns: minmax(220px, 320px) 1fr auto;
-    padding: clamp(16px, 3vw, 24px);
-    border-radius: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    background: rgba(13, 19, 33, 0.7);
-  }
-
-  .banner-preview {
-    border-radius: 16px;
-    overflow: hidden;
-    background: rgba(255, 255, 255, 0.04);
-    display: grid;
-    place-items: center;
-    padding: 12px;
-  }
-
-  .banner-preview img {
-    max-width: 100%;
-    height: auto;
-    object-fit: contain;
-  }
-
-  .banner-details {
-    display: grid;
-    gap: 16px;
-  }
-
-  .banner-form {
-    display: grid;
-    gap: 12px;
-  }
-
-  .banner-meta {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    color: var(--text-secondary);
-  }
-
-  .banner-controls {
-    display: grid;
-    gap: 12px;
-    align-content: flex-start;
-  }
-
-  .checkbox-inline {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.95rem;
-    color: var(--text-secondary);
-  }
-
-  @media (max-width: 1024px) {
-    .banner-item {
-      grid-template-columns: 1fr;
-    }
-
-    .banner-controls {
-      grid-auto-flow: column;
-      justify-content: flex-start;
-    }
-  }
-
-  @media (max-width: 640px) {
-    .banner-controls {
-      grid-auto-flow: row;
-    }
-  }
-</style>
 {% endblock %}

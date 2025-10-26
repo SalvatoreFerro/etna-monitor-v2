@@ -1,92 +1,34 @@
 {% extends "layout.html" %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
-<style>
-@media only screen and (max-width: 393px) and (-webkit-min-device-pixel-ratio: 3) {
-  .admin-container {
-    padding: 12px max(4px, env(safe-area-inset-right)) 12px max(4px, env(safe-area-inset-left));
-    width: 100%;
-    box-sizing: border-box;
-  }
-  
-  .admin-header {
-    padding: 16px max(4px, env(safe-area-inset-right)) 16px max(4px, env(safe-area-inset-left));
-    margin-bottom: 12px;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  
-  .admin-header h1 {
-    font-size: var(--font-size-xl);
-    margin-bottom: var(--space-2);
-  }
-  
-  .admin-content {
-    padding: 16px max(4px, env(safe-area-inset-right)) 16px max(4px, env(safe-area-inset-left));
-    width: 100%;
-    box-sizing: border-box;
-  }
-  
-  .table-container {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    width: 100%;
-    box-sizing: border-box;
-  }
-  
-  .table-premium {
-    font-size: var(--font-size-xs);
-    min-width: 100%;
-  }
-  
-  .table-premium th,
-  .table-premium td {
-    padding: var(--space-1) var(--space-2);
-    font-size: var(--font-size-xs);
-  }
-  
-  .action-buttons {
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-  
-  .action-buttons .btn {
-    font-size: var(--font-size-xs);
-    padding: var(--space-1) var(--space-2);
-    width: 100%;
-  }
-  
-  .badge {
-    font-size: var(--font-size-xs);
-    padding: 2px 6px;
-  }
-}
-</style>
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="admin-container">
-  <div class="admin-header card-premium animate-premium-fade">
-    <h1><i class="fas fa-users-cog"></i> Pannello Admin</h1>
-    <p>Gestisci utenti e impostazioni di sistema</p>
-    <div class="admin-links" style="margin-top: 12px; display: flex; gap: 12px; flex-wrap: wrap;">
+<section class="admin-page admin-container" aria-labelledby="admin-dashboard-title">
+  <header class="admin-card admin-card--hero card-premium animate-premium-fade admin-header" id="admin-dashboard-title">
+    <div>
+      <h1><i class="fas fa-users-cog"></i> Pannello Admin</h1>
+      <p>Gestisci utenti, sponsor e sicurezza con una panoramica aggiornata.</p>
+    </div>
+    <nav class="admin-actions" aria-label="Azioni rapide amministratore">
       <a href="{{ url_for('admin.donations') }}" class="btn btn-premium btn-sm"><i class="fas fa-donate"></i> Donazioni in verifica</a>
       <a href="{{ url_for('admin.banner_list') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-image"></i> Banner sponsor</a>
       <a href="{{ url_for('admin.sponsor_analytics') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-chart-line"></i> Sponsor analytics</a>
-    </div>
-  </div>
-  
-  <div class="admin-content card-premium animate-premium-slide">
-    <div style="margin-bottom: 20px;">
-      <button onclick="testAlert()" class="btn btn-premium">
+    </nav>
+  </header>
+
+  <div class="admin-card admin-card--table card-premium animate-premium-slide">
+    <div class="admin-test-alert">
+      <button type="button" id="admin-test-alert-button" class="btn btn-premium">
         <i class="fas fa-bell"></i> Test Alert
       </button>
-      <small style="color: #888; margin-left: 10px;">Esegue immediatamente il controllo degli alert Telegram</small>
+      <p class="admin-caption" id="admin-test-alert-caption">Esegue immediatamente il controllo degli alert Telegram.</p>
     </div>
-    
-    <div class="table-container">
-      <table class="table table-premium">
+
+    <div class="admin-table-wrapper">
+      <table class="table table-premium admin-table">
         <thead>
           <tr>
             <th>Email</th>
@@ -129,9 +71,51 @@
       </table>
     </div>
   </div>
-</div>
+
+  <section class="admin-grid admin-grid--columns" aria-labelledby="admin-audit-title">
+    <article class="admin-card card-premium animate-premium-fade">
+      <header class="admin-section-header">
+        <div>
+          <h2 id="admin-audit-title"><i class="fas fa-clipboard-list"></i> Registro attività</h2>
+          <p>Monitoraggio degli ultimi eventi generati dagli utenti.</p>
+        </div>
+        <button type="button" class="btn btn-secondary glass btn-sm audit-refresh" data-audit-refresh>
+          <i class="fas fa-rotate"></i> Aggiorna
+        </button>
+      </header>
+      <div class="admin-metrics">
+        <div class="admin-metric">
+          <span class="admin-metric__label">Eventi recenti</span>
+          <span class="admin-metric__value" data-metric-events-count>—</span>
+          <p class="admin-metric__hint">Ultimi <span data-metric-events-limit>15</span> eventi nel registro.</p>
+        </div>
+        <div class="admin-metric">
+          <span class="admin-metric__label">Alert (24h)</span>
+          <span class="admin-metric__value" data-metric-alerts-24h>—</span>
+          <p class="admin-metric__hint">Notifiche critiche inviate nelle ultime 24 ore.</p>
+        </div>
+      </div>
+      <p class="admin-caption" id="admin-audit-updated">Aggiornamento automatico ogni minuto.</p>
+      <ol class="audit-list" id="admin-audit-events" aria-live="polite" aria-busy="true"></ol>
+    </article>
+
+    <article class="admin-card card-premium animate-premium-fade">
+      <header class="admin-section-header">
+        <div>
+          <h2 id="admin-alerts-title"><i class="fas fa-exclamation-triangle"></i> Ultimi alert</h2>
+          <p>Eventi critici che hanno superato la soglia di sicurezza.</p>
+        </div>
+      </header>
+      <ol class="audit-list" id="admin-alert-feed" aria-live="polite" aria-busy="true"></ol>
+    </article>
+  </section>
+</section>
+
+<div class="audit-status" data-audit-status aria-live="polite"></div>
 
 <script>
+  const ADMIN_AUDIT_ENDPOINT = "{{ url_for('admin_stats.get_audit_feed') }}";
+
   function togglePremium(userId) {
     fetch(`/admin/toggle_premium/${userId}`, {
       method: 'POST',
@@ -167,12 +151,20 @@
   }
 
   function testAlert(event) {
-    const button = event ? event.target : document.querySelector('button[onclick="testAlert()"]');
+    const button = document.getElementById('admin-test-alert-button');
+    if (!button) {
+      return;
+    }
+
+    const caption = document.getElementById('admin-test-alert-caption');
     const originalText = button.innerHTML;
-    
+
     button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Controllo in corso...';
     button.disabled = true;
-    
+    if (caption) {
+      caption.textContent = 'Controllo in corso, attendi qualche istante.';
+    }
+
     fetch('/admin/test-alert', {
       method: 'POST',
       headers: {
@@ -183,7 +175,11 @@
     .then(data => {
       button.innerHTML = originalText;
       button.disabled = false;
-      
+
+      if (caption) {
+        caption.textContent = 'Esegue immediatamente il controllo degli alert Telegram.';
+      }
+
       if (data.success) {
         alert('✅ Controllo alert eseguito con successo!\n\n' + data.message);
       } else {
@@ -193,8 +189,241 @@
     .catch(error => {
       button.innerHTML = originalText;
       button.disabled = false;
+      if (caption) {
+        caption.textContent = 'Si è verificato un errore durante il controllo.';
+      }
       alert('❌ Errore di connessione: ' + error.message);
     });
+  }
+
+  (function initAdminAudit() {
+    const eventsList = document.getElementById('admin-audit-events');
+    const alertsList = document.getElementById('admin-alert-feed');
+    const refreshButton = document.querySelector('[data-audit-refresh]');
+    const statusRegion = document.querySelector('[data-audit-status]');
+    const eventsCount = document.querySelector('[data-metric-events-count]');
+    const alerts24h = document.querySelector('[data-metric-alerts-24h]');
+    const eventsLimit = document.querySelector('[data-metric-events-limit]');
+    const updatedLabel = document.getElementById('admin-audit-updated');
+    const EVENT_LIMIT = 15;
+    const ALERT_LIMIT = 10;
+    let refreshTimer = null;
+
+    if (eventsLimit) {
+      eventsLimit.textContent = EVENT_LIMIT;
+    }
+
+    function formatTimestamp(value) {
+      if (!value) {
+        return '—';
+      }
+
+      try {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) {
+          return value;
+        }
+
+        return new Intl.DateTimeFormat(navigator.language || 'it-IT', {
+          year: 'numeric',
+          month: 'short',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit'
+        }).format(date);
+      } catch (error) {
+        return value;
+      }
+    }
+
+    function describeEvent(event) {
+      if (!event) {
+        return '';
+      }
+
+      if (event.message) {
+        return event.message;
+      }
+
+      if (event.event_type === 'alert' && typeof event.value === 'number') {
+        return `Alert tremore ${event.value.toFixed(2)} mV`;
+      }
+
+      if (event.event_type === 'threshold_change' && typeof event.threshold === 'number') {
+        return `Soglia aggiornata a ${event.threshold.toFixed(2)} mV`;
+      }
+
+      switch (event.event_type) {
+        case 'login':
+          return 'Accesso effettuato';
+        case 'subscription':
+          return 'Aggiornamento stato abbonamento';
+        default:
+          return event.event_type ? event.event_type.replace(/_/g, ' ') : 'Evento sistema';
+      }
+    }
+
+    function resolveIcon(eventType) {
+      switch (eventType) {
+        case 'alert':
+          return { icon: 'fa-exclamation-triangle', modifier: 'alert' };
+        case 'threshold_change':
+          return { icon: 'fa-sliders', modifier: 'success' };
+        case 'login':
+          return { icon: 'fa-right-to-bracket', modifier: '' };
+        case 'subscription':
+          return { icon: 'fa-crown', modifier: 'success' };
+        default:
+          return { icon: 'fa-circle-info', modifier: '' };
+      }
+    }
+
+    function renderList(container, items, emptyMessage, fallbackModifier = '') {
+      if (!container) {
+        return;
+      }
+
+      container.innerHTML = '';
+
+      if (!items || items.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'audit-list__empty';
+        empty.textContent = emptyMessage;
+        container.appendChild(empty);
+        container.setAttribute('aria-busy', 'false');
+        return;
+      }
+
+      const fragment = document.createDocumentFragment();
+
+      items.forEach((item) => {
+        const { icon, modifier } = resolveIcon(item.event_type);
+        const appliedModifier = modifier || fallbackModifier;
+        const listItem = document.createElement('li');
+        listItem.className = 'audit-list__item' + (appliedModifier ? ` audit-list__item--${appliedModifier}` : '');
+
+        const iconContainer = document.createElement('div');
+        iconContainer.className = 'audit-list__icon';
+        iconContainer.innerHTML = `<i class="fas ${icon}" aria-hidden="true"></i>`;
+
+        const content = document.createElement('div');
+        content.className = 'audit-list__content';
+
+        const title = document.createElement('p');
+        title.className = 'audit-list__title';
+        title.textContent = describeEvent(item);
+
+        const meta = document.createElement('p');
+        meta.className = 'audit-list__meta';
+
+        const user = document.createElement('span');
+        user.innerHTML = `<i class="fas fa-user"></i> ${item.user_email || 'Utente sconosciuto'}`;
+
+        const timestamp = document.createElement('span');
+        timestamp.innerHTML = `<i class="fas fa-clock"></i> <time datetime="${item.timestamp || ''}">${formatTimestamp(item.timestamp)}</time>`;
+
+        meta.append(user, timestamp);
+        content.append(title, meta);
+        listItem.append(iconContainer, content);
+        fragment.appendChild(listItem);
+      });
+
+      container.appendChild(fragment);
+      container.setAttribute('aria-busy', 'false');
+    }
+
+    async function loadAuditData(manual = false) {
+      if (statusRegion) {
+        statusRegion.textContent = manual ? 'Aggiornamento manuale del registro in corso…' : 'Aggiornamento registro attività…';
+      }
+
+      if (eventsList) {
+        eventsList.setAttribute('aria-busy', 'true');
+      }
+
+      if (alertsList) {
+        alertsList.setAttribute('aria-busy', 'true');
+      }
+
+      try {
+        const response = await fetch(`${ADMIN_AUDIT_ENDPOINT}?limit=${EVENT_LIMIT}&alerts_limit=${ALERT_LIMIT}`, {
+          headers: {
+            'Accept': 'application/json'
+          },
+          credentials: 'same-origin'
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+
+        const payload = await response.json();
+        if (!payload || payload.ok === false) {
+          throw new Error(payload && payload.error ? payload.error : 'Risposta non valida dal server');
+        }
+
+        renderList(eventsList, payload.events, 'Nessun evento recente disponibile.');
+        renderList(alertsList, payload.alerts, 'Nessun alert recente registrato.', 'alert');
+
+        if (eventsCount) {
+          eventsCount.textContent = payload.events ? payload.events.length : '0';
+        }
+
+        if (alerts24h) {
+          alerts24h.textContent = payload.metrics ? payload.metrics.alerts_last_24h : '0';
+        }
+
+        if (updatedLabel) {
+          updatedLabel.textContent = `Ultimo aggiornamento: ${formatTimestamp(payload.generated_at)}`;
+        }
+
+        if (statusRegion) {
+          statusRegion.textContent = 'Registro aggiornato con successo.';
+        }
+      } catch (error) {
+        if (statusRegion) {
+          statusRegion.textContent = `Errore durante il recupero del registro: ${error.message}`;
+        }
+
+        if (eventsList) {
+          eventsList.innerHTML = '<p class="audit-list__empty">Impossibile caricare gli eventi. Riprova più tardi.</p>';
+          eventsList.setAttribute('aria-busy', 'false');
+        }
+
+        if (alertsList) {
+          alertsList.innerHTML = '<p class="audit-list__empty">Impossibile recuperare gli alert recenti.</p>';
+          alertsList.setAttribute('aria-busy', 'false');
+        }
+      }
+    }
+
+    function scheduleRefresh() {
+      clearInterval(refreshTimer);
+      refreshTimer = setInterval(() => {
+        if (document.visibilityState === 'visible') {
+          loadAuditData(false);
+        }
+      }, 60000);
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        loadAuditData(false);
+      }
+    });
+
+    if (refreshButton) {
+      refreshButton.addEventListener('click', () => {
+        loadAuditData(true);
+      });
+    }
+
+    loadAuditData(false).then(scheduleRefresh);
+  })();
+
+  const testAlertButton = document.getElementById('admin-test-alert-button');
+  if (testAlertButton) {
+    testAlertButton.addEventListener('click', testAlert);
   }
 </script>
 {% endblock %}

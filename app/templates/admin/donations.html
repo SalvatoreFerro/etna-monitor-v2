@@ -1,19 +1,26 @@
 {% extends "layout.html" %}
 
-{% block content %}
-<div class="admin-container">
-  <div class="admin-header card-premium animate-premium-fade">
-    <h1><i class="fas fa-donate"></i> Donazioni in verifica</h1>
-    <p>Gestisci le richieste di attivazione Premium Lifetime ricevute tramite PayPal.</p>
-    <div style="margin-top: 12px;">
-      <a href="{{ url_for('admin.admin_home') }}" class="btn btn-secondary btn-sm"><i class="fas fa-arrow-left"></i> Torna al pannello admin</a>
-    </div>
-  </div>
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
 
-  <div class="admin-content card-premium animate-premium-slide">
+{% block content %}
+<section class="admin-page admin-container" aria-labelledby="admin-donations-title">
+  <header class="admin-card admin-card--hero card-premium animate-premium-fade admin-header" id="admin-donations-title">
+    <div>
+      <h1><i class="fas fa-donate"></i> Donazioni in verifica</h1>
+      <p>Gestisci le richieste di attivazione Premium Lifetime ricevute tramite PayPal.</p>
+    </div>
+    <nav class="admin-actions" aria-label="Navigazione amministratore">
+      <a href="{{ url_for('admin.admin_home') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-arrow-left"></i> Torna al pannello admin</a>
+    </nav>
+  </header>
+
+  <article class="admin-card card-premium animate-premium-slide admin-highlight-card">
     {% if users %}
-      <div class="table-container">
-        <table class="table table-premium">
+      <div class="admin-table-wrapper">
+        <table class="table table-premium admin-table">
           <thead>
             <tr>
               <th>Email</th>
@@ -40,8 +47,8 @@
         </table>
       </div>
     {% else %}
-      <p>Non ci sono donazioni in attesa di verifica.</p>
+      <p class="audit-list__empty">Non ci sono donazioni in attesa di verifica.</p>
     {% endif %}
-  </div>
-</div>
+  </article>
+</section>
 {% endblock %}

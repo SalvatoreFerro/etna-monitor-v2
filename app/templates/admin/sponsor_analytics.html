@@ -1,21 +1,25 @@
 {% extends "layout.html" %}
 
 {% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 {% endblock %}
 
 {% block content %}
-<section class="admin-container" style="padding: clamp(16px, 4vw, 40px);">
-  <header class="admin-header card-premium animate-premium-fade" style="margin-bottom: clamp(16px, 3vw, 32px);">
-    <h1><i class="fas fa-chart-line"></i> Sponsor Analytics</h1>
-    <p>Analizza impression, click e CTR dei banner sponsorizzati con filtri personalizzabili.</p>
-    <div style="margin-top: 12px; display: flex; gap: 12px; flex-wrap: wrap;">
+<section class="admin-page admin-container" aria-labelledby="sponsor-analytics-title">
+  <header class="admin-card admin-card--hero card-premium animate-premium-fade admin-header" id="sponsor-analytics-title">
+    <div>
+      <h1><i class="fas fa-chart-line"></i> Sponsor Analytics</h1>
+      <p>Analizza impression, click e CTR dei banner sponsorizzati con filtri personalizzabili.</p>
+    </div>
+    <nav class="admin-actions" aria-label="Navigazione amministratore">
       <a href="{{ url_for('admin.admin_home') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-arrow-left"></i> Torna alla dashboard admin</a>
       <a href="{{ url_for('admin.banner_list') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-image"></i> Gestisci banner</a>
-    </div>
+    </nav>
   </header>
 
-  <div class="card-premium animate-premium-slide" style="margin-bottom: clamp(20px, 4vw, 36px);">
+  <article class="admin-card card-premium animate-premium-slide admin-highlight-card">
     <form method="get" class="analytics-filters">
       <div class="analytics-filters__grid">
         <div class="form-group">
@@ -45,9 +49,9 @@
         <a href="{{ url_for('admin.sponsor_analytics', **request.args.to_dict(flat=True), export='csv') }}" class="btn btn-secondary glass"><i class="fas fa-file-download"></i> Esporta CSV</a>
       </div>
     </form>
-  </div>
+  </article>
 
-  <div class="analytics-summary">
+  <section class="analytics-summary">
     <article class="analytics-card">
       <h3>Impression</h3>
       <p class="analytics-value">{{ summary.impressions }}</p>
@@ -63,10 +67,10 @@
       <p class="analytics-value">{{ '%.2f'|format(summary.ctr) }}%</p>
       <span class="analytics-muted">Click-through rate medio</span>
     </article>
-  </div>
+  </section>
 
-  <div class="card-premium animate-premium-fade" style="margin-bottom: clamp(20px, 4vw, 36px);">
-    <header class="analytics-section-header">
+  <article class="admin-card card-premium animate-premium-fade admin-highlight-card">
+    <header class="admin-section-header">
       <div>
         <h2>Andamento giornaliero</h2>
         <p class="analytics-muted">Confronto impression e click giorno per giorno.</p>
@@ -74,7 +78,7 @@
     </header>
     <div id="sponsor-analytics-chart" class="analytics-chart" aria-label="Grafico impression e click giornalieri"></div>
     <div class="table-responsive">
-      <table class="table table-premium">
+      <table class="table table-premium admin-table">
         <thead>
           <tr>
             <th>Data</th>
@@ -95,18 +99,18 @@
         </tbody>
       </table>
     </div>
-  </div>
+  </article>
 
   <div class="analytics-grid">
-    <div class="card-premium animate-premium-slide">
-      <header class="analytics-section-header">
+    <article class="admin-card card-premium animate-premium-slide">
+      <header class="admin-section-header">
         <div>
           <h2>Pagine principali</h2>
           <p class="analytics-muted">Top placement per impression e click.</p>
         </div>
       </header>
       <div class="table-responsive">
-        <table class="table table-premium">
+        <table class="table table-premium admin-table">
           <thead>
             <tr>
               <th>Pagina</th>
@@ -126,23 +130,23 @@
             {% endfor %}
             {% if not page_stats %}
               <tr>
-                <td colspan="4" class="analytics-muted" style="text-align: center;">Nessun dato disponibile nel periodo.</td>
+                <td colspan="4" class="analytics-muted analytics-empty-state">Nessun dato disponibile nel periodo.</td>
               </tr>
             {% endif %}
           </tbody>
         </table>
       </div>
-    </div>
+    </article>
 
-    <div class="card-premium animate-premium-slide">
-      <header class="analytics-section-header">
+    <article class="admin-card card-premium animate-premium-slide">
+      <header class="admin-section-header">
         <div>
           <h2>Performance per banner</h2>
           <p class="analytics-muted">Analisi di impression, click e CTR per sponsor.</p>
         </div>
       </header>
       <div class="table-responsive">
-        <table class="table table-premium">
+        <table class="table table-premium admin-table">
           <thead>
             <tr>
               <th>Banner</th>
@@ -162,13 +166,13 @@
             {% endfor %}
             {% if not banner_stats %}
               <tr>
-                <td colspan="4" class="analytics-muted" style="text-align: center;">Nessun dato disponibile nel periodo.</td>
+                <td colspan="4" class="analytics-muted analytics-empty-state">Nessun dato disponibile nel periodo.</td>
               </tr>
             {% endif %}
           </tbody>
         </table>
       </div>
-    </div>
+    </article>
   </div>
 </section>
 
@@ -213,94 +217,3 @@
   })();
 </script>
 {% endblock %}
-
-<style>
-  .analytics-filters {
-    display: grid;
-    gap: 20px;
-  }
-
-  .analytics-filters__grid {
-    display: grid;
-    gap: 16px;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  }
-
-  .analytics-filters__actions {
-    display: flex;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .analytics-summary {
-    display: grid;
-    gap: clamp(12px, 2vw, 20px);
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    margin-bottom: clamp(20px, 4vw, 36px);
-  }
-
-  .analytics-card {
-    padding: clamp(16px, 3vw, 24px);
-    border-radius: 20px;
-    background: rgba(13, 19, 33, 0.72);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    display: grid;
-    gap: 8px;
-  }
-
-  .analytics-card h3 {
-    margin: 0;
-    font-size: 1rem;
-    color: var(--color-text-secondary);
-  }
-
-  .analytics-value {
-    margin: 0;
-    font-size: 2rem;
-    font-weight: var(--font-weight-bold);
-    color: var(--color-text-primary);
-  }
-
-  .analytics-muted {
-    color: var(--color-text-tertiary);
-    font-size: 0.9rem;
-  }
-
-  .analytics-section-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-
-  .analytics-chart {
-    min-height: 360px;
-  }
-
-  .analytics-grid {
-    display: grid;
-    gap: clamp(16px, 3vw, 24px);
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  }
-
-  .table-responsive {
-    overflow-x: auto;
-  }
-
-  .table-premium th,
-  .table-premium td {
-    white-space: nowrap;
-  }
-
-  @media (max-width: 768px) {
-    .analytics-filters__actions {
-      flex-direction: column;
-      align-items: stretch;
-    }
-
-    .analytics-value {
-      font-size: 1.75rem;
-    }
-  }
-</style>
