@@ -205,21 +205,28 @@ def create_app(config_overrides: dict | None = None):
         except Exception:
             app.logger.exception("[BOOT] Scheduler initialization failed")
 
-    telegram_status = {"enabled": False, "running": False, "last_error": None}
-    if os.getenv("ENABLE_TELEGRAM_BOT", "false").lower() == "true":
-        telegram_status["enabled"] = True
+    telegram_mode = (app.config.get("TELEGRAM_BOT_MODE") or "off").lower()
+    telegram_status = {
+        "enabled": telegram_mode in {"polling", "webhook"},
+        "running": False,
+        "mode": telegram_mode,
+        "last_error": None,
+    }
+    if telegram_mode == "polling":
         try:
             from .services.telegram_bot_service import TelegramBotService
 
             telegram_bot = TelegramBotService()
             telegram_bot.init_app(app)
             telegram_status["running"] = True
-            app.logger.info("[BOOT] Telegram bot initialized and polling started")
+            app.logger.info("[BOOT] Telegram bot initialized in polling mode")
         except Exception as exc:
             telegram_status["last_error"] = str(exc)
             app.logger.exception("[BOOT] Telegram bot initialization failed")
+    elif telegram_mode == "webhook":
+        app.logger.info("[BOOT] Telegram bot configured for webhook mode; polling is disabled")
     else:
-        app.logger.info("[BOOT] Telegram bot disabled (ENABLE_TELEGRAM_BOT=false)")
+        app.logger.info("[BOOT] Telegram bot disabled (mode=%s)", telegram_mode)
 
     app.config["TELEGRAM_BOT_STATUS"] = telegram_status
 

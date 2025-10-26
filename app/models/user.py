@@ -16,7 +16,7 @@ class User(db.Model):
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     chat_id = db.Column(db.String(50), nullable=True)
     plan_type = db.Column(
-        db.Enum('free', 'premium', name='plan_type_enum'),
+        db.String(20),
         nullable=False,
         server_default='free',
         default='free'

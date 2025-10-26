@@ -20,26 +20,32 @@ class Partner(db.Model):
     """Partner showcased inside the Etna Experience section."""
 
     __tablename__ = "partners"
-    __table_args__ = (
-        db.CheckConstraint(
-            "category IN ('Guide','Hotel','Ristorante','Tour','Altro')",
-            name="ck_partners_category",
-        ),
-    )
 
     id: int = db.Column(db.Integer, primary_key=True)
     name: str = db.Column(db.Text, nullable=False)
-    category: str = db.Column(db.Text, nullable=False, default="Altro")
+    category: str | None = db.Column(db.Text, nullable=True)
     description: str | None = db.Column(db.Text)
     website: str | None = db.Column(db.Text)
     contact: str | None = db.Column(db.Text)
     image_url: str | None = db.Column(db.Text)
     lat: float | None = db.Column(db.Float)
     lon: float | None = db.Column(db.Float)
-    verified: bool = db.Column(db.Boolean, default=False)
-    visible: bool = db.Column(db.Boolean, default=True)
+    verified: bool = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=False,
+        server_default=db.text("false"),
+    )
+    visible: bool = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=True,
+        server_default=db.text("true"),
+    )
     created_at: datetime = db.Column(
-        db.DateTime, server_default=db.func.now(), nullable=False
+        db.DateTime(timezone=True),
+        server_default=db.func.now(),
+        nullable=False,
     )
 
     def category_label(self) -> str:
@@ -50,5 +56,5 @@ class Partner(db.Model):
         # categories.
         if self.category == "Ristorante":
             return "Ristoranti"
-        return self.category
+        return self.category or "Altro"
 

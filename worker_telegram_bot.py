@@ -177,6 +177,14 @@ def main():
 
     app = create_app()
 
+    mode = (app.config.get("TELEGRAM_BOT_MODE") or "off").lower()
+    if mode != "polling":
+        logger.info(
+            "Telegram bot mode is %s; worker will not start polling and will exit.",
+            mode,
+        )
+        return
+
     with app.app_context():
         try:
             telegram_bot = TelegramBotService()

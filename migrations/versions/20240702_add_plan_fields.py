@@ -122,7 +122,7 @@ def upgrade() -> None:
     if 'privacy_version' not in existing_columns:
         op.add_column('users', sa.Column('privacy_version', sa.String(length=32), nullable=True))
 
-    if _constraint_missing('uq_users_telegram_chat_id'):
+    if _constraint_missing('uq_users_telegram_chat_id') and bind.dialect.name != 'sqlite':
         op.create_unique_constraint('uq_users_telegram_chat_id', 'users', ['telegram_chat_id'])
 
     op.execute(
