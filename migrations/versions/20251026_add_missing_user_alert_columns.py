@@ -12,6 +12,9 @@ def upgrade() -> None:
     op.execute(
         """
     DO $$
+    DECLARE
+        free_alert_type text;
+        free_alert_event_type text;
     BEGIN
         IF NOT EXISTS (
             SELECT 1 FROM information_schema.columns
@@ -27,18 +30,33 @@ def upgrade() -> None:
             ALTER TABLE users ADD COLUMN telegram_opt_in BOOLEAN NOT NULL DEFAULT FALSE;
         END IF;
 
-        IF NOT EXISTS (
-            SELECT 1 FROM information_schema.columns
-            WHERE table_name='users' AND column_name='free_alert_consumed'
-        ) THEN
-            ALTER TABLE users ADD COLUMN free_alert_consumed INTEGER NOT NULL DEFAULT 0;
+        SELECT data_type
+          INTO free_alert_type
+          FROM information_schema.columns
+         WHERE table_name = 'users' AND column_name = 'free_alert_consumed';
+
+        IF free_alert_type IS NULL THEN
+            ALTER TABLE users ADD COLUMN free_alert_consumed BOOLEAN NOT NULL DEFAULT FALSE;
+        ELSIF free_alert_type <> 'boolean' THEN
+            ALTER TABLE users ALTER COLUMN free_alert_consumed DROP DEFAULT;
+            ALTER TABLE users
+                ALTER COLUMN free_alert_consumed TYPE BOOLEAN
+                USING COALESCE(free_alert_consumed, 0) <> 0;
+            ALTER TABLE users ALTER COLUMN free_alert_consumed SET DEFAULT FALSE;
+            ALTER TABLE users ALTER COLUMN free_alert_consumed SET NOT NULL;
         END IF;
 
-        IF NOT EXISTS (
-            SELECT 1 FROM information_schema.columns
-            WHERE table_name='users' AND column_name='free_alert_event_id'
-        ) THEN
-            ALTER TABLE users ADD COLUMN free_alert_event_id INTEGER;
+        SELECT data_type
+          INTO free_alert_event_type
+          FROM information_schema.columns
+         WHERE table_name = 'users' AND column_name = 'free_alert_event_id';
+
+        IF free_alert_event_type IS NULL THEN
+            ALTER TABLE users ADD COLUMN free_alert_event_id VARCHAR(255);
+        ELSIF free_alert_event_type <> 'character varying' THEN
+            ALTER TABLE users
+                ALTER COLUMN free_alert_event_id TYPE VARCHAR(255)
+                USING free_alert_event_id::text;
         END IF;
 
         IF NOT EXISTS (
