@@ -2,7 +2,6 @@
 
 {% block head %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/pricing.css') }}">
-<script src="https://js.stripe.com/v3/" nonce="{{ script_nonce }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -24,105 +23,37 @@
           </div>
         </div>
 
-        <h1 class="hero-title">Scegli il piano perfetto per il tuo monitoraggio</h1>
+        <h1 class="hero-title">Due piani semplici, zero confusione</h1>
         <p class="hero-subtitle">
-          Dalla panoramica gratuita alle analisi avanzate con automazione, i piani EtnaMonitor mantengono il tuo team aggiornato
-          sul tremore vulcanico dell'Etna con un look &amp; feel coerente e strumenti professionali.
+          Scegli se restare sul piano gratuito con il primo alert di prova oppure supportare il progetto con la versione Premium Lifetime.
         </p>
 
         <div class="hero-actions">
           {% if not session.user_id %}
-            <a href="{{ url_for('auth.login') }}" class="btn btn-premium" aria-label="Accedi con Google per iniziare la prova gratuita">Accedi con Google</a>
+            <a href="{{ url_for('auth.login') }}" class="btn btn-premium" aria-label="Accedi con Google per attivare il piano gratuito">Accedi con Google</a>
           {% elif current_user.has_premium_access %}
-            <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-premium" aria-label="Gestisci il tuo abbonamento premium">Gestisci abbonamento</a>
+            <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-premium" aria-label="Gestisci il tuo abbonamento">Gestisci abbonamento</a>
           {% else %}
-            <button id="upgrade-btn" class="btn btn-premium" aria-label="Aggiorna il tuo piano a Premium">Aggiorna ora</button>
+            <a href="#plans" class="btn btn-premium" aria-label="Scopri i piani disponibili">Guarda i piani</a>
           {% endif %}
-          <a href="#plans" class="btn btn-secondary glass" aria-label="Confronta i piani EtnaMonitor">Confronta i piani</a>
-          <a href="#donazioni" class="btn btn-secondary glass btn-lifetime" aria-label="Scopri come attivare Premium Lifetime via donazione">Premium Lifetime</a>
+          <a href="#lifetime" class="btn btn-secondary glass btn-lifetime" aria-label="Vai alla sezione Premium Lifetime">Premium Lifetime</a>
         </div>
       </div>
-
-      <aside class="hero-panel glass" aria-label="Anteprima benefici premium">
-        <h3>Perché passare a Premium</h3>
-        <ul class="hero-highlights" role="list">
-          <li>
-            <span class="highlight-icon" aria-hidden="true"><i class="fa-solid fa-satellite-dish"></i></span>
-            Streaming in tempo reale dalle stazioni INGV
-          </li>
-          <li>
-            <span class="highlight-icon" aria-hidden="true"><i class="fa-solid fa-bell"></i></span>
-            Avvisi istantanei via Email e Telegram
-          </li>
-          <li>
-            <span class="highlight-icon" aria-hidden="true"><i class="fa-solid fa-chart-line"></i></span>
-            Dashboard avanzata con export CSV/PNG
-          </li>
-          <li>
-            <span class="highlight-icon" aria-hidden="true"><i class="fa-solid fa-lock"></i></span>
-            Sicurezza enterprise con gestione account
-          </li>
-        </ul>
-      </aside>
     </div>
   </section>
 
   <section id="plans" class="plans-section animate-premium-slide" aria-labelledby="plans-title">
     <div class="section-header">
-      <h2 id="plans-title">Confronta i piani</h2>
-      <p>Ogni piano include accesso alla piattaforma cloud EtnaMonitor con aggiornamenti costanti e supporto dedicato.</p>
-    </div>
-
-    <div class="plan-comparison card-premium">
-      <table class="comparison-table" role="table">
-        <thead>
-          <tr>
-            <th>Funzionalità</th>
-            <th>Piano Free</th>
-            <th>Piano Premium</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Accesso alla dashboard</td>
-            <td>✅</td>
-            <td>✅</td>
-          </tr>
-          <tr>
-            <td>Collegamento Telegram</td>
-            <td>✅</td>
-            <td>✅</td>
-          </tr>
-          <tr>
-            <td>Alert automatici</td>
-            <td>🔔 1 gratuito di prova</td>
-            <td>🔥 Illimitati</td>
-          </tr>
-          <tr>
-            <td>Soglia personalizzata</td>
-            <td>❌</td>
-            <td>✅</td>
-          </tr>
-          <tr>
-            <td>Log eventi recenti</td>
-            <td>❌</td>
-            <td>✅</td>
-          </tr>
-          <tr>
-            <td>Supporto prioritario</td>
-            <td>❌</td>
-            <td>✅</td>
-          </tr>
-        </tbody>
-      </table>
+      <h2 id="plans-title">Scegli l'esperienza che fa per te</h2>
+      <p>Abbiamo ridotto tutto a due opzioni chiare: resta sul piano Free per iniziare oppure passa a Premium Lifetime con una donazione unica.</p>
     </div>
 
     <div class="plan-grid">
-      <article class="plan-card glass" aria-label="Piano Gratuito">
+      <article class="plan-card plan-card-free" aria-label="Piano Gratuito">
         <header class="plan-header">
           <div class="plan-labels">
             <span class="plan-name">Gratuito</span>
-            <span class="plan-tag">Ideale per iniziare</span>
+            <span class="plan-tag">Per conoscere EtnaMonitor</span>
           </div>
           <div class="plan-price">
             <span class="currency">€</span><span class="amount">0</span>
@@ -131,12 +62,10 @@
         </header>
 
         <ul class="plan-features" role="list">
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Ultimi 7 giorni di dati storici</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Monitoraggio tremore di base</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Soglia fissa preconfigurata (2.0 mV)</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Aggiornamenti standard ogni 15 minuti</li>
-          <li><span class="feature-icon muted" aria-hidden="true"><i class="fa-solid fa-minus"></i></span> Nessuna esportazione dati o avvisi</li>
-          <li><span class="feature-icon muted" aria-hidden="true"><i class="fa-solid fa-minus"></i></span> Supporto comunità</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Primo alert gratuito per testare il sistema</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Ultimi 7 giorni di storico tremore</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Dashboard e collegamento Telegram inclusi</li>
+          <li><span class="feature-icon muted" aria-hidden="true"><i class="fa-solid fa-minus"></i></span> Alert successivi bloccati finché resti Free</li>
         </ul>
 
         <footer class="plan-footer">
@@ -150,47 +79,12 @@
         </footer>
       </article>
 
-      <article class="plan-card plan-card-premium" aria-label="Piano Premium">
+      <article id="lifetime" class="plan-card plan-card-lifetime" aria-label="Piano Premium Lifetime">
         <header class="plan-header">
           <div class="plan-labels">
-            <span class="plan-badge">Più Popolare</span>
-            <span class="plan-name">Premium</span>
-            <span class="plan-tag">Per team e professionisti</span>
-          </div>
-          <div class="plan-price">
-            <span class="currency">€</span><span class="amount">9.99</span>
-            <span class="period">/mese</span>
-          </div>
-        </header>
-
-        <ul class="plan-features" role="list">
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Cronologia dati completa e illimitata</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Streaming in tempo reale a bassa latenza</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Soglie personalizzate (0.1 – 10 mV) e alert smart</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Avvisi istantanei via Email, Telegram e Webhook</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Esportazione CSV/PNG e API per integrazioni</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Cronologia eventi con annotazioni</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Supporto prioritario 7×24</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Accesso anticipato a feature sperimentali</li>
-        </ul>
-
-        <footer class="plan-footer">
-          {% if not session.user_id %}
-            <a href="{{ url_for('auth.login') }}" class="btn btn-premium" aria-label="Accedi con Google per provare il piano premium">Accedi con Google</a>
-          {% elif current_user.has_premium_access %}
-            <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-secondary glass" aria-label="Gestisci il tuo abbonamento premium">Gestisci abbonamento</a>
-          {% else %}
-            <button id="upgrade-btn" class="btn btn-premium" aria-label="Aggiorna al piano premium">Aggiorna ora</button>
-          {% endif %}
-        </footer>
-      </article>
-
-      <article class="plan-card plan-card-lifetime" aria-label="Piano Premium Lifetime">
-        <header class="plan-header">
-          <div class="plan-labels">
-            <span class="plan-badge">Nuovo</span>
+            <span class="plan-badge">Supporter</span>
             <span class="plan-name">Premium Lifetime</span>
-            <span class="plan-tag">Upgrade manuale via donazione</span>
+            <span class="plan-tag">Donazione unica, accesso per sempre</span>
           </div>
           <div class="plan-price">
             <span class="currency">€</span><span class="amount">9.99</span>
@@ -199,10 +93,10 @@
         </header>
 
         <ul class="plan-features" role="list">
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-infinity"></i></span> Accesso Premium perpetuo senza rinnovi</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-hand-holding-heart"></i></span> Supporto manuale del team EtnaMonitor</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-id-card"></i></span> Attivazione tramite ID transazione PayPal</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-envelope-open-text"></i></span> Priorità nelle richieste e negli aggiornamenti</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-infinity"></i></span> Premium illimitato senza abbonamento mensile</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-bolt"></i></span> Alert illimitati via Email e Telegram</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-database"></i></span> Storico completo, esportazioni e API</li>
+          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-hand-holding-heart"></i></span> Supporto diretto dal team EtnaMonitor</li>
         </ul>
 
         <footer class="plan-footer">
@@ -214,183 +108,32 @@
         </footer>
       </article>
     </div>
-
-    <div class="plan-metrics glass" role="list">
-      <div class="metric-item" role="listitem">
-        <span class="metric-label">SLA uptime</span>
-        <span class="metric-value">99.9%</span>
-      </div>
-      <div class="metric-item" role="listitem">
-        <span class="metric-label">Aggiornamenti dati</span>
-        <span class="metric-value">Ogni 60s (premium)</span>
-      </div>
-      <div class="metric-item" role="listitem">
-        <span class="metric-label">Integrazioni</span>
-        <span class="metric-value">Email · Telegram · Webhook</span>
-      </div>
-      <div class="metric-item" role="listitem">
-        <span class="metric-label">Team supportati</span>
-        <span class="metric-value">5+ membri</span>
-      </div>
-    </div>
   </section>
-
-  <section id="donazioni" class="donation-support glass animate-premium-fade" aria-labelledby="donation-title">
-    <div class="donation-support__content">
-      <h2 id="donation-title">Upgrade manuale via Donazione PayPal</h2>
-      <p>
-        Preferisci sostenere il progetto senza abbonamento ricorrente? Fai una donazione minima di
-        <strong>€9,99</strong> e il team attiverà manualmente il tuo account <strong>Premium Lifetime</strong>.
-      </p>
+  <section class="lifetime-steps glass animate-premium-fade" aria-labelledby="donation-title">
+    <div class="lifetime-steps__content">
+      <h2 id="donation-title">Come richiedere Premium Lifetime</h2>
       <ol class="donation-steps">
-        <li>Invia una donazione con il pulsante PayPal ufficiale.</li>
-        <li>Nel messaggio PayPal indica l'email con cui accedi a EtnaMonitor.</li>
-        <li>Compila il form <em>Ho donato</em> o scrivici su <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a>.</li>
-        <li>Un admin attiverà il piano Premium entro 24 ore.</li>
+        <li>Effettua una donazione di <strong>€9,99</strong> con il pulsante PayPal.</li>
+        <li>Inserisci l'email con cui accedi a EtnaMonitor nel messaggio della donazione.</li>
+        <li>Completa il form <em>Ho donato</em> oppure scrivici a <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a>.</li>
+        <li>Attiviamo il tuo Premium entro 24 ore lavorative.</li>
       </ol>
-      <div class="donation-support__cta" role="group" aria-label="Donazione PayPal">
-        <form action="https://www.paypal.com/donate" method="post" target="_top" class="paypal-form">
-          <input type="hidden" name="hosted_button_id" value="2T6DKB7U2ZSK8" />
-          <input type="image" src="https://www.paypalobjects.com/it_IT/IT/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Fai una donazione con il pulsante PayPal" />
-          <img alt="" border="0" src="https://www.paypal.com/it_IT/i/scr/pixel.gif" width="1" height="1" />
-        </form>
-        <a href="{{ url_for('billing.donate') }}" class="btn btn-secondary glass">Ho già donato</a>
-      </div>
     </div>
-    <aside class="donation-support__aside" aria-label="Informazioni sul supporto">
-      <div class="donation-card">
-        <h3>Perché donare</h3>
-        <ul>
-          <li>Finanzi nuove feature pubbliche: roadmap, webcam, AI prediction.</li>
-          <li>Supporti infrastruttura server e notifiche Telegram.</li>
-          <li>Ricevi assistenza prioritaria via email e Telegram.</li>
-        </ul>
-      </div>
-      <div class="donation-card secondary">
-        <h3>Serve aiuto?</h3>
-        <p>Scrivici a <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a> oppure sul canale Telegram @EtnaMonitorBot.</p>
-      </div>
-    </aside>
-  </section>
-
-  <section class="feature-showcase animate-premium-fade" aria-labelledby="feature-showcase-title">
-    <div class="section-header">
-      <h2 id="feature-showcase-title">Tutto ciò che serve per reagire in tempo</h2>
-      <p>Dal rilevamento anticipato alla collaborazione cross-team, EtnaMonitor centralizza gli insight sismici con workflow pronti all'azione.</p>
-    </div>
-
-    <div class="feature-grid">
-      <article class="feature-card glass">
-        <div class="feature-icon-wrap" aria-hidden="true"><i class="fa-solid fa-bolt"></i></div>
-        <h3>Alert intelligenti</h3>
-        <p>Configura soglie multiple e silenzi temporanei per ricevere solo notifiche critiche quando il tremore supera i livelli di attenzione.</p>
-      </article>
-      <article class="feature-card glass">
-        <div class="feature-icon-wrap" aria-hidden="true"><i class="fa-solid fa-database"></i></div>
-        <h3>Dati illimitati</h3>
-        <p>Accedi all'intera serie storica e scarica CSV, PNG o usa l'API per integrare i dati nei tuoi modelli previsionali.</p>
-      </article>
-      <article class="feature-card glass">
-        <div class="feature-icon-wrap" aria-hidden="true"><i class="fa-solid fa-users-gear"></i></div>
-        <h3>Collaborazione team</h3>
-        <p>Gestisci membri, ruoli e log attività con audit trail completo per squadre di monitoraggio, ricerca e protezione civile.</p>
-      </article>
+    <div class="lifetime-steps__cta" role="group" aria-label="Donazione Premium Lifetime">
+      <form action="https://www.paypal.com/donate" method="post" target="_top" class="paypal-form">
+        <input type="hidden" name="hosted_button_id" value="2T6DKB7U2ZSK8" />
+        <input type="image" src="https://www.paypalobjects.com/it_IT/IT/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Fai una donazione con il pulsante PayPal" />
+        <img alt="" border="0" src="https://www.paypal.com/it_IT/i/scr/pixel.gif" width="1" height="1" />
+      </form>
+      <a href="{{ url_for('billing.donate') }}" class="btn btn-secondary glass">Ho già donato</a>
     </div>
   </section>
 
-  <section class="faq-section glass animate-premium-slide" aria-labelledby="faq-title">
-    <div class="section-header">
-      <h2 id="faq-title">Domande frequenti</h2>
-      <p>Risposte rapide ai dubbi più comuni su prezzi, fatturazione e sicurezza.</p>
+  <section class="support-card glass animate-premium-fade" aria-label="Supporto EtnaMonitor">
+    <div>
+      <h2>Hai bisogno di aiuto?</h2>
+      <p>Scrivici a <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a> oppure contatta @EtnaMonitorBot su Telegram. Siamo qui per accompagnarti nella scelta più adatta.</p>
     </div>
-
-    <div class="faq-grid" role="list">
-      <article class="faq-item" role="listitem">
-        <h3>Quali fonti di dati utilizzate?</h3>
-        <p>Elaboriamo dati sismici in tempo reale dalle stazioni di monitoraggio INGV, con pipeline proprietaria per garantire precisione e resilienza.</p>
-      </article>
-      <article class="faq-item" role="listitem">
-        <h3>Quanto sono accurati gli avvisi?</h3>
-        <p>Gli alert sfruttano soglie dinamiche e controlli manuali. Gli utenti Premium possono regolare sensibilità e finestra temporale per minimizzare falsi positivi.</p>
-      </article>
-      <article class="faq-item" role="listitem">
-        <h3>Posso cancellare in qualsiasi momento?</h3>
-        <p>Sì, puoi interrompere il rinnovo automatico dal portale Stripe. L'accesso Premium resta attivo fino alla fine del ciclo di fatturazione.</p>
-      </article>
-      <article class="faq-item" role="listitem">
-        <h3>C'è una prova gratuita?</h3>
-        <p>Tutti i nuovi abbonati ottengono 7 giorni di prova con funzionalità complete per testare alert, export e strumenti avanzati.</p>
-      </article>
-      <article class="faq-item" role="listitem">
-        <h3>Quali metodi di pagamento accettate?</h3>
-        <p>Gestiamo carte di credito/debito e addebito diretto SEPA tramite Stripe con tokenizzazione sicura e conformità PCI.</p>
-      </article>
-      <article class="faq-item" role="listitem">
-        <h3>Offrite rimborsi?</h3>
-        <p>Per i piani annuali è prevista una garanzia di rimborso di 30 giorni. I piani mensili possono essere disdetti in qualsiasi momento senza penali.</p>
-      </article>
-    </div>
-  </section>
-
-  <section class="trust-ribbon animate-premium-fade" aria-label="Sicurezza e fiducia">
-    <div class="trust-item">
-      <i class="fa-solid fa-shield-check" aria-hidden="true"></i>
-      <span>Pagamenti sicuri con Stripe</span>
-    </div>
-    <div class="trust-item">
-      <i class="fa-solid fa-user-lock" aria-hidden="true"></i>
-      <span>Compliant GDPR &amp; backup continuo</span>
-    </div>
-    <div class="trust-item">
-      <i class="fa-solid fa-arrows-rotate" aria-hidden="true"></i>
-      <span>Cancella o cambia piano quando vuoi</span>
-    </div>
-  </section>
-
-  <section class="cta-banner glass animate-premium-slide" aria-label="Richiedi una demo personalizzata">
-    <div class="cta-copy">
-      <h2>Vuoi una demo live per il tuo team?</h2>
-      <p>Scopri come EtnaMonitor può integrarsi nei tuoi workflow operativi con una sessione guidata dagli specialisti vulcanologici.</p>
-    </div>
-    <div class="cta-actions">
-      <a href="mailto:salvoferro16@gmail.com" class="btn btn-secondary glass" aria-label="Richiedi una demo personalizzata">Prenota una demo</a>
-      <a href="{{ url_for('auth.login') }}" class="btn btn-premium" aria-label="Accedi con Google per attivare EtnaMonitor">Accedi con Google</a>
-    </div>
-  </section>
-
-  <section class="donation-callout card-premium animate-premium-fade" aria-label="Informazioni sul piano Free">
-    <p>Il piano Free include un solo alert di prova per scoprire come funziona il sistema.<br>
-    Dopo il primo alert potrai passare a Premium con una piccola donazione:</p>
-    <a href="{{ config.PAYPAL_DONATION_LINK or '#' }}" class="btn btn-premium" {% if config.PAYPAL_DONATION_LINK %}target="_blank" rel="noopener"{% else %}aria-disabled="true"{% endif %}>Attiva Premium</a>
   </section>
 </main>
-
-<script nonce="{{ script_nonce }}">
-const stripe = Stripe('{{ config.STRIPE_PUBLIC_KEY }}');
-
-document.getElementById('upgrade-btn')?.addEventListener('click', async () => {
-  const button = document.getElementById('upgrade-btn');
-  button.disabled = true;
-  button.textContent = 'Elaborazione...';
-
-  try {
-    const response = await fetch('/billing/create-checkout-session', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
-    });
-
-    const data = await response.json();
-
-    if (data.checkout_url) {
-      window.location.href = data.checkout_url;
-    } else {
-      throw new Error(data.error || 'Impossibile creare sessione di pagamento');
-    }
-  } catch (error) {
-    alert('Errore: ' + error.message);
-    button.disabled = false;
-    button.textContent = 'Aggiorna ora';
-  }
-});
-</script>
 {% endblock %}
