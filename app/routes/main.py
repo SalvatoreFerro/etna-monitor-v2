@@ -13,6 +13,7 @@ from sqlalchemy import or_, text
 
 from ..extensions import cache
 from ..utils.metrics import get_csv_metrics, record_csv_error, record_csv_read
+from app.security import build_csp, talisman
 
 bp = Blueprint("main", __name__)
 
@@ -55,7 +56,24 @@ def pricing():
     )
 
 
+_ETNA3D_CSP = build_csp()
+_SKETCHFAB_SOURCES = [
+    "https://sketchfab.com",
+    "https://*.sketchfab.com",
+    "https://static.sketchfab.com",
+]
+for directive in ("frame-src", "child-src"):
+    allowed_sources = _ETNA3D_CSP.setdefault(directive, [])
+    if isinstance(allowed_sources, str):
+        allowed_sources = [allowed_sources]
+        _ETNA3D_CSP[directive] = allowed_sources
+    for source in _SKETCHFAB_SOURCES:
+        if source not in allowed_sources:
+            allowed_sources.append(source)
+
+
 @bp.route("/etna-3d")
+@talisman(frame_options="ALLOWALL", content_security_policy=_ETNA3D_CSP)
 def etna3d():
     user = get_current_user()
     plan_type = (getattr(user, "plan_type", "free") or "free") if user else "free"
