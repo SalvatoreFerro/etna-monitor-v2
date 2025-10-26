@@ -230,6 +230,13 @@ def create_app(config_overrides: dict | None = None):
     existing_engine_options = dict(app.config.get("SQLALCHEMY_ENGINE_OPTIONS", {}))
     engine_defaults.update(existing_engine_options)
 
+    database_uri = app.config.get("SQLALCHEMY_DATABASE_URI", "") or ""
+
+    if database_uri.startswith("sqlite"):
+        # SQLite (especially :memory:) does not accept pool sizing parameters.
+        for key in ("pool_size", "max_overflow", "pool_recycle"):
+            engine_defaults.pop(key, None)
+
     poolclass = engine_defaults.get("poolclass")
     if poolclass:
         try:

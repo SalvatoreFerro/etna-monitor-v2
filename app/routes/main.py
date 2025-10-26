@@ -38,6 +38,8 @@ def index():
     latest_timestamp_display: str | None = None
     data_points = 0
 
+    last_timestamp_dt = None
+
     if os.path.exists(csv_path):
         try:
             df = pd.read_csv(csv_path, parse_dates=["timestamp"])
@@ -47,6 +49,8 @@ def index():
                 values = df["value"].tolist()
                 data_points = len(df)
 
+                temporal_start = pd.to_datetime(df["timestamp"].iloc[0]).to_pydatetime()
+                temporal_end = pd.to_datetime(df["timestamp"].iloc[-1]).to_pydatetime()
                 temporal_start = df["timestamp"].iloc[0]
                 temporal_end = df["timestamp"].iloc[-1]
                 temporal_start_iso = temporal_start.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -59,6 +63,9 @@ def index():
                 latest_value = float(df["value"].iloc[-1])
                 latest_timestamp_iso = temporal_end_iso
                 latest_timestamp_display = temporal_end.strftime("%d/%m/%Y %H:%M")
+                last_timestamp_dt = temporal_end
+
+            record_csv_read(len(df), last_timestamp_dt)
 
             record_csv_read(len(df), df["timestamp"].max() if not df.empty else None)
         except Exception as exc:
