@@ -1,4 +1,5 @@
 import asyncio
+import os
 import threading
 from datetime import datetime
 
@@ -49,14 +50,18 @@ class TelegramBotService:
             self._start_bot_thread()
         else:
             logger.warning("No Telegram bot token configured")
-    
+
     def _setup_bot(self):
         """Setup bot application and handlers"""
-        self.application = ApplicationBuilder().token(self.bot_token).build()
+        timeout = int(os.getenv("TELEGRAM_HTTP_TIMEOUT", "10"))
+        builder = ApplicationBuilder().token(self.bot_token)
+        builder = builder.connect_timeout(timeout).read_timeout(timeout).write_timeout(timeout)
+        builder = builder.pool_timeout(timeout)
+        self.application = builder.build()
         self.application.add_handler(CommandHandler("start", self._handle_start))
         self.application.add_handler(CommandHandler("help", self._handle_help))
         self.application.add_handler(CommandHandler("status", self._handle_status))
-        
+
     def _start_bot_thread(self):
         """Start bot in separate thread"""
         self.bot_thread = threading.Thread(target=self._run_bot, daemon=True)
@@ -77,9 +82,10 @@ class TelegramBotService:
         try:
             await self.application.initialize()
             await self.application.start()
-            await self.application.updater.start_polling()
+            poll_interval = float(os.getenv("TELEGRAM_POLL_INTERVAL", "5"))
+            await self.application.updater.start_polling(poll_interval=poll_interval)
             logger.info("Telegram bot polling started")
-            
+
             while True:
                 await asyncio.sleep(1)
                 
