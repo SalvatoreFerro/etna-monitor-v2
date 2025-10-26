@@ -3,7 +3,14 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
-from flask import Blueprint, current_app, jsonify, render_template, send_from_directory, url_for
+from flask import (
+    Blueprint,
+    current_app,
+    jsonify,
+    render_template,
+    send_from_directory,
+    url_for,
+)
 
 from ..utils.auth import get_current_user
 
@@ -23,13 +30,36 @@ def index():
     csv_path = os.getenv("CSV_PATH", "/var/tmp/curva.csv")
     timestamps: list[str] = []
     values: list[float] = []
+    temporal_start_iso: str | None = None
+    temporal_end_iso: str | None = None
+    temporal_coverage: str | None = None
+    latest_value: float | None = None
+    latest_timestamp_iso: str | None = None
+    latest_timestamp_display: str | None = None
+    data_points = 0
 
     if os.path.exists(csv_path):
         try:
             df = pd.read_csv(csv_path, parse_dates=["timestamp"])
             if not df.empty:
+                df = df.sort_values("timestamp")
                 timestamps = df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S").tolist()
                 values = df["value"].tolist()
+                data_points = len(df)
+
+                temporal_start = df["timestamp"].iloc[0]
+                temporal_end = df["timestamp"].iloc[-1]
+                temporal_start_iso = temporal_start.strftime("%Y-%m-%dT%H:%M:%SZ")
+                temporal_end_iso = temporal_end.strftime("%Y-%m-%dT%H:%M:%SZ")
+                temporal_coverage = (
+                    f"{temporal_start_iso}/{temporal_end_iso}"
+                    if temporal_start_iso and temporal_end_iso
+                    else None
+                )
+                latest_value = float(df["value"].iloc[-1])
+                latest_timestamp_iso = temporal_end_iso
+                latest_timestamp_display = temporal_end.strftime("%d/%m/%Y %H:%M")
+
             record_csv_read(len(df), df["timestamp"].max() if not df.empty else None)
         except Exception as exc:
             current_app.logger.exception("Failed to read tremor CSV for index page")
@@ -38,13 +68,145 @@ def index():
         current_app.logger.warning("Tremor CSV not found at %s", csv_path)
         record_csv_error(f"Missing CSV at {csv_path}")
 
+    canonical_home = url_for("main.index", _external=True)
+    chart_url = f"{canonical_home}#grafico-etna"
+    og_image = url_for("static", filename="icons/icon-512.png", _external=True)
+    page_title = "Monitoraggio Etna in tempo reale – Grafico tremore vulcanico INGV"
+    page_description = (
+        "Grafico aggiornato del tremore vulcanico dell'Etna con dati ufficiali INGV, "
+        "indicazioni sulle soglie operative e descrizione del monitoraggio in tempo reale."
+    )
+
+    webpage_structured_data = {
+        "@context": "https://schema.org",
+        "@type": "WebPage",
+        "name": page_title,
+        "url": canonical_home,
+        "inLanguage": "it-IT",
+        "description": page_description,
+        "primaryImageOfPage": og_image,
+        "about": [
+            {"@type": "Thing", "name": "Etna"},
+            {"@type": "Thing", "name": "Tremore vulcanico"},
+        ],
+    }
+
+    dataset_structured_data = {
+        "@context": "https://schema.org",
+        "@type": "Dataset",
+        "name": "Serie temporale tremore vulcanico Etna – ultime 24 ore",
+        "description": (
+            "Misurazioni dell'ampiezza del tremore vulcanico dell'Etna aggiornate in tempo reale "
+            "sulla base dei dati pubblici diffusi dall'Osservatorio Etneo INGV."
+        ),
+        "inLanguage": "it",
+        "url": chart_url,
+        "isAccessibleForFree": True,
+        "license": "https://creativecommons.org/licenses/by/4.0/",
+        "creator": {
+            "@type": "Organization",
+            "name": "Istituto Nazionale di Geofisica e Vulcanologia (INGV)",
+            "url": "https://www.ct.ingv.it",
+        },
+        "citation": "https://www.ct.ingv.it/index.php/monitoraggio/monitoraggio-sismico",
+        "isBasedOn": "https://www.ct.ingv.it",
+        "keywords": [
+            "Etna",
+            "tremore vulcanico",
+            "monitoraggio Etna",
+            "grafico INGV",
+        ],
+        "distribution": [
+            {
+                "@type": "DataDownload",
+                "encodingFormat": "text/csv",
+                "contentUrl": chart_url,
+                "description": "Visualizzazione interattiva del tremore vulcanico basata su dati INGV.",
+            }
+        ],
+        "measurementTechnique": "Analisi dei segnali di tremore vulcanico registrati dalle stazioni sismiche INGV.",
+        "variableMeasured": [
+            {
+                "@type": "PropertyValue",
+                "name": "Ampiezza del tremore vulcanico",
+                "unitText": "mV",
+            }
+        ],
+        "spatialCoverage": {
+            "@type": "Place",
+            "name": "Monte Etna, Sicilia, Italia",
+            "geo": {
+                "@type": "GeoCoordinates",
+                "latitude": 37.751,
+                "longitude": 14.9934,
+            },
+        },
+    }
+    if temporal_coverage:
+        dataset_structured_data["temporalCoverage"] = temporal_coverage
+    if data_points:
+        dataset_structured_data["numberOfDataPoints"] = data_points
+
+    faq_structured_data = {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "Ogni quanto vengono aggiornati i dati del tremore vulcanico?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Il grafico si aggiorna automaticamente ogni cinque minuti, sincronizzandosi con l'ultimo feed pubblico dell'INGV per garantire una lettura quasi real-time del tremore.",
+                },
+            },
+            {
+                "@type": "Question",
+                "name": "Cosa indica il valore di ampiezza in millivolt?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "L'ampiezza in millivolt rappresenta l'energia delle vibrazioni interne dell'Etna. Valori sotto 1 mV descrivono un'attività bassa, tra 1 e 5 mV un'attività moderata e oltre 5 mV possibili fenomeni eruttivi imminenti.",
+                },
+            },
+        ],
+    }
+
+    software_structured_data = {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "EtnaMonitor",
+        "applicationCategory": "WebApplication",
+        "operatingSystem": "Web",
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "EUR",
+        },
+        "url": canonical_home,
+        "description": "Piattaforma web per il monitoraggio del tremore vulcanico dell'Etna con grafici interattivi e alert personalizzabili.",
+    }
+
+    page_structured_data = [
+        webpage_structured_data,
+        dataset_structured_data,
+        faq_structured_data,
+        software_structured_data,
+    ]
+
     return render_template(
         "index.html",
         labels=timestamps,
         values=values,
-        page_title="EtnaMonitor – Monitoraggio Etna in tempo reale",
-        page_description="Grafici aggiornati del tremore vulcanico dell'Etna con dati INGV e avvisi personalizzati per gli appassionati.",
-        page_og_image=url_for("static", filename="icons/icon-512.png", _external=True),
+        page_title=page_title,
+        page_description=page_description,
+        page_og_title=page_title,
+        page_og_description=page_description,
+        page_og_image=og_image,
+        page_structured_data=page_structured_data,
+        latest_value=latest_value,
+        latest_timestamp_iso=latest_timestamp_iso,
+        latest_timestamp_display=latest_timestamp_display,
+        data_points_count=data_points,
+        temporal_coverage=temporal_coverage,
     )
 
 
@@ -60,6 +222,8 @@ def pricing():
         "pricing.html",
         page_title="Prezzi e piani – EtnaMonitor",
         page_description="Scopri i piani Free e Premium di EtnaMonitor per accedere a grafici avanzati e avvisi sul tremore dell'Etna.",
+        page_og_title="Prezzi e piani – EtnaMonitor",
+        page_og_description="Scopri i piani Free e Premium di EtnaMonitor per accedere a grafici avanzati e avvisi sul tremore dell'Etna.",
     )
 
 
@@ -90,6 +254,8 @@ def etna3d():
         plan_type=plan_type,
         page_title="Modello 3D dell'Etna – EtnaMonitor",
         page_description="Esplora il modello 3D interattivo dell'Etna con visualizzazione Sketchfab in tema scuro.",
+        page_og_title="Modello 3D dell'Etna – EtnaMonitor",
+        page_og_description="Esplora il modello 3D interattivo dell'Etna con visualizzazione Sketchfab in tema scuro.",
     )
 
 
@@ -99,6 +265,8 @@ def roadmap():
         "roadmap.html",
         page_title="Roadmap – Evoluzione di EtnaMonitor",
         page_description="Aggiornamenti pianificati, nuove funzionalità e obiettivi futuri per EtnaMonitor.",
+        page_og_title="Roadmap – Evoluzione di EtnaMonitor",
+        page_og_description="Aggiornamenti pianificati, nuove funzionalità e obiettivi futuri per EtnaMonitor.",
     )
 
 
@@ -108,6 +276,8 @@ def sponsor():
         "sponsor.html",
         page_title="Sponsor – Supporta EtnaMonitor",
         page_description="Scopri i partner che sostengono EtnaMonitor e le opportunità di sponsorship.",
+        page_og_title="Sponsor – Supporta EtnaMonitor",
+        page_og_description="Scopri i partner che sostengono EtnaMonitor e le opportunità di sponsorship.",
     )
 
 
@@ -117,6 +287,8 @@ def privacy():
         "privacy.html",
         page_title="Informativa Privacy – EtnaMonitor",
         page_description="Come EtnaMonitor gestisce i dati personali in conformità con il GDPR.",
+        page_og_title="Informativa Privacy – EtnaMonitor",
+        page_og_description="Come EtnaMonitor gestisce i dati personali in conformità con il GDPR.",
     )
 
 
@@ -126,6 +298,8 @@ def terms():
         "terms.html",
         page_title="Termini di servizio – EtnaMonitor",
         page_description="Condizioni di utilizzo della piattaforma EtnaMonitor e dei suoi servizi.",
+        page_og_title="Termini di servizio – EtnaMonitor",
+        page_og_description="Condizioni di utilizzo della piattaforma EtnaMonitor e dei suoi servizi.",
     )
 
 
@@ -135,6 +309,8 @@ def cookies():
         "cookies.html",
         page_title="Cookie policy – EtnaMonitor",
         page_description="Informazioni sui cookie utilizzati da EtnaMonitor e su come gestirli.",
+        page_og_title="Cookie policy – EtnaMonitor",
+        page_og_description="Informazioni sui cookie utilizzati da EtnaMonitor e su come gestirli.",
     )
 
 @bp.route("/healthz")
