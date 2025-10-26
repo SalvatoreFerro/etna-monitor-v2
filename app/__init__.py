@@ -1,4 +1,5 @@
 from flask import Flask, redirect, request, url_for
+from flask_login import LoginManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_talisman import Talisman
@@ -35,8 +36,7 @@ from .utils.csrf import generate_csrf_token
 from .services.scheduler_service import SchedulerService
 from .utils.logger import configure_logging
 from config import Config, get_database_uri_from_env
-
-
+login_manager = LoginManager()
 limiter = None
 migrate = Migrate()
 
@@ -192,6 +192,19 @@ def create_app(config_overrides: dict | None = None):
     
     db.init_app(app)
     migrate.init_app(app, db)
+    login_manager.init_app(app)
+    login_manager.login_view = "auth.login"
+    login_manager.session_protection = "strong"
+
+    from .models.user import User  # imported lazily to avoid circular imports
+
+    @login_manager.user_loader
+    def load_user(user_id: str):  # pragma: no cover - thin integration wrapper
+        try:
+            return db.session.get(User, int(user_id))
+        except (TypeError, ValueError):
+            return None
+
     app.config["MIGRATIONS_AVAILABLE"] = _migrate_available
 
     disable_scheduler = os.getenv("DISABLE_SCHEDULER", "0").lower() in {"1", "true", "yes"}

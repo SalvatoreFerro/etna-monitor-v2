@@ -9,7 +9,8 @@ import warnings
 from functools import wraps
 
 import bcrypt
-from flask import flash, g, redirect, request, session, url_for
+from flask import flash, redirect, request, session, url_for
+from flask_login import current_user
 
 from ..models import db
 from ..models.user import User
@@ -63,17 +64,15 @@ def admin_required(f):
 def get_current_user():
     """Return the current session user, caching only successful lookups."""
 
+    if current_user.is_authenticated:
+        return current_user
+
     user_id = session.get('user_id')
-    cached_user = getattr(g, '_current_user', None)
+    if user_id is None:
+        return None
 
-    if cached_user is not None and getattr(cached_user, 'id', None) == user_id:
-        return cached_user
+    user = db.session.get(User, user_id)
+    if user is None:
+        session.pop('user_id', None)
 
-    user = None
-    if user_id is not None:
-        user = db.session.get(User, user_id)
-        if user is None:
-            session.pop('user_id', None)
-
-    g._current_user = user
     return user

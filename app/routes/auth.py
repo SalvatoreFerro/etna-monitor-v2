@@ -1,4 +1,5 @@
 import secrets
+from datetime import datetime, timezone
 from urllib.parse import urlencode
 
 import requests
@@ -17,7 +18,9 @@ from flask import (
     url_for,
 )
 
-from sqlalchemy import inspect
+from flask_login import login_user, logout_user
+
+from sqlalchemy import func, inspect
 from sqlalchemy.exc import (
     IntegrityError,
     OperationalError,
@@ -165,6 +168,7 @@ def login():
         if not user or not check_password(password, user.password_hash or ""):
             return ("Invalid email or password", 401)
 
+        login_user(user)
         session["user_id"] = user.id
         return redirect(url_for("dashboard.dashboard_home"))
 
@@ -189,6 +193,7 @@ def register():
     db.session.add(user)
     db.session.commit()
 
+    login_user(user)
     session["user_id"] = user.id
     return redirect(url_for("dashboard.dashboard_home"))
 
@@ -320,17 +325,19 @@ def auth_callback():
             return redirect(url_for("auth.login"))
 
         profile = userinfo_response.json()
-        google_id = profile.get("sub")
-        email = profile.get("email")
+        google_id = (profile.get("sub") or "").strip()
+        email = (profile.get("email") or "").strip().lower()
+        name = (profile.get("name") or "").strip()
+        picture_url = (profile.get("picture") or "").strip()
 
         if not google_id or not email:
             flash("Google profile is missing required information.", "error")
             return redirect(url_for("auth.login"))
 
-        user = None
         google_id_supported = _supports_google_id_column()
+        user = None
 
-        if google_id_supported:
+        if google_id_supported and google_id:
             try:
                 user = _query_with_retry(
                     lambda: User.query.filter_by(google_id=google_id).first()
@@ -344,85 +351,49 @@ def auth_callback():
                 user = None
 
         if not user and email:
-            user = _query_with_retry(lambda: User.query.filter_by(email=email).first())
+            user = _query_with_retry(
+                lambda: User.query.filter(func.lower(User.email) == email).first()
+            )
+            if user and google_id_supported and google_id:
+                user.google_id = google_id
 
         if user:
-            if google_id_supported:
+            if google_id_supported and google_id:
                 user.google_id = google_id
-            user.email = email or user.email
-            user.name = profile.get("name")
-            user.picture_url = profile.get("picture")
+            if not user.name and name:
+                user.name = name
+            if not user.picture_url and picture_url:
+                user.picture_url = picture_url
             if user.password_hash is None:
                 user.password_hash = ""
         else:
             user = User(
                 email=email,
-                name=profile.get("name"),
-                picture_url=profile.get("picture"),
+                name=name or None,
+                picture_url=picture_url or None,
                 password_hash="",
                 plan_type="free",
+                created_at=datetime.now(timezone.utc),
             )
-            if google_id_supported:
+            if google_id_supported and google_id:
                 user.google_id = google_id
             db.session.add(user)
 
         admin_set = current_app.config.get("ADMIN_EMAILS_SET", set())
-        if email and email.lower() in admin_set:
+        if user.id is None and email and email in admin_set:
             user.is_admin = True
-        current_app.logger.info(
-            f"[LOGIN] user={email} is_admin={getattr(user, 'is_admin', None)} in_set={email and email.lower() in admin_set}"
-        )
-
-        if getattr(user, "plan_type", None) is None:
-            user.plan_type = "free"
 
         try:
             db.session.commit()
-        except IntegrityError:
+        except IntegrityError as exc:
             db.session.rollback()
-            existing_user = None
-            if email:
-                existing_user = _query_with_retry(
-                    lambda: User.query.filter_by(email=email).first()
-                )
-            if not existing_user and google_id:
-                existing_user = _query_with_retry(
-                    lambda: User.query.filter_by(google_id=google_id).first()
-                )
-
-            if not existing_user:
-                raise
-
-            if google_id_supported:
-                existing_user.google_id = google_id
-            existing_user.email = email or existing_user.email
-            existing_user.name = profile.get("name")
-            existing_user.picture_url = profile.get("picture")
-            if existing_user.password_hash is None:
-                existing_user.password_hash = ""
-
-            db.session.add(existing_user)
-
-            admin_set = current_app.config.get("ADMIN_EMAILS_SET", set())
-            if email and email.lower() in admin_set:
-                existing_user.is_admin = True
-            current_app.logger.info(
-                f"[LOGIN] user={email} is_admin={getattr(existing_user, 'is_admin', None)} in_set={email and email.lower() in admin_set}"
+            current_app.logger.error(
+                "[LOGIN] Integrity error while storing Google login: %s",
+                getattr(exc, "orig", exc),
+                exc_info=exc,
             )
-
-            if getattr(existing_user, "plan_type", None) is None:
-                existing_user.plan_type = "free"
-            try:
-                db.session.commit()
-            except SQLAlchemyError:
-                db.session.rollback()
-                current_app.logger.exception(
-                    "[LOGIN] Database error while merging Google account"
-                )
-                flash("Servizio in aggiornamento, riprova tra qualche minuto.", "error")
-                return redirect(url_for("auth.login"))
-
-            user = existing_user
+            flash("Servizio in aggiornamento, riprova tra qualche minuto.", "error")
+            return redirect(url_for("auth.login"))
         except SQLAlchemyError:
             db.session.rollback()
             current_app.logger.exception(
@@ -431,8 +402,7 @@ def auth_callback():
             flash("Servizio in aggiornamento, riprova tra qualche minuto.", "error")
             return redirect(url_for("auth.login"))
 
-        # Persist the OAuth session information to simplify future API calls or
-        # refresh flows. Tokens remain in the server-side session.
+        login_user(user)
         session["user_id"] = user.id
         session["google_access_token"] = access_token
         if refresh_token:
@@ -454,6 +424,7 @@ def auth_callback():
 
 @bp.route("/logout", methods=["GET"])
 def logout():
+    logout_user()
     session.pop("user_id", None)
     session.pop("oauth_state", None)
     session.clear()
