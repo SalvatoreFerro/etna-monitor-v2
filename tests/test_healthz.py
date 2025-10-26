@@ -22,3 +22,15 @@ def test_healthz(client):
     assert "uptime_seconds" in payload
     assert "csv" in payload
     assert "premium_users" in payload
+
+
+def test_healthz_debug_includes_db_status(client):
+    app.config["DEBUG"] = True
+    try:
+        r = client.get("/healthz")
+        assert r.status_code == 200
+        payload = r.get_json()
+        assert "db_status" in payload
+        assert payload["db_status"]["error"] is not None or payload["db_status"]["is_up_to_date"] in {True, False}
+    finally:
+        app.config["DEBUG"] = False

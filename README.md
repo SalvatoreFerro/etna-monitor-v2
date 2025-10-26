@@ -187,6 +187,16 @@ ALERT_THRESHOLD_DEFAULT=2.0
 4. **Scheduler**: impostare cron job o worker separato per eseguire la pipeline PNG→CSV (es. `python etna_loop.py`).
 5. **Hardening**: usare `SECRET_KEY` robusto, abilitare HTTPS, configurare header di sicurezza (HSTS, CSP), limitare rate sulle API e monitorare errori.
 
+### Render – Start Command
+- Impostare `FLASK_APP=app:create_app` nelle variabili di ambiente di Render.
+- Configurare lo **Start Command** su Render a:
+
+  ```bash
+  flask db upgrade && gunicorn wsgi:app --workers 3 --threads 2 --timeout 120
+  ```
+
+  In questo modo le migrazioni vengono applicate automaticamente prima dell'avvio di Gunicorn.
+
 ## Sicurezza & Privacy
 - Non committare `.env`, token o database con dati reali; usare gitignore e segreti di deploy.
 - Validare e sanificare input utente; proteggere form con CSRF token e rate limiting.
