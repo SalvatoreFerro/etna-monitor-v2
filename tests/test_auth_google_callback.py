@@ -19,10 +19,10 @@ def reset_google_id_cache():
     from app.routes import auth as auth_routes
 
     auth_routes._GOOGLE_ID_COLUMN_SUPPORTED = None
-    auth_routes._PLAN_TYPE_COLUMN_READY = None
+    auth_routes._LOGIN_COLUMN_CACHE = None
     yield
     auth_routes._GOOGLE_ID_COLUMN_SUPPORTED = None
-    auth_routes._PLAN_TYPE_COLUMN_READY = None
+    auth_routes._LOGIN_COLUMN_CACHE = None
 
 
 class DummyResponse:
@@ -98,7 +98,7 @@ def test_google_callback_creates_user(monkeypatch, client, app):
 
 
 def test_google_callback_handles_missing_google_id(monkeypatch, client, app):
-    from sqlalchemy.exc import ProgrammingError
+    from sqlalchemy.exc import SQLAlchemyError
 
     token_response = DummyResponse(200, {"access_token": "access"})
     userinfo_response = DummyResponse(
@@ -119,14 +119,10 @@ def test_google_callback_handles_missing_google_id(monkeypatch, client, app):
 
     monkeypatch.setattr("app.routes.auth._google_oauth_request", fake_google_request)
 
-    original_query_with_retry = auth_routes._query_with_retry
+    def failing_lookup(*args, **kwargs):
+        raise SQLAlchemyError("missing column")
 
-    def fake_query_with_retry(query_callable):
-        if "google_id" in getattr(query_callable.__code__, "co_freevars", ()):  # pragma: no cover - guard
-            raise ProgrammingError("SELECT", {}, Exception("missing column"))
-        return original_query_with_retry(query_callable)
-
-    monkeypatch.setattr(auth_routes, "_query_with_retry", fake_query_with_retry)
+    monkeypatch.setattr(auth_routes, "find_user_by_google_id", failing_lookup)
 
     with client.session_transaction() as session:
         session["oauth_state"] = "state-token"
@@ -162,29 +158,30 @@ def test_google_callback_heals_missing_plan_type(monkeypatch, client, app):
 
     monkeypatch.setattr("app.routes.auth._google_oauth_request", fake_google_request)
 
-    ensure_calls: list[bool] = []
+    fallback_calls: list[dict] = []
+    original_fallback = auth_routes._create_user_with_existing_columns
 
-    def fake_ensure(force_refresh: bool = False) -> bool:
-        ensure_calls.append(force_refresh)
-        return True
+    def tracking_fallback(**kwargs):
+        fallback_calls.append(kwargs)
+        return original_fallback(**kwargs)
 
-    monkeypatch.setattr(auth_routes, "_ensure_plan_type_column", fake_ensure)
+    monkeypatch.setattr(auth_routes, "_create_user_with_existing_columns", tracking_fallback)
 
-    original_query_with_retry = auth_routes._query_with_retry
+    original_commit = db.session.commit
 
     call_state = {"count": 0}
 
-    def flaky_query(query_callable):
-        if call_state["count"] == 0:
-            call_state["count"] += 1
+    def flaky_commit():
+        call_state["count"] += 1
+        if call_state["count"] == 1:
             raise ProgrammingError(
-                "SELECT",
+                "INSERT",
                 {},
                 Exception("column users.plan_type does not exist"),
             )
-        return original_query_with_retry(query_callable)
+        return original_commit()
 
-    monkeypatch.setattr(auth_routes, "_query_with_retry", flaky_query)
+    monkeypatch.setattr(db.session, "commit", flaky_commit)
 
     with client.session_transaction() as session:
         session["oauth_state"] = "state-token"
@@ -193,7 +190,8 @@ def test_google_callback_heals_missing_plan_type(monkeypatch, client, app):
     assert response.status_code == 302
     assert "/dashboard" in response.headers["Location"]
 
-    assert ensure_calls == [True]
+    assert call_state["count"] >= 2
+    assert len(fallback_calls) == 1
 
     with app.app_context():
         user = User.query.filter_by(email="plan-type@example.com").one()
