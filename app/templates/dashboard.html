@@ -31,12 +31,16 @@
           </p>
 
           <div class="dashboard-plan">
-            <span class="badge {{ 'premium' if user.has_premium_access else 'free' }}">
-              {{ 'Premium ⭐' if user.has_premium_access else 'Free' }}
-            </span>
-            <span class="plan-caption">
-              {{ 'Accesso a notifiche avanzate, esportazione dati e soglie dinamiche.' if user.has_premium_access else 'Aggiorna per sbloccare automazioni, avvisi Telegram e cronologia completa.' }}
-            </span>
+            {% if user.has_premium_access %}
+              <span class="badge premium">🟢 Premium attivo</span>
+              <span class="plan-caption">Alert illimitati, soglia personalizzata e log eventi sempre disponibili.</span>
+            {% elif not user.free_alert_consumed %}
+              <span class="badge free">⚪ Free – 1 alert gratuito disponibile</span>
+              <span class="plan-caption">Collega il bot Telegram per ricevere l'alert di prova alla prossima attività significativa.</span>
+            {% else %}
+              <span class="badge warning">🔴 Free – prova già utilizzata</span>
+              <span class="plan-caption">Passa a Premium per notifiche illimitate, log eventi e controlli avanzati.</span>
+            {% endif %}
           </div>
         </div>
 
@@ -179,40 +183,67 @@
             </div>
           </div>
         </article>
+
+        <article class="card-premium info-card animate-premium-slide">
+          <header class="card-header">
+            <h3>Hai già utilizzato il tuo alert gratuito?</h3>
+            <p>Controlla lo stato della prova e scopri come ottenere avvisi illimitati.</p>
+          </header>
+          <div class="info-content">
+            {% if user.has_premium_access %}
+              <p>Il tuo account Premium è attivo: notifiche illimitate e log eventi sono disponibili in tempo reale.</p>
+            {% elif user.free_alert_consumed %}
+              <p>La prova gratuita è stata consumata. Attiva Premium per continuare a ricevere notifiche, personalizzare la soglia e consultare lo storico completo.</p>
+              <a href="/pricing" class="btn btn-premium btn-sm">Attiva Premium</a>
+            {% else %}
+              <p>Collega il bot Telegram per ricevere automaticamente il tuo unico alert gratuito alla prossima attività significativa.</p>
+              <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener" class="btn btn-secondary glass btn-sm">Apri il bot Telegram</a>
+            {% endif %}
+          </div>
+        </article>
       </div>
     </div>
-
-    {% if user.has_premium_access %}
     <div class="premium-grid">
       <article class="card-premium alerts-card animate-premium-fade" id="alert-settings">
         <header class="card-header">
           <h3>Impostazioni avvisi</h3>
-          <p>Configura email e Telegram per ricevere notifiche immediate.</p>
+          <p>Gestisci le notifiche automatiche via email e Telegram.</p>
         </header>
 
         <div class="alert-controls">
+          {% if user.has_premium_access %}
           <label class="checkbox-label">
             <input type="checkbox" id="email-alerts" {% if user.email_alerts %}checked{% endif %} onchange="toggleAlert('email', this.checked)">
             <span>Notifiche email</span>
           </label>
+          {% else %}
+          <div class="upgrade-prompt">
+            <p>Le notifiche email sono riservate agli utenti Premium.</p>
+            <a href="/pricing" class="btn btn-premium btn-sm">Scopri i vantaggi</a>
+          </div>
+          {% endif %}
 
           <div class="telegram-section">
             <h4>Notifiche Telegram</h4>
-            {% if user.chat_id %}
+            {% if user.telegram_chat_id or user.chat_id %}
               <div class="telegram-connected glass">
                 <span class="connection-status status-success">✓ Connesso</span>
-                <p>Chat ID: {{ user.chat_id }}</p>
+                <p>Chat ID: {{ user.telegram_chat_id or user.chat_id }}</p>
+                {% if not user.has_premium_access %}
+                  <p class="trial-hint">Riceverai l'alert di prova alla prossima attività significativa. Passa a Premium per continuare a ricevere notifiche.</p>
+                {% endif %}
                 <form method="POST" action="{{ url_for('dashboard.disconnect_telegram') }}">
                   <button type="submit" class="btn btn-secondary btn-sm">Disconnetti</button>
                 </form>
+                <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener" class="btn btn-secondary glass btn-sm">Verifica connessione</a>
               </div>
             {% else %}
               <div class="telegram-setup">
-                <p>Collega il tuo account Telegram per ricevere avvisi istantanei:</p>
+                <p>Collega il bot per ricevere gli avvisi disponibili sul tuo piano:</p>
                 <ol>
                   <li>Avvia una chat con <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">@etna_turi_bot</a></li>
                   <li>Invia il comando <code>/start</code></li>
-                  <li>Copia il tuo Chat ID e incollalo qui sotto</li>
+                  <li>Incolla qui il tuo Chat ID</li>
                 </ol>
                 <form method="POST" action="{{ url_for('dashboard.connect_telegram') }}" class="telegram-form">
                   <div class="form-group">
@@ -227,6 +258,7 @@
         </div>
       </article>
 
+      {% if user.has_premium_access %}
       <article class="card-premium events-card animate-premium-fade">
         <header class="card-header">
           <h3>Eventi recenti</h3>
@@ -240,22 +272,26 @@
               {% if event.value %}
                 <span class="event-value">{{ "%.2f"|format(event.value) }} mV</span>
               {% endif %}
+              <p class="event-message">{{ event.message }}</p>
             </div>
           {% else %}
             <p class="no-events">Nessun evento sismico significativo nelle ultime 24 ore.</p>
           {% endfor %}
         </div>
       </article>
+      {% else %}
+      <article class="card-premium events-card animate-premium-fade">
+        <header class="card-header">
+          <h3>Storico eventi</h3>
+          <p>Il log eventi completo è disponibile con il piano Premium.</p>
+        </header>
+        <div class="empty-state">
+          <p>Attiva Premium per consultare tutte le notifiche inviate e monitorare l'evoluzione del tremore.</p>
+          <a href="/pricing" class="btn btn-premium btn-sm">Scopri i piani</a>
+        </div>
+      </article>
+      {% endif %}
     </div>
-    {% else %}
-    <div class="upgrade-banner card-premium animate-premium-fade">
-      <div>
-        <h3>Passa a Premium</h3>
-        <p>Sblocca notifiche Telegram, soglie personalizzate e cronologia eventi completa.</p>
-      </div>
-      <a href="/pricing" class="btn btn-premium">Aggiorna ora</a>
-    </div>
-    {% endif %}
   </section>
 </div>
 

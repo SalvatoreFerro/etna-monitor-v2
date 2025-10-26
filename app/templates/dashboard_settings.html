@@ -184,7 +184,15 @@
         <p class="muted-text">Informazioni principali sul tuo profilo e sullo stato dell'abbonamento.</p>
       </header>
       <div class="account-details">
-        <div class="pill">Piano {{ 'Premium' if user.has_premium_access else 'Free' }}</div>
+        <div class="pill">
+          {% if user.has_premium_access %}
+            🟢 Piano Premium attivo
+          {% elif not user.free_alert_consumed %}
+            ⚪ Piano Free – alert di prova disponibile
+          {% else %}
+            🔴 Piano Free – prova consumata
+          {% endif %}
+        </div>
         <dl>
           <dt>Email</dt>
           <dd>{{ user.email }}</dd>
@@ -205,18 +213,23 @@
               {{ default_threshold }} mV predefiniti (aggiornabili con Premium)
             {% endif %}
           </dd>
+          <dt>Stato prova gratuita</dt>
+          <dd>{{ 'Disponibile' if not user.free_alert_consumed else 'Consumata' }}</dd>
           <dt>Notifiche Telegram</dt>
           <dd>
-            {% if user.has_premium_access %}
-              {% if user.chat_id %}
-                Connesso · gestisci dalla <a class="inline-link" href="{{ url_for('dashboard.dashboard_home') }}#alert-settings">dashboard</a>
-              {% else %}
-                Non connesso · collega Telegram dalla <a class="inline-link" href="{{ url_for('dashboard.dashboard_home') }}#alert-settings">dashboard</a>
+            {% if user.telegram_chat_id or user.chat_id %}
+              Connesso (ID {{ user.telegram_chat_id or user.chat_id }})
+              {% if user.free_alert_consumed and not user.has_premium_access %}
+                · Riceverai solo messaggi di servizio finché non attivi Premium.
               {% endif %}
             {% else %}
-              Disponibile con il piano Premium
+              Non collegato · collega Telegram dalla <a class="inline-link" href="{{ url_for('dashboard.dashboard_home') }}#alert-settings">dashboard</a>
             {% endif %}
           </dd>
+          {% if user.consent_ts %}
+          <dt>Consenso Telegram</dt>
+          <dd>{{ user.consent_ts.strftime('%d/%m/%Y %H:%M') }} · Privacy {{ user.privacy_version or 'corrente' }}</dd>
+          {% endif %}
         </dl>
       </div>
 

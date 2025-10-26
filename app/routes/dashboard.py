@@ -86,20 +86,19 @@ def settings():
 def connect_telegram():
     user = get_current_user()
     
-    if not user.has_premium_access:
-        flash("Premium account required for Telegram notifications", "error")
-        return redirect(url_for('dashboard.dashboard_home'))
-    
     chat_id = request.form.get("chat_id", "").strip()
     if not chat_id:
         flash("Please provide your Telegram chat ID", "error")
         return redirect(url_for('dashboard.dashboard_home'))
-    
+
     try:
         int(chat_id)
         user.chat_id = chat_id
-        db.session.commit()
-        
+        user.telegram_chat_id = chat_id
+        user.telegram_opt_in = True
+        user.consent_ts = user.consent_ts or datetime.utcnow()
+        user.privacy_version = Config.PRIVACY_POLICY_VERSION
+
         event = Event(
             user_id=user.id,
             event_type='telegram_connected',
@@ -107,8 +106,13 @@ def connect_telegram():
         )
         db.session.add(event)
         db.session.commit()
-        
-        flash("Telegram successfully connected!", "success")
+
+        if user.has_premium_access:
+            flash("Telegram collegato. Riceverai gli alert Premium.", "success")
+        elif not user.free_alert_consumed:
+            flash("Telegram collegato. Riceverai un alert gratuito di prova alla prima occasione utile.", "info")
+        else:
+            flash("Telegram collegato. Attiva Premium per ricevere nuovi alert.", "warning")
     except ValueError:
         flash("Invalid chat ID format", "error")
     except Exception as e:
@@ -122,13 +126,10 @@ def connect_telegram():
 def disconnect_telegram():
     user = get_current_user()
     
-    if not user.has_premium_access:
-        flash("Premium account required", "error")
-        return redirect(url_for('dashboard.dashboard_home'))
-    
     user.chat_id = None
-    db.session.commit()
-    
+    user.telegram_chat_id = None
+    user.telegram_opt_in = False
+
     event = Event(
         user_id=user.id,
         event_type='telegram_disconnected',

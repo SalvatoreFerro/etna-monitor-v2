@@ -49,9 +49,16 @@ class Config:
 
     INGV_URL = os.getenv("INGV_URL", "https://www.ct.ingv.it/RMS_Etna/2.png")
     ALERT_THRESHOLD_DEFAULT = float(os.getenv("ALERT_THRESHOLD_DEFAULT", "2.0"))
+    PREMIUM_DEFAULT_THRESHOLD = float(
+        os.getenv("PREMIUM_DEFAULT_THRESHOLD", os.getenv("ALERT_THRESHOLD_DEFAULT", "2.0"))
+    )
+    ALERT_HYSTERESIS_DELTA = float(os.getenv("ALERT_HYSTERESIS_DELTA", "0.2"))
 
     TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+    PAYPAL_DONATION_LINK = os.getenv("PAYPAL_DONATION_LINK", "")
+
+    PRIVACY_POLICY_VERSION = os.getenv("PRIVACY_POLICY_VERSION", "2024-07")
 
     STRIPE_PUBLIC_KEY = os.getenv("STRIPE_PUBLIC_KEY", "")
     STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY", "")
