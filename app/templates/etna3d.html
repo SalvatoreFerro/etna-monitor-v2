@@ -5,6 +5,7 @@
 {% endblock %}
 
 {% block content %}
+  <!-- UX_FIX_2025: 3D immersive layout with skeleton loader -->
   <section class="etna3d-page" aria-labelledby="etna3d-title">
     <div class="etna3d-container">
       <div class="etna3d-card">
@@ -23,6 +24,10 @@
         </header>
 
         <div class="etna3d-embed">
+          <div class="etna3d-placeholder" id="etna3d-loader" aria-hidden="true">
+            <div class="skeleton skeleton-frame"></div>
+            <p>Caricamento modello 3D…</p>
+          </div>
           <div class="sketchfab-embed-wrapper etna3d-embed-frame">
             <iframe
               class="etna3d-iframe"
@@ -36,6 +41,7 @@
               execution-while-out-of-viewport
               execution-while-not-rendered
               web-share
+              loading="lazy"
               src="https://sketchfab.com/models/2f95f88582f54bf9a3c2496a7853eb05/embed?ui_theme=dark&autostart=1&animated=1">
             </iframe>
           </div>
@@ -49,4 +55,25 @@
       </div>
     </div>
   </section>
+{% endblock %}
+
+{% block extra_scripts %}
+  {{ super() }}
+  <script nonce="{{ script_nonce }}">
+    // UX_FIX_2025: hide skeleton once Sketchfab iframe loads
+    document.addEventListener('DOMContentLoaded', () => {
+      const iframe = document.querySelector('.etna3d-iframe');
+      const loader = document.getElementById('etna3d-loader');
+      if (!iframe || !loader) {
+        return;
+      }
+
+      const removeLoader = () => {
+        loader.setAttribute('hidden', 'hidden');
+        iframe.removeEventListener('load', removeLoader);
+      };
+
+      iframe.addEventListener('load', removeLoader, { once: true });
+    });
+  </script>
 {% endblock %}

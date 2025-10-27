@@ -70,6 +70,31 @@
 
 .etna3d-embed {
   margin-top: 28px;
+  position: relative;
+}
+
+.etna3d-placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 0.75rem;
+  text-align: center;
+  color: var(--muted);
+  background: linear-gradient(135deg, rgba(12, 20, 39, 0.88), rgba(7, 12, 28, 0.88));
+  border-radius: 12px;
+  z-index: 2;
+}
+
+.etna3d-placeholder p {
+  margin: 0;
+  font-size: 0.9rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.etna3d-placeholder[hidden] {
+  display: none;
 }
 
 .etna3d-embed-frame {

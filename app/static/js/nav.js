@@ -1,5 +1,5 @@
 /* global window, document */
-// NAV_FIX_2025 Responsive navigation controller
+// UX_FIX_2025 Off-canvas navigation controller
 (function () {
   const focusableSelector = [
     'a[href]',
@@ -19,6 +19,7 @@
   let accordionToggles;
   let dropdownToggles;
   let isMenuOpen = false;
+  let scrollLockOrigin = 0;
 
   function isVisible(element) {
     if (!element) {
@@ -164,14 +165,20 @@
     isMenuOpen = open;
     navMenu.classList.toggle('is-open', open);
     navMenu.classList.toggle('active', open);
+    navMenu.classList.toggle('open', open);
     navToggle.setAttribute('aria-expanded', String(open));
+    navToggle.setAttribute('aria-label', open ? 'Chiudi il menu' : 'Apri il menu');
     navToggle.classList.toggle('is-active', open);
     document.body.classList.toggle('menu-open', open);
     document.body.style.overflow = open ? 'hidden' : '';
+    if (open) {
+      scrollLockOrigin = window.scrollY || window.pageYOffset || 0;
+    }
     animateHamburger(open);
 
     if (navBackdrop) {
       navBackdrop.hidden = !open;
+      navBackdrop.setAttribute('aria-hidden', String(!open));
     }
 
     if (open) {
@@ -328,6 +335,10 @@
 
   function handleResize() {
     syncAccordionState();
+    if (navMenu) {
+      const visualViewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+      navMenu.style.setProperty('--viewport-height', `${visualViewportHeight}px`);
+    }
   }
 
   function initNavigation() {
@@ -354,7 +365,10 @@
 
     window.addEventListener('scroll', () => {
       if (isMenuOpen) {
-        setMenuOpen(false);
+        const currentScroll = window.scrollY || window.pageYOffset || 0;
+        if (Math.abs(currentScroll - scrollLockOrigin) > 150) {
+          setMenuOpen(false);
+        }
       }
       closeUserMenu();
     }, { passive: true });
@@ -427,7 +441,12 @@
 
     desktopMedia.addEventListener('change', handleResize);
     window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleResize);
+    }
     syncAccordionState();
+    handleResize();
   }
 
   window.EMNav = {

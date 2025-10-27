@@ -240,7 +240,8 @@
       {'label': 'Donazioni PayPal', 'url': url_for('main.pricing') ~ '#donazioni', 'endpoint': 'main.pricing'}
     ] %}
 
-    <nav class="navbar glass" id="mainNav" role="navigation" aria-label="Main navigation">
+    <!-- UX_FIX_2025: Primary navigation restructure -->
+    <nav class="navbar glass" id="mainNav" role="navigation" aria-label="Navigazione principale">
       <div class="navbar-container">
         <div class="navbar-brand">
           <a href="/" class="brand-link" aria-label="EtnaMonitor Home">
@@ -262,7 +263,7 @@
           <span class="hamburger-line"></span>
         </button>
 
-        <div class="navbar-menu" id="navbar-menu" data-testid="navbar-menu" tabindex="-1" aria-hidden="true">
+        <div class="navbar-menu offcanvas" id="navbar-menu" data-testid="navbar-menu" tabindex="-1" aria-hidden="true">
           <div class="navbar-links">
             {% if session.user_id %}
               <div class="nav-group nav-group-account" data-nav-accordion>
@@ -400,51 +401,73 @@
     </main>
 
     {% block mobile_bottom_nav %}{% endblock %}
-    
-    <footer class="footer" role="contentinfo" aria-label="Site footer">
-      <div class="footer-content">
-        <div class="footer-section">
-          <div class="footer-brand">
-            <img src="{{ LOGO_DATA_URL }}" alt="EtnaMonitor" class="footer-logo">
+
+    <!-- UX_FIX_2025: Unified adaptive footer -->
+    <footer class="site-footer" role="contentinfo" aria-label="Piè di pagina EtnaMonitor">
+      <div class="site-footer__top">
+        <div class="site-footer__brand">
+          <a href="/" class="site-footer__logo" aria-label="Torna alla home">
+            <img src="{{ LOGO_DATA_URL }}" alt="EtnaMonitor" loading="lazy">
             <span class="brand-text">EtnaMonitor</span>
-          </div>
-          <div class="footer-disclaimer">
-            <p><strong>Disclaimer:</strong> I dati visualizzati da EtnaMonitor sono elaborazioni automatiche basate sulle rappresentazioni pubbliche fornite dall'INGV. Non hanno carattere ufficiale. Per informazioni ufficiali consultare direttamente <a href="https://www.ct.ingv.it" target="_blank" rel="noopener">INGV Catania</a>.</p>
-          </div>
+          </a>
+          <p class="site-footer__summary">
+            Monitoraggio data-driven del tremore vulcanico dell'Etna con grafici interattivi, analisi AI e strumenti immersivi 3D.
+          </p>
+          <p class="site-footer__disclaimer">
+            <strong>Disclaimer:</strong> Elaborazioni automatiche su dati pubblici INGV. Per informazioni ufficiali consulta <a href="https://www.ct.ingv.it" target="_blank" rel="noopener">INGV Catania</a>.
+          </p>
         </div>
-        
-        <div class="footer-section">
-          <h4>Cos'è il Tremore Vulcanico?</h4>
-          <p>Il tremore vulcanico è un segnale sismico continuo che indica l'attività magmatica all'interno del vulcano. L'ampiezza del tremore, misurata in millivolt (mV), fornisce informazioni cruciali sullo stato di attività dell'Etna.</p>
-          <div class="tremor-scale">
-            <small>
-              <strong>Scala indicativa:</strong><br>
-              • 0.1-1 mV: Attività bassa<br>
-              • 1-5 mV: Attività moderata<br>
-              • >5 mV: Attività elevata
-            </small>
+
+        <div class="site-footer__grid">
+          <div class="site-footer__column">
+            <h2 class="site-footer__title">Navigazione rapida</h2>
+            <nav aria-label="Navigazione rapida">
+              <ul class="site-footer__list">
+                <li><a href="{{ url_for('main.index') }}#grafico-etna">Grafico tremore</a></li>
+                <li><a href="{{ url_for('main.index') }}#home-webcam">Webcam Etna</a></li>
+                <li><a href="{{ url_for('main.index') }}#ai-predict">AI Predict</a></li>
+                <li><a href="{{ url_for('main.news') }}">News</a></li>
+                <li><a href="{{ url_for('main.tecnologia') }}">Tecnologia</a></li>
+                <li><a href="{{ url_for('main.progetto') }}">Il Progetto</a></li>
+                <li><a href="{{ url_for('main.team') }}">Team</a></li>
+              </ul>
+            </nav>
           </div>
-        </div>
-        
-        <div class="footer-section">
-          <h4>Informazioni sul Progetto</h4>
-          <p><strong>Creato da:</strong> Salvatore Ferro</p>
-          <p>EtnaMonitor è un progetto di monitoraggio vulcanico che utilizza dati pubblici INGV per fornire informazioni in tempo reale sull'attività dell'Etna.</p>
+
+          <div class="site-footer__column">
+            <h2 class="site-footer__title">Live &amp; strumenti</h2>
+            <ul class="site-footer__list">
+              <li><a href="{{ url_for('main.etna3d') }}">Etna 3D</a></li>
+              <li><a href="{{ url_for('experience.experience_home') }}">Etna Experience</a></li>
+              <li><a href="{{ url_for('billing.donate') }}">Sostieni il progetto</a></li>
+              <li><a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">Bot Telegram</a></li>
+              <li><a href="https://www.instagram.com/etnamonitor" target="_blank" rel="noopener">Instagram</a></li>
+              <li><a href="https://www.youtube.com/@EtnaMonitor" target="_blank" rel="noopener">YouTube</a></li>
+            </ul>
+          </div>
+
+          <div class="site-footer__column">
+            <h2 class="site-footer__title">Contatti</h2>
+            <ul class="site-footer__list site-footer__list--meta">
+              <li><a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a></li>
+              <li><a href="{{ url_for('main.privacy') }}">Privacy</a></li>
+              <li><a href="{{ url_for('main.terms') }}">Termini</a></li>
+              <li><a href="{{ url_for('main.cookies') }}">Cookie</a></li>
+            </ul>
+            <p class="site-footer__credits">Progetto ideato da Salvatore Ferro. Dataset INGV elaborati automaticamente.</p>
+          </div>
         </div>
       </div>
-      
-      <div class="footer-bottom">
-        <div class="footer-bottom-content">
-          <p>&copy; 2025 EtnaMonitor – Dati pubblici da INGV Catania</p>
-          <p>Supporto: <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a></p>
-          <nav class="footer-links" aria-label="Informazioni legali">
-            <a href="{{ url_for('main.privacy') }}">Informativa sulla privacy</a>
-            <span aria-hidden="true">•</span>
-            <a href="{{ url_for('main.terms') }}">Termini di servizio</a>
-            <span aria-hidden="true">•</span>
-            <a href="{{ url_for('main.cookies') }}">Cookie policy</a>
-          </nav>
-        </div>
+
+      <div class="site-footer__bottom">
+        <p>&copy; 2025 EtnaMonitor — Tutti i diritti riservati.</p>
+        <p>
+          {% if deploy_timestamp is defined and deploy_timestamp %}
+            Ultimo deploy: {{ deploy_timestamp }}
+          {% else %}
+            Monitoraggio live aggiornato automaticamente.
+          {% endif %}
+        </p>
       </div>
     </footer>
     
@@ -619,7 +642,5 @@
     </script>
     {% endif %}
     {% block extra_scripts %}{% endblock %}
-
-    {% include 'partials/footer.html' %}
   </body>
 </html>
