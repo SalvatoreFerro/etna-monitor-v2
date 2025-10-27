@@ -3276,8 +3276,8 @@ body, p, span, div, a, button, input, select, textarea,
 @media (min-width: 992px) {
   .navbar-container {
     flex-direction: row;
-    align-items: center;
-    gap: var(--space-4);
+    align-items: flex-start;
+    gap: var(--space-6);
   }
 
   .navbar-inline {
@@ -3285,7 +3285,7 @@ body, p, span, div, a, button, input, select, textarea,
   }
 
   .navbar-cta-desktop {
-    display: none;
+    display: inline-flex;
   }
 
   .navbar-toggle {
@@ -3293,6 +3293,68 @@ body, p, span, div, a, button, input, select, textarea,
   }
 
   .navbar-menu {
+    position: static;
+    transform: none;
+    opacity: 1;
+    pointer-events: auto;
+    border: none;
+    box-shadow: none;
+    background: transparent;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .navbar-menu-inner {
+    padding: 0;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-6);
+  }
+
+  .navbar-menu-header {
+    display: none;
+  }
+
+  .nav-sections {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: var(--space-6);
+  }
+
+  .nav-section {
+    border: none;
+    padding: 0;
+    gap: var(--space-3);
+  }
+
+  .nav-section-toggle {
+    cursor: default;
+    color: var(--color-text-tertiary);
+  }
+
+  .nav-section-toggle i {
+    display: none;
+  }
+
+  .nav-section-panel {
+    display: flex !important;
+    gap: var(--space-2);
+  }
+
+  .navbar-menu-footer {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .navbar-actions {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .navbar-cta-mobile {
     display: none;
   }
 }
@@ -3334,12 +3396,6 @@ body, p, span, div, a, button, input, select, textarea,
 
   .navbar-menu-inner {
     padding: var(--space-3) var(--space-3) var(--space-4);
-  }
-}
-
-@media (min-width: 992px) {
-  .navbar-toggle {
-    display: none !important;
   }
 }
 

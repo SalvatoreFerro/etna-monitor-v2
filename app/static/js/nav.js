@@ -16,7 +16,7 @@
   let navMenu;
   let navToggle;
   let navBackdrop;
-  let userMenuToggles = [];
+  let userMenuToggle;
   let sectionToggles = [];
   let dropdownToggles = [];
   let closeButtons = [];
@@ -92,9 +92,7 @@
       return;
     }
 
-    const bar = navElement.querySelector('.navbar-bar');
-    const target = bar || navElement;
-    const navHeight = Math.round(target.getBoundingClientRect().height);
+    const navHeight = Math.round(navElement.getBoundingClientRect().height);
     if (navHeight > 0) {
       document.documentElement.style.setProperty('--navbar-height', `${navHeight}px`);
     }
