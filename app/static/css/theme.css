@@ -120,7 +120,7 @@
   --z-toast: 1080;
 
   --navbar-height: 72px;
-  --navbar-offset: calc(var(--navbar-height) + var(--space-3));
+  --navbar-offset: calc(var(--navbar-height) + var(--space-6));
 }
 
 /* Heading Typography */
@@ -200,6 +200,7 @@ body, p, span, div, a, button, input, select, textarea,
   justify-content: space-between;
   gap: var(--space-6);
   min-width: 0;
+  padding: 0 var(--space-2);
 }
 
 .navbar-links {
@@ -258,6 +259,7 @@ body, p, span, div, a, button, input, select, textarea,
 /* Adjust main content for fixed navbar */
 .main-content {
   margin-top: var(--navbar-offset);
+  padding-top: var(--space-4);
 }
 
 @media (max-width: 768px) {
@@ -267,6 +269,7 @@ body, p, span, div, a, button, input, select, textarea,
 
   .main-content {
     margin-top: var(--navbar-offset);
+    padding-top: var(--space-4);
   }
 }
 
@@ -1995,7 +1998,7 @@ body, p, span, div, a, button, input, select, textarea,
 @media screen and (max-width: 768px) {
   :root {
     --navbar-height: 64px;
-    --navbar-offset: calc(var(--navbar-height) + var(--space-3));
+    --navbar-offset: calc(var(--navbar-height) + var(--space-5));
   }
 
   html, body {
@@ -2230,6 +2233,9 @@ body, p, span, div, a, button, input, select, textarea,
     z-index: var(--z-fixed);
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    max-height: calc(100vh - var(--navbar-height) - env(safe-area-inset-top));
+    overflow-y: auto;
+    box-shadow: 0 28px 60px rgba(0, 0, 0, 0.45);
   }
   
   .navbar-menu.active {
