@@ -216,6 +216,29 @@
   <body>
     <a href="#main-content" class="skip-link">Skip to main content</a>
     
+    {% macro render_nav_link(label, url, endpoint_name, extra_classes='') %}
+      <a href="{{ url }}" class="nav-link {{ extra_classes }} {{ 'active' if request.endpoint == endpoint_name }}">{{ label }}</a>
+    {% endmacro %}
+
+    {% set platform_links = [
+      {'label': 'Home', 'url': url_for('main.index'), 'endpoint': 'main.index'},
+      {'label': 'Tecnologia', 'url': url_for('main.tecnologia'), 'endpoint': 'main.tecnologia'},
+      {'label': 'Il Progetto', 'url': url_for('main.progetto'), 'endpoint': 'main.progetto'},
+      {'label': 'Team', 'url': url_for('main.team'), 'endpoint': 'main.team'},
+      {'label': 'News', 'url': url_for('main.news'), 'endpoint': 'main.news'}
+    ] %}
+
+    {% set live_links = [
+      {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
+      {'label': 'Etna Experience', 'url': url_for('experience.experience_home'), 'endpoint': 'experience.experience_home'}
+    ] %}
+
+    {% set insights_links = [
+      {'label': 'Roadmap', 'url': url_for('main.roadmap'), 'endpoint': 'main.roadmap'},
+      {'label': 'Sponsor', 'url': url_for('main.sponsor'), 'endpoint': 'main.sponsor'},
+      {'label': 'Donazioni PayPal', 'url': url_for('main.pricing') ~ '#donazioni', 'endpoint': 'main.pricing'}
+    ] %}
+
     <nav class="navbar glass" role="navigation" aria-label="Main navigation">
       <div class="navbar-container">
         <div class="navbar-brand">
@@ -224,22 +247,29 @@
             <span class="brand-text">EtnaMonitor</span>
           </a>
         </div>
-        
-        <button class="navbar-toggle" id="navbar-toggle" aria-label="Toggle navigation menu" aria-expanded="false">
+
+        <button
+          class="navbar-toggle"
+          id="navbar-toggle"
+          type="button"
+          aria-label="Apri il menu di navigazione"
+          aria-controls="navbar-menu"
+          aria-expanded="false"
+        >
           <span class="hamburger-line"></span>
           <span class="hamburger-line"></span>
           <span class="hamburger-line"></span>
         </button>
-        
-        <div class="navbar-menu" id="navbar-menu">
+
+        <div class="navbar-menu" id="navbar-menu" data-testid="navbar-menu">
           <div class="navbar-links">
             {% if session.user_id %}
               <div class="nav-group nav-group-account">
                 <span class="nav-group-label">Area utente</span>
                 <div class="nav-group-links">
-                  <a href="/dashboard" class="nav-link {{ 'active' if request.endpoint == 'dashboard.dashboard_home' }}">Dashboard</a>
+                  {{ render_nav_link('Dashboard', url_for('dashboard.dashboard_home'), 'dashboard.dashboard_home') }}
                   {% if current_user and current_user.is_admin %}
-                    <a href="/admin" class="nav-link {{ 'active' if request.endpoint == 'admin.admin_panel' }}">Admin</a>
+                    {{ render_nav_link('Admin', url_for('admin.admin_panel'), 'admin.admin_panel') }}
                   {% endif %}
                 </div>
               </div>
@@ -248,19 +278,18 @@
             <div class="nav-group nav-group-platform">
               <span class="nav-group-label">Piattaforma</span>
               <div class="nav-group-links">
-                <a href="/" class="nav-link {{ 'active' if request.endpoint == 'main.index' }}">Home</a>
-                <a href="{{ url_for('main.tecnologia') }}" class="nav-link {{ 'active' if request.endpoint == 'main.tecnologia' }}">Tecnologia</a>
-                <a href="{{ url_for('main.progetto') }}" class="nav-link {{ 'active' if request.endpoint == 'main.progetto' }}">Il Progetto</a>
-                <a href="{{ url_for('main.team') }}" class="nav-link {{ 'active' if request.endpoint == 'main.team' }}">Team</a>
-                <a href="{{ url_for('main.news') }}" class="nav-link {{ 'active' if request.endpoint == 'main.news' }}">News</a>
+                {% for item in platform_links %}
+                  {{ render_nav_link(item.label, item.url, item.endpoint) }}
+                {% endfor %}
               </div>
             </div>
 
             <div class="nav-group nav-group-experience">
               <span class="nav-group-label">Esperienza live</span>
               <div class="nav-group-links">
-                <a href="{{ url_for('main.etna3d') }}" class="nav-link {{ 'active' if request.endpoint == 'main.etna3d' }}">Etna 3D</a>
-                <a href="{{ url_for('experience.experience_home') }}" class="nav-link {{ 'active' if request.endpoint == 'experience.experience_home' }}">Etna Experience</a>
+                {% for item in live_links %}
+                  {{ render_nav_link(item.label, item.url, item.endpoint) }}
+                {% endfor %}
               </div>
             </div>
 
@@ -273,34 +302,23 @@
                     <i class="fas fa-chevron-down" aria-hidden="true"></i>
                   </button>
                   <div class="nav-dropdown-menu" role="menu">
-                    <a href="/roadmap" class="nav-dropdown-item {{ 'active' if request.endpoint == 'main.roadmap' }}" role="menuitem">Roadmap</a>
-                    <a href="/sponsor" class="nav-dropdown-item {{ 'active' if request.endpoint == 'main.sponsor' }}" role="menuitem">Sponsor</a>
-                    <a href="{{ url_for('main.pricing') }}#donazioni" class="nav-dropdown-item" role="menuitem">Donazioni PayPal</a>
+                    {% for item in insights_links %}
+                      <a
+                        href="{{ item.url }}"
+                        class="nav-dropdown-item {{ 'active' if request.endpoint == item.endpoint }}"
+                        role="menuitem"
+                      >{{ item.label }}</a>
+                    {% endfor %}
                   </div>
-            <a href="/pricing" class="nav-link {{ 'active' if request.endpoint == 'main.pricing' }}">Prezzi</a>
-            <a href="{{ url_for('main.tecnologia') }}" class="nav-link {{ 'active' if request.endpoint == 'main.tecnologia' }}">Tecnologia</a>
-            <a href="{{ url_for('main.progetto') }}" class="nav-link {{ 'active' if request.endpoint == 'main.progetto' }}">Il Progetto</a>
-            <a href="{{ url_for('main.team') }}" class="nav-link {{ 'active' if request.endpoint == 'main.team' }}">Team</a>
-            <a href="{{ url_for('main.news') }}" class="nav-link {{ 'active' if request.endpoint == 'main.news' }}">News</a>
-            <a href="{{ url_for('main.etna3d') }}" class="nav-link {{ 'active' if request.endpoint == 'main.etna3d' }}">Etna 3D</a>
-            <a href="{{ url_for('experience.experience_home') }}" class="nav-link {{ 'active' if request.endpoint == 'experience.experience_home' }}">Etna Experience</a>
-              <div class="nav-dropdown">
-                <button class="nav-link nav-dropdown-toggle" type="button" aria-expanded="false" aria-haspopup="true">
-                  Esplora
-                  <i class="fas fa-chevron-down" aria-hidden="true"></i>
-                </button>
-                <div class="nav-dropdown-menu" role="menu">
-                  <a href="/roadmap" class="nav-dropdown-item {{ 'active' if request.endpoint == 'main.roadmap' }}" role="menuitem">Roadmap</a>
-                  <a href="/sponsor" class="nav-dropdown-item {{ 'active' if request.endpoint == 'main.sponsor' }}" role="menuitem">Sponsor</a>
-                  <a href="{{ url_for('main.pricing') }}#donazioni" class="nav-dropdown-item" role="menuitem">Donazioni PayPal</a>
                 </div>
+                {{ render_nav_link('Prezzi', url_for('main.pricing'), 'main.pricing') }}
               </div>
             </div>
 
             <div class="nav-group nav-group-cta">
               <span class="nav-group-label">Abbonamenti</span>
               <div class="nav-group-links">
-                <a href="/pricing" class="nav-link nav-pill {{ 'active' if request.endpoint == 'main.pricing' }}">Prezzi</a>
+                {{ render_nav_link('Piani Premium', url_for('main.pricing'), 'main.pricing', 'nav-pill') }}
               </div>
             </div>
           </div>
@@ -520,36 +538,62 @@
       const navbarToggle = document.getElementById('navbar-toggle');
       const navbarMenu = document.getElementById('navbar-menu');
       
-      if (navbarToggle && navbarMenu) {
-        navbarToggle.addEventListener('click', function() {
-          const isActive = navbarMenu.classList.contains('active');
-          navbarMenu.classList.toggle('active');
-          navbarToggle.setAttribute('aria-expanded', !isActive);
-          
-          // Animate hamburger lines
-          const lines = navbarToggle.querySelectorAll('.hamburger-line');
-          if (!isActive) {
-            lines[0].style.transform = 'rotate(45deg) translate(5px, 5px)';
-            lines[1].style.opacity = '0';
-            lines[2].style.transform = 'rotate(-45deg) translate(7px, -6px)';
-          } else {
-            lines[0].style.transform = 'none';
-            lines[1].style.opacity = '1';
-            lines[2].style.transform = 'none';
+      const animateHamburger = (expanded) => {
+        const lines = navbarToggle.querySelectorAll('.hamburger-line');
+        if (!lines.length) {
+          return;
+        }
+
+        if (expanded) {
+          lines[0].style.transform = 'rotate(45deg) translate(5px, 5px)';
+          lines[1].style.opacity = '0';
+          lines[2].style.transform = 'rotate(-45deg) translate(7px, -6px)';
+        } else {
+          lines[0].style.transform = 'none';
+          lines[1].style.opacity = '1';
+          lines[2].style.transform = 'none';
+        }
+      };
+
+      const closeMobileMenu = () => {
+        navbarMenu.classList.remove('active');
+        navbarToggle.setAttribute('aria-expanded', 'false');
+        navbarToggle.classList.remove('is-active');
+        document.body.classList.remove('menu-open');
+        animateHamburger(false);
+      };
+
+      navbarToggle.addEventListener('click', function() {
+        const isActive = navbarMenu.classList.toggle('active');
+        navbarToggle.setAttribute('aria-expanded', isActive);
+        navbarToggle.classList.toggle('is-active', isActive);
+        document.body.classList.toggle('menu-open', isActive);
+        animateHamburger(isActive);
+      });
+
+      // Close menu when clicking outside
+      document.addEventListener('click', function(event) {
+        if (!navbarToggle.contains(event.target) && !navbarMenu.contains(event.target)) {
+          closeMobileMenu();
+        }
+      });
+
+      // Close menu on focus loss via Escape key
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+          closeMobileMenu();
+        }
+      });
+
+      // Close menu after selecting a navigation target
+      const menuInteractiveElements = navbarMenu.querySelectorAll('.nav-link:not(.nav-dropdown-toggle), .nav-dropdown-item, .dropdown-item');
+      menuInteractiveElements.forEach((element) => {
+        element.addEventListener('click', () => {
+          if (navbarMenu.classList.contains('active')) {
+            closeMobileMenu();
           }
         });
-        
-        // Close menu when clicking outside
-        document.addEventListener('click', function(event) {
-          if (!navbarToggle.contains(event.target) && !navbarMenu.contains(event.target)) {
-            navbarMenu.classList.remove('active');
-            navbarToggle.setAttribute('aria-expanded', 'false');
-            const lines = navbarToggle.querySelectorAll('.hamburger-line');
-            lines[0].style.transform = 'none';
-            lines[1].style.opacity = '1';
-            lines[2].style.transform = 'none';
-          }
-        });
+      });
       }
 
       const dropdowns = document.querySelectorAll('.nav-dropdown');
