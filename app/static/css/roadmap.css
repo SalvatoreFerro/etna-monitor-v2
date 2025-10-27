@@ -37,13 +37,13 @@
 .roadmap-subtitle {
   margin: 0 0 16px;
   font-size: 1.25rem;
-  color: var(--muted);
+  color: var(--color-text-secondary);
 }
 
 .roadmap-intro {
   margin: 0;
   font-size: 1.05rem;
-  color: var(--text);
+  color: var(--color-text-primary);
   max-width: 640px;
 }
 
@@ -95,7 +95,7 @@
 
 .section-header p {
   margin: 0;
-  color: var(--muted);
+  color: var(--color-text-secondary);
   max-width: 720px;
   font-size: 1rem;
 }
@@ -108,7 +108,7 @@
 
 .roadmap-card {
   position: relative;
-  background: var(--gradient);
+  background: var(--gradient-surface);
   border-radius: 22px;
   padding: 32px 28px;
   border: 1px solid rgba(0, 210, 255, 0.12);
@@ -146,7 +146,7 @@
   display: grid;
   place-items: center;
   background: rgba(0, 210, 255, 0.12);
-  color: var(--accent);
+  color: var(--color-accent-primary);
   margin-bottom: 22px;
   box-shadow: inset 0 0 0 1px rgba(0, 210, 255, 0.22);
 }
@@ -164,7 +164,7 @@
 
 .roadmap-card p {
   margin: 0;
-  color: var(--muted);
+  color: var(--color-text-secondary);
   font-size: 1rem;
   line-height: 1.7;
 }
@@ -173,7 +173,7 @@
   padding: 32px;
   border-radius: 20px;
   font-size: 1.05rem;
-  color: var(--text);
+  color: var(--color-text-primary);
 }
 
 .roadmap-support {
@@ -200,11 +200,11 @@
   padding: 20px;
   background: rgba(0, 210, 255, 0.08);
   border: 1px solid rgba(0, 210, 255, 0.16);
-  color: var(--muted);
+  color: var(--color-text-secondary);
 }
 
 .support-note a {
-  color: var(--accent);
+  color: var(--color-accent-primary);
 }
 
 .roadmap-footer {
@@ -222,7 +222,7 @@
 
 .footer-content p {
   margin: 0 0 24px;
-  color: var(--muted);
+  color: var(--color-text-secondary);
   font-size: 1.05rem;
 }
 

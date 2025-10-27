@@ -25,7 +25,7 @@
   padding: 6px 12px;
   border-radius: 999px;
   background: rgba(0, 210, 255, 0.12);
-  color: var(--accent);
+  color: var(--color-accent-primary);
   font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;

@@ -107,7 +107,7 @@
   height: 48px;
   border-radius: 12px;
   background: rgba(0, 210, 255, 0.12);
-  color: var(--accent);
+  color: var(--color-accent-primary);
   display: grid;
   place-items: center;
   font-size: 1.3rem;
@@ -156,7 +156,7 @@
 
 .package-list li::before {
   content: '\2713';
-  color: var(--accent);
+  color: var(--color-accent-primary);
   margin-right: 8px;
 }
 

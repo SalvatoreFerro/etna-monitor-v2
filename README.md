@@ -16,19 +16,20 @@ Obiettivi principali:
 1. [Architettura del Sistema](#architettura-del-sistema)
 2. [Funzionalità Chiave](#funzionalità-chiave)
 3. [Etna Experience](#etna-experience)
-4. [Dipendenze & Requisiti](#dipendenze--requisiti)
-5. [Setup Locale (Step-by-step)](#setup-locale-step-by-step)
-6. [Configurazione (.env.example)](#configurazione-envexample)
-7. [Pipeline Dati (PNG INGV → CSV → Grafico)](#pipeline-dati-png-ingv--csv--grafico)
-8. [Notifiche Telegram](#notifiche-telegram)
-9. [Gestione Utenti e Premium](#gestione-utenti-e-premium)
-10. [Logging & Monitoraggio](#logging--monitoraggio)
-11. [Deploy (Ambiente di Produzione)](#deploy-ambiente-di-produzione)
-12. [Sicurezza & Privacy](#sicurezza--privacy)
-13. [Troubleshooting (FAQ Tecnica)](#troubleshooting-faq-tecnica)
-14. [Roadmap](#roadmap)
-15. [Licenza & Note Legali](#licenza--note-legali)
-16. [Contatti](#contatti)
+4. [Design system & UX tokens](#design-system--ux-tokens)
+5. [Dipendenze & Requisiti](#dipendenze--requisiti)
+6. [Setup Locale (Step-by-step)](#setup-locale-step-by-step)
+7. [Configurazione (.env.example)](#configurazione-envexample)
+8. [Pipeline Dati (PNG INGV → CSV → Grafico)](#pipeline-dati-png-ingv--csv--grafico)
+9. [Notifiche Telegram](#notifiche-telegram)
+10. [Gestione Utenti e Premium](#gestione-utenti-e-premium)
+11. [Logging & Monitoraggio](#logging--monitoraggio)
+12. [Deploy (Ambiente di Produzione)](#deploy-ambiente-di-produzione)
+13. [Sicurezza & Privacy](#sicurezza--privacy)
+14. [Troubleshooting (FAQ Tecnica)](#troubleshooting-faq-tecnica)
+15. [Roadmap](#roadmap)
+16. [Licenza & Note Legali](#licenza--note-legali)
+17. [Contatti](#contatti)
 
 ---
 
@@ -89,6 +90,47 @@ EtnaMonitor diventa anche una vetrina territoriale grazie alla nuova sezione **E
 - Vista riservata agli admin per consultare, approvare o eliminare i partner.
 - Toggle istantaneo per stato “verified” e visibilità, oltre alla possibilità di aggiungere rapidamente nuove schede.
 - Tutte le operazioni avvengono tramite le nuove API amministrative e si appoggiano alla tabella `partners` gestita via Alembic.
+
+## Design system & UX tokens
+L'intera interfaccia adotta un sistema di token centralizzato definito in [`app/static/css/theme.css`](app/static/css/theme.css). I componenti devono riferirsi a queste variabili per garantire coerenza cromatica, tipografica e di spaziature.
+
+### Palette cromatica
+| Token | Valore | Uso consigliato |
+|-------|--------|-----------------|
+| `--color-bg-primary` | `#070b1a` | Sfondo principale delle pagine e delle sezioni full-bleed. |
+| `--color-bg-secondary` | `#0c1427` | Pannelli secondari, footer e overlay modali. |
+| `--color-surface` | `#0f1a30` | Card, contenitori hero, blocchi informativi. |
+| `--color-surface-hover` | `#172640` | Stato hover/focus per card o link prominenti. |
+| `--color-text-primary` | `#f4f8ff` | Testo base, titoli e CTA. |
+| `--color-text-secondary` | `#c0cae6` | Testo descrittivo, paragrafi lunghi e metadati. |
+| `--color-text-tertiary` | `#8f9bb9` | Label secondarie, badge e micro copy. |
+| `--color-accent-primary` | `#00d2ff` | Elementi d'azione, indicatori live e icone interattive. |
+| `--color-accent-secondary` | `#6366f1` | Gradients complementari, stati attivi o CTA secondarie. |
+| `--color-success` / `--color-warning` / `--color-error` | Palette stato | Badge stato e messaggi contestuali. |
+
+### Tipografia
+| Token | Valore | Uso |
+|-------|--------|-----|
+| `--font-family-primary` | `Inter`, fallback system | Corpo testo, pulsanti, input. |
+| `--font-family-headings` | `Montserrat`, fallback system | Titoli, hero heading, numeri KPI. |
+| `--font-size-2xs` → `--font-size-5xl` | Scala 11–48px | Clamp e step modulari per testo responsive. |
+| `--font-weight-regular` / `--font-weight-medium` / `--font-weight-semibold` / `--font-weight-bold` | 400–700 | Peso tipografico coerente su componenti interattivi e titoli. |
+| `--line-height-tight` / `--line-height-normal` / `--line-height-relaxed` | 1.25–1.75 | Gestione leggibilità per hero, paragrafi e note. |
+
+### Spaziature & raggi
+| Token | Valore | Uso |
+|-------|--------|-----|
+| `--space-2xs` → `--space-7xl` | Scala 4–96px | Margini e gap generali; usare alias `--space-1/2/...` per retrocompatibilità. |
+| `--radius-sm` / `--radius-md` / `--radius-lg` / `--radius-2xl` | 6–24px | Rounding di card, badge e layout hero. |
+
+### Z-index & shadow
+| Token | Valore | Uso |
+|-------|--------|-----|
+| `--z-nav` / `--z-fixed` / `--z-modal` | 1100–1150 | Layering per navbar sticky, floating nav e modali. |
+| `--shadow-sm` → `--shadow-floating` | Preset morbidi e profondi | Ombre per card, tooltip, hero e componenti sospesi. |
+| `--gradient-primary` / `--gradient-hero` | Gradients brand | Background hero, CTA prominenti, highlight grafico. |
+
+> **Suggerimento**: quando si introduce un nuovo componente, preferire i token esistenti. Se serve un nuovo valore, aggiungerlo in `theme.css` e documentarlo qui per mantenere la singola fonte di verità.
 
 ## Dipendenze & Requisiti
 - **Runtime**: Python 3.11+, pip, virtualenv.

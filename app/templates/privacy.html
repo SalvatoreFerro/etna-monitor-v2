@@ -3,60 +3,78 @@
 {% block title %}Informativa sulla privacy - EtnaMonitor{% endblock %}
 
 {% block content %}
-<main id="main-content" class="static-page">
-  <section class="static-hero" aria-labelledby="privacy-title">
-    <div class="static-hero-inner">
-      <h1 id="privacy-title">Informativa sulla privacy</h1>
-      <p class="lead">
-        Questa informativa descrive come EtnaMonitor tratta i tuoi dati personali, con particolare attenzione alle
-        informazioni ricevute tramite Google OAuth2 durante l'accesso alla piattaforma.
+<section class="page-wrapper" id="page-top">
+  <nav class="page-breadcrumb" aria-label="Percorso di navigazione">
+    <a href="{{ url_for('main.index') }}">Home</a>
+    <span aria-hidden="true">/</span>
+    <span>Privacy</span>
+  </nav>
+
+  <header class="page-hero" aria-labelledby="privacy-title">
+    <span class="section-pill">Privacy</span>
+    <h1 id="privacy-title">Informativa sulla privacy</h1>
+    <p>
+      Questa informativa descrive come EtnaMonitor tratta i tuoi dati personali, con particolare attenzione alle
+      informazioni ricevute tramite Google OAuth2 durante l'accesso alla piattaforma.
+    </p>
+  </header>
+
+  <div class="page-stack">
+    <section class="page-section" aria-labelledby="privacy-collection">
+      <h2 id="privacy-collection">Dati che raccogliamo</h2>
+      <p>
+        Quando accedi con Google, Google OAuth2 ci fornisce il tuo nome, indirizzo email e immagine del profilo.
+        Non richiediamo né riceviamo altre informazioni del tuo account Google e non abbiamo accesso alle tue password.
       </p>
-    </div>
-  </section>
+      <p>
+        Se colleghi il bot Telegram memorizziamo il tuo <code>telegram_chat_id</code>, il tipo di piano (Free o Premium),
+        il flag <code>free_alert_consumed</code>, la data del consenso (<code>consent_ts</code>) e la versione
+        dell'informativa privacy accettata. Questi dati servono esclusivamente a erogare l'unico alert gratuito previsto
+        dal piano Free e le notifiche illimitate del piano Premium.
+      </p>
+    </section>
 
-  <section class="static-section" aria-labelledby="privacy-collection">
-    <h2 id="privacy-collection">Dati che raccogliamo</h2>
-    <p>
-      Quando accedi con Google, Google OAuth2 ci fornisce il tuo nome, indirizzo email e immagine del profilo.
-      Non richiediamo né riceviamo altre informazioni del tuo account Google e non abbiamo accesso alle tue password.
-    </p>
-    <p>
-      Se colleghi il bot Telegram memorizziamo il tuo <code>telegram_chat_id</code>, il tipo di piano (Free o Premium), il flag <code>free_alert_consumed</code>, la data del consenso (<code>consent_ts</code>) e la versione dell'informativa privacy accettata. Questi dati servono esclusivamente a erogare l'unico alert gratuito previsto dal piano Free e le notifiche illimitate del piano Premium.
-    </p>
-  </section>
+    <section class="page-section" aria-labelledby="privacy-usage">
+      <h2 id="privacy-usage">Come utilizziamo i dati</h2>
+      <ul>
+        <li>Verificare la tua identità e consentire l'accesso al tuo account EtnaMonitor.</li>
+        <li>Personalizzare l'esperienza dell'applicazione mostrando il tuo nome e l'immagine del profilo.</li>
+        <li>Comunicare con te in merito ai servizi EtnaMonitor, inclusi aggiornamenti o notifiche importanti.</li>
+        <li>Inviare notifiche divulgative via Telegram rispettando le tue preferenze e il piano selezionato.</li>
+      </ul>
+    </section>
 
-  <section class="static-section" aria-labelledby="privacy-usage">
-    <h2 id="privacy-usage">Come utilizziamo i dati</h2>
-    <ul>
-      <li>Verificare la tua identità e consentire l'accesso al tuo account EtnaMonitor.</li>
-      <li>Personalizzare l'esperienza dell'applicazione mostrando il tuo nome e l'immagine del profilo.</li>
-      <li>Comunicare con te in merito ai servizi EtnaMonitor, inclusi aggiornamenti o notifiche importanti.</li>
-      <li>Inviare notifiche divulgative via Telegram rispettando le tue preferenze e il piano selezionato.</li>
-    </ul>
-  </section>
+    <section class="page-section" aria-labelledby="privacy-telegram">
+      <h2 id="privacy-telegram">Bot Telegram e trasparenza</h2>
+      <p>
+        Le notifiche Telegram sono fornite a scopo divulgativo: non sostituiscono le comunicazioni ufficiali dell'INGV e
+        non vengono utilizzate per finalità commerciali. Puoi scollegare il bot in qualsiasi momento dalla dashboard o
+        inviando il comando <code>/status</code> per verificare le informazioni memorizzate.
+      </p>
+    </section>
 
-  <section class="static-section" aria-labelledby="privacy-telegram">
-    <h2 id="privacy-telegram">Bot Telegram e trasparenza</h2>
-    <p>
-      Le notifiche Telegram sono fornite a scopo divulgativo: non sostituiscono le comunicazioni ufficiali dell'INGV e non vengono utilizzate per finalità commerciali. Puoi scollegare il bot in qualsiasi momento dalla dashboard o inviando il comando <code>/status</code> per verificare le informazioni memorizzate.
-    </p>
-  </section>
+    <section class="page-section" aria-labelledby="privacy-retention">
+      <h2 id="privacy-retention">Conservazione e condivisione</h2>
+      <p>
+        Conserviamo i dati ottenuti tramite Google OAuth2 per tutta la durata del tuo account. Non vendiamo né
+        condividiamo i tuoi dati con terze parti, ad eccezione dei fornitori strettamente necessari per erogare il
+        servizio, tutti vincolati da accordi di riservatezza e conformità al GDPR.
+      </p>
+    </section>
 
-  <section class="static-section" aria-labelledby="privacy-retention">
-    <h2 id="privacy-retention">Conservazione e condivisione</h2>
-    <p>
-      Conserviamo i dati ottenuti tramite Google OAuth2 per tutta la durata del tuo account. Non vendiamo né condividiamo
-      i tuoi dati con terze parti, ad eccezione dei fornitori strettamente necessari per erogare il servizio, tutti
-      vincolati da accordi di riservatezza e conformità al GDPR.
-    </p>
-  </section>
+    <section class="page-section" aria-labelledby="privacy-rights">
+      <h2 id="privacy-rights">I tuoi diritti</h2>
+      <p>
+        Puoi richiedere la cancellazione dei tuoi dati o revocare l'accesso a Google OAuth2 in qualsiasi momento
+        attraverso le impostazioni del tuo account Google. Per ulteriori domande, contattaci all'indirizzo
+        <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a>.
+      </p>
+    </section>
+  </div>
 
-  <section class="static-section" aria-labelledby="privacy-rights">
-    <h2 id="privacy-rights">I tuoi diritti</h2>
-    <p>
-      Puoi richiedere la cancellazione dei tuoi dati o revocare l'accesso a Google OAuth2 in qualsiasi momento
-      attraverso le impostazioni del tuo account Google. Per ulteriori domande, contattaci all'indirizzo <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a>.
-    </p>
-  </section>
-</main>
+  <div class="page-cta" role="group" aria-label="Azioni privacy">
+    <a class="btn btn-primary" href="mailto:salvoferro16@gmail.com">Richiedi assistenza</a>
+    <a class="btn btn-secondary glass" href="{{ url_for('main.index') }}#grafico-etna">Torna alla home</a>
+  </div>
+</section>
 {% endblock %}

@@ -16,8 +16,9 @@
   let navToggle;
   let navBackdrop;
   let userMenuToggle;
-  let accordionToggles;
-  let dropdownToggles;
+  let sectionToggles = [];
+  let dropdownToggles = [];
+  let closeButtons = [];
   let isMenuOpen = false;
   let scrollLockOrigin = 0;
 
@@ -164,8 +165,9 @@
 
     isMenuOpen = open;
     navMenu.classList.toggle('is-open', open);
-    navMenu.classList.toggle('active', open);
-    navMenu.classList.toggle('open', open);
+    if (!open) {
+      navMenu.classList.remove('active', 'open');
+    }
     navToggle.setAttribute('aria-expanded', String(open));
     navToggle.setAttribute('aria-label', open ? 'Chiudi il menu' : 'Apri il menu');
     navToggle.classList.toggle('is-active', open);
@@ -199,13 +201,7 @@
       closeUserMenu();
 
       if (!desktopMedia.matches) {
-        accordionToggles.forEach((button) => {
-          const group = button.closest('.nav-group');
-          button.setAttribute('aria-expanded', 'false');
-          if (group) {
-            group.classList.remove('is-open');
-          }
-        });
+        closeAllSections();
       }
 
       if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
@@ -262,31 +258,35 @@
     target.addEventListener('touchstart', wrappedHandler, { passive: false });
   }
 
-  function closeAllAccordions(except) {
-    accordionToggles.forEach((button) => {
-      const group = button.closest('.nav-group');
-      if (!group || group === except) {
+  function closeAllSections(except) {
+    sectionToggles.forEach((button) => {
+      const section = button.closest('.nav-section');
+      if (!section || section === except) {
         return;
       }
 
       button.setAttribute('aria-expanded', 'false');
-      group.classList.remove('is-open');
+      section.classList.remove('is-open');
     });
   }
 
-  function onAccordionToggle(event) {
+  function onSectionToggle(event) {
     event.preventDefault();
     event.stopPropagation();
     const button = event.currentTarget;
-    const group = button.closest('.nav-group');
-    if (!group) {
+    const section = button.closest('.nav-section');
+    if (!section) {
+      return;
+    }
+
+    if (button.getAttribute('aria-disabled') === 'true') {
       return;
     }
 
     const willOpen = button.getAttribute('aria-expanded') !== 'true';
-    closeAllAccordions(group);
+    closeAllSections(section);
     button.setAttribute('aria-expanded', String(willOpen));
-    group.classList.toggle('is-open', willOpen);
+    section.classList.toggle('is-open', willOpen);
   }
 
   function onDropdownToggle(event) {
@@ -307,14 +307,14 @@
   function syncAccordionState() {
     const isDesktop = desktopMedia.matches;
 
-    accordionToggles.forEach((button) => {
-      const group = button.closest('.nav-group');
-      if (!group) {
+    sectionToggles.forEach((button) => {
+      const section = button.closest('.nav-section');
+      if (!section) {
         return;
       }
 
       button.setAttribute('aria-expanded', String(isDesktop));
-      group.classList.toggle('is-open', isDesktop);
+      section.classList.toggle('is-open', isDesktop);
       if (isDesktop) {
         button.setAttribute('aria-disabled', 'true');
         button.setAttribute('tabindex', '-1');
@@ -351,14 +351,19 @@
       return;
     }
 
-    accordionToggles = Array.from(navMenu.querySelectorAll('.nav-group-toggle'));
+    sectionToggles = Array.from(navMenu.querySelectorAll('.nav-section-toggle'));
     dropdownToggles = Array.from(navMenu.querySelectorAll('.nav-dropdown-toggle'));
+    closeButtons = Array.from(navMenu.querySelectorAll('[data-nav-close]'));
 
     bindTap(navToggle, toggleMenu);
 
     if (navBackdrop) {
       bindTap(navBackdrop, () => setMenuOpen(false));
     }
+
+    closeButtons.forEach((button) => {
+      bindTap(button, () => setMenuOpen(false));
+    });
 
     document.addEventListener('click', onOutsideInteraction, { capture: true });
     document.addEventListener('touchstart', onOutsideInteraction, { capture: true });
@@ -386,8 +391,8 @@
       }
     });
 
-    accordionToggles.forEach((button) => {
-      bindTap(button, onAccordionToggle);
+    sectionToggles.forEach((button) => {
+      bindTap(button, onSectionToggle);
     });
 
     dropdownToggles.forEach((toggle) => {

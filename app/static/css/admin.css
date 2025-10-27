@@ -561,7 +561,7 @@
 }
 
 .partner-links a {
-  color: var(--accent);
+  color: var(--color-accent-primary);
   text-decoration: none;
 }
 

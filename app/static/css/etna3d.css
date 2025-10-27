@@ -29,7 +29,7 @@
 .etna3d-subtitle {
   margin-top: 12px;
   margin-bottom: 0;
-  color: var(--muted);
+  color: var(--color-text-secondary);
   font-size: 1.05rem;
 }
 
@@ -43,7 +43,7 @@
   padding: 6px 14px;
   border-radius: 999px;
   background: rgba(0, 210, 255, 0.16);
-  color: var(--accent);
+  color: var(--color-accent-primary);
   font-weight: 600;
   font-size: 0.85rem;
   letter-spacing: 0.04em;
@@ -58,12 +58,12 @@
   padding: 8px 12px;
   border-radius: 12px;
   background: rgba(0, 210, 255, 0.08);
-  color: var(--muted);
+  color: var(--color-text-secondary);
   font-size: 0.95rem;
 }
 
 .etna3d-banner a {
-  color: var(--accent);
+  color: var(--color-accent-primary);
   font-weight: 600;
   text-decoration: none;
 }
@@ -80,7 +80,7 @@
   place-content: center;
   gap: 0.75rem;
   text-align: center;
-  color: var(--muted);
+  color: var(--color-text-secondary);
   background: linear-gradient(135deg, rgba(12, 20, 39, 0.88), rgba(7, 12, 28, 0.88));
   border-radius: 12px;
   z-index: 2;
