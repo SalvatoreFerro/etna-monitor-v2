@@ -3058,6 +3058,11 @@ body, p, span, div, a, button, input, select, textarea,
   transform: translateY(-1px);
 }
 
+/* Safety rule to ensure menu is hidden before JS loads */
+.navbar-menu[hidden] {
+  display: none !important;
+}
+
 .navbar-menu {
   position: fixed;
   left: var(--space-4);
