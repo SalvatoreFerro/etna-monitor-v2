@@ -1573,7 +1573,7 @@ body, p, span, div, a, button, input, select, textarea,
 }
 
 .navbar-toggle {
-  display: none !important;
+  display: inline-flex;
   flex-direction: column;
   background: none;
   border: none;
@@ -1840,7 +1840,7 @@ body, p, span, div, a, button, input, select, textarea,
 }
 
 .navbar-toggle {
-  display: none !important;
+  display: inline-flex;
   flex-direction: column;
   background: none;
   border: none;
