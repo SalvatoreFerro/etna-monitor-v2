@@ -200,7 +200,7 @@ body, p, span, div, a, button, input, select, textarea,
   justify-content: space-between;
   gap: var(--space-8);
   min-width: 0;
-  padding: 0;
+  padding: 0 var(--space-2);
 }
 
 .navbar-links {
@@ -2387,7 +2387,7 @@ body, p, span, div, a, button, input, select, textarea,
     overscroll-behavior: contain;
     max-height: calc(100vh - var(--navbar-height) - env(safe-area-inset-top));
     overflow-y: auto;
-    box-shadow: 0 28px 60px rgba(4, 10, 24, 0.55);
+    box-shadow: 0 28px 60px rgba(0, 0, 0, 0.45);
   }
 
   .navbar-menu.active {
