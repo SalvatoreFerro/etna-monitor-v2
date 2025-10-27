@@ -3060,18 +3060,18 @@ body, p, span, div, a, button, input, select, textarea,
 
 .navbar-menu {
   position: fixed;
-  left: var(--space-4);
-  right: var(--space-4);
+  left: 50%;
+  transform: translateX(-50%) translateY(-16px);
   top: calc(var(--navbar-height) + var(--space-3));
+  width: min(600px, calc(100vw - var(--space-8)));
   background: rgba(7, 12, 28, 0.96);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-2xl);
   box-shadow: var(--shadow-floating);
-  max-height: calc(var(--viewport-height, 100vh) - var(--navbar-height) - var(--space-6));
+  max-height: min(600px, calc(var(--viewport-height, 100vh) - var(--navbar-height) - var(--space-6)));
   overflow-y: auto;
-  transform: translateY(-16px);
   opacity: 0;
   pointer-events: none;
   transition: transform var(--transition-normal), opacity var(--transition-normal);
@@ -3083,7 +3083,7 @@ body, p, span, div, a, button, input, select, textarea,
 .navbar-menu.active {
   opacity: 1;
   pointer-events: auto;
-  transform: translateY(0);
+  transform: translateX(-50%) translateY(0);
 }
 
 .navbar-menu-inner {
@@ -3308,10 +3308,11 @@ body, p, span, div, a, button, input, select, textarea,
 
   .navbar-menu {
     position: fixed;
-    left: var(--space-3);
-    right: var(--space-3);
+    left: 50%;
+    transform: translateX(-50%) translateY(-16px);
     top: calc(var(--navbar-height) + var(--space-3));
-    transform: translateY(-16px);
+    width: min(700px, calc(100vw - var(--space-8)));
+    max-height: min(500px, calc(var(--viewport-height, 100vh) - var(--navbar-height) - var(--space-6)));
     opacity: 0;
     pointer-events: none;
   }
@@ -3321,7 +3322,7 @@ body, p, span, div, a, button, input, select, textarea,
   .navbar-menu.active {
     opacity: 1;
     pointer-events: auto;
-    transform: translateY(0);
+    transform: translateX(-50%) translateY(0);
   }
 
   .navbar-menu-inner {
