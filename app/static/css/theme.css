@@ -2958,7 +2958,8 @@ body, p, span, div, a, button, input, select, textarea,
   width: 100%;
   max-width: 1200px;
   margin: 0 auto;
-  padding-inline: var(--space-4);
+  padding-inline: var(--space-5);
+  padding-block: var(--space-3);
   display: flex;
   flex-direction: column;
   gap: var(--space-md);
@@ -2975,10 +2976,15 @@ body, p, span, div, a, button, input, select, textarea,
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  font-size: var(--font-size-lg);
+  font-size: var(--font-size-md);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   text-decoration: none;
+}
+
+.brand-logo {
+  height: 32px;
+  width: auto;
 }
 
 .brand-link:hover,
@@ -3054,14 +3060,16 @@ body, p, span, div, a, button, input, select, textarea,
 
 .navbar-menu {
   position: fixed;
-  left: var(--space-3);
-  right: var(--space-3);
+  left: var(--space-4);
+  right: var(--space-4);
   top: calc(var(--navbar-height) + var(--space-3));
-  background: rgba(7, 12, 28, 0.94);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(7, 12, 28, 0.96);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: var(--radius-2xl);
   box-shadow: var(--shadow-floating);
-  max-height: calc(var(--viewport-height, 100vh) - var(--navbar-height) - var(--space-5));
+  max-height: calc(var(--viewport-height, 100vh) - var(--navbar-height) - var(--space-6));
   overflow-y: auto;
   transform: translateY(-16px);
   opacity: 0;
@@ -3276,12 +3284,18 @@ body, p, span, div, a, button, input, select, textarea,
 @media (min-width: 992px) {
   .navbar-container {
     flex-direction: row;
-    align-items: flex-start;
-    gap: var(--space-6);
+    align-items: center;
+    gap: var(--space-4);
+    padding-block: var(--space-3);
+  }
+
+  .navbar-bar {
+    flex: 0 0 auto;
   }
 
   .navbar-inline {
-    display: none;
+    display: flex;
+    gap: var(--space-4);
   }
 
   .navbar-cta-desktop {
@@ -3289,40 +3303,47 @@ body, p, span, div, a, button, input, select, textarea,
   }
 
   .navbar-toggle {
-    display: none;
+    display: inline-flex;
   }
 
   .navbar-menu {
-    position: static;
-    transform: none;
+    position: fixed;
+    left: var(--space-3);
+    right: var(--space-3);
+    top: calc(var(--navbar-height) + var(--space-3));
+    transform: translateY(-16px);
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  .navbar-menu.is-open,
+  .navbar-menu.open,
+  .navbar-menu.active {
     opacity: 1;
     pointer-events: auto;
-    border: none;
-    box-shadow: none;
-    background: transparent;
-    max-height: none;
-    overflow: visible;
+    transform: translateY(0);
   }
 
   .navbar-menu-inner {
-    padding: 0;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-6);
+    padding: var(--space-5) var(--space-5) var(--space-6);
+    flex-direction: column;
+    gap: var(--space-5);
   }
 
   .navbar-menu-header {
-    display: none;
+    display: flex;
   }
 
   .nav-sections {
     flex-direction: row;
+    flex-wrap: wrap;
     align-items: flex-start;
     gap: var(--space-6);
   }
 
   .nav-section {
+    flex: 1 1 200px;
+    min-width: 200px;
     border: none;
     padding: 0;
     gap: var(--space-3);
@@ -3331,6 +3352,8 @@ body, p, span, div, a, button, input, select, textarea,
   .nav-section-toggle {
     cursor: default;
     color: var(--color-text-tertiary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
   }
 
   .nav-section-toggle i {
@@ -3345,8 +3368,22 @@ body, p, span, div, a, button, input, select, textarea,
   .navbar-menu-footer {
     flex-direction: row;
     align-items: center;
+    justify-content: space-between;
     gap: var(--space-4);
+    padding-top: var(--space-4);
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
   }
+
+  .navbar-actions {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  .navbar-cta-mobile {
+    display: none;
+  }
+}
 
   .navbar-actions {
     flex-direction: row;
