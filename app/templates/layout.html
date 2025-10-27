@@ -220,6 +220,46 @@
       <a href="{{ url }}" class="nav-link {{ extra_classes }} {{ 'active' if request.endpoint == endpoint_name }}">{{ label }}</a>
     {% endmacro %}
 
+    {% macro render_user_actions(wrapper_classes='') %}
+      <div class="user-actions{{ ' ' ~ wrapper_classes if wrapper_classes }}">
+        {% if session.user_id %}
+          {% set display_name = (current_user.name if current_user else None) or (current_user.email if current_user else None) or 'Utente EtnaMonitor' %}
+          {% set avatar_url = current_user.picture_url if current_user else None %}
+          {% set display_initial = display_name|trim|first %}
+          <div class="user-menu">
+            <button class="user-menu-toggle btn btn-secondary glass" aria-label="Menu utente" aria-expanded="false">
+              <span class="user-avatar">
+                {% if avatar_url %}
+                  <img src="{{ avatar_url }}" alt="Avatar di {{ display_name }}" referrerpolicy="no-referrer">
+                {% else %}
+                  <span class="user-avatar-initial" aria-hidden="true">{{ display_initial if display_initial else 'U' }}</span>
+                {% endif %}
+              </span>
+              <span class="user-name">{{ display_name }}</span>
+              <i class="fas fa-chevron-down" aria-hidden="true"></i>
+            </button>
+            <div class="user-menu-dropdown">
+              <a href="/dashboard/settings" class="dropdown-item">Impostazioni</a>
+              <a href="{{ url_for('billing.donate') }}" class="dropdown-item">Sostienici</a>
+              {% if not (current_user and current_user.has_premium_access) %}
+                <a href="/pricing" class="dropdown-item">Passa a Premium</a>
+              {% endif %}
+              <div class="dropdown-divider"></div>
+              <a href="{{ url_for('auth.logout') }}" class="dropdown-item">Esci</a>
+            </div>
+          </div>
+        {% else %}
+          <form class="auth-buttons" action="{{ url_for('auth.auth_google') }}" method="post">
+            <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}">
+            <button type="submit" class="btn btn-google" aria-label="Accedi con Google">
+              <i class="fab fa-google"></i>
+              <span>Accedi con Google</span>
+            </button>
+          </form>
+        {% endif %}
+      </div>
+    {% endmacro %}
+
     {% set platform_links = [
       {'label': 'Vai al grafico', 'url': url_for('main.index') ~ '#grafico-etna', 'endpoint': 'main.index', 'extra_classes': 'nav-link-anchor'},
       {'label': 'Home', 'url': url_for('main.index'), 'endpoint': 'main.index'},
@@ -240,137 +280,139 @@
       {'label': 'Donazioni PayPal', 'url': url_for('main.pricing') ~ '#donazioni', 'endpoint': 'main.pricing'}
     ] %}
 
+    {% set desktop_nav_links = [
+      {'label': 'Home', 'url': url_for('main.index'), 'endpoint': 'main.index'},
+      {'label': 'Grafico live', 'url': url_for('main.index') ~ '#grafico-etna', 'endpoint': 'main.index', 'extra_classes': 'nav-link-anchor'},
+      {'label': 'Tecnologia', 'url': url_for('main.tecnologia'), 'endpoint': 'main.tecnologia'},
+      {'label': 'Il Progetto', 'url': url_for('main.progetto'), 'endpoint': 'main.progetto'},
+      {'label': 'Team', 'url': url_for('main.team'), 'endpoint': 'main.team'},
+      {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
+      {'label': 'Etna Experience', 'url': url_for('experience.experience_home'), 'endpoint': 'experience.experience_home'},
+      {'label': 'Roadmap', 'url': url_for('main.roadmap'), 'endpoint': 'main.roadmap'},
+      {'label': 'Sponsor', 'url': url_for('main.sponsor'), 'endpoint': 'main.sponsor'},
+      {'label': 'Prezzi', 'url': url_for('main.pricing'), 'endpoint': 'main.pricing'}
+    ] %}
+
     <!-- UX_FIX_2025: Primary navigation restructure -->
     <nav class="navbar glass" id="mainNav" role="navigation" aria-label="Navigazione principale">
       <div class="navbar-container">
-        <div class="navbar-brand">
+        <div class="navbar-bar">
           <a href="/" class="brand-link" aria-label="EtnaMonitor Home">
             <img src="{{ LOGO_DATA_URL }}" alt="EtnaMonitor" class="brand-logo">
             <span class="brand-text">EtnaMonitor</span>
           </a>
-        </div>
 
-        <button
-          class="navbar-toggle"
-          id="navToggle"
-          type="button"
-          aria-label="Apri il menu"
-          aria-controls="navbar-menu"
-          aria-expanded="false"
-        >
-          <span class="hamburger-line"></span>
-          <span class="hamburger-line"></span>
-          <span class="hamburger-line"></span>
-        </button>
-
-        <div class="navbar-menu offcanvas" id="navbar-menu" data-testid="navbar-menu" tabindex="-1" aria-hidden="true">
-          <div class="navbar-links">
-            {% if session.user_id %}
-              <div class="nav-group nav-group-account" data-nav-accordion>
-                <button class="nav-group-toggle" type="button" aria-expanded="false" aria-controls="nav-group-account-links">
-                  Area utente
-                </button>
-                <div class="nav-group-links" id="nav-group-account-links">
-                  {{ render_nav_link('Dashboard', url_for('dashboard.dashboard_home'), 'dashboard.dashboard_home') }}
-                  {% if current_user and current_user.is_admin %}
-                    {{ render_nav_link('Admin', url_for('admin.admin_home'), 'admin.admin_home') }}
-                  {% endif %}
-                </div>
-              </div>
-            {% endif %}
-
-            <div class="nav-group nav-group-platform" data-nav-accordion>
-              <button class="nav-group-toggle" type="button" aria-expanded="false" aria-controls="nav-group-platform-links">
-                Piattaforma
-              </button>
-              <div class="nav-group-links" id="nav-group-platform-links">
-                {% for item in platform_links %}
-                  {{ render_nav_link(item.label, item.url, item.endpoint, item.extra_classes if 'extra_classes' in item else '') }}
-                {% endfor %}
-              </div>
+          <div class="navbar-desktop" aria-label="Navigazione principale desktop">
+            <div class="navbar-desktop-links" role="menubar">
+              {% for item in desktop_nav_links %}
+                {{ render_nav_link(item.label, item.url, item.endpoint, 'nav-link-desktop ' ~ (item.extra_classes if 'extra_classes' in item else '')) }}
+              {% endfor %}
             </div>
-
-            <div class="nav-group nav-group-experience" data-nav-accordion>
-              <button class="nav-group-toggle" type="button" aria-expanded="false" aria-controls="nav-group-experience-links">
-                Esperienza live
-              </button>
-              <div class="nav-group-links" id="nav-group-experience-links">
-                {% for item in live_links %}
-                  {{ render_nav_link(item.label, item.url, item.endpoint) }}
-                {% endfor %}
-              </div>
-            </div>
-
-            <div class="nav-group nav-group-resources" data-nav-accordion>
-              <button class="nav-group-toggle" type="button" aria-expanded="false" aria-controls="nav-group-resources-links">
-                Risorse
-              </button>
-              <div class="nav-group-links" id="nav-group-resources-links">
-                <div class="nav-dropdown" data-nav-accordion>
-                  <button class="nav-link nav-dropdown-toggle" type="button" aria-expanded="false" aria-haspopup="true">
-                    Approfondisci
-                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
-                  </button>
-                  <div class="nav-dropdown-menu" role="menu">
-                    {% for item in insights_links %}
-                      <a
-                        href="{{ item.url }}"
-                        class="nav-dropdown-item {{ 'active' if request.endpoint == item.endpoint }}"
-                        role="menuitem"
-                      >{{ item.label }}</a>
-                    {% endfor %}
-                  </div>
-                </div>
-                {{ render_nav_link('Prezzi', url_for('main.pricing'), 'main.pricing') }}
-              </div>
-            </div>
-
-            <div class="nav-group nav-group-cta" data-nav-accordion>
-              <button class="nav-group-toggle" type="button" aria-expanded="false" aria-controls="nav-group-cta-links">
-                Abbonamenti
-              </button>
-              <div class="nav-group-links" id="nav-group-cta-links">
-                {{ render_nav_link('Piani Premium', url_for('main.pricing'), 'main.pricing', 'nav-pill') }}
-              </div>
+            <div class="navbar-desktop-actions">
+              <a href="{{ url_for('main.pricing') }}" class="nav-pill navbar-cta-primary">Piani Premium</a>
+              {{ render_user_actions('navbar-desktop-auth') }}
             </div>
           </div>
 
-          <div class="navbar-actions">
-            {% if session.user_id %}
-              {% set display_name = (current_user.name if current_user else None) or (current_user.email if current_user else None) or 'Utente EtnaMonitor' %}
-              {% set avatar_url = current_user.picture_url if current_user else None %}
-              {% set display_initial = display_name|trim|first %}
-              <div class="user-menu">
-                <button class="user-menu-toggle btn btn-secondary glass" aria-label="Menu utente" aria-expanded="false">
-                  <span class="user-avatar">
-                    {% if avatar_url %}
-                      <img src="{{ avatar_url }}" alt="Avatar di {{ display_name }}" referrerpolicy="no-referrer">
-                    {% else %}
-                      <span class="user-avatar-initial" aria-hidden="true">{{ display_initial if display_initial else 'U' }}</span>
+          <div class="navbar-inline">
+            <a href="{{ url_for('main.pricing') }}" class="nav-pill navbar-cta-desktop">Piani Premium</a>
+            <button
+              class="navbar-toggle"
+              id="navToggle"
+              type="button"
+              aria-label="Apri il menu"
+              aria-controls="navbar-menu"
+              aria-expanded="false"
+            >
+              <span class="sr-only">Apri il menu</span>
+              <span class="hamburger-line" aria-hidden="true"></span>
+              <span class="hamburger-line" aria-hidden="true"></span>
+              <span class="hamburger-line" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+
+        <div class="navbar-menu" id="navbar-menu" data-testid="navbar-menu" tabindex="-1" aria-hidden="true">
+          <div class="navbar-menu-inner">
+            <header class="navbar-menu-header">
+              <span class="navbar-menu-title">Navigazione</span>
+              <button class="navbar-close" type="button" aria-label="Chiudi il menu" data-nav-close>
+                <i class="fas fa-xmark" aria-hidden="true"></i>
+              </button>
+            </header>
+
+            <div class="nav-sections">
+              {% if session.user_id %}
+                <section class="nav-section nav-section-account" data-nav-section>
+                  <button class="nav-section-toggle" type="button" aria-expanded="false" aria-controls="nav-section-account">
+                    <span>Area utente</span>
+                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                  </button>
+                  <div class="nav-section-panel" id="nav-section-account">
+                    {{ render_nav_link('Dashboard', url_for('dashboard.dashboard_home'), 'dashboard.dashboard_home') }}
+                    {% if current_user and current_user.is_admin %}
+                      {{ render_nav_link('Admin', url_for('admin.admin_home'), 'admin.admin_home') }}
                     {% endif %}
-                  </span>
-                  <span class="user-name">{{ display_name }}</span>
-                  <i class="fas fa-chevron-down"></i>
+                  </div>
+                </section>
+              {% endif %}
+
+              <section class="nav-section nav-section-platform" data-nav-section>
+                <button class="nav-section-toggle" type="button" aria-expanded="false" aria-controls="nav-section-platform">
+                  <span>Piattaforma</span>
+                  <i class="fas fa-chevron-down" aria-hidden="true"></i>
                 </button>
-                <div class="user-menu-dropdown">
-                  <a href="/dashboard/settings" class="dropdown-item">Impostazioni</a>
-                  <a href="{{ url_for('billing.donate') }}" class="dropdown-item">Sostienici</a>
-                  {% if not (current_user and current_user.has_premium_access) %}
-                    <a href="/pricing" class="dropdown-item">Passa a Premium</a>
-                  {% endif %}
-                  <div class="dropdown-divider"></div>
-                  <a href="{{ url_for('auth.logout') }}" class="dropdown-item">Esci</a>
+                <div class="nav-section-panel" id="nav-section-platform">
+                  {% for item in platform_links %}
+                    {{ render_nav_link(item.label, item.url, item.endpoint, item.extra_classes if 'extra_classes' in item else '') }}
+                  {% endfor %}
                 </div>
-              </div>
-            {% else %}
-              <form class="auth-buttons" action="{{ url_for('auth.auth_google') }}" method="post">
-                <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}">
-                <button type="submit" class="btn btn-google" aria-label="Accedi con Google">
-                  <i class="fab fa-google"></i>
-                  <span>Accedi con Google</span>
+              </section>
+
+              <section class="nav-section nav-section-live" data-nav-section>
+                <button class="nav-section-toggle" type="button" aria-expanded="false" aria-controls="nav-section-live">
+                  <span>Esperienza live</span>
+                  <i class="fas fa-chevron-down" aria-hidden="true"></i>
                 </button>
-              </form>
-            {% endif %}
+                <div class="nav-section-panel" id="nav-section-live">
+                  {% for item in live_links %}
+                    {{ render_nav_link(item.label, item.url, item.endpoint) }}
+                  {% endfor %}
+                </div>
+              </section>
+
+              <section class="nav-section nav-section-resources" data-nav-section>
+                <button class="nav-section-toggle" type="button" aria-expanded="false" aria-controls="nav-section-resources">
+                  <span>Risorse</span>
+                  <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                </button>
+                <div class="nav-section-panel" id="nav-section-resources">
+                  <div class="nav-dropdown" data-nav-dropdown>
+                    <button class="nav-link nav-dropdown-toggle" type="button" aria-expanded="false" aria-haspopup="true">
+                      Approfondisci
+                      <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                    </button>
+                    <div class="nav-dropdown-menu" role="menu">
+                      {% for item in insights_links %}
+                        <a
+                          href="{{ item.url }}"
+                          class="nav-dropdown-item {{ 'active' if request.endpoint == item.endpoint }}"
+                          role="menuitem"
+                        >{{ item.label }}</a>
+                      {% endfor %}
+                    </div>
+                  </div>
+                  {{ render_nav_link('Prezzi', url_for('main.pricing'), 'main.pricing') }}
+                </div>
+              </section>
+            </div>
+
+            <div class="navbar-menu-footer">
+              <a href="{{ url_for('main.pricing') }}" class="nav-pill navbar-cta-mobile">Piani Premium</a>
+              <div class="navbar-actions">
+                {{ render_user_actions() }}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -413,6 +455,10 @@
           <p class="site-footer__summary">
             Monitoraggio data-driven del tremore vulcanico dell'Etna con grafici interattivi, analisi AI e strumenti immersivi 3D.
           </p>
+          <div class="service-status site-footer__status" id="service-status" role="status" aria-live="polite">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span class="status-text">Verifica sistemi…</span>
+          </div>
           <p class="site-footer__disclaimer">
             <strong>Disclaimer:</strong> Elaborazioni automatiche su dati pubblici INGV. Per informazioni ufficiali consulta <a href="https://www.ct.ingv.it" target="_blank" rel="noopener">INGV Catania</a>.
           </p>
@@ -447,13 +493,20 @@
           </div>
 
           <div class="site-footer__column">
-            <h2 class="site-footer__title">Contatti</h2>
-            <ul class="site-footer__list site-footer__list--meta">
-              <li><a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a></li>
-              <li><a href="{{ url_for('main.privacy') }}">Privacy</a></li>
-              <li><a href="{{ url_for('main.terms') }}">Termini</a></li>
-              <li><a href="{{ url_for('main.cookies') }}">Cookie</a></li>
-            </ul>
+            <h2 class="site-footer__title">Supporto</h2>
+            <nav aria-label="Contatti EtnaMonitor">
+              <ul class="site-footer__list">
+                <li><a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a></li>
+              </ul>
+            </nav>
+            <h2 class="site-footer__title">Documentazione legale</h2>
+            <nav aria-label="Documentazione legale">
+              <ul class="site-footer__list site-footer__list--meta">
+                <li><a href="{{ url_for('main.privacy') }}">Privacy</a></li>
+                <li><a href="{{ url_for('main.terms') }}">Termini</a></li>
+                <li><a href="{{ url_for('main.cookies') }}">Cookie</a></li>
+              </ul>
+            </nav>
             <p class="site-footer__credits">Progetto ideato da Salvatore Ferro. Dataset INGV elaborati automaticamente.</p>
           </div>
         </div>
@@ -497,80 +550,107 @@
     <script src="{{ url_for('static', filename='js/nav.js') }}" nonce="{{ script_nonce }}" defer></script>
 
     <script nonce="{{ script_nonce }}">
-    // Register service worker
+    // Register service worker after load to avoid blocking first paint
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/static/sw.js')
-        .then(registration => console.log('SW registered'))
-        .catch(error => console.log('SW registration failed'));
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/static/sw.js')
+          .then(registration => console.log('SW registered'))
+          .catch(error => console.log('SW registration failed'));
+      });
     }
-    
+
     let deferredPrompt;
-    
+    const pwaPrompt = document.getElementById('pwa-install-prompt');
+    const installBtn = document.getElementById('pwa-install-btn');
+    const dismissBtn = document.getElementById('pwa-dismiss-btn');
+
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       deferredPrompt = e;
-      document.getElementById('pwa-install-prompt').style.display = 'block';
-    });
-    
-    document.getElementById('pwa-install-btn')?.addEventListener('click', async () => {
-      if (deferredPrompt) {
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        deferredPrompt = null;
-        document.getElementById('pwa-install-prompt').style.display = 'none';
+      if (pwaPrompt) {
+        pwaPrompt.style.display = 'block';
       }
     });
-    
-    document.getElementById('pwa-dismiss-btn')?.addEventListener('click', () => {
-      document.getElementById('pwa-install-prompt').style.display = 'none';
-    });
-    
+
+    if (installBtn) {
+      installBtn.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        deferredPrompt.prompt();
+        await deferredPrompt.userChoice;
+        deferredPrompt = null;
+        if (pwaPrompt) {
+          pwaPrompt.style.display = 'none';
+        }
+      });
+    }
+
+    if (dismissBtn) {
+      dismissBtn.addEventListener('click', () => {
+        if (pwaPrompt) {
+          pwaPrompt.style.display = 'none';
+        }
+      });
+    }
+
     let retryCount = 0;
     const maxRetries = 3;
-    
+    let statusInterval;
+
     async function checkServiceStatus() {
+      const statusElement = document.getElementById('service-status');
+      const dot = statusElement?.querySelector('.status-dot');
+      const text = statusElement?.querySelector('.status-text');
+
+      if (!statusElement || !dot || !text) {
+        return;
+      }
+
+      statusElement.setAttribute('aria-busy', 'true');
+
       try {
         const response = await fetch('/api/status');
         const data = await response.json();
-        const statusElement = document.getElementById('service-status');
-        
-        if (statusElement) {
-          const dot = statusElement.querySelector('.status-dot');
-          const text = statusElement.querySelector('.status-text');
-          
-          if (data.ok) {
-            dot.className = 'status-dot online';
-            text.textContent = 'Tutti i sistemi operativi';
-            statusElement.setAttribute('aria-label', 'Stato servizio: Online');
-            retryCount = 0;
-          } else {
-            dot.className = 'status-dot offline';
-            text.textContent = 'Problemi di servizio rilevati';
-            statusElement.setAttribute('aria-label', 'Stato servizio: Offline');
-          }
+
+        if (data.ok) {
+          dot.className = 'status-dot online';
+          text.textContent = 'Tutti i sistemi operativi';
+          statusElement.setAttribute('aria-label', 'Stato servizio: Online');
+          retryCount = 0;
+        } else {
+          dot.className = 'status-dot offline';
+          text.textContent = 'Problemi di servizio rilevati';
+          statusElement.setAttribute('aria-label', 'Stato servizio: Offline');
         }
       } catch (error) {
-        const statusElement = document.getElementById('service-status');
-        if (statusElement) {
-          const dot = statusElement.querySelector('.status-dot');
-          const text = statusElement.querySelector('.status-text');
-          dot.className = 'status-dot offline';
-          
-          if (retryCount < maxRetries) {
-            text.textContent = 'Errore di connessione ai dati INGV, riprovo automaticamente...';
-            retryCount++;
-            setTimeout(() => checkServiceStatus(), Math.pow(2, retryCount) * 1000);
-          } else {
-            text.textContent = 'Errore di connessione persistente';
-          }
-          statusElement.setAttribute('aria-label', 'Stato servizio: Errore di connessione');
+        dot.className = 'status-dot offline';
+
+        if (retryCount < maxRetries) {
+          text.textContent = 'Connessione ai dati in corso…';
+          retryCount++;
+          setTimeout(() => checkServiceStatus(), Math.pow(2, retryCount) * 1000);
+        } else {
+          text.textContent = 'Errore di connessione persistente';
         }
+        statusElement.setAttribute('aria-label', 'Stato servizio: Errore di connessione');
+      } finally {
+        statusElement.setAttribute('aria-busy', 'false');
       }
     }
-    
-    document.addEventListener('DOMContentLoaded', () => {
+
+    const scheduleStatusChecks = () => {
       checkServiceStatus();
-      setInterval(checkServiceStatus, 30000);
+      if (statusInterval) {
+        clearInterval(statusInterval);
+      }
+      statusInterval = window.setInterval(checkServiceStatus, 30000);
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(scheduleStatusChecks, { timeout: 2500 });
+      } else {
+        setTimeout(scheduleStatusChecks, 1500);
+      }
 
       if (window.EMNav && typeof window.EMNav.init === 'function') {
         window.EMNav.init();

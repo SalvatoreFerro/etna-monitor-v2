@@ -4,9 +4,21 @@
 <!-- # UX_REFACTOR_2025 -->
 <div class="home-shell" id="home-shell">
   <section class="home-section home-live" id="grafico-etna" aria-labelledby="grafico-title">
-    <header class="home-live-header">
-      <div class="home-live-meta">
-        <span class="home-pill">Live • Tremore Etna</span>
+    <div class="home-live-layout">
+      <figure class="home-live-visual" role="img" aria-labelledby="grafico-title" aria-describedby="grafico-context">
+        <div class="home-live-status" role="status" aria-live="polite">
+          <span class="status-indicator" id="live-status-indicator" aria-hidden="true"></span>
+          <span class="status-text" id="live-status-text">Verifica connessione…</span>
+        </div>
+        <div id="home-preview-loading" class="chart-loading" aria-live="polite">
+          <div class="skeleton skeleton-chart"></div>
+          <p>Caricamento dati INGV…</p>
+        </div>
+        <div id="home-preview-plot" class="home-preview-plot" aria-hidden="true"></div>
+      </figure>
+
+      <header class="home-live-header">
+        <span class="section-pill home-pill">Live • Tremore Etna</span>
         <h1 id="grafico-title">Grafico tremore vulcanico in tempo reale</h1>
         <p class="home-lead">
           {% if latest_value is not none and latest_timestamp_display %}
@@ -16,19 +28,12 @@
             Visualizzazione interattiva del tremore vulcanico dell'Etna aggiornata ogni cinque minuti con dati ufficiali INGV.
           {% endif %}
         </p>
-      </div>
-      <div class="home-live-status" role="status" aria-live="polite">
-        <span class="status-indicator" id="live-status-indicator" aria-hidden="true"></span>
-        <span class="status-text" id="live-status-text">Verifica connessione…</span>
-      </div>
-    </header>
-
-    <div class="home-chart-card" role="img" aria-label="Andamento tremore vulcanico dell'Etna" aria-describedby="grafico-context">
-      <div id="home-preview-loading" class="chart-loading" aria-live="polite">
-        <div class="skeleton skeleton-chart"></div>
-        <p>Caricamento dati INGV…</p>
-      </div>
-      <div id="home-preview-plot" class="home-preview-plot" aria-hidden="true"></div>
+        <div class="home-live-actions">
+          <button id="quick-update-btn" class="btn btn-secondary btn-sm glass" type="button" aria-label="Aggiorna dati tremore">
+            Aggiorna dati
+          </button>
+        </div>
+      </header>
     </div>
 
     <footer class="home-chart-footer" id="grafico-context">
@@ -46,9 +51,6 @@
           <dd><span id="live-activity-badge" class="activity-badge">In aggiornamento</span></dd>
         </div>
       </dl>
-      <button id="quick-update-btn" class="btn btn-secondary btn-sm glass" type="button" aria-label="Aggiorna dati tremore">
-        Aggiorna dati
-      </button>
     </footer>
   </section>
 
@@ -188,7 +190,6 @@
 
 {% block extra_scripts %}
 {{ super() }}
-<script src="{{ url_for('static', filename='vendor/plotly.min.js') }}" charset="utf-8" nonce="{{ script_nonce }}"></script>
 <script nonce="{{ script_nonce }}">
   // # UX_REFACTOR_2025 Home interactions
   const plotContainer = document.getElementById('home-preview-plot');
@@ -199,11 +200,74 @@
   const statusIndicator = document.getElementById('live-status-indicator');
   const statusText = document.getElementById('live-status-text');
   const quickUpdateBtn = document.getElementById('quick-update-btn');
+  const plotlySrc = "{{ url_for('static', filename='vendor/plotly.min.js') }}";
   let resizeObserver;
+  let plotlyLoadPromise;
 
   if (document.body) {
     document.body.classList.add('home-scroll');
   }
+
+  const ensurePlotly = () => {
+    if (window.Plotly) {
+      return Promise.resolve(window.Plotly);
+    }
+
+    if (plotlyLoadPromise) {
+      return plotlyLoadPromise;
+    }
+
+    plotlyLoadPromise = new Promise((resolve, reject) => {
+      const existing = document.querySelector('script[data-plotly-loader]');
+      if (existing) {
+        existing.addEventListener('load', () => (window.Plotly ? resolve(window.Plotly) : reject(new Error('Plotly non disponibile'))));
+        existing.addEventListener('error', () => reject(new Error('Impossibile caricare Plotly')));
+        return;
+      }
+
+      const script = document.createElement('script');
+      script.src = plotlySrc;
+      script.async = true;
+      script.defer = true;
+      script.setAttribute('data-plotly-loader', 'true');
+      script.onload = () => {
+        if (window.Plotly) {
+          resolve(window.Plotly);
+        } else {
+          reject(new Error('Plotly non disponibile'));
+        }
+      };
+      script.onerror = () => reject(new Error('Impossibile caricare Plotly'));
+      document.head.appendChild(script);
+    });
+
+    return plotlyLoadPromise;
+  };
+
+  const schedulePlotlyLoad = () => {
+    if (!plotContainer) return;
+
+    const triggerLoad = () => {
+      ensurePlotly().catch((error) => {
+        console.error('Plotly lazy load failed', error);
+        showFallback('Impossibile inizializzare il grafico interattivo');
+      });
+    };
+
+    if ('IntersectionObserver' in window) {
+      const observer = new IntersectionObserver((entries, obs) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          obs.disconnect();
+          triggerLoad();
+        });
+      }, { rootMargin: '160px 0px 0px 0px' });
+
+      observer.observe(plotContainer);
+    }
+
+    window.setTimeout(triggerLoad, 3500);
+  };
 
   const formatDate = (value) => {
     if (!value) return '--';
@@ -263,7 +327,9 @@
   };
 
   const drawPlot = (rows) => {
-    if (!window.Plotly || !plotContainer) return;
+    if (!window.Plotly || !plotContainer) {
+      throw new Error('Plotly non disponibile');
+    }
 
     const timestamps = rows.map((row) => row.timestamp);
     const values = rows.map((row) => row.value);
@@ -317,12 +383,12 @@
       doubleClick: 'reset',
     };
 
-    Plotly.newPlot(plotContainer, [trace], layout, config).then(() => {
+    window.Plotly.newPlot(plotContainer, [trace], layout, config).then(() => {
       if (loadingOverlay) loadingOverlay.setAttribute('hidden', 'hidden');
       plotContainer.classList.add('loaded');
       plotContainer.removeAttribute('aria-hidden');
       ensureResizeObserver(plotContainer);
-      Plotly.Plots.resize(plotContainer);
+      window.Plotly.Plots.resize(plotContainer);
     });
   };
 
@@ -339,11 +405,15 @@
       if (!payload.ok || !Array.isArray(payload.data) || !payload.data.length) {
         throw new Error('Dati non disponibili');
       }
+      await ensurePlotly();
       drawPlot(payload.data);
       return payload;
     } catch (error) {
       console.error('Errore caricamento curva', error);
-      showFallback('Dati non disponibili');
+      const fallbackMessage = error && typeof error.message === 'string' && error.message.toLowerCase().includes('plotly')
+        ? 'Impossibile inizializzare il grafico interattivo'
+        : 'Dati non disponibili';
+      showFallback(fallbackMessage);
       throw error;
     }
   };
@@ -376,6 +446,8 @@
       quickUpdateBtn.textContent = 'Aggiornamento…';
       try {
         await Promise.all([loadChart(), refreshStatus()]);
+      } catch (error) {
+        console.error('Aggiornamento manuale fallito', error);
       } finally {
         quickUpdateBtn.disabled = false;
         quickUpdateBtn.textContent = original;
@@ -406,15 +478,17 @@
 
   window.addEventListener('orientationchange', () => {
     if (plotContainer && plotContainer.data && window.Plotly) {
-      Plotly.Plots.resize(plotContainer);
+      window.Plotly.Plots.resize(plotContainer);
     }
   });
 
   window.addEventListener('resize', () => {
     if (plotContainer && plotContainer.data && window.Plotly) {
-      Plotly.Plots.resize(plotContainer);
+      window.Plotly.Plots.resize(plotContainer);
     }
   });
+
+  schedulePlotlyLoad();
 
   if (document.readyState === 'complete' || document.readyState === 'interactive') {
     init();

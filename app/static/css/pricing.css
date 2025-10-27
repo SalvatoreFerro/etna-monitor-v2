@@ -7,7 +7,7 @@
   padding: 80px min(8vw, 120px) 120px;
   background: radial-gradient(circle at top right, rgba(0, 210, 255, 0.12), transparent 45%),
     radial-gradient(circle at bottom left, rgba(84, 56, 255, 0.18), transparent 50%),
-    var(--bg);
+    var(--color-bg-primary);
 }
 
 .pricing-hero {
@@ -101,7 +101,7 @@
 
 .hero-brand-text .brand-tagline {
   font-size: 0.9rem;
-  color: var(--muted);
+  color: var(--color-text-secondary);
 }
 
 .hero-title {
@@ -113,7 +113,7 @@
 
 .hero-subtitle {
   margin: 0;
-  color: var(--muted);
+  color: var(--color-text-secondary);
   font-size: 1rem;
   max-width: 48ch;
 }
@@ -157,7 +157,7 @@
 
 .section-header p {
   margin: 0;
-  color: var(--muted);
+  color: var(--color-text-secondary);
 }
 
 .plans-section {
@@ -230,7 +230,7 @@
   font-size: 0.85rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--muted);
+  color: var(--color-text-secondary);
 }
 
 .plan-badge {
@@ -238,7 +238,7 @@
   align-items: center;
   gap: 8px;
   background: rgba(0, 210, 255, 0.18);
-  color: var(--accent);
+  color: var(--color-accent-primary);
   border-radius: 999px;
   padding: 6px 14px;
   font-size: 0.75rem;
@@ -270,7 +270,7 @@
 
 .plan-price .period {
   font-size: 0.9rem;
-  color: var(--muted);
+  color: var(--color-text-secondary);
 }
 
 .plan-card-lifetime .plan-price {
@@ -295,7 +295,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  color: var(--muted);
+  color: var(--color-text-secondary);
 }
 
 .feature-icon {
@@ -306,12 +306,12 @@
   justify-content: center;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
-  color: var(--muted);
+  color: var(--color-text-secondary);
 }
 
 .feature-icon.success {
   background: rgba(34, 197, 94, 0.14);
-  color: var(--success);
+  color: var(--color-success);
 }
 
 .feature-icon.muted {
@@ -398,7 +398,7 @@
 
 .support-card p {
   margin: 12px 0 0;
-  color: var(--muted);
+  color: var(--color-text-secondary);
 }
 
 

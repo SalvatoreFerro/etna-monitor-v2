@@ -3,42 +3,53 @@
 {% block title %}Informativa sui cookie - EtnaMonitor{% endblock %}
 
 {% block content %}
-<main id="main-content" class="static-page">
-  <section class="static-hero" aria-labelledby="cookies-title">
-    <div class="static-hero-inner">
-      <h1 id="cookies-title">Informativa sui cookie</h1>
-      <p class="lead">
-        Questa informativa spiega come EtnaMonitor utilizza i cookie e tecnologie simili, inclusi quelli necessari per
-        supportare l'autenticazione tramite Google OAuth2.
+<section class="page-wrapper" id="page-top">
+  <nav class="page-breadcrumb" aria-label="Percorso di navigazione">
+    <a href="{{ url_for('main.index') }}">Home</a>
+    <span aria-hidden="true">/</span>
+    <span>Cookie</span>
+  </nav>
+
+  <header class="page-hero" aria-labelledby="cookies-title">
+    <span class="section-pill">Cookie</span>
+    <h1 id="cookies-title">Informativa sui cookie</h1>
+    <p>
+      Questa informativa spiega come EtnaMonitor utilizza i cookie e tecnologie simili, inclusi quelli necessari per
+      supportare l'autenticazione tramite Google OAuth2.
+    </p>
+  </header>
+
+  <div class="page-stack">
+    <section class="page-section" aria-labelledby="cookies-what">
+      <h2 id="cookies-what">Cosa sono i cookie?</h2>
+      <p>
+        I cookie sono piccoli file di testo che il browser salva sul tuo dispositivo quando visiti un sito web. Ci aiutano
+        a mantenere attiva la tua sessione, ricordare le preferenze e proteggere il tuo account.
       </p>
-    </div>
-  </section>
+    </section>
 
-  <section class="static-section" aria-labelledby="cookies-what">
-    <h2 id="cookies-what">Cosa sono i cookie?</h2>
-    <p>
-      I cookie sono piccoli file di testo che il browser salva sul tuo dispositivo quando visiti un sito web. Ci aiutano
-      a mantenere attiva la tua sessione, ricordare le preferenze e proteggere il tuo account.
-    </p>
-  </section>
+    <section class="page-section" aria-labelledby="cookies-types">
+      <h2 id="cookies-types">Cookie che utilizziamo</h2>
+      <ul>
+        <li><strong>Cookie essenziali:</strong> necessari per fornire le funzionalità di base della piattaforma.</li>
+        <li><strong>Cookie di autenticazione Google OAuth2:</strong> memorizzano in modo sicuro i token di sessione per mantenerti connesso dopo l'accesso con Google.</li>
+        <li><strong>Cookie di preferenza:</strong> ricordano impostazioni come lingua e modalità di visualizzazione.</li>
+      </ul>
+    </section>
 
-  <section class="static-section" aria-labelledby="cookies-types">
-    <h2 id="cookies-types">Cookie che utilizziamo</h2>
-    <ul>
-      <li><strong>Cookie essenziali:</strong> necessari per fornire le funzionalità di base della piattaforma.</li>
-      <li><strong>Cookie di autenticazione Google OAuth2:</strong> memorizzano in modo sicuro i token di sessione per
-        mantenerti connesso dopo l'accesso con Google.</li>
-      <li><strong>Cookie di preferenza:</strong> ricordano impostazioni come lingua e modalità di visualizzazione.</li>
-    </ul>
-  </section>
+    <section class="page-section" aria-labelledby="cookies-control">
+      <h2 id="cookies-control">Come gestire i cookie</h2>
+      <p>
+        Puoi controllare o eliminare i cookie tramite le impostazioni del browser. Se rimuovi i cookie essenziali o quelli
+        legati a Google OAuth2, potresti non riuscire ad accedere o a utilizzare alcune funzionalità della piattaforma.
+        Per revocare l'accesso a Google OAuth2, visita il tuo account Google e rimuovi EtnaMonitor dalle app collegate.
+      </p>
+    </section>
+  </div>
 
-  <section class="static-section" aria-labelledby="cookies-control">
-    <h2 id="cookies-control">Come gestire i cookie</h2>
-    <p>
-      Puoi controllare o eliminare i cookie tramite le impostazioni del browser. Se rimuovi i cookie essenziali o quelli
-      legati a Google OAuth2, potresti non riuscire ad accedere o a utilizzare alcune funzionalità della piattaforma.
-      Per revocare l'accesso a Google OAuth2, visita il tuo account Google e rimuovi EtnaMonitor dalle app collegate.
-    </p>
-  </section>
-</main>
+  <div class="page-cta" role="group" aria-label="Azioni informativa cookie">
+    <a class="btn btn-primary" href="mailto:salvoferro16@gmail.com">Contatta il supporto</a>
+    <a class="btn btn-secondary glass" href="{{ url_for('main.index') }}#grafico-etna">Preferenze home</a>
+  </div>
+</section>
 {% endblock %}
