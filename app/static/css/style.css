@@ -191,8 +191,8 @@ body.menu-open {
   position: fixed;
   inset: 0;
   background: rgba(7, 12, 24, 0.65);
-  backdrop-filter: blur(6px);
-  z-index: 1190;
+  backdrop-filter: blur(10px);
+  z-index: var(--z-backdrop);
 }
 
 .nav-backdrop[hidden] {
