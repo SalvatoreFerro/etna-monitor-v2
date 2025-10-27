@@ -221,6 +221,7 @@
     {% endmacro %}
 
     {% set platform_links = [
+      {'label': 'Vai al grafico', 'url': url_for('main.index') ~ '#grafico-etna', 'endpoint': 'main.index', 'extra_classes': 'nav-link-anchor'},
       {'label': 'Home', 'url': url_for('main.index'), 'endpoint': 'main.index'},
       {'label': 'Tecnologia', 'url': url_for('main.tecnologia'), 'endpoint': 'main.tecnologia'},
       {'label': 'Il Progetto', 'url': url_for('main.progetto'), 'endpoint': 'main.progetto'},
@@ -239,7 +240,7 @@
       {'label': 'Donazioni PayPal', 'url': url_for('main.pricing') ~ '#donazioni', 'endpoint': 'main.pricing'}
     ] %}
 
-    <nav class="navbar glass" role="navigation" aria-label="Main navigation">
+    <nav class="navbar glass" id="mainNav" role="navigation" aria-label="Main navigation">
       <div class="navbar-container">
         <div class="navbar-brand">
           <a href="/" class="brand-link" aria-label="EtnaMonitor Home">
@@ -250,9 +251,9 @@
 
         <button
           class="navbar-toggle"
-          id="navbar-toggle"
+          id="navToggle"
           type="button"
-          aria-label="Apri il menu di navigazione"
+          aria-label="Apri il menu"
           aria-controls="navbar-menu"
           aria-expanded="false"
         >
@@ -261,12 +262,14 @@
           <span class="hamburger-line"></span>
         </button>
 
-        <div class="navbar-menu" id="navbar-menu" data-testid="navbar-menu">
+        <div class="navbar-menu" id="navbar-menu" data-testid="navbar-menu" tabindex="-1" aria-hidden="true">
           <div class="navbar-links">
             {% if session.user_id %}
-              <div class="nav-group nav-group-account">
-                <span class="nav-group-label">Area utente</span>
-                <div class="nav-group-links">
+              <div class="nav-group nav-group-account" data-nav-accordion>
+                <button class="nav-group-toggle" type="button" aria-expanded="false" aria-controls="nav-group-account-links">
+                  Area utente
+                </button>
+                <div class="nav-group-links" id="nav-group-account-links">
                   {{ render_nav_link('Dashboard', url_for('dashboard.dashboard_home'), 'dashboard.dashboard_home') }}
                   {% if current_user and current_user.is_admin %}
                     {{ render_nav_link('Admin', url_for('admin.admin_home'), 'admin.admin_home') }}
@@ -275,28 +278,34 @@
               </div>
             {% endif %}
 
-            <div class="nav-group nav-group-platform">
-              <span class="nav-group-label">Piattaforma</span>
-              <div class="nav-group-links">
+            <div class="nav-group nav-group-platform" data-nav-accordion>
+              <button class="nav-group-toggle" type="button" aria-expanded="false" aria-controls="nav-group-platform-links">
+                Piattaforma
+              </button>
+              <div class="nav-group-links" id="nav-group-platform-links">
                 {% for item in platform_links %}
-                  {{ render_nav_link(item.label, item.url, item.endpoint) }}
+                  {{ render_nav_link(item.label, item.url, item.endpoint, item.extra_classes if 'extra_classes' in item else '') }}
                 {% endfor %}
               </div>
             </div>
 
-            <div class="nav-group nav-group-experience">
-              <span class="nav-group-label">Esperienza live</span>
-              <div class="nav-group-links">
+            <div class="nav-group nav-group-experience" data-nav-accordion>
+              <button class="nav-group-toggle" type="button" aria-expanded="false" aria-controls="nav-group-experience-links">
+                Esperienza live
+              </button>
+              <div class="nav-group-links" id="nav-group-experience-links">
                 {% for item in live_links %}
                   {{ render_nav_link(item.label, item.url, item.endpoint) }}
                 {% endfor %}
               </div>
             </div>
 
-            <div class="nav-group nav-group-resources">
-              <span class="nav-group-label">Risorse</span>
-              <div class="nav-group-links">
-                <div class="nav-dropdown">
+            <div class="nav-group nav-group-resources" data-nav-accordion>
+              <button class="nav-group-toggle" type="button" aria-expanded="false" aria-controls="nav-group-resources-links">
+                Risorse
+              </button>
+              <div class="nav-group-links" id="nav-group-resources-links">
+                <div class="nav-dropdown" data-nav-accordion>
                   <button class="nav-link nav-dropdown-toggle" type="button" aria-expanded="false" aria-haspopup="true">
                     Approfondisci
                     <i class="fas fa-chevron-down" aria-hidden="true"></i>
@@ -315,9 +324,11 @@
               </div>
             </div>
 
-            <div class="nav-group nav-group-cta">
-              <span class="nav-group-label">Abbonamenti</span>
-              <div class="nav-group-links">
+            <div class="nav-group nav-group-cta" data-nav-accordion>
+              <button class="nav-group-toggle" type="button" aria-expanded="false" aria-controls="nav-group-cta-links">
+                Abbonamenti
+              </button>
+              <div class="nav-group-links" id="nav-group-cta-links">
                 {{ render_nav_link('Piani Premium', url_for('main.pricing'), 'main.pricing', 'nav-pill') }}
               </div>
             </div>
@@ -329,7 +340,7 @@
               {% set avatar_url = current_user.picture_url if current_user else None %}
               {% set display_initial = display_name|trim|first %}
               <div class="user-menu">
-                <button class="user-menu-toggle btn btn-secondary glass" aria-label="Menu utente">
+                <button class="user-menu-toggle btn btn-secondary glass" aria-label="Menu utente" aria-expanded="false">
                   <span class="user-avatar">
                     {% if avatar_url %}
                       <img src="{{ avatar_url }}" alt="Avatar di {{ display_name }}" referrerpolicy="no-referrer">
@@ -363,6 +374,8 @@
         </div>
       </div>
     </nav>
+
+    <div id="navBackdrop" class="nav-backdrop" hidden></div>
 
     {% include 'partials/sponsor_banners.html' %}
 
@@ -458,6 +471,8 @@
       </div>
     {% endif %}
 
+    <script src="{{ url_for('static', filename='js/nav.js') }}" nonce="{{ script_nonce }}" defer></script>
+
     <script nonce="{{ script_nonce }}">
     // Register service worker
     if ('serviceWorker' in navigator) {
@@ -533,113 +548,10 @@
     document.addEventListener('DOMContentLoaded', () => {
       checkServiceStatus();
       setInterval(checkServiceStatus, 30000);
-      
-      // Mobile Navigation Toggle
-      const navbarToggle = document.getElementById('navbar-toggle');
-      const navbarMenu = document.getElementById('navbar-menu');
-      
-      const animateHamburger = (expanded) => {
-        const lines = navbarToggle.querySelectorAll('.hamburger-line');
-        if (!lines.length) {
-          return;
-        }
 
-        if (expanded) {
-          lines[0].style.transform = 'rotate(45deg) translate(5px, 5px)';
-          lines[1].style.opacity = '0';
-          lines[2].style.transform = 'rotate(-45deg) translate(7px, -6px)';
-        } else {
-          lines[0].style.transform = 'none';
-          lines[1].style.opacity = '1';
-          lines[2].style.transform = 'none';
-        }
-      };
-
-      const closeMobileMenu = () => {
-        navbarMenu.classList.remove('active');
-        navbarToggle.setAttribute('aria-expanded', 'false');
-        navbarToggle.classList.remove('is-active');
-        document.body.classList.remove('menu-open');
-        animateHamburger(false);
-      };
-
-      navbarToggle.addEventListener('click', function() {
-        const isActive = navbarMenu.classList.toggle('active');
-        navbarToggle.setAttribute('aria-expanded', isActive);
-        navbarToggle.classList.toggle('is-active', isActive);
-        document.body.classList.toggle('menu-open', isActive);
-        animateHamburger(isActive);
-      });
-
-      // Close menu when clicking outside
-      document.addEventListener('click', function(event) {
-        if (!navbarToggle.contains(event.target) && !navbarMenu.contains(event.target)) {
-          closeMobileMenu();
-        }
-      });
-
-      // Close menu on focus loss via Escape key
-      document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-          closeMobileMenu();
-        }
-      });
-
-      // Close menu after selecting a navigation target
-      const menuInteractiveElements = navbarMenu.querySelectorAll('.nav-link:not(.nav-dropdown-toggle), .nav-dropdown-item, .dropdown-item');
-      menuInteractiveElements.forEach((element) => {
-        element.addEventListener('click', () => {
-          if (navbarMenu.classList.contains('active')) {
-            closeMobileMenu();
-          }
-        });
-      });
+      if (window.EMNav && typeof window.EMNav.init === 'function') {
+        window.EMNav.init();
       }
-
-      const dropdowns = document.querySelectorAll('.nav-dropdown');
-      dropdowns.forEach((dropdown) => {
-        const toggle = dropdown.querySelector('.nav-dropdown-toggle');
-
-        if (!toggle) {
-          return;
-        }
-
-        toggle.addEventListener('click', (event) => {
-          event.preventDefault();
-          const isOpen = dropdown.classList.toggle('open');
-          toggle.setAttribute('aria-expanded', isOpen);
-
-          dropdowns.forEach((otherDropdown) => {
-            if (otherDropdown !== dropdown) {
-              otherDropdown.classList.remove('open');
-              const otherToggle = otherDropdown.querySelector('.nav-dropdown-toggle');
-              if (otherToggle) {
-                otherToggle.setAttribute('aria-expanded', 'false');
-              }
-            }
-          });
-        });
-
-        dropdown.addEventListener('keydown', (event) => {
-          if (event.key === 'Escape') {
-            dropdown.classList.remove('open');
-            toggle.setAttribute('aria-expanded', 'false');
-            toggle.focus();
-          }
-        });
-      });
-
-      document.addEventListener('click', (event) => {
-        dropdowns.forEach((dropdown) => {
-          if (!dropdown.contains(event.target)) {
-            dropdown.classList.remove('open');
-            const toggle = dropdown.querySelector('.nav-dropdown-toggle');
-            if (toggle) {
-              toggle.setAttribute('aria-expanded', 'false');
-            }
-          }
-        });
-      });
     });
     </script>
     {% if analytics.ga_measurement_id %}
