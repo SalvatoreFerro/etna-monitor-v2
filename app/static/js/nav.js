@@ -186,6 +186,13 @@
     }
 
     isMenuOpen = open;
+    
+    if (open) {
+      navMenu.removeAttribute('hidden');
+    } else {
+      navMenu.setAttribute('hidden', '');
+    }
+    
     navMenu.classList.toggle('is-open', open);
     if (!open) {
       navMenu.classList.remove('active', 'open');
@@ -353,7 +360,6 @@
         const dropdown = toggle.closest('.nav-dropdown');
         closeDropdown(dropdown);
       });
-      setMenuOpen(false);
     }
   }
 
@@ -496,6 +502,8 @@
     }
     syncAccordionState();
     handleResize();
+    
+    setMenuOpen(false);
   }
 
   window.EMNav = {
