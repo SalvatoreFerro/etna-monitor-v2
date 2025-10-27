@@ -220,6 +220,46 @@
       <a href="{{ url }}" class="nav-link {{ extra_classes }} {{ 'active' if request.endpoint == endpoint_name }}">{{ label }}</a>
     {% endmacro %}
 
+    {% macro render_user_actions(wrapper_classes='') %}
+      <div class="user-actions{{ ' ' ~ wrapper_classes if wrapper_classes }}">
+        {% if session.user_id %}
+          {% set display_name = (current_user.name if current_user else None) or (current_user.email if current_user else None) or 'Utente EtnaMonitor' %}
+          {% set avatar_url = current_user.picture_url if current_user else None %}
+          {% set display_initial = display_name|trim|first %}
+          <div class="user-menu">
+            <button class="user-menu-toggle btn btn-secondary glass" aria-label="Menu utente" aria-expanded="false">
+              <span class="user-avatar">
+                {% if avatar_url %}
+                  <img src="{{ avatar_url }}" alt="Avatar di {{ display_name }}" referrerpolicy="no-referrer">
+                {% else %}
+                  <span class="user-avatar-initial" aria-hidden="true">{{ display_initial if display_initial else 'U' }}</span>
+                {% endif %}
+              </span>
+              <span class="user-name">{{ display_name }}</span>
+              <i class="fas fa-chevron-down" aria-hidden="true"></i>
+            </button>
+            <div class="user-menu-dropdown">
+              <a href="/dashboard/settings" class="dropdown-item">Impostazioni</a>
+              <a href="{{ url_for('billing.donate') }}" class="dropdown-item">Sostienici</a>
+              {% if not (current_user and current_user.has_premium_access) %}
+                <a href="/pricing" class="dropdown-item">Passa a Premium</a>
+              {% endif %}
+              <div class="dropdown-divider"></div>
+              <a href="{{ url_for('auth.logout') }}" class="dropdown-item">Esci</a>
+            </div>
+          </div>
+        {% else %}
+          <form class="auth-buttons" action="{{ url_for('auth.auth_google') }}" method="post">
+            <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}">
+            <button type="submit" class="btn btn-google" aria-label="Accedi con Google">
+              <i class="fab fa-google"></i>
+              <span>Accedi con Google</span>
+            </button>
+          </form>
+        {% endif %}
+      </div>
+    {% endmacro %}
+
     {% set platform_links = [
       {'label': 'Vai al grafico', 'url': url_for('main.index') ~ '#grafico-etna', 'endpoint': 'main.index', 'extra_classes': 'nav-link-anchor'},
       {'label': 'Home', 'url': url_for('main.index'), 'endpoint': 'main.index'},
@@ -238,6 +278,19 @@
       {'label': 'Roadmap', 'url': url_for('main.roadmap'), 'endpoint': 'main.roadmap'},
       {'label': 'Sponsor', 'url': url_for('main.sponsor'), 'endpoint': 'main.sponsor'},
       {'label': 'Donazioni PayPal', 'url': url_for('main.pricing') ~ '#donazioni', 'endpoint': 'main.pricing'}
+    ] %}
+
+    {% set desktop_nav_links = [
+      {'label': 'Home', 'url': url_for('main.index'), 'endpoint': 'main.index'},
+      {'label': 'Grafico live', 'url': url_for('main.index') ~ '#grafico-etna', 'endpoint': 'main.index', 'extra_classes': 'nav-link-anchor'},
+      {'label': 'Tecnologia', 'url': url_for('main.tecnologia'), 'endpoint': 'main.tecnologia'},
+      {'label': 'Il Progetto', 'url': url_for('main.progetto'), 'endpoint': 'main.progetto'},
+      {'label': 'Team', 'url': url_for('main.team'), 'endpoint': 'main.team'},
+      {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
+      {'label': 'Etna Experience', 'url': url_for('experience.experience_home'), 'endpoint': 'experience.experience_home'},
+      {'label': 'Roadmap', 'url': url_for('main.roadmap'), 'endpoint': 'main.roadmap'},
+      {'label': 'Sponsor', 'url': url_for('main.sponsor'), 'endpoint': 'main.sponsor'},
+      {'label': 'Prezzi', 'url': url_for('main.pricing'), 'endpoint': 'main.pricing'}
     ] %}
 
     <!-- UX_FIX_2025: Primary navigation restructure -->
