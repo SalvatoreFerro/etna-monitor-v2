@@ -16,7 +16,7 @@
   let navMenu;
   let navToggle;
   let navBackdrop;
-  let userMenuToggles = [];
+  let userMenuToggle;
   let sectionToggles = [];
   let dropdownToggles = [];
   let closeButtons = [];
