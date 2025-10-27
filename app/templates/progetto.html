@@ -1,0 +1,76 @@
+{% extends "layout.html" %}
+{% set page_title = "Il progetto EtnaMonitor – Visione, roadmap e filosofia" %}
+{% set page_description = "Scopri la visione di EtnaMonitor: trasparenza sui dati del tremore vulcanico dell'Etna, roadmap evolutiva e collaborazione con la community scientifica." %}
+{% set page_og_title = page_title %}
+{% set page_og_description = page_description %}
+{% set canonical_url = url_for('main.progetto', _external=True) %}
+
+{% block content %}
+<!-- # UX_REFACTOR_2025 -->
+<section class="page-wrapper" id="page-top">
+  <nav class="page-breadcrumb" aria-label="Percorso di navigazione">
+    <a href="{{ url_for('main.index') }}">Home</a>
+    <span aria-hidden="true">/</span>
+    <span>Il progetto</span>
+  </nav>
+
+  <header class="page-hero">
+    <span class="section-pill">Il progetto</span>
+    <h1>Una piattaforma aperta per leggere l'attività dell'Etna</h1>
+    <p>
+      EtnaMonitor nasce per rendere trasparente e accessibile il tremore vulcanico: dati ufficiali INGV, analisi avanzate e
+      strumenti collaborativi pensati per ricercatori, operatori sul campo e cittadini informati.
+    </p>
+  </header>
+
+  <div class="page-grid">
+    <article class="page-card">
+      <h2>Visione</h2>
+      <p>
+        Creare un ecosistema di monitoraggio che unisca dati pubblici, infrastruttura cloud e AI per decisioni tempestive.
+      </p>
+      <ul>
+        <li>Trasparenza sui dataset e sulle elaborazioni applicate.</li>
+        <li>Accessibilità mobile-first per consultazioni rapide sul campo.</li>
+        <li>Notifiche intelligenti per mantenere allineati i team operativi.</li>
+      </ul>
+    </article>
+
+    <article class="page-card">
+      <h2>Roadmap</h2>
+      <p>Gli step già pianificati per il 2025:</p>
+      <ul>
+        <li>Storico multi-giornaliero e confronti rapidi tra eventi.</li>
+        <li>Predictive dashboard con scenari modellati.</li>
+        <li>Integrazione webcam e modelli 3D nel grafico live.</li>
+        <li>Widget embed per siti istituzionali e media.</li>
+      </ul>
+    </article>
+
+    <article class="page-card">
+      <h2>Filosofia &amp; community</h2>
+      <p>
+        EtnaMonitor è aperto a contributi di ricercatori, maker e data journalist. Ogni release include changelog pubblico e
+        note tecniche versionate.
+      </p>
+      <ul>
+        <li>Collaborazioni con enti locali e associazioni.</li>
+        <li>Programma sponsor trasparente per sostenere i costi infrastrutturali.</li>
+        <li>Canali dedicati per feedback e validazione scientifica.</li>
+      </ul>
+    </article>
+  </div>
+
+  <div class="page-related">
+    <strong>Risorse collegate</strong>
+    <a href="{{ url_for('main.tecnologia') }}">Tecnologia e pipeline dati</a>
+    <a href="{{ url_for('main.team') }}">Chi c'è dietro EtnaMonitor</a>
+    <a href="{{ url_for('main.news') }}">News e comunicati</a>
+  </div>
+
+  <div class="page-cta" role="group" aria-label="Azioni principali">
+    <a class="btn btn-primary" href="{{ url_for('main.index') }}#grafico-etna">Vai al grafico live</a>
+    <a class="btn btn-secondary glass" href="{{ url_for('main.roadmap') }}">Consulta la roadmap completa</a>
+  </div>
+</section>
+{% endblock %}

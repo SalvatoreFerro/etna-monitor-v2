@@ -232,30 +232,63 @@
         </button>
         
         <div class="navbar-menu" id="navbar-menu">
-          <div class="navbar-nav">
-            <a href="/" class="nav-link {{ 'active' if request.endpoint == 'main.index' }}">Home</a>
+          <div class="navbar-links">
             {% if session.user_id %}
-              <a href="/dashboard" class="nav-link {{ 'active' if request.endpoint == 'dashboard.dashboard_home' }}">Dashboard</a>
-              {% if current_user and current_user.is_admin %}
-                <a href="/admin" class="nav-link {{ 'active' if request.endpoint == 'admin.admin_panel' }}">Admin</a>
-              {% endif %}
-            {% endif %}
-            <a href="/pricing" class="nav-link {{ 'active' if request.endpoint == 'main.pricing' }}">Prezzi</a>
-            <a href="{{ url_for('main.etna3d') }}" class="nav-link {{ 'active' if request.endpoint == 'main.etna3d' }}">Etna 3D</a>
-            <a href="{{ url_for('experience.experience_home') }}" class="nav-link {{ 'active' if request.endpoint == 'experience.experience_home' }}">Etna Experience</a>
-              <div class="nav-dropdown">
-                <button class="nav-link nav-dropdown-toggle" type="button" aria-expanded="false" aria-haspopup="true">
-                  Esplora
-                  <i class="fas fa-chevron-down" aria-hidden="true"></i>
-                </button>
-                <div class="nav-dropdown-menu" role="menu">
-                  <a href="/roadmap" class="nav-dropdown-item {{ 'active' if request.endpoint == 'main.roadmap' }}" role="menuitem">Roadmap</a>
-                  <a href="/sponsor" class="nav-dropdown-item {{ 'active' if request.endpoint == 'main.sponsor' }}" role="menuitem">Sponsor</a>
-                  <a href="{{ url_for('main.pricing') }}#donazioni" class="nav-dropdown-item" role="menuitem">Donazioni PayPal</a>
+              <div class="nav-group nav-group-account">
+                <span class="nav-group-label">Area utente</span>
+                <div class="nav-group-links">
+                  <a href="/dashboard" class="nav-link {{ 'active' if request.endpoint == 'dashboard.dashboard_home' }}">Dashboard</a>
+                  {% if current_user and current_user.is_admin %}
+                    <a href="/admin" class="nav-link {{ 'active' if request.endpoint == 'admin.admin_panel' }}">Admin</a>
+                  {% endif %}
                 </div>
               </div>
+            {% endif %}
+
+            <div class="nav-group nav-group-platform">
+              <span class="nav-group-label">Piattaforma</span>
+              <div class="nav-group-links">
+                <a href="/" class="nav-link {{ 'active' if request.endpoint == 'main.index' }}">Home</a>
+                <a href="{{ url_for('main.tecnologia') }}" class="nav-link {{ 'active' if request.endpoint == 'main.tecnologia' }}">Tecnologia</a>
+                <a href="{{ url_for('main.progetto') }}" class="nav-link {{ 'active' if request.endpoint == 'main.progetto' }}">Il Progetto</a>
+                <a href="{{ url_for('main.team') }}" class="nav-link {{ 'active' if request.endpoint == 'main.team' }}">Team</a>
+                <a href="{{ url_for('main.news') }}" class="nav-link {{ 'active' if request.endpoint == 'main.news' }}">News</a>
+              </div>
+            </div>
+
+            <div class="nav-group nav-group-experience">
+              <span class="nav-group-label">Esperienza live</span>
+              <div class="nav-group-links">
+                <a href="{{ url_for('main.etna3d') }}" class="nav-link {{ 'active' if request.endpoint == 'main.etna3d' }}">Etna 3D</a>
+                <a href="{{ url_for('experience.experience_home') }}" class="nav-link {{ 'active' if request.endpoint == 'experience.experience_home' }}">Etna Experience</a>
+              </div>
+            </div>
+
+            <div class="nav-group nav-group-resources">
+              <span class="nav-group-label">Risorse</span>
+              <div class="nav-group-links">
+                <div class="nav-dropdown">
+                  <button class="nav-link nav-dropdown-toggle" type="button" aria-expanded="false" aria-haspopup="true">
+                    Approfondisci
+                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                  </button>
+                  <div class="nav-dropdown-menu" role="menu">
+                    <a href="/roadmap" class="nav-dropdown-item {{ 'active' if request.endpoint == 'main.roadmap' }}" role="menuitem">Roadmap</a>
+                    <a href="/sponsor" class="nav-dropdown-item {{ 'active' if request.endpoint == 'main.sponsor' }}" role="menuitem">Sponsor</a>
+                    <a href="{{ url_for('main.pricing') }}#donazioni" class="nav-dropdown-item" role="menuitem">Donazioni PayPal</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="nav-group nav-group-cta">
+              <span class="nav-group-label">Abbonamenti</span>
+              <div class="nav-group-links">
+                <a href="/pricing" class="nav-link nav-pill {{ 'active' if request.endpoint == 'main.pricing' }}">Prezzi</a>
+              </div>
+            </div>
           </div>
-          
+
           <div class="navbar-actions">
             {% if session.user_id %}
               {% set display_name = (current_user.name if current_user else None) or (current_user.email if current_user else None) or 'Utente EtnaMonitor' %}
@@ -318,6 +351,8 @@
       
       {% block content %}{% endblock %}
     </main>
+
+    {% block mobile_bottom_nav %}{% endblock %}
     
     <footer class="footer" role="contentinfo" aria-label="Site footer">
       <div class="footer-content">
@@ -611,6 +646,8 @@
     })();
     </script>
     {% endif %}
+    {% block extra_scripts %}{% endblock %}
+
     {% include 'partials/footer.html' %}
   </body>
 </html>

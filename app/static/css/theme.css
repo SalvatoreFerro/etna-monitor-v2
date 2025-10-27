@@ -108,7 +108,7 @@
   /* Premium spacing */
   --space-premium: 6rem;   /* 96px */
   --space-hero: 8rem;      /* 128px */
-  
+
   /* Z-index */
   --z-dropdown: 1000;
   --z-sticky: 1020;
@@ -118,6 +118,9 @@
   --z-popover: 1060;
   --z-tooltip: 1070;
   --z-toast: 1080;
+
+  --navbar-height: 72px;
+  --navbar-offset: calc(var(--navbar-height) + var(--space-3));
 }
 
 /* Heading Typography */
@@ -156,6 +159,7 @@ body, p, span, div, a, button, input, select, textarea,
 }
 
 /* Fixed Navbar with Logo Positioning */
+
 .navbar {
   position: fixed !important;
   top: 0;
@@ -166,6 +170,7 @@ body, p, span, div, a, button, input, select, textarea,
   backdrop-filter: blur(24px);
   border-bottom: 1px solid var(--color-border);
   box-shadow: 0 12px 30px rgba(4, 10, 24, 0.65);
+  min-height: var(--navbar-height);
 }
 
 .navbar-container {
@@ -175,29 +180,93 @@ body, p, span, div, a, button, input, select, textarea,
   max-width: 1200px;
   margin: 0 auto;
   padding: var(--space-3) var(--space-4);
+  gap: var(--space-6);
 }
 
 .navbar-brand {
-  order: 2;
-  margin-left: auto;
+  order: 0;
+  margin-left: 0;
+  margin-right: var(--space-6);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .navbar-menu {
   order: 1;
+  flex: 1 1 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.navbar-links {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-5);
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: max-content;
+}
+
+.nav-group-label {
+  font-size: 0.65rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: rgba(192, 202, 230, 0.65);
+}
+
+.nav-group-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.nav-group-cta .nav-group-links {
+  align-items: stretch;
+}
+
+.nav-pill {
+  border-radius: var(--radius-full);
+  background: rgba(0, 210, 255, 0.12);
+  border: 1px solid rgba(0, 210, 255, 0.35);
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+  padding-inline: var(--space-4);
+}
+
+.nav-pill:hover,
+.nav-pill:focus {
+  background: rgba(0, 210, 255, 0.18);
+  box-shadow: 0 14px 32px rgba(0, 210, 255, 0.25);
+}
+
+.navbar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
 }
 
 /* Adjust main content for fixed navbar */
 .main-content {
-  margin-top: 70px;
+  margin-top: var(--navbar-offset);
 }
 
 @media (max-width: 768px) {
   .brand-logo {
     height: 28px;
   }
-  
+
   .main-content {
-    margin-top: 65px;
+    margin-top: var(--navbar-offset);
   }
 }
 
@@ -1435,13 +1504,13 @@ body, p, span, div, a, button, input, select, textarea,
 .navbar-menu {
   display: flex;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-6);
 }
 
-.navbar-nav {
+.navbar-links {
   display: flex;
   align-items: center;
-  gap: var(--space-6);
+  gap: var(--space-5);
 }
 
 .nav-link {
@@ -1685,13 +1754,13 @@ body, p, span, div, a, button, input, select, textarea,
 .navbar-menu {
   display: flex;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-6);
 }
 
-.navbar-nav {
+.navbar-links {
   display: flex;
   align-items: center;
-  gap: var(--space-6);
+  gap: var(--space-5);
 }
 
   .nav-link {
@@ -1924,6 +1993,11 @@ body, p, span, div, a, button, input, select, textarea,
 
 /* Mobile content overflow fixes for all mobile devices */
 @media screen and (max-width: 768px) {
+  :root {
+    --navbar-height: 64px;
+    --navbar-offset: calc(var(--navbar-height) + var(--space-3));
+  }
+
   html, body {
     width: 100% !important;
     max-width: 100% !important;
@@ -2141,7 +2215,7 @@ body, p, span, div, a, button, input, select, textarea,
   
   .navbar-menu {
     position: fixed;
-    top: calc(70px + env(safe-area-inset-top));
+    top: calc(var(--navbar-height) + env(safe-area-inset-top));
     left: 0;
     right: 0;
     background: var(--color-surface);
@@ -2164,28 +2238,45 @@ body, p, span, div, a, button, input, select, textarea,
     visibility: visible;
   }
   
-  .navbar-nav {
+  .navbar-links {
     flex-direction: column;
     width: 100%;
-    gap: var(--space-4);
+    gap: var(--space-5);
   }
-  
-    .nav-link {
-      position: relative;
-      width: 100%;
-      text-align: center;
-      padding: var(--space-4);
-      color: rgba(244, 248, 255, 0.9);
-      font-weight: var(--font-weight-semibold);
-      letter-spacing: 0.02em;
-      -webkit-tap-highlight-color: transparent;
-      touch-action: manipulation;
-    }
 
-    .nav-link::after {
-      left: 30%;
-      right: 30%;
-    }
+  .nav-group {
+    width: 100%;
+  }
+
+  .nav-group-label {
+    color: rgba(244, 248, 255, 0.7);
+    text-align: left;
+  }
+
+  .nav-group-links {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-3);
+    width: 100%;
+  }
+
+  .navbar-links .nav-link {
+    position: relative;
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    padding: var(--space-4);
+    color: rgba(244, 248, 255, 0.9);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.02em;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  .navbar-links .nav-link::after {
+    left: 30%;
+    right: 30%;
+  }
   
   .navbar-actions {
     width: 100%;
@@ -2316,8 +2407,8 @@ body, p, span, div, a, button, input, select, textarea,
     font-size: var(--font-size-base);
   }
   
-  .navbar-menu.active {
-    top: calc(60px + env(safe-area-inset-top));
+    .navbar-menu.active {
+      top: calc(var(--navbar-height) + env(safe-area-inset-top));
     padding: var(--space-4) max(var(--space-4), env(safe-area-inset-right)) var(--space-4) max(var(--space-4), env(safe-area-inset-left));
   }
   
@@ -2382,7 +2473,7 @@ body, p, span, div, a, button, input, select, textarea,
   }
   
   .navbar-menu.active {
-    top: calc(65px + env(safe-area-inset-top));
+    top: calc(var(--navbar-height) + env(safe-area-inset-top));
     padding: 16px max(12px, env(safe-area-inset-right)) 16px max(12px, env(safe-area-inset-left));
     width: 100vw;
     max-width: 100vw;
@@ -2465,7 +2556,7 @@ body, p, span, div, a, button, input, select, textarea,
   
   .main-content {
     padding: var(--space-4);
-    margin-top: 65px;
+    margin-top: var(--navbar-offset);
   }
   
   .card, .card-premium, .pricing-card, .admin-container {
