@@ -1,0 +1,75 @@
+{% extends "layout.html" %}
+{% set page_title = "Tecnologia EtnaMonitor – Pipeline dati INGV, AI e Telegram" %}
+{% set page_description = "Scopri la pipeline tecnologica di EtnaMonitor: download PNG INGV, estrazione dati, normalizzazione CSV, modelli AI e distribuzione tramite bot Telegram." %}
+{% set page_og_title = page_title %}
+{% set page_og_description = page_description %}
+{% set canonical_url = url_for('main.tecnologia', _external=True) %}
+
+{% block content %}
+<!-- # UX_REFACTOR_2025 -->
+<section class="page-wrapper" id="page-top">
+  <nav class="page-breadcrumb" aria-label="Percorso di navigazione">
+    <a href="{{ url_for('main.index') }}">Home</a>
+    <span aria-hidden="true">/</span>
+    <span>Tecnologia</span>
+  </nav>
+
+  <header class="page-hero">
+    <span class="section-pill">Tecnologia</span>
+    <h1>Pipeline dati end-to-end per il monitoraggio dell'Etna</h1>
+    <p>
+      Ogni campione nasce dal download dei PNG pubblicati dall'INGV, passa da estrazione OCR dedicata, viene convertito in CSV e
+      arricchito con modelli AI prima di essere veicolato in dashboard, bot Telegram e API pubbliche.
+    </p>
+  </header>
+
+  <div class="page-grid">
+    <article class="page-card">
+      <h2>Pipeline tecnica</h2>
+      <p>Il flusso dati è ottimizzato per resilienza e bassa latenza:</p>
+      <ul>
+        <li>Download orari dei PNG INGV con controlli di checksum.</li>
+        <li>Parsing dedicato per estrarre i valori numerici del tremore.</li>
+        <li>Normalizzazione CSV con timestream uniforme e metadati geofisici.</li>
+        <li>Caricamento nel data store e versioning automatico per audit trail.</li>
+      </ul>
+    </article>
+
+    <article class="page-card">
+      <h2>Layer AI &amp; automazioni</h2>
+      <p>
+        I modelli di machine learning proprietari analizzano pattern e trend per identificare anomalie e anticipare variazioni
+        significative del tremore.
+      </p>
+      <ul>
+        <li>Feature engineering dinamico per seasonality e rumore strumentale.</li>
+        <li>Score di rischio in tempo reale con soglie adattive.</li>
+        <li>Integrazione con il bot Telegram per notifiche contestuali.</li>
+      </ul>
+    </article>
+
+    <article class="page-card">
+      <h2>Distribuzione e performance</h2>
+      <p>
+        La piattaforma è pensata per carichi elevati e consultazione mobile-first.
+      </p>
+      <ul>
+        <li>Cache intelligente per la homepage e grafici Plotly responsive.</li>
+        <li>API JSON ottimizzate per i client esterni.</li>
+        <li>Monitoring interno con metriche su latenze, errori e uptime.</li>
+      </ul>
+    </article>
+  </div>
+
+  <div class="page-related">
+    <strong>Scopri anche</strong>
+    <a href="{{ url_for('main.progetto') }}">Visione e roadmap del progetto</a>
+    <a href="{{ url_for('main.team') }}">Chi c'è dietro EtnaMonitor</a>
+  </div>
+
+  <div class="page-cta" role="group" aria-label="Azioni principali">
+    <a class="btn btn-primary" href="{{ url_for('main.index') }}#grafico-etna">Torna al grafico live</a>
+    <a class="btn btn-secondary glass" href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">Attiva il bot Telegram</a>
+  </div>
+</section>
+{% endblock %}

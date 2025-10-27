@@ -1,1584 +1,425 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<!-- Hero Section -->
-<section class="hero-section hero-premium animate-premium-fade" role="banner" aria-label="EtnaMonitor">
-  <div class="hero-background" aria-hidden="true">
-    <span class="orb orb-1"></span>
-    <span class="orb orb-2"></span>
-    <span class="orb orb-3"></span>
-    <span class="grid-overlay"></span>
-  </div>
-
-  <div class="hero-inner">
-    <div class="hero-copy">
-      <div class="hero-brand" role="presentation">
-        <img src="{{ LOGO_DATA_URL }}" alt="Logo EtnaMonitor" class="hero-logo">
-        <div class="hero-brand-text">
-          <span class="brand-name">EtnaMonitor</span>
-          <span class="brand-tagline">Volcano Intelligence Platform</span>
-        </div>
+<!-- # UX_REFACTOR_2025 -->
+<div class="home-shell" id="home-shell">
+  <section class="home-section home-live" id="grafico-etna" aria-labelledby="grafico-title">
+    <header class="home-live-header">
+      <div class="home-live-meta">
+        <span class="home-pill">Live • Tremore Etna</span>
+        <h1 id="grafico-title">Grafico tremore vulcanico in tempo reale</h1>
+        <p class="home-lead">
+          {% if latest_value is not none and latest_timestamp_display %}
+            Ultimo campione INGV del {{ latest_timestamp_display }}: <strong>{{ '%.2f' % latest_value }} mV</strong> con
+            copertura delle ultime {{ data_points_count }} misurazioni.
+          {% else %}
+            Visualizzazione interattiva del tremore vulcanico dell'Etna aggiornata ogni cinque minuti con dati ufficiali INGV.
+          {% endif %}
+        </p>
       </div>
-
-      <div class="hero-badge glass" role="status" aria-live="polite" id="service-status">
-        <span class="status-dot" id="status-dot" aria-hidden="true"></span>
-        <span id="status-text" aria-label="Service status">Controllo stato...</span>
+      <div class="home-live-status" role="status" aria-live="polite">
+        <span class="status-indicator" id="live-status-indicator" aria-hidden="true"></span>
+        <span class="status-text" id="live-status-text">Verifica connessione…</span>
       </div>
+    </header>
 
-      <h1 class="hero-title">Monitoraggio vulcanico di nuova generazione</h1>
-      <p class="hero-subtitle">
-        Dati INGV in tempo reale, analisi avanzata e visualizzazioni professionali in un'unica piattaforma progettata per team di ricerca, protezione civile e appassionati di tecnologia.
-      </p>
-
-      <ul class="hero-highlights" role="list">
-        <li>Telemetria continua con aggiornamenti automatici ogni 5 minuti</li>
-        <li>Scala logaritmica e soglie dinamiche per livelli di allerta immediati</li>
-        <li>Dashboard responsive ottimizzata per desktop, tablet e mobile</li>
-      </ul>
-
-      <div class="hero-actions" role="group" aria-label="Azioni principali">
-        <a href="/dashboard" class="btn btn-premium btn-lg" aria-label="Apri dashboard di monitoraggio">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M3 3v5h5M21 21v-5h-5M21 3l-9 9-4-4-5 5"/>
-          </svg>
-          Visualizza Dashboard
-        </a>
-        <button id="quick-update-btn" class="btn btn-secondary btn-lg glass" aria-label="Aggiorna dati immediatamente">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-            <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-          </svg>
-          Aggiorna Dati Ora
-        </button>
+    <div class="home-chart-card" role="img" aria-label="Andamento tremore vulcanico dell'Etna" aria-describedby="grafico-context">
+      <div id="home-preview-loading" class="chart-loading" aria-live="polite">
+        <div class="skeleton skeleton-chart"></div>
+        <p>Caricamento dati INGV…</p>
       </div>
-
-      <div class="hero-meta" role="list">
-        <div class="meta-item" role="listitem">
-          <span class="meta-label">Dataset ufficiali</span>
-          <span class="meta-value">INGV Catania</span>
-        </div>
-        <div class="meta-item" role="listitem">
-          <span class="meta-label">Rendering grafico</span>
-          <span class="meta-value">Plotly.js + Flask</span>
-        </div>
-        <div class="meta-item" role="listitem">
-          <span class="meta-label">Copertura temporalità</span>
-          <span class="meta-value">Ultime 24 ore</span>
-        </div>
-      </div>
-
-      <nav class="hero-section-nav" aria-label="Vai alle sezioni principali">
-        <a href="#grafico-etna" class="hero-section-link">
-          <span class="hero-section-dot" aria-hidden="true"></span>
-          Grafico Etna
-        </a>
-        <a href="#section-tecnologia" class="hero-section-link">
-          <span class="hero-section-dot" aria-hidden="true"></span>
-          Tecnologia
-        </a>
-        <a href="#section-progetto" class="hero-section-link">
-          <span class="hero-section-dot" aria-hidden="true"></span>
-          Il progetto
-        </a>
-        <a href="#section-team" class="hero-section-link">
-          <span class="hero-section-dot" aria-hidden="true"></span>
-          Chi c'è dietro
-        </a>
-      </nav>
-
-      <div class="hero-stats card-premium" id="hero-stats" style="display: none;" role="group" aria-label="Metriche correnti di EtnaMonitor">
-        <div class="stat-card">
-          <div class="stat-icon" aria-hidden="true">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 12a9 9 0 1 1 18 0"></path>
-              <path d="M12 7v5l3 2"></path>
-            </svg>
-          </div>
-          <div class="stat-content">
-            <span class="stat-label">Ultimo aggiornamento</span>
-            <span class="stat-value" id="last-update">--</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" aria-hidden="true">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 3v18h18"></path>
-              <polyline points="6,15 10,11 13,14 18,9"></polyline>
-            </svg>
-          </div>
-          <div class="stat-content">
-            <span class="stat-label">Punti dati</span>
-            <span class="stat-value" id="data-points">--</span>
-          </div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-icon" aria-hidden="true">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M4 19h16"></path>
-              <path d="M7 19V9a5 5 0 0 1 10 0v10"></path>
-            </svg>
-          </div>
-          <div class="stat-content">
-            <span class="stat-label">Livello attuale</span>
-            <span class="stat-value" id="current-level">--</span>
-          </div>
-        </div>
-      </div>
+      <div id="home-preview-plot" class="home-preview-plot" aria-hidden="true"></div>
     </div>
 
-    <div class="hero-visual">
-      <section id="grafico-etna" class="hero-graph-section" aria-labelledby="grafico-etna-title">
-        <div class="graph-intro">
-          <span class="section-pill">Dati INGV</span>
-          <h2 id="grafico-etna-title">Grafico tremore vulcanico dell'Etna in tempo reale</h2>
-          <p id="grafico-etna-description">
-            {% if latest_value is not none and latest_timestamp_display %}
-              L'ultimo campione INGV disponibile ({{ latest_timestamp_display }}) registra <strong>{{ '%.2f' % latest_value }} mV</strong>,
-              calcolato su una serie di {{ data_points_count }} misurazioni nelle ultime 24 ore.
-            {% else %}
-              Il grafico mostra l'andamento del tremore vulcanico dell'Etna con aggiornamenti automatici ogni cinque minuti.
-            {% endif %}
-            {% if temporal_coverage %}
-              Copertura temporale: <span class="no-wrap">{{ temporal_coverage }}</span>.
-            {% endif %}
-          </p>
-          <dl class="graph-meta">
-            <div class="graph-meta-item">
-              <dt>Ultimo aggiornamento</dt>
-              <dd>{% if latest_timestamp_display %}{{ latest_timestamp_display }}{% else %}--{% endif %}</dd>
-            </div>
-            <div class="graph-meta-item">
-              <dt>Campioni elaborati</dt>
-              <dd>{% if data_points_count %}{{ data_points_count }}{% else %}--{% endif %}</dd>
-            </div>
-            <div class="graph-meta-item">
-              <dt>Fonte</dt>
-              <dd><a href="https://www.ct.ingv.it" target="_blank" rel="noopener">INGV Osservatorio Etneo</a></dd>
-            </div>
-          </dl>
+    <footer class="home-chart-footer" id="grafico-context">
+      <dl class="home-chart-info">
+        <div class="info-block">
+          <dt>Ultimo aggiornamento</dt>
+          <dd id="live-last-update">{% if latest_timestamp_display %}{{ latest_timestamp_display }}{% else %}--{% endif %}</dd>
         </div>
-        <div class="preview-chart home-graph-card card-premium" id="preview-chart" role="img" aria-describedby="grafico-etna-description" aria-label="Trend tremore vulcanico dell'Etna">
-          <div class="chart-header">
-            <div>
-              <p class="chart-eyebrow">Realtime Feed</p>
-              <h3>Trend tremore vulcanico • ultime 24h</h3>
-            </div>
-            <div class="current-status" id="current-status">
-              <span class="current-value" id="current-value-display">-- mV</span>
-              <span class="activity-badge" id="activity-badge">--</span>
-            </div>
-          </div>
-          <div id="home-preview-loading" class="chart-loading-overlay" aria-live="polite">
-            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-              <path d="M3 3v18h18"/>
-              <path d="M7 12l3-3 3 3 5-5"/>
-            </svg>
-            <p>Caricamento dati da INGV, attendere...</p>
-          </div>
-          <div id="home-preview-plot" role="img" aria-label="Visualizzazione dati tremore"></div>
+        <div class="info-block">
+          <dt>Campioni elaborati</dt>
+          <dd id="live-data-points">{% if data_points_count %}{{ data_points_count }}{% else %}--{% endif %}</dd>
         </div>
-        <div class="graph-context">
-          <p>
-            Approfondisci il monitoraggio con il <a href="{{ url_for('main.etna3d') }}">modello 3D dell'Etna</a>,
-            esplora le <a href="{{ url_for('experience.experience_home') }}">attività verificate sul territorio</a>
-            e consulta la <a href="/roadmap">roadmap</a> per scoprire le prossime funzionalità.
-          </p>
+        <div class="info-block">
+          <dt>Attività</dt>
+          <dd><span id="live-activity-badge" class="activity-badge">In aggiornamento</span></dd>
         </div>
-      </section>
-    </div>
-  </div>
-</section>
-
-<!-- Feature Highlights -->
-<section id="section-tecnologia" class="features-section" role="region" aria-labelledby="section-tecnologia-title">
-  <div class="section-heading">
-    <span class="section-pill">Tecnologia</span>
-    <h2 id="section-tecnologia-title">Strumenti costruiti per analisi continue e decisioni rapide</h2>
-    <p>Pipeline dati ottimizzata, visualizzazioni interattive e controlli operativi per interpretare il tremore vulcanico dell'Etna con precisione scientifica.</p>
-  </div>
-
-  <div class="features-grid">
-    <article class="feature-card">
-      <div class="feature-icon" aria-hidden="true">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 3v18h18"></path>
-          <polyline points="6 14 10 10 13 13 18 8"></polyline>
-          <circle cx="10" cy="10" r="1"></circle>
-        </svg>
-      </div>
-      <h3>Monitoraggio in tempo reale</h3>
-      <p>Feed continuo dei dati sismici INGV con controlli di integrità e recupero automatico dei campioni mancanti.</p>
-    </article>
-
-    <article class="feature-card">
-      <div class="feature-icon" aria-hidden="true">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 4h16v7H4z"></path>
-          <path d="M9 18h6"></path>
-          <path d="M9 14h6"></path>
-        </svg>
-      </div>
-      <h3>Visual analytics</h3>
-      <p>Grafici interattivi con scala logaritmica, soglia dinamica e palette ad alto contrasto per letture immediate.</p>
-    </article>
-
-    <article class="feature-card">
-      <div class="feature-icon" aria-hidden="true">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-          <path d="M9 12l2 2 4-4"></path>
-        </svg>
-      </div>
-      <h3>Affidabilità operativa</h3>
-      <p>Architettura cloud-ready con notifiche smart per mantenere il team allineato sulle variazioni del tremore.</p>
-    </article>
-  </div>
-</section>
-
-<section class="updates-section features-section animate-premium-slide" role="region" aria-labelledby="telegram-updates-title">
-  <div class="section-heading">
-    <span class="section-pill">Novità</span>
-    <h2 id="telegram-updates-title">Nuovo sistema di notifiche Telegram</h2>
-    <p>Una prova gratuita per tutti e alert illimitati per chi sostiene il progetto.</p>
-  </div>
-
-  <div class="updates-card card-premium">
-    <p>🔔 <strong>Nuovo!</strong><br>
-    Gli utenti Free possono collegare il bot Telegram e ricevere un <em>alert gratuito di prova</em> alla prima attività significativa del vulcano.<br>
-    Dopo il primo alert, per continuare a ricevere le notifiche in tempo reale basta attivare il piano Premium.<br>
-    Il servizio ha scopo divulgativo e non sostituisce le fonti ufficiali INGV.</p>
-    <a href="https://t.me/etna_turi_bot" class="btn btn-secondary glass" target="_blank" rel="noopener">Collega il bot Telegram</a>
-  </div>
-</section>
-
-<!-- About Project Section -->
-<section id="section-progetto" class="about-section" role="region" aria-labelledby="section-progetto-title">
-  <div class="about-grid">
-    <div class="about-copy">
-      <span class="section-pill">Il progetto</span>
-      <h2 id="section-progetto-title">Un'unica piattaforma per leggere l'attività dell'Etna</h2>
-      <p>EtnaMonitor integra dati ufficiali INGV con un motore di visualizzazione moderno pensato per ingegneri, operatori sul campo e cittadini. Le metriche vengono aggiornate e validate automaticamente, offrendo una panoramica chiara delle variazioni del tremore vulcanico.</p>
-      <p>Ogni grafico è stato progettato per mantenere la leggibilità anche in condizioni di luce critiche grazie a combinazioni cromatiche a contrasto elevato e tipografia ottimizzata.</p>
-
-      <div class="about-metrics">
-        <div class="metric-card">
-          <span class="metric-value">5 min</span>
-          <span class="metric-label">Frequenza aggiornamento</span>
-        </div>
-        <div class="metric-card">
-          <span class="metric-value">24/7</span>
-          <span class="metric-label">Monitoraggio continuo</span>
-        </div>
-        <div class="metric-card">
-          <span class="metric-value">Log</span>
-          <span class="metric-label">Scala analitica</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="about-feature-list">
-      <article class="about-feature">
-        <h3>🌋 Dati INGV ufficiali</h3>
-        <p>Integrazione diretta con le stazioni sismiche dell'INGV Catania per assicurare affidabilità scientifica.</p>
-      </article>
-      <article class="about-feature">
-        <h3>📊 Visualizzazione avanzata</h3>
-        <p>Plotly.js con interazioni fluide, zoom, pan e confronto storico delle ultime 24 ore.</p>
-      </article>
-      <article class="about-feature">
-        <h3>⚡ Aggiornamenti real-time</h3>
-        <p>Processo di acquisizione automatizzato con fallback e retry per garantire continuità del segnale.</p>
-      </article>
-      <article class="about-feature">
-        <h3>📱 Design responsive</h3>
-        <p>UI ottimizzata per smartphone, tablet e desktop con componenti a densità adattiva.</p>
-      </article>
-    </div>
-  </div>
-</section>
-
-<!-- About Developer Section -->
-<section id="section-team" class="developer-section" role="region" aria-labelledby="section-team-title">
-  <div class="developer-content">
-    <div class="developer-header">
-      <span class="section-pill">Chi c'è dietro</span>
-      <h2 id="section-team-title">Costruito con passione da Salvatore Ferro</h2>
-      <p>Sviluppatore full-stack con un forte interesse per la visualizzazione di dati scientifici e per le tecnologie a supporto della prevenzione. EtnaMonitor nasce per rendere accessibili a tutti le informazioni sull'attività vulcanica dell'Etna.</p>
-    </div>
-
-    <div class="developer-grid">
-      <div class="developer-card">
-        <h3>Competenze principali</h3>
-        <div class="developer-skills">
-          <span class="skill-tag">Python</span>
-          <span class="skill-tag">Flask</span>
-          <span class="skill-tag">JavaScript</span>
-          <span class="skill-tag">Plotly.js</span>
-          <span class="skill-tag">Data Visualization</span>
-          <span class="skill-tag">API Integration</span>
-        </div>
-        <a href="https://www.linkedin.com/in/ferrosalvatore" target="_blank" rel="noopener noreferrer" class="linkedin-link">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
-          </svg>
-          Connettiti su LinkedIn
-        </a>
-      </div>
-      <div class="developer-card">
-        <h3>Missione</h3>
-        <p>Supportare i professionisti del territorio e gli appassionati con un'interfaccia moderna, affidabile e curata nei minimi dettagli.</p>
-        <p>La piattaforma è progettata per evolversi: l'infrastruttura consente l'integrazione di alert automatici, storicizzazione estesa e modelli predittivi.</p>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Toast Notifications -->
-<div id="toast-container" class="toast-container"></div>
-
-<!-- Plotly.js local -->
-<script src="{{ url_for('static', filename='vendor/plotly.min.js') }}" charset="utf-8" nonce="{{ script_nonce }}"></script>
-
-<style>
-.hero-section {
-  position: relative;
-  padding: var(--space-hero) var(--space-4) var(--space-12);
-  background: var(--gradient-hero);
-  color: var(--color-text-primary);
-  overflow: hidden;
-  isolation: isolate;
-}
-
-.hero-background {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-}
-
-.orb {
-  position: absolute;
-  border-radius: 50%;
-  opacity: 0.45;
-}
-
-.orb-1 {
-  width: 420px;
-  height: 420px;
-  top: -180px;
-  left: -120px;
-  background: radial-gradient(circle, rgba(0, 210, 255, 0.55), rgba(0, 210, 255, 0));
-}
-
-.orb-2 {
-  width: 320px;
-  height: 320px;
-  bottom: -140px;
-  right: -120px;
-  background: radial-gradient(circle, rgba(99, 102, 241, 0.6), rgba(99, 102, 241, 0));
-}
-
-.orb-3 {
-  width: 240px;
-  height: 240px;
-  top: 40%;
-  right: 30%;
-  background: radial-gradient(circle, rgba(56, 189, 248, 0.45), rgba(56, 189, 248, 0));
-}
-
-.grid-overlay {
-  position: absolute;
-  inset: 0;
-  background-image: linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-                    linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
-  background-size: 80px 80px;
-  mix-blend-mode: screen;
-  opacity: 0.35;
-}
-
-.hero-inner {
-  position: relative;
-  z-index: 1;
-  width: min(1200px, 100%);
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-  gap: var(--space-12);
-  align-items: center;
-}
-
-.hero-copy {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-5);
-}
-
-.hero-brand {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-}
-
-.hero-logo {
-  height: 72px;
-  width: auto;
-  filter: drop-shadow(0 12px 28px rgba(0, 210, 255, 0.25));
-}
-
-.hero-brand-text {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.brand-name {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.brand-tagline {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.hero-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  background: rgba(4, 8, 20, 0.55);
-  border: 1px solid rgba(0, 210, 255, 0.35);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-secondary);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
-}
-
-.status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: var(--color-accent-primary);
-  box-shadow: 0 0 12px rgba(0, 210, 255, 0.8);
-  animation: pulse 2.4s infinite;
-}
-
-.status-dot.offline {
-  background: var(--color-error);
-  box-shadow: 0 0 12px rgba(248, 113, 113, 0.75);
-}
-
-@keyframes pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(0.85); opacity: 0.65; }
-}
-
-.hero-title {
-  font-size: var(--font-size-4xl);
-  line-height: 1.1;
-  margin: 0;
-  text-shadow: 0 12px 24px rgba(5, 12, 28, 0.35);
-}
-
-.hero-subtitle {
-  font-size: 1.05rem;
-  line-height: var(--line-height-relaxed);
-  color: var(--color-text-secondary);
-  max-width: 580px;
-  margin: 0;
-}
-
-.hero-highlights {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: var(--space-2);
-}
-
-.hero-highlights li {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  font-size: var(--font-size-base);
-  color: var(--color-text-secondary);
-  line-height: var(--line-height-relaxed);
-}
-
-.hero-highlights li::before {
-  content: '';
-  flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-  margin-top: 5px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, rgba(0, 210, 255, 0.8), rgba(99, 102, 241, 0.8));
-  box-shadow: 0 0 0 2px rgba(0, 210, 255, 0.25);
-}
-
-.hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-4);
-  align-items: center;
-}
-
-.hero-actions .btn {
-  box-shadow: var(--shadow-button-premium);
-}
-
-.hero-meta {
-  display: flex;
-  gap: var(--space-4);
-  flex-wrap: wrap;
-  margin-top: var(--space-4);
-}
-
-.meta-item {
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-lg);
-  background: rgba(4, 12, 28, 0.6);
-  border: 1px solid rgba(0, 210, 255, 0.15);
-  min-width: 160px;
-}
-
-.meta-label {
-  font-size: var(--font-size-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--color-text-tertiary);
-}
-
-.meta-value {
-  display: block;
-  font-size: var(--font-size-base);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-  margin-top: var(--space-1);
-}
-
-.hero-section-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-3);
-  margin-top: var(--space-4);
-  padding: var(--space-3);
-  border-radius: var(--radius-2xl);
-  background: rgba(4, 12, 28, 0.55);
-  border: 1px solid rgba(0, 210, 255, 0.18);
-  box-shadow: var(--shadow-glass);
-}
-
-.hero-section-link {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
-  border-radius: var(--radius-xl);
-  color: var(--color-text-primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  text-decoration: none;
-  background: rgba(255, 255, 255, 0.04);
-  transition: transform var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
-}
-
-.hero-section-link:hover,
-.hero-section-link:focus-visible {
-  background: rgba(0, 210, 255, 0.18);
-  box-shadow: 0 12px 30px rgba(0, 210, 255, 0.25);
-  transform: translateY(-2px);
-}
-
-.hero-section-link:focus-visible {
-  outline: 2px solid rgba(255, 255, 255, 0.35);
-  outline-offset: 2px;
-}
-
-.hero-section-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--color-accent-primary);
-  box-shadow: 0 0 0 4px rgba(0, 210, 255, 0.18);
-}
-
-.hero-stats {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
-  padding: var(--space-4);
-  background: rgba(4, 12, 28, 0.65);
-  border: 1px solid rgba(0, 210, 255, 0.15);
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--shadow-card-premium);
-}
-
-.stat-card {
-  display: flex;
-  gap: var(--space-3);
-  align-items: center;
-  padding: var(--space-3);
-  border-radius: var(--radius-xl);
-  background: rgba(8, 18, 36, 0.8);
-  border: 1px solid rgba(0, 210, 255, 0.12);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-}
-
-.stat-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-lg);
-  display: grid;
-  place-items: center;
-  background: linear-gradient(135deg, rgba(0, 210, 255, 0.25), rgba(99, 102, 241, 0.35));
-  color: var(--color-text-primary);
-}
-
-.stat-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-}
-
-.stat-label {
-  font-size: var(--font-size-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--color-text-tertiary);
-}
-
-.stat-value {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-}
-
-.hero-visual {
-  position: relative;
-}
-
-.preview-chart {
-  width: 100%;
-  background: linear-gradient(160deg, rgba(8, 18, 36, 0.92), rgba(12, 30, 58, 0.98));
-  border: 1px solid rgba(0, 210, 255, 0.15);
-  border-radius: var(--radius-2xl);
-  box-shadow: var(--shadow-2xl);
-  position: relative;
-  overflow: hidden;
-  backdrop-filter: blur(16px);
-}
-
-.chart-header {
-  padding: var(--space-5) var(--space-5) var(--space-3);
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-4);
-  border-bottom: 1px solid rgba(0, 210, 255, 0.12);
-}
-
-.chart-eyebrow {
-  margin: 0 0 var(--space-1) 0;
-  font-size: var(--font-size-xs);
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  color: var(--color-text-tertiary);
-}
-
-.chart-header h3 {
-  margin: 0;
-  font-size: var(--font-size-lg);
-}
-
-.current-status {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: var(--space-2);
-}
-
-.current-value {
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-}
-
-.activity-badge {
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.activity-badge.low {
-  background: rgba(34, 197, 94, 0.15);
-  color: #4ade80;
-  box-shadow: 0 0 12px rgba(34, 197, 94, 0.35);
-}
-
-.activity-badge.moderate {
-  background: rgba(250, 204, 21, 0.18);
-  color: #fde047;
-  box-shadow: 0 0 12px rgba(250, 204, 21, 0.35);
-}
-
-.activity-badge.high {
-  background: rgba(248, 113, 113, 0.2);
-  color: #fca5a5;
-  box-shadow: 0 0 12px rgba(248, 113, 113, 0.35);
-}
-
-#home-preview-plot {
-  width: 100%;
-  height: clamp(280px, 52vw, 520px);
-  display: none;
-}
-
-#home-preview-plot.loaded {
-  display: block;
-  animation: fadeIn 0.6s ease;
-}
-
-#home-preview-loading {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-3);
-  color: var(--color-text-secondary);
-}
-
-.chart-loading-overlay svg {
-  opacity: 0.75;
-  animation: pulse 2.4s infinite;
-}
-
-.features-section {
-  padding: var(--space-20) var(--space-4);
-  background: linear-gradient(160deg, rgba(10, 16, 34, 0.92), rgba(6, 10, 24, 0.98));
-  border-top: 1px solid rgba(0, 210, 255, 0.08);
-}
-
-.features-section,
-.about-section,
-.developer-section {
-  scroll-margin-top: 120px;
-}
-
-.section-heading {
-  max-width: 760px;
-  margin: 0 auto var(--space-12) auto;
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.section-heading h2 {
-  margin: 0;
-  font-size: var(--font-size-3xl);
-}
-
-.section-heading p {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-base);
-}
-
-.section-pill {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  align-self: center;
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-full);
-  border: 1px solid rgba(0, 210, 255, 0.35);
-  background: rgba(4, 12, 28, 0.6);
-  text-transform: uppercase;
-  letter-spacing: 0.2em;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
-}
-
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-6);
-  width: min(1100px, 100%);
-  margin: 0 auto;
-}
-
-.feature-card {
-  background: rgba(8, 18, 36, 0.75);
-  border: 1px solid rgba(0, 210, 255, 0.1);
-  border-radius: var(--radius-2xl);
-  padding: var(--space-6);
-  box-shadow: var(--shadow-card-premium);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  transition: transform 220ms ease, box-shadow 220ms ease;
-}
-
-.feature-card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 26px 60px rgba(0, 210, 255, 0.2);
-}
-
-.feature-icon {
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius-xl);
-  display: grid;
-  place-items: center;
-  background: linear-gradient(135deg, rgba(0, 210, 255, 0.25), rgba(99, 102, 241, 0.35));
-  color: var(--color-text-primary);
-}
-
-.feature-card h3 {
-  margin: 0;
-  font-size: var(--font-size-xl);
-}
-
-.feature-card p {
-  margin: 0;
-  color: var(--color-text-secondary);
-  line-height: var(--line-height-relaxed);
-}
-
-.about-section {
-  padding: var(--space-20) var(--space-4);
-  background: rgba(4, 8, 20, 0.95);
-  border-top: 1px solid rgba(0, 210, 255, 0.08);
-}
-
-.about-grid {
-  width: min(1100px, 100%);
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-  gap: var(--space-12);
-  align-items: start;
-}
-
-.about-copy {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.about-copy h2 {
-  margin: 0;
-  font-size: var(--font-size-3xl);
-}
-
-.about-copy p {
-  margin: 0;
-  color: var(--color-text-secondary);
-  line-height: var(--line-height-relaxed);
-}
-
-.about-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: var(--space-4);
-  margin-top: var(--space-6);
-}
-
-.metric-card {
-  padding: var(--space-4);
-  border-radius: var(--radius-xl);
-  background: rgba(8, 18, 36, 0.85);
-  border: 1px solid rgba(0, 210, 255, 0.12);
-  text-align: center;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-}
-
-.metric-value {
-  display: block;
-  font-size: var(--font-size-2xl);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-}
-
-.metric-label {
-  font-size: var(--font-size-xs);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--color-text-tertiary);
-}
-
-.about-feature-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-4);
-}
-
-.about-feature {
-  padding: var(--space-5);
-  background: rgba(8, 18, 36, 0.8);
-  border-radius: var(--radius-xl);
-  border: 1px solid rgba(0, 210, 255, 0.1);
-  box-shadow: var(--shadow-card-premium);
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-
-.about-feature:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 22px 50px rgba(0, 210, 255, 0.18);
-}
-
-.about-feature h3 {
-  margin: 0 0 var(--space-2) 0;
-  font-size: var(--font-size-lg);
-}
-
-.about-feature p {
-  margin: 0;
-  color: var(--color-text-secondary);
-  line-height: var(--line-height-relaxed);
-}
-
-.developer-section {
-  padding: var(--space-20) var(--space-4);
-  background: linear-gradient(180deg, rgba(6, 10, 24, 0.98), rgba(10, 16, 34, 0.92));
-  border-top: 1px solid rgba(0, 210, 255, 0.08);
-}
-
-.developer-content {
-  width: min(1100px, 100%);
-  margin: 0 auto;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-10);
-}
-
-.developer-header {
-  text-align: center;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  max-width: 720px;
-  margin: 0 auto;
-}
-
-.developer-header h2 {
-  margin: 0;
-  font-size: var(--font-size-3xl);
-}
-
-.developer-header p {
-  margin: 0;
-  color: var(--color-text-secondary);
-  line-height: var(--line-height-relaxed);
-}
-
-.developer-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-6);
-}
-
-.developer-card {
-  background: rgba(8, 18, 36, 0.75);
-  border: 1px solid rgba(0, 210, 255, 0.12);
-  border-radius: var(--radius-2xl);
-  padding: var(--space-6);
-  box-shadow: var(--shadow-card-premium);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.developer-card h3 {
-  margin: 0;
-  font-size: var(--font-size-xl);
-}
-
-.developer-card p {
-  margin: 0;
-  color: var(--color-text-secondary);
-  line-height: var(--line-height-relaxed);
-}
-
-.developer-skills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.skill-tag {
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-full);
-  background: rgba(0, 210, 255, 0.12);
-  border: 1px solid rgba(0, 210, 255, 0.35);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-primary);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.linkedin-link {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  align-self: flex-start;
-  padding: var(--space-3) var(--space-5);
-  border-radius: var(--radius-full);
-  background: linear-gradient(135deg, #00A0DC, #006699);
-  color: white;
-  text-decoration: none;
-  font-weight: var(--font-weight-medium);
-  transition: transform 200ms ease, box-shadow 200ms ease;
-}
-
-.linkedin-link:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 18px 40px rgba(0, 160, 220, 0.35);
-}
-
-.toast-container {
-  position: fixed;
-  top: var(--space-6);
-  right: var(--space-6);
-  z-index: var(--z-toast);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.toast {
-  padding: var(--space-4) var(--space-6);
-  background: rgba(8, 18, 36, 0.92);
-  border: 1px solid rgba(0, 210, 255, 0.15);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-card-premium);
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-width: 300px;
-  animation: slideInRight var(--transition-normal) ease-out;
-  color: var(--color-text-primary);
-}
-
-.toast.success {
-  border-left: 4px solid var(--color-success);
-}
-
-.toast.error {
-  border-left: 4px solid var(--color-error);
-}
-
-.toast.info {
-  border-left: 4px solid var(--color-info);
-}
-
-@keyframes slideInRight {
-  from {
-    opacity: 0;
-    transform: translateX(100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@media (max-width: 1024px) {
-  .hero-inner,
-  .about-grid,
-  .developer-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .hero-section {
-    padding: var(--space-16) var(--space-4);
-  }
-
-  .hero-meta {
-    justify-content: flex-start;
-  }
-
-  .hero-section-nav {
-    justify-content: flex-start;
-  }
-
-  .hero-stats {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .features-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .about-feature-list {
-    grid-template-columns: 1fr;
-  }
-
-  .about-metrics {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (max-width: 768px) {
-  .hero-section {
-    padding: var(--space-12) var(--space-4);
-  }
-
-  .hero-title {
-    font-size: var(--font-size-3xl);
-  }
-
-  .hero-subtitle {
-    font-size: var(--font-size-base);
-  }
-
-  .hero-stats {
-    grid-template-columns: 1fr;
-  }
-
-  .hero-section-nav {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .hero-section-link {
-    justify-content: center;
-  }
-
-  .features-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .about-metrics {
-    grid-template-columns: 1fr;
-  }
-
-  .features-section,
-  .about-section,
-  .developer-section {
-    padding: var(--space-12) var(--space-4);
-  }
-
-  .toast {
-    min-width: 280px;
-    margin: 0 var(--space-4);
-  }
-}
-
-@media (max-width: 480px) {
-  .hero-title {
-    font-size: var(--font-size-2xl);
-  }
-
-  .hero-logo {
-    height: 60px;
-  }
-
-  .hero-highlights li {
-    font-size: var(--font-size-sm);
-  }
-
-  .meta-item {
-    width: 100%;
-  }
-
-  .hero-actions {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .hero-actions .btn {
-    width: 100%;
-  }
-
-  .hero-section-nav {
-    padding: var(--space-3) var(--space-2);
-  }
-
-  .hero-section-link {
-    width: 100%;
-  }
-}
-</style>
-
-<script nonce="{{ script_nonce }}">
-// Theme Management
-const themeToggle = document.getElementById('theme-toggle');
-const currentTheme = localStorage.getItem('theme') || 'dark';
-document.documentElement.setAttribute('data-theme', currentTheme);
-
-if (themeToggle) {
-  themeToggle.addEventListener('click', () => {
-    const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('theme', newTheme);
-  });
-}
-
-// Toast Notification System
-function showToast(message, type = 'info', duration = 5000) {
-  const container = document.getElementById('toast-container');
-  const toast = document.createElement('div');
-  toast.className = `toast ${type}`;
-
-  const icon = type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ';
-  toast.innerHTML = `
-    <span class="toast-icon">${icon}</span>
-    <span class="toast-message">${message}</span>
-  `;
-
-  container.appendChild(toast);
-
-  setTimeout(() => {
-    toast.style.animation = 'slideOutRight 300ms ease-in forwards';
-    setTimeout(() => container.removeChild(toast), 300);
-  }, duration);
-}
-
-// Chart Rendering Functions
-let plotResizeObserver;
-
-const handleViewportChange = () => {
-  const plot = document.getElementById('home-preview-plot');
-
-  if (plot && window.Plotly && plot.data) {
-    Plotly.Plots.resize(plot);
-  }
-};
-
-window.addEventListener('orientationchange', handleViewportChange);
-window.addEventListener('resize', handleViewportChange);
-
-function attachPlotResizeObserver(target) {
-  if (!target || !window.Plotly) {
-    return;
-  }
-
-  if (typeof ResizeObserver === 'undefined') {
-    return;
-  }
-
-  if (plotResizeObserver) {
-    plotResizeObserver.disconnect();
-  }
-
-  plotResizeObserver = new ResizeObserver(entries => {
-    entries.forEach(entry => {
-      window.requestAnimationFrame(() => {
-        Plotly.Plots.resize(entry.target);
-      });
-    });
-  });
-
-  plotResizeObserver.observe(target);
-}
-
-async function fetchCurva() {
-  try {
-    const response = await fetch('/api/curva?limit=168', {
-      cache: 'no-store',
-      headers: { 'Cache-Control': 'no-cache' }
-    });
-    const data = await response.json();
-
-    if (!data.ok || !data.data || !data.data.length) {
-      throw new Error('Nessun dato disponibile');
-    }
-
-    return data;
-  } catch (error) {
-    console.error('Errore nel recupero dei dati curva:', error);
-    throw error;
-  }
-}
-
-function drawPlot(data, targetId) {
-  if (!window.Plotly) {
-    return;
-  }
-
-  const target = document.getElementById(targetId);
-  if (!target) {
-    return;
-  }
-
-  const timestamps = data.data.map(row => row.timestamp);
-  const values = data.data.map(row => row.value);
-  const threshold = 2.0;
-
-  const trace = {
-    x: timestamps,
-    y: values,
-    type: 'scatter',
-    mode: 'lines',
-    name: 'Tremore',
-    line: { color: '#00D2FF', width: 2 },
-    hoverlabel: {
-      bgcolor: '#0B1220',
-      font: { color: '#F4F8FF' }
-    },
-    showlegend: false
-  };
-
-  const layout = {
-    margin: { l: 60, r: 20, t: 20, b: 50 },
-    paper_bgcolor: '#0B1220',
-    plot_bgcolor: '#0B1220',
-    font: { color: '#F4F8FF', size: 12 },
-    xaxis: {
-      title: 'Data/Ora',
-      showgrid: true,
-      gridcolor: 'rgba(0, 210, 255, 0.12)',
-      tickfont: { size: 11, color: '#C0CAE6' },
-      titlefont: { size: 12, color: '#C0CAE6' },
-      showticklabels: true,
-      color: '#C0CAE6'
-    },
-    yaxis: {
-      title: 'mV',
-      type: 'log',
-      range: [-1, 1],
-      tickfont: { size: 11, color: '#C0CAE6' },
-      titlefont: { size: 12, color: '#C0CAE6' },
-      showgrid: true,
-      gridcolor: 'rgba(0, 210, 255, 0.12)',
-      color: '#C0CAE6'
-    },
-    shapes: [{
-      type: 'line',
-      x0: timestamps[0],
-      x1: timestamps[timestamps.length - 1],
-      y0: threshold,
-      y1: threshold,
-      line: { color: '#F87171', width: 2, dash: 'dash' }
-    }]
-  };
-
-  const config = {
-    staticPlot: false,
-    displayModeBar: false,
-    responsive: true,
-    scrollZoom: true,
-    doubleClick: 'reset'
-  };
-
-  if (plotResizeObserver) {
-    plotResizeObserver.disconnect();
-  }
-
-  Plotly.newPlot(target, [trace], layout, config).then(() => {
-    const loading = document.getElementById('home-preview-loading');
-
-    if (loading) {
-      loading.style.display = 'none';
-    }
-
-    if (target) {
-      target.classList.add('loaded');
-      target.style.display = 'block';
-    }
-
-    Plotly.Plots.resize(target);
-    attachPlotResizeObserver(target);
-  }).finally(() => {
-    handleViewportChange();
-  });
-}
-
-async function refreshPlot() {
-  try {
-    const data = await fetchCurva();
-    drawPlot(data, 'home-preview-plot');
-    return data;
-  } catch (error) {
-    showNoDataMessage();
-    throw error;
-  }
-}
-
-function showNoDataMessage() {
-  const loading = document.getElementById('home-preview-loading');
-  const plot = document.getElementById('home-preview-plot');
-
-  if (loading && plot) {
-    if (plotResizeObserver) {
-      plotResizeObserver.disconnect();
-    }
-
-    loading.innerHTML = `
-      <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-        <path d="M3 3v18h18"/>
-        <path d="M7 12l3-3 3 3 5-5"/>
-      </svg>
-      <p>Nessun dato sismico disponibile</p>
-      <button onclick="quickUpdate()" class="btn btn-secondary btn-sm" style="margin-top: 12px;" aria-label="Aggiorna dati ora">
-        Aggiorna Ora
+      </dl>
+      <button id="quick-update-btn" class="btn btn-secondary btn-sm glass" type="button" aria-label="Aggiorna dati tremore">
+        Aggiorna dati
       </button>
-    `;
-    loading.style.display = 'flex';
-    plot.style.display = 'none';
-    plot.classList.remove('loaded');
+    </footer>
+  </section>
+
+  <nav class="home-section home-quick-actions" aria-label="Azioni rapide">
+    <h2 class="section-title">Azioni rapide</h2>
+    <div class="quick-actions-grid">
+      <a class="quick-action" href="#home-webcam" data-anchor="home-webcam">
+        <i class="fas fa-video" aria-hidden="true"></i>
+        <span>Webcam</span>
+      </a>
+      <a class="quick-action" href="#ai-predict" data-anchor="ai-predict">
+        <i class="fas fa-robot" aria-hidden="true"></i>
+        <span>AI Predict</span>
+      </a>
+      <a class="quick-action" href="{{ url_for('main.news') }}">
+        <i class="fas fa-newspaper" aria-hidden="true"></i>
+        <span>News</span>
+      </a>
+      <a class="quick-action" href="{{ url_for('main.etna3d') }}">
+        <i class="fas fa-mountain" aria-hidden="true"></i>
+        <span>Modello 3D</span>
+      </a>
+    </div>
+  </nav>
+
+  <section class="home-section home-intro" id="intro" aria-labelledby="intro-title">
+    <div class="intro-card">
+      <h2 id="intro-title">Monitoraggio vulcanico di nuova generazione</h2>
+      <p>
+        Dati INGV in tempo reale, analisi avanzata e visualizzazioni professionali in un'unica piattaforma progettata per team di
+        ricerca, protezione civile e appassionati di tecnologia.
+      </p>
+      <ul class="intro-highlights">
+        <li>Feed continuo con aggiornamenti automatici ogni 5 minuti</li>
+        <li>Scala logaritmica e soglie dinamiche per letture immediate</li>
+        <li>UI ottimizzata per smartphone con modalità scroll-snap</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="home-section home-media" id="home-webcam" aria-labelledby="webcam-title">
+    <div class="media-grid">
+      <div class="media-copy">
+        <span class="section-pill">Webcam &amp; modello 3D</span>
+        <h2 id="webcam-title">Osserva il vulcano in diretta</h2>
+        <p>
+          Accedi alla selezione aggiornata di webcam e timelapse dell'Etna e sovrapponi le rilevazioni del tremore al
+          <a href="{{ url_for('main.etna3d') }}">modello 3D interattivo</a> per una lettura spaziale precisa.
+        </p>
+        <div class="media-actions">
+          <a class="btn btn-primary" href="{{ url_for('main.etna3d') }}">Apri modello 3D</a>
+          <a class="btn btn-secondary glass" href="/dashboard#webcam" rel="nofollow">Dashboard webcam</a>
+        </div>
+      </div>
+      <figure class="media-preview" role="presentation">
+        <img src="{{ url_for('static', filename='screenshots/desktop.png') }}" alt="Anteprima dashboard EtnaMonitor" loading="lazy" decoding="async">
+        <div class="skeleton skeleton-frame" aria-hidden="true"></div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="home-section home-ai" id="ai-predict" aria-labelledby="ai-title">
+    <div class="ai-card">
+      <div class="ai-copy">
+        <span class="section-pill">AI Predict</span>
+        <h2 id="ai-title">Previsioni assistite dall'intelligenza artificiale</h2>
+        <p>
+          I modelli predittivi proprietari analizzano la serie temporale del tremore e individuano pattern anomali con anticipo.
+          L'integrazione con Telegram permette notifiche contestuali e livelli di rischio dinamici.
+        </p>
+        <ul class="ai-highlights">
+          <li>Pipeline: PNG INGV → estrazione → CSV → AI → Telegram</li>
+          <li>Notifiche intelligenti basate su soglie adattive</li>
+          <li>Storico eventi per correlazioni rapide</li>
+        </ul>
+      </div>
+      <div class="ai-cta">
+        <a class="btn btn-primary" href="{{ url_for('main.tecnologia') }}">Scopri la tecnologia</a>
+        <a class="btn btn-secondary glass" href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">Attiva bot Telegram</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="home-section home-teasers" id="section-tecnologia" aria-label="Approfondimenti">
+    <div class="teaser-grid">
+      <article class="teaser-card">
+        <h3>Tecnologia</h3>
+        <p>Architettura dati, automazioni e AI che trasformano i PNG INGV in insight fruibili.</p>
+        <a class="teaser-link" href="{{ url_for('main.tecnologia') }}">Esplora la pipeline</a>
+      </article>
+      <article class="teaser-card">
+        <h3>Il progetto</h3>
+        <p>Visione, roadmap e filosofia del monitoraggio trasparente di EtnaMonitor.</p>
+        <a class="teaser-link" href="{{ url_for('main.progetto') }}">Vai alla pagina progetto</a>
+      </article>
+      <article class="teaser-card">
+        <h3>News</h3>
+        <p>Aggiornamenti editoriali, analisi e comunicati in arrivo per la community.</p>
+        <a class="teaser-link" href="{{ url_for('main.news') }}">Visita la newsroom</a>
+      </article>
+    </div>
+  </section>
+
+  <section class="home-section home-team" id="section-team" aria-labelledby="team-title">
+    <div class="team-card">
+      <span class="section-pill">Chi c'è dietro</span>
+      <h2 id="team-title">Un team aperto e trasparente</h2>
+      <p>
+        Il progetto nasce da <strong>Salvatore Ferro</strong>, sviluppatore full-stack specializzato in data visualization, e si
+        apre alla collaborazione con ricercatori, maker e professionisti della protezione civile.
+      </p>
+      <div class="team-actions">
+        <a class="btn btn-primary" href="{{ url_for('main.team') }}">Scopri il team</a>
+        <a class="btn btn-secondary glass" href="{{ url_for('main.progetto') }}">Obiettivi del progetto</a>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}
+
+{% block mobile_bottom_nav %}
+<nav class="mobile-quick-nav" aria-label="Navigazione rapida">
+  <a href="#grafico-etna" class="mobile-quick-link active" data-target="grafico-etna">
+    <i class="fas fa-chart-line" aria-hidden="true"></i>
+    <span>Grafico</span>
+  </a>
+  <a href="#home-webcam" class="mobile-quick-link" data-target="home-webcam">
+    <i class="fas fa-video" aria-hidden="true"></i>
+    <span>Webcam</span>
+  </a>
+  <a href="#ai-predict" class="mobile-quick-link" data-target="ai-predict">
+    <i class="fas fa-robot" aria-hidden="true"></i>
+    <span>AI</span>
+  </a>
+</nav>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ super() }}
+<script src="{{ url_for('static', filename='vendor/plotly.min.js') }}" charset="utf-8" nonce="{{ script_nonce }}"></script>
+<script nonce="{{ script_nonce }}">
+  // # UX_REFACTOR_2025 Home interactions
+  const plotContainer = document.getElementById('home-preview-plot');
+  const loadingOverlay = document.getElementById('home-preview-loading');
+  const lastUpdateEl = document.getElementById('live-last-update');
+  const pointsEl = document.getElementById('live-data-points');
+  const activityBadge = document.getElementById('live-activity-badge');
+  const statusIndicator = document.getElementById('live-status-indicator');
+  const statusText = document.getElementById('live-status-text');
+  const quickUpdateBtn = document.getElementById('quick-update-btn');
+  let resizeObserver;
+
+  if (document.body) {
+    document.body.classList.add('home-scroll');
   }
-}
 
-// Activity Badge Update
-function updateActivityBadge(currentValue) {
-  const valueDisplay = document.getElementById('current-value-display');
-  const badge = document.getElementById('activity-badge');
-
-  if (!valueDisplay || !badge || !currentValue) return;
-
-  valueDisplay.textContent = `${currentValue.toFixed(2)} mV`;
-
-  badge.classList.remove('low', 'moderate', 'high');
-
-  if (currentValue >= 0.1 && currentValue <= 1.0) {
-    badge.classList.add('low');
-    badge.textContent = 'Attività Bassa';
-  } else if (currentValue > 1.0 && currentValue <= 5.0) {
-    badge.classList.add('moderate');
-    badge.textContent = 'Attività Moderata';
-  } else if (currentValue > 5.0) {
-    badge.classList.add('high');
-    badge.textContent = 'Attività Elevata';
-  } else {
-    badge.textContent = 'Dati Non Disponibili';
-  }
-}
-
-// Status Check
-let statusRetryCount = 0;
-const statusMaxRetries = 3;
-
-async function checkStatus() {
-  try {
-    const response = await fetch('/api/status');
-    const data = await response.json();
-
-    const statusDot = document.getElementById('status-dot');
-    const statusText = document.getElementById('status-text');
-
-    if (data.ok) {
-      statusDot.className = 'status-dot';
-      statusText.textContent = `Online • Ultimo aggiornamento ${new Date(data.last_update || data.last_ts).toLocaleTimeString()}`;
-
-      document.getElementById('last-update').textContent = new Date(data.last_update || data.last_ts).toLocaleString();
-      document.getElementById('data-points').textContent = (data.total_points || data.rows || 0).toLocaleString();
-      document.getElementById('current-level').textContent = `${data.current_value?.toFixed(2) || '--'} mV`;
-      document.getElementById('hero-stats').style.display = 'grid';
-
-      updateActivityBadge(data.current_value);
-      statusRetryCount = 0;
-    } else {
-      statusDot.className = 'status-dot offline';
-      statusText.textContent = 'Offline';
+  const formatDate = (value) => {
+    if (!value) return '--';
+    try {
+      const date = new Date(value);
+      return date.toLocaleString('it-IT', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
+    } catch (error) {
+      return value;
     }
-  } catch (error) {
-    const statusDot = document.getElementById('status-dot');
-    const statusText = document.getElementById('status-text');
-    statusDot.className = 'status-dot offline';
+  };
 
-    if (statusRetryCount < statusMaxRetries) {
-      statusText.textContent = 'Caricamento dati da INGV, attendere...';
-      statusRetryCount++;
-      setTimeout(() => checkStatus(), Math.pow(2, statusRetryCount) * 1000);
-    } else {
-      statusText.textContent = 'Errore di connessione persistente';
+  const updateActivity = (value) => {
+    if (!activityBadge) return;
+    activityBadge.classList.remove('badge-low', 'badge-medium', 'badge-high');
+    activityBadge.removeAttribute('aria-label');
+    if (typeof value !== 'number' || Number.isNaN(value)) {
+      activityBadge.textContent = 'Dati non disponibili';
+      return;
     }
-  }
-}
 
-// Quick Update
-async function quickUpdate() {
-  const btn = document.getElementById('quick-update-btn');
-  const originalText = btn.innerHTML;
+    let label = '';
+    if (value <= 1) {
+      activityBadge.classList.add('badge-low');
+      label = 'Attività bassa';
+    } else if (value <= 5) {
+      activityBadge.classList.add('badge-medium');
+      label = 'Attività moderata';
+    } else {
+      activityBadge.classList.add('badge-high');
+      label = 'Attività elevata';
+    }
 
-  btn.disabled = true;
-  btn.innerHTML = `
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="animate-spin">
-      <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-    </svg>
-    Aggiornamento...
-  `;
+    activityBadge.textContent = `${value.toFixed(2)} mV · ${label}`;
+    activityBadge.setAttribute('aria-label', `${label} (${value.toFixed(2)} millivolt)`);
+  };
 
-  try {
-    const response = await fetch('/api/force_update', { method: 'POST' });
-    const result = await response.json();
+  const updateStatus = (state) => {
+    if (!statusIndicator || !statusText) return;
+    if (state === 'online') {
+      statusIndicator.classList.add('online');
+      statusIndicator.classList.remove('offline');
+      statusText.textContent = 'Dati online';
+    } else {
+      statusIndicator.classList.remove('online');
+      statusIndicator.classList.add('offline');
+      statusText.textContent = 'Connessione assente';
+    }
+  };
 
-    if (result.ok) {
-      showToast(`Dati aggiornati con successo! ${result.rows} punti dati elaborati.`, 'success');
+  const ensureResizeObserver = (target) => {
+    if (typeof ResizeObserver === 'undefined' || !target) return;
+    if (resizeObserver) resizeObserver.disconnect();
+    resizeObserver = new ResizeObserver(() => {
+      window.requestAnimationFrame(() => Plotly.Plots.resize(target));
+    });
+    resizeObserver.observe(target);
+  };
 
-      try {
-        await refreshPlot();
-      } catch (plotError) {
-        console.error('Error refreshing home preview:', plotError);
+  const drawPlot = (rows) => {
+    if (!window.Plotly || !plotContainer) return;
+
+    const timestamps = rows.map((row) => row.timestamp);
+    const values = rows.map((row) => row.value);
+    const threshold = 2;
+
+    const trace = {
+      x: timestamps,
+      y: values,
+      type: 'scatter',
+      mode: 'lines',
+      name: 'Tremore',
+      line: { color: '#00D2FF', width: 2 },
+      hoverlabel: { bgcolor: '#0B1220', font: { color: '#F4F8FF' } },
+      showlegend: false,
+    };
+
+    const layout = {
+      margin: { l: 52, r: 16, t: 10, b: 40 },
+      paper_bgcolor: '#070B1A',
+      plot_bgcolor: '#070B1A',
+      font: { color: '#F4F8FF', size: 12 },
+      xaxis: {
+        title: 'Data/Ora',
+        showgrid: true,
+        gridcolor: 'rgba(0, 210, 255, 0.12)',
+        tickfont: { size: 11 },
+      },
+      yaxis: {
+        title: 'mV',
+        type: 'log',
+        range: [-1, 1],
+        gridcolor: 'rgba(0, 210, 255, 0.12)',
+        tickfont: { size: 11 },
+      },
+      shapes: [
+        {
+          type: 'line',
+          x0: timestamps[0],
+          x1: timestamps[timestamps.length - 1],
+          y0: threshold,
+          y1: threshold,
+          line: { color: '#F87171', width: 2, dash: 'dash' },
+        },
+      ],
+    };
+
+    const config = {
+      responsive: true,
+      displayModeBar: false,
+      scrollZoom: true,
+      doubleClick: 'reset',
+    };
+
+    Plotly.newPlot(plotContainer, [trace], layout, config).then(() => {
+      if (loadingOverlay) loadingOverlay.setAttribute('hidden', 'hidden');
+      plotContainer.classList.add('loaded');
+      plotContainer.removeAttribute('aria-hidden');
+      ensureResizeObserver(plotContainer);
+      Plotly.Plots.resize(plotContainer);
+    });
+  };
+
+  const showFallback = (message) => {
+    if (!loadingOverlay) return;
+    loadingOverlay.removeAttribute('hidden');
+    loadingOverlay.innerHTML = `<p>${message}</p>`;
+  };
+
+  const loadChart = async () => {
+    try {
+      const response = await fetch('/api/curva?limit=168', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
+      const payload = await response.json();
+      if (!payload.ok || !Array.isArray(payload.data) || !payload.data.length) {
+        throw new Error('Dati non disponibili');
       }
-
-      await checkStatus();
-    } else {
-      showToast(`Update failed: ${result.error}`, 'error');
+      drawPlot(payload.data);
+      return payload;
+    } catch (error) {
+      console.error('Errore caricamento curva', error);
+      showFallback('Dati non disponibili');
+      throw error;
     }
-  } catch (error) {
-    showToast('Errore di rete durante l\'aggiornamento', 'error');
-  } finally {
-    btn.disabled = false;
-    btn.innerHTML = originalText;
+  };
+
+  const refreshStatus = async () => {
+    try {
+      const response = await fetch('/api/status', { cache: 'no-store' });
+      const payload = await response.json();
+      if (payload.ok) {
+        updateStatus('online');
+        if (lastUpdateEl) lastUpdateEl.textContent = formatDate(payload.last_update || payload.last_ts);
+        if (pointsEl) pointsEl.textContent = (payload.total_points || payload.rows || 0).toLocaleString('it-IT');
+        updateActivity(payload.current_value);
+      } else {
+        updateStatus('offline');
+      }
+    } catch (error) {
+      updateStatus('offline');
+    }
+  };
+
+  const init = async () => {
+    await Promise.allSettled([loadChart(), refreshStatus()]);
+  };
+
+  if (quickUpdateBtn) {
+    quickUpdateBtn.addEventListener('click', async () => {
+      const original = quickUpdateBtn.textContent;
+      quickUpdateBtn.disabled = true;
+      quickUpdateBtn.textContent = 'Aggiornamento…';
+      try {
+        await Promise.all([loadChart(), refreshStatus()]);
+      } finally {
+        quickUpdateBtn.disabled = false;
+        quickUpdateBtn.textContent = original;
+      }
+    });
   }
-}
 
-// Event Listeners
-document.getElementById('quick-update-btn').addEventListener('click', quickUpdate);
+  const mobileNav = document.querySelectorAll('.mobile-quick-link');
+  const observeTargets = Array.from(mobileNav).map((link) => document.getElementById(link.dataset.target));
+  if ('IntersectionObserver' in window && observeTargets.length) {
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        mobileNav.forEach((link) => {
+          if (link.dataset.target === entry.target.id) {
+            link.classList.add('active');
+          } else {
+            link.classList.remove('active');
+          }
+        });
+      });
+    }, { rootMargin: '-30% 0px -60% 0px', threshold: 0.2 });
 
-// Initialize
-document.addEventListener('DOMContentLoaded', async () => {
-  await checkStatus();
-
-  try {
-    await refreshPlot();
-  } catch (error) {
-    console.error('Failed to initialize chart:', error);
-    showNoDataMessage();
+    observeTargets.forEach((section) => {
+      if (section) observer.observe(section);
+    });
   }
 
-  setInterval(checkStatus, 30000);
-});
+  window.addEventListener('orientationchange', () => {
+    if (plotContainer && plotContainer.data && window.Plotly) {
+      Plotly.Plots.resize(plotContainer);
+    }
+  });
 
-// Add spinning animation for loading states
-const style = document.createElement('style');
-style.textContent = `
-  .animate-spin {
-    animation: spin 1s linear infinite;
-  }
+  window.addEventListener('resize', () => {
+    if (plotContainer && plotContainer.data && window.Plotly) {
+      Plotly.Plots.resize(plotContainer);
+    }
+  });
 
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    init();
+  } else {
+    document.addEventListener('DOMContentLoaded', init);
   }
-`;
-document.head.appendChild(style);
 </script>
 {% endblock %}

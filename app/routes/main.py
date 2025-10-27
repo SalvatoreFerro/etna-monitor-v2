@@ -263,6 +263,62 @@ def pricing():
     )
 
 
+@bp.route("/tecnologia")
+def tecnologia():
+    og_image = url_for('static', filename='icons/icon-512.png', _external=True)
+    return render_template(
+        "tecnologia.html",
+        page_title="Tecnologia EtnaMonitor – Pipeline dati INGV, AI e Telegram",
+        page_description="Scopri la pipeline tecnologica di EtnaMonitor: download PNG INGV, estrazione dati, normalizzazione CSV, modelli AI e distribuzione tramite bot Telegram.",
+        page_og_title="Tecnologia EtnaMonitor – Pipeline dati INGV, AI e Telegram",
+        page_og_description="Scopri la pipeline tecnologica di EtnaMonitor: download PNG INGV, estrazione dati, normalizzazione CSV, modelli AI e distribuzione tramite bot Telegram.",
+        page_og_image=og_image,
+        canonical_url=url_for('main.tecnologia', _external=True),
+    )
+
+
+@bp.route("/progetto")
+def progetto():
+    og_image = url_for('static', filename='icons/icon-512.png', _external=True)
+    return render_template(
+        "progetto.html",
+        page_title="Il progetto EtnaMonitor – Visione, roadmap e filosofia",
+        page_description="Scopri la visione di EtnaMonitor: trasparenza sui dati del tremore vulcanico dell'Etna, roadmap evolutiva e collaborazione con la community scientifica.",
+        page_og_title="Il progetto EtnaMonitor – Visione, roadmap e filosofia",
+        page_og_description="Scopri la visione di EtnaMonitor: trasparenza sui dati del tremore vulcanico dell'Etna, roadmap evolutiva e collaborazione con la community scientifica.",
+        page_og_image=og_image,
+        canonical_url=url_for('main.progetto', _external=True),
+    )
+
+
+@bp.route("/team")
+def team():
+    og_image = url_for('static', filename='icons/icon-512.png', _external=True)
+    return render_template(
+        "team.html",
+        page_title="Team EtnaMonitor – Chi c'è dietro il monitoraggio",
+        page_description="Conosci il team di EtnaMonitor: missione, competenze e valori di trasparenza che guidano il monitoraggio del tremore vulcanico dell'Etna.",
+        page_og_title="Team EtnaMonitor – Chi c'è dietro il monitoraggio",
+        page_og_description="Conosci il team di EtnaMonitor: missione, competenze e valori di trasparenza che guidano il monitoraggio del tremore vulcanico dell'Etna.",
+        page_og_image=og_image,
+        canonical_url=url_for('main.team', _external=True),
+    )
+
+
+@bp.route("/news")
+def news():
+    og_image = url_for('static', filename='icons/icon-512.png', _external=True)
+    return render_template(
+        "news.html",
+        page_title="News EtnaMonitor – Aggiornamenti su tremore e piattaforma",
+        page_description="Rimani aggiornato sulle news di EtnaMonitor: articoli, analisi del tremore vulcanico dell'Etna e aggiornamenti sulla piattaforma.",
+        page_og_title="News EtnaMonitor – Aggiornamenti su tremore e piattaforma",
+        page_og_description="Rimani aggiornato sulle news di EtnaMonitor: articoli, analisi del tremore vulcanico dell'Etna e aggiornamenti sulla piattaforma.",
+        page_og_image=og_image,
+        canonical_url=url_for('main.news', _external=True),
+    )
+
+
 _ETNA3D_CSP = build_csp()
 _SKETCHFAB_SOURCES = [
     "https://sketchfab.com",

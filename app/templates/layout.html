@@ -241,6 +241,10 @@
               {% endif %}
             {% endif %}
             <a href="/pricing" class="nav-link {{ 'active' if request.endpoint == 'main.pricing' }}">Prezzi</a>
+            <a href="{{ url_for('main.tecnologia') }}" class="nav-link {{ 'active' if request.endpoint == 'main.tecnologia' }}">Tecnologia</a>
+            <a href="{{ url_for('main.progetto') }}" class="nav-link {{ 'active' if request.endpoint == 'main.progetto' }}">Il Progetto</a>
+            <a href="{{ url_for('main.team') }}" class="nav-link {{ 'active' if request.endpoint == 'main.team' }}">Team</a>
+            <a href="{{ url_for('main.news') }}" class="nav-link {{ 'active' if request.endpoint == 'main.news' }}">News</a>
             <a href="{{ url_for('main.etna3d') }}" class="nav-link {{ 'active' if request.endpoint == 'main.etna3d' }}">Etna 3D</a>
             <a href="{{ url_for('experience.experience_home') }}" class="nav-link {{ 'active' if request.endpoint == 'experience.experience_home' }}">Etna Experience</a>
               <div class="nav-dropdown">
@@ -318,6 +322,8 @@
       
       {% block content %}{% endblock %}
     </main>
+
+    {% block mobile_bottom_nav %}{% endblock %}
     
     <footer class="footer" role="contentinfo" aria-label="Site footer">
       <div class="footer-content">
@@ -611,6 +617,8 @@
     })();
     </script>
     {% endif %}
+    {% block extra_scripts %}{% endblock %}
+
     {% include 'partials/footer.html' %}
   </body>
 </html>
