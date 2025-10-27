@@ -3,72 +3,84 @@
 {% block title %}Termini di servizio - EtnaMonitor{% endblock %}
 
 {% block content %}
-<main id="main-content" class="static-page">
-  <section class="static-hero" aria-labelledby="terms-title">
-    <div class="static-hero-inner">
-      <h1 id="terms-title">Termini di servizio</h1>
-      <p class="lead">
-        Questi termini regolano l'utilizzo della piattaforma EtnaMonitor. Utilizzando il servizio accetti integralmente
-        le condizioni riportate in questa pagina.
+<section class="page-wrapper" id="page-top">
+  <nav class="page-breadcrumb" aria-label="Percorso di navigazione">
+    <a href="{{ url_for('main.index') }}">Home</a>
+    <span aria-hidden="true">/</span>
+    <span>Termini</span>
+  </nav>
+
+  <header class="page-hero" aria-labelledby="terms-title">
+    <span class="section-pill">Termini</span>
+    <h1 id="terms-title">Termini di servizio</h1>
+    <p>
+      Questi termini regolano l'utilizzo della piattaforma EtnaMonitor. Utilizzando il servizio accetti integralmente
+      le condizioni riportate in questa pagina.
+    </p>
+  </header>
+
+  <div class="page-stack">
+    <section class="page-section" aria-labelledby="terms-service">
+      <h2 id="terms-service">1. Oggetto del servizio</h2>
+      <p>
+        EtnaMonitor fornisce informazioni sul tremore vulcanico dell'Etna basate su dati pubblici INGV. Le visualizzazioni
+        sono offerte esclusivamente a scopo informativo e non sostituiscono comunicazioni ufficiali degli enti competenti.
       </p>
-    </div>
-  </section>
+    </section>
 
-  <section class="static-section" aria-labelledby="terms-service">
-    <h2 id="terms-service">1. Oggetto del servizio</h2>
-    <p>
-      EtnaMonitor fornisce informazioni sul tremore vulcanico dell'Etna basate su dati pubblici INGV. Le visualizzazioni
-      sono offerte esclusivamente a scopo informativo e non sostituiscono comunicazioni ufficiali degli enti competenti.
-    </p>
-  </section>
+    <section class="page-section" aria-labelledby="terms-account">
+      <h2 id="terms-account">2. Account e accesso</h2>
+      <p>
+        L'accesso alla piattaforma richiede l'autenticazione tramite Google OAuth2. Sei responsabile delle attività
+        effettuate con il tuo account e ti impegni a mantenere aggiornate le tue informazioni di contatto.
+      </p>
+    </section>
 
-  <section class="static-section" aria-labelledby="terms-account">
-    <h2 id="terms-account">2. Account e accesso</h2>
-    <p>
-      L'accesso alla piattaforma richiede l'autenticazione tramite Google OAuth2. Sei responsabile delle attività
-      effettuate con il tuo account e ti impegni a mantenere aggiornate le tue informazioni di contatto.
-    </p>
-  </section>
+    <section class="page-section" aria-labelledby="terms-acceptable-use">
+      <h2 id="terms-acceptable-use">3. Uso consentito</h2>
+      <ul>
+        <li>Non è consentito utilizzare EtnaMonitor per scopi illegali o contrari alle normative vigenti.</li>
+        <li>È vietato tentare di accedere in modo non autorizzato a dati, sistemi o account di altri utenti.</li>
+        <li>È vietata la redistribuzione commerciale dei dati senza previa autorizzazione scritta.</li>
+      </ul>
+    </section>
 
-  <section class="static-section" aria-labelledby="terms-acceptable-use">
-    <h2 id="terms-acceptable-use">3. Uso consentito</h2>
-    <ul>
-      <li>Non è consentito utilizzare EtnaMonitor per scopi illegali o contrari alle normative vigenti.</li>
-      <li>È vietato tentare di accedere in modo non autorizzato a dati, sistemi o account di altri utenti.</li>
-      <li>È vietata la redistribuzione commerciale dei dati senza previa autorizzazione scritta.</li>
-    </ul>
-  </section>
+    <section class="page-section" aria-labelledby="terms-liability">
+      <h2 id="terms-liability">4. Limitazione di responsabilità</h2>
+      <p>
+        EtnaMonitor è fornito "così com'è", senza garanzie di disponibilità o accuratezza. Gli autori non possono essere
+        ritenuti responsabili di danni derivanti dall'uso delle informazioni mostrate o da eventuali interruzioni del servizio.
+      </p>
+    </section>
 
-  <section class="static-section" aria-labelledby="terms-liability">
-    <h2 id="terms-liability">4. Limitazione di responsabilità</h2>
-    <p>
-      EtnaMonitor è fornito &quot;così com'è&quot;, senza garanzie di disponibilità o accuratezza. Gli autori non possono essere
-      ritenuti responsabili di danni derivanti dall'uso delle informazioni mostrate o da eventuali interruzioni del servizio.
-    </p>
-  </section>
+    <section class="page-section" aria-labelledby="terms-changes">
+      <h2 id="terms-changes">5. Modifiche ai termini</h2>
+      <p>
+        Ci riserviamo il diritto di aggiornare questi termini in qualsiasi momento. Le modifiche sostanziali saranno comunicate
+        attraverso la piattaforma o via email. L'uso continuato del servizio dopo tali modifiche implica l'accettazione dei nuovi termini.
+      </p>
+    </section>
 
-  <section class="static-section" aria-labelledby="terms-changes">
-    <h2 id="terms-changes">5. Modifiche ai termini</h2>
-    <p>
-      Ci riserviamo il diritto di aggiornare questi termini in qualsiasi momento. Le modifiche sostanziali saranno comunicate
-      attraverso la piattaforma o via email. L'uso continuato del servizio dopo tali modifiche implica l'accettazione dei nuovi termini.
-    </p>
-  </section>
+    <section class="page-section" aria-labelledby="terms-telegram">
+      <h2 id="terms-telegram">6. Uso del servizio Telegram</h2>
+      <p>
+        L'utente Free riceverà un solo messaggio di alert gratuito come anteprima del servizio.
+        I successivi alert richiedono l'attivazione del piano Premium tramite donazione.
+        Le informazioni fornite sono di natura divulgativa e non sostituiscono i dati ufficiali INGV.
+      </p>
+    </section>
 
-  <section class="static-section" aria-labelledby="terms-telegram">
-    <h2 id="terms-telegram">6. Uso del servizio Telegram</h2>
-    <p>
-      L'utente Free riceverà un solo messaggio di alert gratuito come anteprima del servizio.
-      I successivi alert richiedono l'attivazione del piano Premium tramite donazione.
-      Le informazioni fornite sono di natura divulgativa e non sostituiscono i dati ufficiali INGV.
-    </p>
-  </section>
+    <section class="page-section" aria-labelledby="terms-contact">
+      <h2 id="terms-contact">7. Contatti</h2>
+      <p>
+        Per domande sui termini di servizio puoi contattarci all'indirizzo <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a>.
+      </p>
+    </section>
+  </div>
 
-  <section class="static-section" aria-labelledby="terms-contact">
-    <h2 id="terms-contact">7. Contatti</h2>
-    <p>
-      Per domande sui termini di servizio puoi contattarci all'indirizzo <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a>.
-    </p>
-  </section>
-</main>
+  <div class="page-cta" role="group" aria-label="Azioni termini di servizio">
+    <a class="btn btn-primary" href="mailto:salvoferro16@gmail.com">Scrivici</a>
+    <a class="btn btn-secondary glass" href="{{ url_for('main.index') }}#grafico-etna">Torna alla home</a>
+  </div>
+</section>
 {% endblock %}

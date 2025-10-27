@@ -15,7 +15,7 @@
 
 /* Focus indicators */
 *:focus {
-    outline: 2px solid var(--accent-color, #007aff);
+    outline: 2px solid var(--color-accent-primary);
     outline-offset: 2px;
 }
 
@@ -24,8 +24,8 @@
     position: absolute;
     top: -40px;
     left: 6px;
-    background: var(--accent-color, #007aff);
-    color: white;
+    background: var(--color-accent-primary);
+    color: var(--color-text-inverse);
     padding: 8px;
     text-decoration: none;
     border-radius: 4px;
@@ -39,19 +39,19 @@
 /* High contrast mode support */
 @media (prefers-contrast: high) {
     :root {
-        --text-primary: #000000;
-        --text-secondary: #333333;
-        --bg-primary: #ffffff;
-        --bg-secondary: #f5f5f5;
-        --border-color: #000000;
+        --color-text-primary: #000000;
+        --color-text-secondary: #333333;
+        --color-bg-primary: #ffffff;
+        --color-bg-secondary: #f5f5f5;
+        --color-border: #000000;
     }
     
     [data-theme="dark"] {
-        --text-primary: #ffffff;
-        --text-secondary: #cccccc;
-        --bg-primary: #000000;
-        --bg-secondary: #1a1a1a;
-        --border-color: #ffffff;
+        --color-text-primary: #ffffff;
+        --color-text-secondary: #cccccc;
+        --color-bg-primary: #000000;
+        --color-bg-secondary: #1a1a1a;
+        --color-border: #ffffff;
     }
 }
 
@@ -73,7 +73,7 @@
 input:focus,
 select:focus,
 textarea:focus {
-    outline: 2px solid var(--accent-color, #007aff);
+    outline: 2px solid var(--color-accent-primary);
     outline-offset: 2px;
 }
 
@@ -89,11 +89,11 @@ textarea {
 
 /* Color contrast improvements */
 .text-muted {
-    color: var(--text-secondary);
+    color: var(--color-text-secondary);
 }
 
 .bg-muted {
-    background-color: var(--bg-secondary);
+    background-color: var(--color-bg-secondary);
 }
 
 /* Error and success states */
@@ -122,7 +122,7 @@ textarea {
     width: 20px;
     height: 20px;
     margin: -10px 0 0 -10px;
-    border: 2px solid var(--border-color);
+    border: 2px solid var(--color-border);
     border-top-color: transparent;
     border-radius: 50%;
     animation: spin 1s linear infinite;
@@ -155,12 +155,12 @@ input:valid {
     bottom: 100%;
     left: 50%;
     transform: translateX(-50%);
-    background: var(--bg-primary);
-    color: var(--text-primary);
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
     padding: 4px 8px;
     border-radius: 4px;
     font-size: 14px;
     white-space: nowrap;
     z-index: 1000;
-    border: 1px solid var(--border-color);
+    border: 1px solid var(--color-border);
 }
