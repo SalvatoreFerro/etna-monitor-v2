@@ -154,15 +154,10 @@
 
     <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
-    {# Safely get user theme with fallback if column doesn't exist yet (during migration) #}
-    {% set user_theme = 'volcano_tech' %}
-    {% if current_user and current_user.is_authenticated %}
-      {% if current_user.theme_preference is defined %}
-        {% set user_theme = current_user.theme_preference %}
-      {% endif %}
-    {% endif %}
+    {# EMERGENCY FIX: Use default theme only until DB migration is complete #}
+    {# TODO: Restore per-user theme selection after migration runs successfully #}
     {% set preview_theme = request.args.get('preview') %}
-    {% set active_theme = preview_theme if preview_theme in ['maintenance', 'volcano_tech', 'apple_minimal'] else user_theme %}
+    {% set active_theme = preview_theme if preview_theme in ['maintenance', 'volcano_tech', 'apple_minimal'] else 'volcano_tech' %}
     {% if active_theme == 'maintenance' %}
       <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-maintenance.css') }}" />
     {% elif active_theme == 'apple_minimal' %}
