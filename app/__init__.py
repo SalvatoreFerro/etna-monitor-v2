@@ -447,6 +447,8 @@ def create_app(config_overrides: dict | None = None):
 
     db.init_app(app)
     migrate.init_app(app, db)
+    curva_path = ensure_curva_csv(app)
+    app.config["CURVA_CSV_PATH"] = str(curva_path)
 
     run_db_init = os.getenv("RUN_DB_INIT_ON_STARTUP", "1").lower() in {"1", "true", "yes"}
     if app.config.get("TESTING"):
