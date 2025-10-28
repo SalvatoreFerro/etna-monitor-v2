@@ -1,4 +1,3 @@
-import os
 from datetime import datetime
 from pathlib import Path
 
@@ -56,7 +55,8 @@ def _index_cache_key() -> str:
 @bp.route("/")
 @cache.cached(timeout=90, key_prefix=_index_cache_key)
 def index():
-    csv_path = os.getenv("CSV_PATH", "/var/tmp/curva.csv")
+    csv_path_setting = current_app.config.get("CURVA_CSV_PATH") or current_app.config.get("CSV_PATH")
+    csv_path = Path(csv_path_setting or "/var/tmp/curva.csv")
     timestamps: list[str] = []
     values: list[float] = []
     temporal_start_iso: str | None = None
@@ -66,20 +66,25 @@ def index():
     latest_timestamp_iso: str | None = None
     latest_timestamp_display: str | None = None
     data_points = 0
+    placeholder_reason: str | None = None
 
-    last_timestamp_dt = None
-
-    if os.path.exists(csv_path):
+    if csv_path.exists():
         try:
             df = pd.read_csv(csv_path, parse_dates=["timestamp"])
-            if not df.empty:
+        except Exception as exc:
+            placeholder_reason = "error"
+            current_app.logger.exception("[HOME] Failed to read tremor CSV")
+            record_csv_error(str(exc))
+        else:
+            if df.empty:
+                placeholder_reason = "empty"
+                record_csv_error("curva.csv empty")
+            else:
                 df = df.sort_values("timestamp")
                 timestamps = df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S").tolist()
                 values = df["value"].tolist()
                 data_points = len(df)
 
-                temporal_start = pd.to_datetime(df["timestamp"].iloc[0]).to_pydatetime()
-                temporal_end = pd.to_datetime(df["timestamp"].iloc[-1]).to_pydatetime()
                 temporal_start = df["timestamp"].iloc[0]
                 temporal_end = df["timestamp"].iloc[-1]
                 temporal_start_iso = temporal_start.strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -92,16 +97,14 @@ def index():
                 latest_value = float(df["value"].iloc[-1])
                 latest_timestamp_iso = temporal_end_iso
                 latest_timestamp_display = temporal_end.strftime("%d/%m/%Y %H:%M")
-                last_timestamp_dt = temporal_end
-
-            record_csv_read(len(df), last_timestamp_dt)
-
-            record_csv_read(len(df), df["timestamp"].max() if not df.empty else None)
-        except Exception as exc:
-            current_app.logger.exception("Failed to read tremor CSV for index page")
-            record_csv_error(str(exc))
+                record_csv_read(len(df), temporal_end.to_pydatetime())
     else:
-        current_app.logger.warning("Tremor CSV not found at %s", csv_path)
+        placeholder_reason = "missing"
+        if not current_app.config.get("_home_csv_missing_warned"):
+            current_app.logger.info(
+                "[HOME] Tremor CSV not found at %s; rendering placeholder UI", csv_path
+            )
+            current_app.config["_home_csv_missing_warned"] = True
         record_csv_error(f"Missing CSV at {csv_path}")
 
     canonical_home = url_for("main.index", _external=True)
@@ -228,6 +231,13 @@ def index():
         software_structured_data,
     ]
 
+    csv_snapshot = {
+        "path": str(csv_path),
+        "rows": data_points,
+        "placeholder_reason": placeholder_reason,
+        "has_data": placeholder_reason is None,
+    }
+
     return render_template(
         "index.html",
         labels=timestamps,
@@ -243,6 +253,7 @@ def index():
         latest_timestamp_display=latest_timestamp_display,
         data_points_count=data_points,
         temporal_coverage=temporal_coverage,
+        csv_snapshot=csv_snapshot,
     )
 
 

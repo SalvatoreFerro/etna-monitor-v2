@@ -99,3 +99,8 @@ class Config:
     PLAUSIBLE_DOMAIN = os.getenv("PLAUSIBLE_DOMAIN", "")
     GA_MEASUREMENT_ID = os.getenv("GA_MEASUREMENT_ID", "")
     LOG_DIR = os.getenv("LOG_DIR", "logs")
+    DATA_DIR = os.getenv("DATA_DIR", "/var/tmp")
+    CSV_PATH = os.getenv("CSV_PATH") or os.path.join(DATA_DIR, "curva.csv")
+    STATIC_ASSET_VERSION = os.getenv("STATIC_ASSET_VERSION") or (
+        os.getenv("RENDER_GIT_COMMIT", "").strip()[:8] or "v1"
+    )

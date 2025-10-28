@@ -88,10 +88,10 @@ class User(UserMixin, db.Model):
     name = db.Column(db.String(255), nullable=True)
     picture_url = db.Column(db.String(512), nullable=True)
     theme_preference = db.Column(
-        db.String(50),
-        nullable=False,
-        default='volcano_tech',
-        server_default='volcano_tech',
+        db.String(16),
+        nullable=True,
+        default='system',
+        server_default='system',
     )
     created_at = db.Column(
         db.DateTime(timezone=True),

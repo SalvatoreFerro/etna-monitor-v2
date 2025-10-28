@@ -22,31 +22,39 @@
 
     <title>{% block title %}{{ computed_title }}{% endblock %}</title>
 
-    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}" />
+    {% set asset_version = static_asset_version %}
+    {% set minimal_assets = minimal_assets | default(False) %}
 
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32x32.png') }}" />
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16x16.png') }}" />
-    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png') }}" />
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json', v=asset_version) }}" />
+
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='icons/favicon-32x32.png', v=asset_version) }}" />
+    <link rel="icon" type="image/png" sizes="16x16" href="{{ url_for('static', filename='icons/favicon-16x16.png', v=asset_version) }}" />
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/apple-touch-icon.png', v=asset_version) }}" />
 
     <link rel="canonical" href="{{ computed_canonical }}" />
 
     <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css', v=asset_version) }}" />
     {% set active_theme = user_theme %}
-    {% if active_theme == 'maintenance' %}
-      <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-maintenance.css') }}" />
-    {% elif active_theme == 'apple_minimal' %}
-      <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-apple-minimal.css') }}" />
+    {% if minimal_assets %}
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-volcano-tech.css', v=asset_version) }}" />
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css', v=asset_version) }}" />
     {% else %}
-      <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-volcano-tech.css') }}" />
-    {% endif %}
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/banners.css') }}" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+      {% if active_theme == 'maintenance' %}
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-maintenance.css', v=asset_version) }}" />
+      {% elif active_theme == 'apple_minimal' %}
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-apple-minimal.css', v=asset_version) }}" />
+      {% else %}
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-volcano-tech.css', v=asset_version) }}" />
+      {% endif %}
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css', v=asset_version) }}" />
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/banners.css', v=asset_version) }}" />
+      <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700&display=swap" rel="stylesheet">
+      <link rel="preconnect" href="https://fonts.googleapis.com">
+      <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@700&display=swap" rel="stylesheet">
+    {% endif %}
     
     <meta property="og:title" content="{{ computed_og_title }}" />
     <meta property="og:description" content="{{ computed_og_description }}" />
@@ -183,7 +191,7 @@
       <div class="navbar-container">
         <div class="navbar-bar">
           <a href="/" class="brand-link" aria-label="EtnaMonitor Home">
-            <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="EtnaMonitor" class="brand-logo">
+            <img src="{{ url_for('static', filename='images/logo.svg', v=asset_version) }}" alt="EtnaMonitor" class="brand-logo">
             <span class="brand-text">EtnaMonitor</span>
           </a>
 
@@ -356,7 +364,7 @@
       <div class="site-footer__top">
         <div class="site-footer__brand">
           <a href="/" class="site-footer__logo" aria-label="Torna alla home">
-            <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="EtnaMonitor" loading="lazy">
+            <img src="{{ url_for('static', filename='images/logo.svg', v=asset_version) }}" alt="EtnaMonitor" loading="lazy">
             <span class="brand-text">EtnaMonitor</span>
           </a>
           <p class="site-footer__summary">
@@ -454,7 +462,7 @@
       </div>
     {% endif %}
 
-    <script src="{{ url_for('static', filename='js/nav.js') }}" nonce="{{ script_nonce }}" defer></script>
+    <script src="{{ url_for('static', filename='js/nav.js', v=asset_version) }}" nonce="{{ script_nonce }}" defer></script>
 
     <script nonce="{{ script_nonce }}">
     // Register service worker after load to avoid blocking first paint

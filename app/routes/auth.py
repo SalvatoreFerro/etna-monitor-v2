@@ -28,10 +28,10 @@ from sqlalchemy.exc import (
 )
 from sqlalchemy.orm import load_only
 
+from ..extensions import cache
 from ..models import db
 from ..models.user import User
 from ..utils.auth import check_password, hash_password
-from ..utils.user_columns import get_login_safe_user_columns
 
 bp = Blueprint("auth", __name__)
 legacy_bp = Blueprint("legacy_auth", __name__ + "_legacy")
@@ -78,10 +78,18 @@ def find_user_by_google_id(session, gid: str):
     if not gid:
         return None
 
-    columns = get_login_safe_user_columns()
-    query = session.query(User)
-    if columns:
-        query = query.options(load_only(*columns))
+    query = (
+        session.query(User)
+        .options(
+            load_only(
+                User.id,
+                User.email,
+                User.google_id,
+                User.name,
+                User.picture_url,
+            )
+        )
+    )
     return query.filter(User.google_id == gid).first()
 
 
@@ -89,10 +97,18 @@ def find_user_by_email(session, email: str):
     if not email:
         return None
 
-    columns = get_login_safe_user_columns()
-    query = session.query(User)
-    if columns:
-        query = query.options(load_only(*columns))
+    query = (
+        session.query(User)
+        .options(
+            load_only(
+                User.id,
+                User.email,
+                User.google_id,
+                User.name,
+                User.picture_url,
+            )
+        )
+    )
     return query.filter(func.lower(User.email) == email.lower()).first()
 
 
@@ -237,6 +253,20 @@ def _google_oauth_request(
 # ---------------------------------------------------------------------------
 
 
+def _login_cache_key() -> str:
+    full_path = request.full_path or request.path or "/auth/login"
+    return f"auth_login::{full_path.rstrip('?')}"
+
+
+@cache.cached(timeout=75, key_prefix=_login_cache_key)
+def _render_login_page():
+    return render_template(
+        "auth/login.html",
+        next_page=request.args.get("next"),
+        minimal_assets=True,
+    )
+
+
 @bp.route("/login", methods=["GET", "POST"])
 def login():
     """Render the login call-to-action or handle the legacy password flow."""
@@ -256,7 +286,7 @@ def login():
         session["user_id"] = user.id
         return redirect(url_for("dashboard.dashboard_home"))
 
-    return render_template("auth/login.html", next_page=request.args.get("next"))
+    return _render_login_page()
 
 
 @bp.route("/register", methods=["POST"])
@@ -454,8 +484,6 @@ def auth_callback():
                 user.name = name
             if picture_url and not getattr(user, "picture_url", None):
                 user.picture_url = picture_url
-            if getattr(user, "password_hash", None) is None:
-                user.password_hash = ""
         else:
             user = User(
                 email=email,
@@ -470,8 +498,11 @@ def auth_callback():
 
         admin_set = current_app.config.get("ADMIN_EMAILS_SET", set())
         should_promote_admin = email and email in admin_set
-        if should_promote_admin and getattr(user, "is_admin", False) is False:
-            user.is_admin = True
+        if should_promote_admin:
+            try:
+                user.is_admin = True
+            except AttributeError:  # pragma: no cover - defensive guard
+                current_app.logger.warning("[LOGIN] User model missing is_admin attribute during promotion")
 
         try:
             db.session.commit()
@@ -523,7 +554,20 @@ def auth_callback():
             flash("Servizio in aggiornamento, riprova tra qualche minuto.", "error")
             return redirect(url_for("auth.login"))
 
-        user_id = user.id
+        try:
+            user_id = user.id
+        except ProgrammingError as exc:
+            current_app.logger.error(
+                "[LOGIN] ProgrammingError while loading user.id after OAuth commit", exc_info=exc
+            )
+            flash("Aggiorna la pagina e riprova", "error")
+            return redirect(url_for("auth.login"))
+        except Exception as exc:  # pragma: no cover - defensive guard
+            current_app.logger.error(
+                "[LOGIN] Unable to materialize user.id after OAuth commit", exc_info=exc
+            )
+            flash("Problema temporaneo, riprova tra 1 minuto", "error")
+            return redirect(url_for("auth.login"))
         try:
             user_min = (
                 db.session.query(User)
