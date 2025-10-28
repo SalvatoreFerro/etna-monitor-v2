@@ -154,7 +154,16 @@
 
     <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}" />
+    {% set user_theme = (current_user.theme_preference if current_user and current_user.is_authenticated else 'volcano_tech') %}
+    {% set preview_theme = request.args.get('preview') %}
+    {% set active_theme = preview_theme if preview_theme in ['maintenance', 'volcano_tech', 'apple_minimal'] else user_theme %}
+    {% if active_theme == 'maintenance' %}
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-maintenance.css') }}" />
+    {% elif active_theme == 'apple_minimal' %}
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-apple-minimal.css') }}" />
+    {% else %}
+      <link rel="stylesheet" href="{{ url_for('static', filename='css/theme-volcano-tech.css') }}" />
+    {% endif %}
     <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/banners.css') }}" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
