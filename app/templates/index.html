@@ -1,213 +1,186 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<!-- # UX_REFACTOR_2025 -->
-<div class="home-shell container" id="home-shell">
-  <section class="home-section home-live" id="grafico-etna" aria-labelledby="grafico-title">
-    <div class="home-live-layout">
-      <figure class="home-live-visual" role="img" aria-labelledby="grafico-title" aria-describedby="grafico-context">
-        <div class="home-live-status" role="status" aria-live="polite">
-          <span class="status-indicator" id="live-status-indicator" aria-hidden="true"></span>
-          {% if csv_snapshot.has_data %}
-            <span class="status-text" id="live-status-text">Verifica connessione…</span>
-          {% else %}
-            <span class="status-text" id="live-status-text">Dati in preparazione…</span>
-          {% endif %}
+<section class="hero">
+  <div class="container hero__layout">
+    <div class="hero__copy">
+      <span class="eyebrow">Nuova interfaccia 2025</span>
+      <h1>Monitoraggio Etna, riprogettato da zero</h1>
+      <p class="lead">
+        Una piattaforma immersiva per leggere il tremore vulcanico in tempo reale, con grafico interattivo, indicatori live e
+        controlli rapidi ottimizzati per ogni dispositivo.
+      </p>
+      <div class="hero__actions">
+        <button id="quick-update-btn" class="btn btn-primary" type="button">Aggiorna dati live</button>
+        <a class="btn btn-secondary" href="{{ url_for('main.tecnologia') }}">Scopri la pipeline</a>
+      </div>
+      <div class="hero__meta">
+        <div class="chart-card__status">
+          <span>
+            <span class="status-dot" id="live-status-indicator" aria-hidden="true"></span>
+            <span id="live-status-text">Connessione in corso…</span>
+          </span>
         </div>
+        <dl class="metric-list">
+          <div class="metric">
+            <dt>Ultimo aggiornamento</dt>
+            <dd id="live-last-update">{% if latest_timestamp_display %}{{ latest_timestamp_display }}{% else %}--{% endif %}</dd>
+          </div>
+          <div class="metric">
+            <dt>Campioni elaborati</dt>
+            <dd id="live-data-points">{% if data_points_count %}{{ data_points_count }}{% else %}--{% endif %}</dd>
+          </div>
+          <div class="metric">
+            <dt>Attività</dt>
+            <dd><span id="live-activity-badge" class="activity-badge">In caricamento…</span></dd>
+          </div>
+        </dl>
+      </div>
+    </div>
+
+    <div class="hero__visual">
+      <div class="chart-card" id="grafico-etna" aria-labelledby="grafico-title">
+        <div class="chart-card__status">
+          <div>
+            <span class="pill">Grafico tremore</span>
+          </div>
+          <span class="muted">Scala logaritmica · aggiornamento 5'</span>
+        </div>
+        <h2 id="grafico-title">Curva del tremore vulcanico</h2>
         {% if csv_snapshot.has_data %}
           <div id="home-preview-loading" class="chart-loading" aria-live="polite">
-            <div class="skeleton skeleton-chart"></div>
+            <div class="chart-spinner" aria-hidden="true"></div>
             <p>Caricamento dati INGV…</p>
           </div>
-          <div id="home-preview-plot" class="home-preview-plot" aria-hidden="true"></div>
+          <div id="home-preview-plot" aria-hidden="true"></div>
         {% else %}
-          <div class="home-placeholder" aria-live="polite">
-            <div class="home-placeholder-card glass">
-              <h2>Stiamo acquisendo i dati INGV</h2>
-              <p>
-                Il file <code>{{ csv_snapshot.path }}</code> è vuoto al momento (motivo: {{ csv_snapshot.placeholder_reason }}).
-                Aggiorna tra pochi minuti: il grafico si popolerà automaticamente non appena saranno disponibili nuove
-                misurazioni.
-              </p>
-            </div>
+          <div class="chart-loading" aria-live="polite">
+            <p><strong>Dati in preparazione</strong></p>
+            <p>
+              Il file <code>{{ csv_snapshot.path }}</code> risulta temporaneamente vuoto (motivo: {{ csv_snapshot.placeholder_reason }}).
+              Riprova più tardi: il grafico si popolerà automaticamente.
+            </p>
           </div>
         {% endif %}
-      </figure>
-
-      <header class="home-live-header">
-        <span class="section-pill home-pill">Live • Tremore Etna</span>
-        <h1 id="grafico-title">Grafico tremore vulcanico in tempo reale</h1>
-        <p class="home-lead">
-          {% if latest_value is not none and latest_timestamp_display %}
-            Ultimo campione INGV del {{ latest_timestamp_display }}: <strong>{{ '%.2f' % latest_value }} mV</strong> con
-            copertura delle ultime {{ data_points_count }} misurazioni.
-          {% elif not csv_snapshot.has_data %}
-            Visualizzazione temporaneamente offline: stiamo inizializzando la serie storica con gli ultimi dati INGV. Torna
-            tra qualche minuto per vedere il grafico interattivo.
-          {% else %}
-            Visualizzazione interattiva del tremore vulcanico dell'Etna aggiornata ogni cinque minuti con dati ufficiali INGV.
-          {% endif %}
-        </p>
-        <div class="home-live-actions">
-          <button id="quick-update-btn" class="btn btn-secondary btn-sm glass" type="button" aria-label="Aggiorna dati tremore">
-            Aggiorna dati
-          </button>
-        </div>
-      </header>
-    </div>
-
-    <footer class="home-chart-footer" id="grafico-context">
-      <dl class="home-chart-info">
-        <div class="info-block">
-          <dt>Ultimo aggiornamento</dt>
-          <dd id="live-last-update">{% if latest_timestamp_display %}{{ latest_timestamp_display }}{% elif not csv_snapshot.has_data %}In attesa dati{% else %}--{% endif %}</dd>
-        </div>
-        <div class="info-block">
-          <dt>Campioni elaborati</dt>
-          <dd id="live-data-points">{% if data_points_count %}{{ data_points_count }}{% elif not csv_snapshot.has_data %}0{% else %}--{% endif %}</dd>
-        </div>
-        <div class="info-block">
-          <dt>Attività</dt>
-          <dd><span id="live-activity-badge" class="activity-badge">In aggiornamento</span></dd>
-        </div>
-      </dl>
-    </footer>
-  </section>
-
-  <nav class="home-section home-quick-actions" aria-label="Azioni rapide">
-    <div class="home-card">
-      <h2 class="section-title">Azioni rapide</h2>
-      <div class="quick-actions-grid">
-        <a class="quick-action" href="#home-webcam" data-anchor="home-webcam">
-          <i class="fas fa-video" aria-hidden="true"></i>
-          <span>Webcam</span>
-        </a>
-        <a class="quick-action" href="#ai-predict" data-anchor="ai-predict">
-          <i class="fas fa-robot" aria-hidden="true"></i>
-          <span>AI Predict</span>
-        </a>
-        <a class="quick-action" href="{{ url_for('main.news') }}">
-          <i class="fas fa-newspaper" aria-hidden="true"></i>
-          <span>News</span>
-        </a>
-        <a class="quick-action" href="{{ url_for('main.etna3d') }}">
-          <i class="fas fa-mountain" aria-hidden="true"></i>
-          <span>Modello 3D</span>
-        </a>
       </div>
     </div>
-  </nav>
+  </div>
+</section>
 
-  <section class="home-section home-intro" id="intro" aria-labelledby="intro-title">
-    <div class="intro-card">
-      <h2 id="intro-title">Monitoraggio vulcanico di nuova generazione</h2>
-      <p>
-        Dati INGV in tempo reale, analisi avanzata e visualizzazioni professionali in un'unica piattaforma progettata per team di
-        ricerca, protezione civile e appassionati di tecnologia.
-      </p>
-      <ul class="intro-highlights">
-        <li>Feed continuo con aggiornamenti automatici ogni 5 minuti</li>
-        <li>Scala logaritmica e soglie dinamiche per letture immediate</li>
-        <li>UI ottimizzata per smartphone con modalità scroll-snap</li>
-      </ul>
+<section class="home-section">
+  <div class="container">
+    <div class="home-section__header">
+      <span class="eyebrow">Experience</span>
+      <h2>Un cruscotto che parla il linguaggio dei dati</h2>
+      <p class="lead">Nuovi componenti, nuove gerarchie visive e una palette pensata per consultazioni rapide su mobile e desktop.</p>
     </div>
-  </section>
-
-  <section class="home-section home-media" id="home-webcam" aria-labelledby="webcam-title">
-    <div class="home-card media-grid">
-      <div class="media-copy">
-        <span class="section-pill">Webcam &amp; modello 3D</span>
-        <h2 id="webcam-title">Osserva il vulcano in diretta</h2>
-        <p>
-          Accedi alla selezione aggiornata di webcam e timelapse dell'Etna e sovrapponi le rilevazioni del tremore al
-          <a href="{{ url_for('main.etna3d') }}">modello 3D interattivo</a> per una lettura spaziale precisa.
-        </p>
-        <div class="media-actions">
-          <a class="btn btn-primary" href="{{ url_for('main.etna3d') }}">Apri modello 3D</a>
-          <a class="btn btn-secondary glass" href="/dashboard#webcam" rel="nofollow">Dashboard webcam</a>
-        </div>
-      </div>
-      <figure class="media-preview" role="presentation">
-        <img src="{{ url_for('static', filename='screenshots/desktop.png') }}" alt="Anteprima dashboard EtnaMonitor" loading="lazy" decoding="async">
-        <div class="skeleton skeleton-frame" aria-hidden="true"></div>
-      </figure>
-    </div>
-  </section>
-
-  <section class="home-section home-ai" id="ai-predict" aria-labelledby="ai-title">
-    <div class="ai-card">
-      <div class="ai-copy">
-        <span class="section-pill">AI Predict</span>
-        <h2 id="ai-title">Previsioni assistite dall'intelligenza artificiale</h2>
-        <p>
-          I modelli predittivi proprietari analizzano la serie temporale del tremore e individuano pattern anomali con anticipo.
-          L'integrazione con Telegram permette notifiche contestuali e livelli di rischio dinamici.
-        </p>
-        <ul class="ai-highlights">
-          <li>Pipeline: PNG INGV → estrazione → CSV → AI → Telegram</li>
-          <li>Notifiche intelligenti basate su soglie adattive</li>
-          <li>Storico eventi per correlazioni rapide</li>
+    <div class="feature-grid">
+      <article class="feature-card">
+        <h3>Pipeline INGV → insight</h3>
+        <p>Download, normalizzazione e storicizzazione automatica di ogni campione pubblicato dall'INGV.</p>
+        <ul>
+          <li>Controlli checksum e fallback automatici</li>
+          <li>Serie storica uniforme e arricchita di metadati</li>
+          <li>API pubblica per integrazioni esterne</li>
         </ul>
-      </div>
-      <div class="ai-cta">
-        <a class="btn btn-primary" href="{{ url_for('main.tecnologia') }}">Scopri la tecnologia</a>
-        <a class="btn btn-secondary glass" href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">Attiva bot Telegram</a>
-      </div>
-    </div>
-  </section>
-
-  <section class="home-section home-teasers" id="section-tecnologia" aria-label="Approfondimenti">
-    <div class="teaser-grid">
-      <article class="teaser-card">
-        <h3>Tecnologia</h3>
-        <p>Architettura dati, automazioni e AI che trasformano i PNG INGV in insight fruibili.</p>
-        <a class="teaser-link" href="{{ url_for('main.tecnologia') }}">Esplora la pipeline</a>
       </article>
-      <article class="teaser-card">
-        <h3>Il progetto</h3>
-        <p>Visione, roadmap e filosofia del monitoraggio trasparente di EtnaMonitor.</p>
-        <a class="teaser-link" href="{{ url_for('main.progetto') }}">Vai alla pagina progetto</a>
+      <article class="feature-card">
+        <h3>AI Early Warning</h3>
+        <p>Modelli proprietari individuano pattern e anomalie, suggerendo scenari e livelli di rischio dinamici.</p>
+        <ul>
+          <li>Feature engineering adattivo</li>
+          <li>Notifiche Telegram contestuali</li>
+          <li>Storico eventi con annotazioni</li>
+        </ul>
       </article>
-      <article class="teaser-card">
-        <h3>News</h3>
-        <p>Aggiornamenti editoriali, analisi e comunicati in arrivo per la community.</p>
-        <a class="teaser-link" href="{{ url_for('main.news') }}">Visita la newsroom</a>
+      <article class="feature-card">
+        <h3>UX multiscreen</h3>
+        <p>Layout fluidi, tipografia leggibile e interazioni curate per dispositivi mobile, tablet e desktop.</p>
+        <ul>
+          <li>Mobile-first con breakpoints dedicati</li>
+          <li>Componenti glassmorphism ottimizzati</li>
+          <li>Focus state e accessibilità a contrasto elevato</li>
+        </ul>
       </article>
     </div>
-  </section>
+  </div>
+</section>
 
-  <section class="home-section home-team" id="section-team" aria-labelledby="team-title">
-    <div class="team-card">
-      <span class="section-pill">Chi c'è dietro</span>
-      <h2 id="team-title">Un team aperto e trasparente</h2>
+<section class="home-section">
+  <div class="container spotlight">
+    <figure class="spotlight__media" role="presentation">
+      <img src="{{ url_for('static', filename='screenshots/desktop.png') }}" alt="Anteprima dashboard EtnaMonitor" loading="lazy" decoding="async" />
+    </figure>
+    <div class="spotlight__content">
+      <span class="eyebrow">Visual layer</span>
+      <h2>Webcam, modello 3D e storytelling geospaziale</h2>
       <p>
-        Il progetto nasce da <strong>Salvatore Ferro</strong>, sviluppatore full-stack specializzato in data visualization, e si
-        apre alla collaborazione con ricercatori, maker e professionisti della protezione civile.
+        Sovrapponi il tremore in tempo reale al modello 3D dell'Etna e consulta la nostra selezione di webcam per avere un quadro
+        operativo completo.
       </p>
-      <div class="team-actions">
-        <a class="btn btn-primary" href="{{ url_for('main.team') }}">Scopri il team</a>
-        <a class="btn btn-secondary glass" href="{{ url_for('main.progetto') }}">Obiettivi del progetto</a>
+      <div class="hero__actions">
+        <a class="btn btn-primary" href="{{ url_for('main.etna3d') }}">Apri Etna 3D</a>
+        <a class="btn btn-secondary" href="/dashboard#webcam" rel="nofollow">Dashboard webcam</a>
+      </div>
+      <div class="pill-row">
+        <span class="pill">Timelapse HD</span>
+        <span class="pill">Layer geolocalizzati</span>
+        <span class="pill">Esperienza immersiva</span>
       </div>
     </div>
-  </section>
-</div>
-{% endblock %}
+  </div>
+</section>
 
-{% block mobile_bottom_nav %}
-<nav class="mobile-quick-nav" aria-label="Navigazione rapida">
-  <a href="#grafico-etna" class="mobile-quick-link active" data-target="grafico-etna">
-    <i class="fas fa-chart-line" aria-hidden="true"></i>
-    <span>Grafico</span>
-  </a>
-  <a href="#home-webcam" class="mobile-quick-link" data-target="home-webcam">
-    <i class="fas fa-video" aria-hidden="true"></i>
-    <span>Webcam</span>
-  </a>
-  <a href="#ai-predict" class="mobile-quick-link" data-target="ai-predict">
-    <i class="fas fa-robot" aria-hidden="true"></i>
-    <span>AI</span>
-  </a>
-</nav>
+<section class="home-section">
+  <div class="container">
+    <div class="spotlight">
+      <div class="spotlight__content">
+        <span class="eyebrow">Community</span>
+        <h2>Un progetto aperto a ricercatori, maker e istituzioni</h2>
+        <p>
+          EtnaMonitor nasce da Salvatore Ferro ed evolve con il contributo della community. Condividiamo roadmap, changelog e
+          strumenti per una collaborazione trasparente.
+        </p>
+        <div class="hero__actions">
+          <a class="btn btn-primary" href="{{ url_for('main.progetto') }}">Visione e roadmap</a>
+          <a class="btn btn-secondary" href="{{ url_for('main.team') }}">Conosci il team</a>
+        </div>
+      </div>
+      <div class="spotlight__content">
+        <div class="card card--outlined">
+          <h3>Azioni rapide</h3>
+          <p>Accedi subito alle aree più richieste della piattaforma.</p>
+          <div class="grid grid--columns-3">
+            <a class="link-arrow" href="{{ url_for('main.news') }}">Newsroom</a>
+            <a class="link-arrow" href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">Bot Telegram</a>
+            <a class="link-arrow" href="{{ url_for('main.roadmap') }}">Roadmap</a>
+          </div>
+        </div>
+        <div class="card">
+          <h3>Sostieni l'infrastruttura</h3>
+          <p>I costi cloud aumentano con l'espansione del progetto. Ogni contributo aiuta a mantenere il servizio libero e aperto.</p>
+          <a class="btn btn-secondary" href="{{ url_for('billing.donate') }}">Supporta EtnaMonitor</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="home-section">
+  <div class="container cta-panel">
+    <div>
+      <span class="eyebrow">API &amp; integrazioni</span>
+      <h2>Connetti EtnaMonitor ai tuoi flussi</h2>
+      <p class="lead">
+        Disponiamo di endpoint JSON documentati e webhook per inviare alert nei tuoi sistemi. Ottieni accesso prioritario con i piani premium.
+      </p>
+    </div>
+    <div class="cta-panel__actions">
+      <a class="btn btn-primary" href="{{ url_for('main.pricing') }}">Esplora i piani</a>
+      <a class="btn btn-ghost" href="mailto:salvoferro16@gmail.com">Richiedi integrazione</a>
+    </div>
+  </div>
+</section>
 {% endblock %}
 
 {% block extra_scripts %}

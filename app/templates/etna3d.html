@@ -1,79 +1,68 @@
 {% extends "layout.html" %}
-
-{% block head %}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/etna3d.css') }}?v={{ STATIC_ASSET_VERSION }}">
-{% endblock %}
+{% set page_title = "Modello 3D dell'Etna" %}
+{% set page_description = "Esplora il modello 3D interattivo dell'Etna." %}
+{% set page_og_title = page_title %}
+{% set page_og_description = page_description %}
+{% set canonical_url = url_for('main.etna3d', _external=True) %}
 
 {% block content %}
-  <!-- UX_FIX_2025: 3D immersive layout with skeleton loader -->
-  <section class="etna3d-page" aria-labelledby="etna3d-title">
-    <div class="etna3d-container">
-      <div class="etna3d-card">
-        {% if plan_type == 'premium' %}
-          <span class="etna3d-badge">Premium</span>
-        {% endif %}
-        <header class="etna3d-header">
-          <h1 id="etna3d-title" class="etna3d-title">Modello 3D dell'Etna</h1>
-          <p class="etna3d-subtitle">Vista interattiva della morfologia del vulcano</p>
-          {% if plan_type != 'premium' %}
-            <div class="etna3d-banner">
-              <span>Strumenti avanzati disponibili con Premium</span>
-              <a href="{{ url_for('main.pricing') }}">Scopri Premium</a>
-            </div>
-          {% endif %}
-        </header>
-
-        <div class="etna3d-embed">
-          <div class="etna3d-placeholder" id="etna3d-loader" aria-hidden="true">
-            <div class="skeleton skeleton-frame"></div>
-            <p>Caricamento modello 3D…</p>
-          </div>
-          <div class="sketchfab-embed-wrapper etna3d-embed-frame">
-            <iframe
-              class="etna3d-iframe"
-              title="Mount Etna, Sicily, Italy (x2)"
-              frameborder="0"
-              allowfullscreen
-              mozallowfullscreen="true"
-              webkitallowfullscreen="true"
-              allow="autoplay; fullscreen; xr-spatial-tracking"
-              xr-spatial-tracking
-              execution-while-out-of-viewport
-              execution-while-not-rendered
-              web-share
-              loading="lazy"
-              src="https://sketchfab.com/models/2f95f88582f54bf9a3c2496a7853eb05/embed?ui_theme=dark&autostart=1&animated=1">
-            </iframe>
-          </div>
-          <p class="credits small etna3d-credits">
-            Modello:
-            <a href="https://sketchfab.com/3d-models/mount-etna-sicily-italy-x2-2f95f88582f54bf9a3c2496a7853eb05" target="_blank" rel="noopener">Mount Etna, Sicily, Italy (x2)</a>
-            by <a href="https://sketchfab.com/Gweedore" target="_blank" rel="noopener">Carraig Nua Geoscience</a>
-            — su <a href="https://sketchfab.com" target="_blank" rel="noopener">Sketchfab</a>.
-          </p>
+<section class="page">
+  <div class="container stack">
+    <header class="page__header">
+      <span class="eyebrow">Etna 3D</span>
+      <h1>Modello interattivo dell'Etna</h1>
+      <p class="page__lede">Naviga la morfologia del vulcano, sovrapponi dati e integra il 3D nelle tue analisi.</p>
+      {% if plan_type != 'premium' %}
+        <div class="card card--outlined">
+          <p class="muted">Strumenti avanzati disponibili con Premium Lifetime.</p>
+          <a class="btn btn-secondary" href="{{ url_for('main.pricing') }}#lifetime">Scopri Premium</a>
         </div>
+      {% endif %}
+    </header>
+
+    <div class="card">
+      <h2>Vista interattiva</h2>
+      <div class="chart-loading" id="etna3d-loader" aria-hidden="true">
+        <div class="chart-spinner" aria-hidden="true"></div>
+        <p>Caricamento modello 3D…</p>
       </div>
+      <div class="sketchfab-embed-wrapper" style="border-radius: var(--radius-lg); overflow: hidden; border: 1px solid rgba(148,163,184,0.18);">
+        <iframe
+          class="etna3d-iframe"
+          title="Mount Etna, Sicily, Italy (x2)"
+          frameborder="0"
+          allowfullscreen
+          mozallowfullscreen="true"
+          webkitallowfullscreen="true"
+          allow="autoplay; fullscreen; xr-spatial-tracking"
+          xr-spatial-tracking
+          execution-while-out-of-viewport
+          execution-while-not-rendered
+          web-share
+          loading="lazy"
+          src="https://sketchfab.com/models/2f95f88582f54bf9a3c2496a7853eb05/embed?ui_theme=dark&autostart=1&animated=1"
+          style="width: 100%; aspect-ratio: 16 / 9;"
+        ></iframe>
+      </div>
+      <p class="muted" style="font-size:0.85rem;">Modello: <a href="https://sketchfab.com/3d-models/mount-etna-sicily-italy-x2-2f95f88582f54bf9a3c2496a7853eb05" target="_blank" rel="noopener">Mount Etna, Sicily, Italy (x2)</a> di <a href="https://sketchfab.com/Gweedore" target="_blank" rel="noopener">Carraig Nua Geoscience</a> su Sketchfab.</p>
     </div>
-  </section>
+  </div>
+</section>
 {% endblock %}
 
 {% block extra_scripts %}
-  {{ super() }}
-  <script nonce="{{ script_nonce }}">
-    // UX_FIX_2025: hide skeleton once Sketchfab iframe loads
-    document.addEventListener('DOMContentLoaded', () => {
-      const iframe = document.querySelector('.etna3d-iframe');
-      const loader = document.getElementById('etna3d-loader');
-      if (!iframe || !loader) {
-        return;
-      }
-
-      const removeLoader = () => {
-        loader.setAttribute('hidden', 'hidden');
-        iframe.removeEventListener('load', removeLoader);
-      };
-
-      iframe.addEventListener('load', removeLoader, { once: true });
-    });
-  </script>
+{{ super() }}
+<script nonce="{{ script_nonce }}">
+document.addEventListener('DOMContentLoaded', () => {
+  const iframe = document.querySelector('.etna3d-iframe');
+  const loader = document.getElementById('etna3d-loader');
+  if (!iframe || !loader) {
+    return;
+  }
+  const hideLoader = () => {
+    loader.setAttribute('hidden', 'hidden');
+  };
+  iframe.addEventListener('load', hideLoader, { once: true });
+});
+</script>
 {% endblock %}
