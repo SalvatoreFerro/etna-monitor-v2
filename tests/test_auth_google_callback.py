@@ -17,12 +17,13 @@ from app.models.user import User
 @pytest.fixture(autouse=True)
 def reset_google_id_cache():
     from app.routes import auth as auth_routes
+    from app.utils import user_columns
 
     auth_routes._GOOGLE_ID_COLUMN_SUPPORTED = None
-    auth_routes._LOGIN_COLUMN_CACHE = None
+    user_columns.reset_login_safe_user_columns_cache()
     yield
     auth_routes._GOOGLE_ID_COLUMN_SUPPORTED = None
-    auth_routes._LOGIN_COLUMN_CACHE = None
+    user_columns.reset_login_safe_user_columns_cache()
 
 
 class DummyResponse:

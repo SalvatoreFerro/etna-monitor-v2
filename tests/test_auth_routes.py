@@ -6,6 +6,8 @@ from sqlalchemy.pool import StaticPool
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("DISABLE_SCHEDULER", "1")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+os.environ.setdefault("GOOGLE_CLIENT_ID", "test-client-id")
+os.environ.setdefault("GOOGLE_CLIENT_SECRET", "test-client-secret")
 
 from app import create_app
 from app.models import db
@@ -169,3 +171,79 @@ def test_homepage_cache_respects_login_state(client, app):
     assert response_logged_in.status_code == 200
     assert b'Esci' in response_logged_in.data
     assert b'Accedi con Google' not in response_logged_in.data
+
+
+def test_google_login_handles_missing_theme_preference(monkeypatch, client, app):
+    from sqlalchemy.exc import ProgrammingError
+
+    class DummyResponse:
+        def __init__(self, status_code, payload):
+            self.status_code = status_code
+            self._payload = payload
+            self.text = str(payload)
+
+        def json(self):
+            return self._payload
+
+    token_response = DummyResponse(200, {"access_token": "access", "refresh_token": "refresh"})
+    userinfo_response = DummyResponse(
+        200,
+        {
+            "sub": "theme-user",
+            "email": "theme-missing@example.com",
+            "name": "Theme Missing",
+            "picture": "https://example.com/avatar.png",
+        },
+    )
+
+    responses = iter([token_response, userinfo_response])
+
+    monkeypatch.setattr(
+        "app.routes.auth._google_oauth_request",
+        lambda *args, **kwargs: next(responses),
+    )
+
+    from app.utils import user_columns as user_columns_utils
+    from app.routes import auth as auth_routes
+
+    user_columns_utils.reset_login_safe_user_columns_cache()
+
+    def safe_columns_without_theme():
+        from app.models.user import User
+
+        return (
+            User.id,
+            User.email,
+            User.google_id,
+            User.name,
+            User.picture_url,
+            User.password_hash,
+            User.is_premium,
+            User.premium,
+            User.premium_lifetime,
+            User.telegram_opt_in,
+        )
+
+    monkeypatch.setattr(user_columns_utils, "get_login_safe_user_columns", safe_columns_without_theme)
+    monkeypatch.setattr(auth_routes, "get_login_safe_user_columns", safe_columns_without_theme)
+
+    def failing_get(*args, **kwargs):
+        raise ProgrammingError(
+            "SELECT", {}, Exception("no such column: users.theme_preference")
+        )
+
+    monkeypatch.setattr(db.session, "get", failing_get)
+
+    with client.session_transaction() as session:
+        session["oauth_state"] = "state-token"
+
+    response = client.get(
+        "/auth/callback?code=auth-code&state=state-token",
+        follow_redirects=True,
+    )
+
+    assert response.status_code == 200
+
+    with app.app_context():
+        user = User.query.filter_by(email="theme-missing@example.com").one()
+        assert user.google_id == "theme-user"
