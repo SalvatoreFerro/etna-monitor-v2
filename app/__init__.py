@@ -642,6 +642,13 @@ def create_app(config_overrides: dict | None = None):
     else:
         app.context_processor(inject_sponsor_banners_context)
 
+    try:
+        from .context_processors import inject_user_theme as inject_user_theme_context
+    except Exception as exc:
+        app.logger.warning("User theme context disabled: %s", exc)
+    else:
+        app.context_processor(inject_user_theme_context)
+
     seo_blueprint = None
     if enable_seo_routes:
         try:
