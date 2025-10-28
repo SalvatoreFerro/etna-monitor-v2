@@ -2,7 +2,6 @@ from flask import Flask, g, redirect, request, url_for, current_app
 from flask_login import LoginManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
-from flask_compress import Compress
 from werkzeug.middleware.proxy_fix import ProxyFix  # Ensure proxy headers are honored for HTTPS redirects
 import os
 import redis
@@ -241,6 +240,7 @@ def create_app(config_overrides: dict | None = None):
     )
     app.jinja_env.globals["csrf_token"] = generate_csrf_token
     app.jinja_env.globals["static_asset_version"] = app.config["STATIC_ASSET_VERSION"]
+    app.jinja_env.globals["STATIC_ASSET_VERSION"] = app.config["STATIC_ASSET_VERSION"]
 
     configure_logging(app.config.get("LOG_DIR"))
     app.logger.info(
@@ -584,7 +584,6 @@ def create_app(config_overrides: dict | None = None):
         cache_config["CACHE_TYPE"] = "SimpleCache"
     cache.init_app(app, config=cache_config)
 
-    Compress(app)
     if redis_url:
         limiter = Limiter(
             key_func=get_remote_address,

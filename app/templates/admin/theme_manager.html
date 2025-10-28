@@ -2,7 +2,7 @@
 
 {% block head %}
   {{ super() }}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
   <style nonce="{{ script_nonce }}">
     .theme-manager {
       max-width: 1400px;

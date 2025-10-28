@@ -2,7 +2,7 @@
 
 {% block content %}
 <!-- # UX_REFACTOR_2025 -->
-<div class="home-shell" id="home-shell">
+<div class="home-shell container" id="home-shell">
   <section class="home-section home-live" id="grafico-etna" aria-labelledby="grafico-title">
     <div class="home-live-layout">
       <figure class="home-live-visual" role="img" aria-labelledby="grafico-title" aria-describedby="grafico-context">
@@ -75,24 +75,26 @@
   </section>
 
   <nav class="home-section home-quick-actions" aria-label="Azioni rapide">
-    <h2 class="section-title">Azioni rapide</h2>
-    <div class="quick-actions-grid">
-      <a class="quick-action" href="#home-webcam" data-anchor="home-webcam">
-        <i class="fas fa-video" aria-hidden="true"></i>
-        <span>Webcam</span>
-      </a>
-      <a class="quick-action" href="#ai-predict" data-anchor="ai-predict">
-        <i class="fas fa-robot" aria-hidden="true"></i>
-        <span>AI Predict</span>
-      </a>
-      <a class="quick-action" href="{{ url_for('main.news') }}">
-        <i class="fas fa-newspaper" aria-hidden="true"></i>
-        <span>News</span>
-      </a>
-      <a class="quick-action" href="{{ url_for('main.etna3d') }}">
-        <i class="fas fa-mountain" aria-hidden="true"></i>
-        <span>Modello 3D</span>
-      </a>
+    <div class="home-card">
+      <h2 class="section-title">Azioni rapide</h2>
+      <div class="quick-actions-grid">
+        <a class="quick-action" href="#home-webcam" data-anchor="home-webcam">
+          <i class="fas fa-video" aria-hidden="true"></i>
+          <span>Webcam</span>
+        </a>
+        <a class="quick-action" href="#ai-predict" data-anchor="ai-predict">
+          <i class="fas fa-robot" aria-hidden="true"></i>
+          <span>AI Predict</span>
+        </a>
+        <a class="quick-action" href="{{ url_for('main.news') }}">
+          <i class="fas fa-newspaper" aria-hidden="true"></i>
+          <span>News</span>
+        </a>
+        <a class="quick-action" href="{{ url_for('main.etna3d') }}">
+          <i class="fas fa-mountain" aria-hidden="true"></i>
+          <span>Modello 3D</span>
+        </a>
+      </div>
     </div>
   </nav>
 
@@ -112,7 +114,7 @@
   </section>
 
   <section class="home-section home-media" id="home-webcam" aria-labelledby="webcam-title">
-    <div class="media-grid">
+    <div class="home-card media-grid">
       <div class="media-copy">
         <span class="section-pill">Webcam &amp; modello 3D</span>
         <h2 id="webcam-title">Osserva il vulcano in diretta</h2>
@@ -210,310 +212,7 @@
 
 {% block extra_scripts %}
 {{ super() }}
-<script nonce="{{ script_nonce }}">
-  // # UX_REFACTOR_2025 Home interactions
-  const plotContainer = document.getElementById('home-preview-plot');
-  const loadingOverlay = document.getElementById('home-preview-loading');
-  const lastUpdateEl = document.getElementById('live-last-update');
-  const pointsEl = document.getElementById('live-data-points');
-  const activityBadge = document.getElementById('live-activity-badge');
-  const statusIndicator = document.getElementById('live-status-indicator');
-  const statusText = document.getElementById('live-status-text');
-  const quickUpdateBtn = document.getElementById('quick-update-btn');
-  const plotlySrc = "{{ url_for('static', filename='vendor/plotly.min.js') }}";
-  let resizeObserver;
-  let plotlyLoadPromise;
-
-  if (document.body) {
-    document.body.classList.add('home-scroll');
-  }
-
-  const ensurePlotly = () => {
-    if (window.Plotly) {
-      return Promise.resolve(window.Plotly);
-    }
-
-    if (plotlyLoadPromise) {
-      return plotlyLoadPromise;
-    }
-
-    plotlyLoadPromise = new Promise((resolve, reject) => {
-      const existing = document.querySelector('script[data-plotly-loader]');
-      if (existing) {
-        existing.addEventListener('load', () => (window.Plotly ? resolve(window.Plotly) : reject(new Error('Plotly non disponibile'))));
-        existing.addEventListener('error', () => reject(new Error('Impossibile caricare Plotly')));
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.src = plotlySrc;
-      script.async = true;
-      script.defer = true;
-      script.setAttribute('data-plotly-loader', 'true');
-      script.onload = () => {
-        if (window.Plotly) {
-          resolve(window.Plotly);
-        } else {
-          reject(new Error('Plotly non disponibile'));
-        }
-      };
-      script.onerror = () => reject(new Error('Impossibile caricare Plotly'));
-      document.head.appendChild(script);
-    });
-
-    return plotlyLoadPromise;
-  };
-
-  const schedulePlotlyLoad = () => {
-    if (!plotContainer) return;
-
-    const triggerLoad = () => {
-      ensurePlotly().catch((error) => {
-        console.error('Plotly lazy load failed', error);
-        showFallback('Impossibile inizializzare il grafico interattivo');
-      });
-    };
-
-    if ('IntersectionObserver' in window) {
-      const observer = new IntersectionObserver((entries, obs) => {
-        entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
-          obs.disconnect();
-          triggerLoad();
-        });
-      }, { rootMargin: '160px 0px 0px 0px' });
-
-      observer.observe(plotContainer);
-    }
-
-    window.setTimeout(triggerLoad, 3500);
-  };
-
-  const formatDate = (value) => {
-    if (!value) return '--';
-    try {
-      const date = new Date(value);
-      return date.toLocaleString('it-IT', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' });
-    } catch (error) {
-      return value;
-    }
-  };
-
-  const updateActivity = (value) => {
-    if (!activityBadge) return;
-    activityBadge.classList.remove('badge-low', 'badge-medium', 'badge-high');
-    activityBadge.removeAttribute('aria-label');
-    if (typeof value !== 'number' || Number.isNaN(value)) {
-      activityBadge.textContent = 'Dati non disponibili';
-      return;
-    }
-
-    let label = '';
-    if (value <= 1) {
-      activityBadge.classList.add('badge-low');
-      label = 'Attività bassa';
-    } else if (value <= 5) {
-      activityBadge.classList.add('badge-medium');
-      label = 'Attività moderata';
-    } else {
-      activityBadge.classList.add('badge-high');
-      label = 'Attività elevata';
-    }
-
-    activityBadge.textContent = `${value.toFixed(2)} mV · ${label}`;
-    activityBadge.setAttribute('aria-label', `${label} (${value.toFixed(2)} millivolt)`);
-  };
-
-  const updateStatus = (state) => {
-    if (!statusIndicator || !statusText) return;
-    if (state === 'online') {
-      statusIndicator.classList.add('online');
-      statusIndicator.classList.remove('offline');
-      statusText.textContent = 'Dati online';
-    } else {
-      statusIndicator.classList.remove('online');
-      statusIndicator.classList.add('offline');
-      statusText.textContent = 'Connessione assente';
-    }
-  };
-
-  const ensureResizeObserver = (target) => {
-    if (typeof ResizeObserver === 'undefined' || !target) return;
-    if (resizeObserver) resizeObserver.disconnect();
-    resizeObserver = new ResizeObserver(() => {
-      window.requestAnimationFrame(() => Plotly.Plots.resize(target));
-    });
-    resizeObserver.observe(target);
-  };
-
-  const drawPlot = (rows) => {
-    if (!window.Plotly || !plotContainer) {
-      throw new Error('Plotly non disponibile');
-    }
-
-    const timestamps = rows.map((row) => row.timestamp);
-    const values = rows.map((row) => row.value);
-    const threshold = 2;
-
-    const trace = {
-      x: timestamps,
-      y: values,
-      type: 'scatter',
-      mode: 'lines',
-      name: 'Tremore',
-      line: { color: '#00D2FF', width: 2 },
-      hoverlabel: { bgcolor: '#0B1220', font: { color: '#F4F8FF' } },
-      showlegend: false,
-    };
-
-    const layout = {
-      margin: { l: 52, r: 16, t: 10, b: 40 },
-      paper_bgcolor: '#070B1A',
-      plot_bgcolor: '#070B1A',
-      font: { color: '#F4F8FF', size: 12 },
-      xaxis: {
-        title: 'Data/Ora',
-        showgrid: true,
-        gridcolor: 'rgba(0, 210, 255, 0.12)',
-        tickfont: { size: 11 },
-      },
-      yaxis: {
-        title: 'mV',
-        type: 'log',
-        range: [-1, 1],
-        gridcolor: 'rgba(0, 210, 255, 0.12)',
-        tickfont: { size: 11 },
-      },
-      shapes: [
-        {
-          type: 'line',
-          x0: timestamps[0],
-          x1: timestamps[timestamps.length - 1],
-          y0: threshold,
-          y1: threshold,
-          line: { color: '#F87171', width: 2, dash: 'dash' },
-        },
-      ],
-    };
-
-    const config = {
-      responsive: true,
-      displayModeBar: false,
-      scrollZoom: true,
-      doubleClick: 'reset',
-    };
-
-    window.Plotly.newPlot(plotContainer, [trace], layout, config).then(() => {
-      if (loadingOverlay) loadingOverlay.setAttribute('hidden', 'hidden');
-      plotContainer.classList.add('loaded');
-      plotContainer.removeAttribute('aria-hidden');
-      ensureResizeObserver(plotContainer);
-      window.Plotly.Plots.resize(plotContainer);
-    });
-  };
-
-  const showFallback = (message) => {
-    if (!loadingOverlay) return;
-    loadingOverlay.removeAttribute('hidden');
-    loadingOverlay.innerHTML = `<p>${message}</p>`;
-  };
-
-  const loadChart = async () => {
-    try {
-      const response = await fetch('/api/curva?limit=168', { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
-      const payload = await response.json();
-      if (!payload.ok || !Array.isArray(payload.data) || !payload.data.length) {
-        throw new Error('Dati non disponibili');
-      }
-      await ensurePlotly();
-      drawPlot(payload.data);
-      return payload;
-    } catch (error) {
-      console.error('Errore caricamento curva', error);
-      const fallbackMessage = error && typeof error.message === 'string' && error.message.toLowerCase().includes('plotly')
-        ? 'Impossibile inizializzare il grafico interattivo'
-        : 'Dati non disponibili';
-      showFallback(fallbackMessage);
-      throw error;
-    }
-  };
-
-  const refreshStatus = async () => {
-    try {
-      const response = await fetch('/api/status', { cache: 'no-store' });
-      const payload = await response.json();
-      if (payload.ok) {
-        updateStatus('online');
-        if (lastUpdateEl) lastUpdateEl.textContent = formatDate(payload.last_update || payload.last_ts);
-        if (pointsEl) pointsEl.textContent = (payload.total_points || payload.rows || 0).toLocaleString('it-IT');
-        updateActivity(payload.current_value);
-      } else {
-        updateStatus('offline');
-      }
-    } catch (error) {
-      updateStatus('offline');
-    }
-  };
-
-  const init = async () => {
-    await Promise.allSettled([loadChart(), refreshStatus()]);
-  };
-
-  if (quickUpdateBtn) {
-    quickUpdateBtn.addEventListener('click', async () => {
-      const original = quickUpdateBtn.textContent;
-      quickUpdateBtn.disabled = true;
-      quickUpdateBtn.textContent = 'Aggiornamento…';
-      try {
-        await Promise.all([loadChart(), refreshStatus()]);
-      } catch (error) {
-        console.error('Aggiornamento manuale fallito', error);
-      } finally {
-        quickUpdateBtn.disabled = false;
-        quickUpdateBtn.textContent = original;
-      }
-    });
-  }
-
-  const mobileNav = document.querySelectorAll('.mobile-quick-link');
-  const observeTargets = Array.from(mobileNav).map((link) => document.getElementById(link.dataset.target));
-  if ('IntersectionObserver' in window && observeTargets.length) {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
-        mobileNav.forEach((link) => {
-          if (link.dataset.target === entry.target.id) {
-            link.classList.add('active');
-          } else {
-            link.classList.remove('active');
-          }
-        });
-      });
-    }, { rootMargin: '-30% 0px -60% 0px', threshold: 0.2 });
-
-    observeTargets.forEach((section) => {
-      if (section) observer.observe(section);
-    });
-  }
-
-  window.addEventListener('orientationchange', () => {
-    if (plotContainer && plotContainer.data && window.Plotly) {
-      window.Plotly.Plots.resize(plotContainer);
-    }
-  });
-
-  window.addEventListener('resize', () => {
-    if (plotContainer && plotContainer.data && window.Plotly) {
-      window.Plotly.Plots.resize(plotContainer);
-    }
-  });
-
-  schedulePlotlyLoad();
-
-  if (document.readyState === 'complete' || document.readyState === 'interactive') {
-    init();
-  } else {
-    document.addEventListener('DOMContentLoaded', init);
-  }
-</script>
+{% set STATIC_ASSET_VERSION = static_asset_version %}
+<script defer src="{{ url_for('static', filename='js/plotly.min.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
+<script defer src="{{ url_for('static', filename='js/chart.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
 {% endblock %}

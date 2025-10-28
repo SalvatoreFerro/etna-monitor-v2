@@ -1,9 +1,33 @@
 import os
+import subprocess
 from typing import Optional, Tuple
 
 from dotenv import load_dotenv
 
 load_dotenv()
+
+
+def _resolve_static_asset_version() -> str:
+    explicit = os.getenv("STATIC_ASSET_VERSION")
+    if explicit:
+        return explicit
+
+    render_commit = os.getenv("RENDER_GIT_COMMIT", "").strip()
+    if render_commit:
+        return render_commit[:8]
+
+    try:
+        git_sha = subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        if git_sha:
+            return git_sha
+    except Exception:
+        pass
+
+    return "dev"
 
 DATABASE_ENV_PRIORITY = (
     "INTERNAL_DATABASE_URL",
@@ -101,6 +125,4 @@ class Config:
     LOG_DIR = os.getenv("LOG_DIR", "logs")
     DATA_DIR = os.getenv("DATA_DIR", "/var/tmp")
     CSV_PATH = os.getenv("CSV_PATH") or os.path.join(DATA_DIR, "curva.csv")
-    STATIC_ASSET_VERSION = os.getenv("STATIC_ASSET_VERSION") or (
-        os.getenv("RENDER_GIT_COMMIT", "").strip()[:8] or "v1"
-    )
+    STATIC_ASSET_VERSION = _resolve_static_asset_version()
