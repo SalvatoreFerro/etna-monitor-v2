@@ -70,6 +70,13 @@
     padding-inline: var(--layout-gutter);
   }
 
+  @media (min-width: 1280px) {
+    .container--wide {
+      width: min(100%, var(--layout-max-wide));
+      padding-inline: clamp(1.75rem, 5vw, 4rem);
+    }
+  }
+
   main {
     flex: 1 0 auto;
     padding-top: calc(var(--nav-height) + var(--space-6));
