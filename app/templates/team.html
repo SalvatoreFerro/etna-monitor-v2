@@ -1,82 +1,57 @@
 {% extends "layout.html" %}
 {% set page_title = "Team EtnaMonitor – Chi c'è dietro il monitoraggio" %}
-{% set page_description = "Conosci il team di EtnaMonitor: missione, competenze e valori di trasparenza che guidano il monitoraggio del tremore vulcanico dell'Etna." %}
+{% set page_description = "Conosci il nuovo team EtnaMonitor e la cultura di design che guida la piattaforma." %}
 {% set page_og_title = page_title %}
 {% set page_og_description = page_description %}
 {% set canonical_url = url_for('main.team', _external=True) %}
 
 {% block content %}
-<!-- # UX_REFACTOR_2025 -->
-<section class="page-wrapper" id="page-top">
-  <nav class="page-breadcrumb" aria-label="Percorso di navigazione">
-    <a href="{{ url_for('main.index') }}">Home</a>
-    <span aria-hidden="true">/</span>
-    <span>Team</span>
-  </nav>
-
-  <header class="page-hero">
-    <span class="section-pill">Chi c'è dietro</span>
-    <h1>Un team che unisce tecnologia, dati e territorio</h1>
-    <p>
-      EtnaMonitor è guidato da Salvatore Ferro, sviluppatore full-stack con esperienza in data visualization scientifica.
-      L'obiettivo è costruire una community multidisciplinare che contribuisca a leggere e interpretare l'attività dell'Etna con
-      strumenti moderni.
-    </p>
-  </header>
-
-  <div class="page-grid">
-    <article class="page-card">
-      <h2>Founder</h2>
-      <p>
-        <strong>Salvatore Ferro</strong> coordina lo sviluppo software, l'infrastruttura cloud e la strategia AI della
-        piattaforma.
+<section class="page">
+  <div class="container stack">
+    <header class="page__header">
+      <span class="eyebrow">Chi c'è dietro</span>
+      <h1>Persone e valori che animano EtnaMonitor</h1>
+      <p class="page__lede">
+        Sviluppo full-stack, data visualization e cura del territorio si incontrano in una squadra che reimmagina il monitoraggio del vulcano.
       </p>
-      <ul>
-        <li>Esperienza in Flask, data engineering e visualizzazioni interattive.</li>
-        <li>Background in progetti data-driven per pubblica utilità.</li>
-        <li>Focus su UX accessibile e fruizione mobile.</li>
-      </ul>
-      <a class="teaser-link" href="https://www.linkedin.com/in/ferrosalvatore" target="_blank" rel="noopener">LinkedIn ufficiale</a>
-    </article>
+    </header>
 
-    <article class="page-card">
-      <h2>Missione condivisa</h2>
-      <p>
-        Ogni nuova release viene validata con esperti di protezione civile e appassionati del territorio per garantire
-        responsabilità e chiarezza comunicativa.
-      </p>
-      <ul>
-        <li>Protocollo di verifica dati prima della pubblicazione.</li>
-        <li>Trasparenza su sorgenti e trasformazioni.</li>
-        <li>Canali diretti per feedback e richieste di funzionalità.</li>
-      </ul>
-    </article>
+    <div class="page__grid">
+      <article class="page__card">
+        <h2>Salvatore Ferro</h2>
+        <p>Founder &amp; lead engineer. Cura architettura, UX e automazioni AI.</p>
+        <ul>
+          <li>Esperienza in prodotti data-driven e infrastrutture cloud.</li>
+          <li>Visione orientata alla trasparenza e alle partnership istituzionali.</li>
+          <li>Speaker in eventi tech e divulgazione scientifica.</li>
+        </ul>
+        <a class="link-arrow" href="https://www.linkedin.com/in/ferrosalvatore" target="_blank" rel="noopener">LinkedIn</a>
+      </article>
+      <article class="page__card">
+        <h2>Collaboratori</h2>
+        <p>Una rete aperta di ricercatori, maker, designer e volontari della Protezione Civile.</p>
+        <ul>
+          <li>Validazione dati con professionisti geofisici.</li>
+          <li>Design sprint con community locali.</li>
+          <li>Task force Telegram per alert tempestivi.</li>
+        </ul>
+      </article>
+      <article class="page__card">
+        <h2>Come contribuire</h2>
+        <p>Accogliamo proposte di dataset, modelli predittivi, copy e traduzioni.</p>
+        <ul>
+          <li>Programma contributor con menzioni pubbliche.</li>
+          <li>Accesso beta a funzionalità premium.</li>
+          <li>Call mensili per allineamento roadmap.</li>
+        </ul>
+        <a class="link-arrow" href="mailto:salvoferro16@gmail.com">Scrivici</a>
+      </article>
+    </div>
 
-    <article class="page-card">
-      <h2>Collabora con noi</h2>
-      <p>
-        Se sei un ricercatore, un maker o un professionista della comunicazione scientifica puoi contribuire con dataset,
-        validazioni e storytelling.
-      </p>
-      <ul>
-        <li>Programma di contributor aperto con crediti in piattaforma.</li>
-        <li>Accesso anticipato alle nuove funzionalità AI.</li>
-        <li>Workshop periodici online con la community.</li>
-      </ul>
-      <a class="teaser-link" href="mailto:salvoferro16@gmail.com">Scrivici per collaborare</a>
-    </article>
-  </div>
-
-  <div class="page-related">
-    <strong>Vuoi approfondire?</strong>
-    <a href="{{ url_for('main.progetto') }}">Visione e roadmap</a>
-    <a href="{{ url_for('main.tecnologia') }}">Tecnologia e pipeline</a>
-    <a href="{{ url_for('main.news') }}">Ultime novità</a>
-  </div>
-
-  <div class="page-cta" role="group" aria-label="Azioni principali">
-    <a class="btn btn-primary" href="{{ url_for('main.index') }}#grafico-etna">Vedi il grafico live</a>
-    <a class="btn btn-secondary glass" href="{{ url_for('main.tecnologia') }}">Esplora la tecnologia</a>
+    <div class="page__actions" role="group" aria-label="Azioni principali">
+      <a class="btn btn-primary" href="{{ url_for('main.progetto') }}">Scopri la visione</a>
+      <a class="btn btn-secondary" href="{{ url_for('main.tecnologia') }}">Leggi la tecnologia</a>
+    </div>
   </div>
 </section>
 {% endblock %}

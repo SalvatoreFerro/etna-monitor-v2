@@ -1,0 +1,76 @@
+{% set primary_links = [
+  {'label': 'Home', 'caption': 'Grafico live', 'url': url_for('main.index'), 'endpoint': 'main.index'},
+  {'label': 'Tecnologia', 'caption': 'Pipeline dati', 'url': url_for('main.tecnologia'), 'endpoint': 'main.tecnologia'},
+  {'label': 'Progetto', 'caption': 'Visione 2025', 'url': url_for('main.progetto'), 'endpoint': 'main.progetto'},
+  {'label': 'Team', 'caption': 'Persone', 'url': url_for('main.team'), 'endpoint': 'main.team'},
+  {'label': 'News', 'caption': 'Aggiornamenti', 'url': url_for('main.news'), 'endpoint': 'main.news'},
+] %}
+
+{% set secondary_links = [
+  {'label': 'Etna 3D', 'caption': 'Modello interattivo', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
+  {'label': 'Roadmap', 'caption': 'Release & milestone', 'url': url_for('main.roadmap'), 'endpoint': 'main.roadmap'},
+  {'label': 'Prezzi', 'caption': 'Piani premium', 'url': url_for('main.pricing'), 'endpoint': 'main.pricing'},
+] %}
+
+<nav class="site-nav" id="mainNav" role="navigation" aria-label="Navigazione principale">
+  <div class="container site-nav__inner">
+    <a class="site-nav__brand" href="/" aria-label="EtnaMonitor home">
+      <span class="site-nav__mark">EM</span>
+      <span>EtnaMonitor</span>
+    </a>
+
+    <button
+      class="site-nav__toggle"
+      type="button"
+      aria-label="Apri il menu di navigazione"
+      aria-controls="navbar-menu"
+      aria-expanded="false"
+      data-nav-toggle
+    >
+      <span class="sr-only">Apri il menu</span>
+      <span class="site-nav__toggle-bars" aria-hidden="true"></span>
+    </button>
+
+    <div class="site-nav__menu" id="navbar-menu" data-nav-menu hidden aria-hidden="true">
+      <div class="site-nav__menu-inner">
+        <ul class="site-nav__links">
+          {% for link in primary_links %}
+            <li>
+              <a class="site-nav__link {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">
+                <span>{{ link.label }}</span>
+                <small>{{ link.caption }}</small>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+
+        <ul class="site-nav__links">
+          {% for link in secondary_links %}
+            <li>
+              <a class="site-nav__link {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">
+                <span>{{ link.label }}</span>
+                <small>{{ link.caption }}</small>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+
+        <div class="site-nav__actions">
+          {% if session.user_id %}
+            {% set display_name = (current_user.name if current_user else None) or (current_user.email if current_user else None) or 'Utente' %}
+            <a class="btn btn-secondary" href="{{ url_for('dashboard.dashboard_home') }}">Dashboard</a>
+            <a class="btn btn-primary" href="{{ url_for('auth.logout') }}">Esci</a>
+            <span class="muted" aria-hidden="true">{{ display_name }}</span>
+          {% else %}
+            <form class="site-nav__actions" action="{{ url_for('auth.auth_google') }}" method="post">
+              <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}" />
+              <button type="submit" class="btn btn-secondary">Accedi con Google</button>
+            </form>
+            <a class="btn btn-primary" href="{{ url_for('main.pricing') }}">Piani Premium</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+<div class="site-nav__backdrop" data-nav-backdrop hidden aria-hidden="true"></div>

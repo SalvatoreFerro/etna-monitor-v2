@@ -1,139 +1,100 @@
 {% extends "layout.html" %}
 
-{% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/pricing.css') }}">
-{% endblock %}
-
 {% block content %}
-<main id="main-content" class="pricing-page">
-  <section class="pricing-hero hero-premium animate-premium-fade" role="banner" aria-label="Piani EtnaMonitor">
-    <div class="hero-background" aria-hidden="true">
-      <span class="orb orb-one"></span>
-      <span class="orb orb-two"></span>
-      <span class="grid-overlay"></span>
+<section class="page">
+  <div class="container stack">
+    <header class="page__header">
+      <span class="eyebrow">Piani</span>
+      <h1>Due esperienze, una piattaforma</h1>
+      <p class="page__lede">
+        Scegli se restare sul piano gratuito per monitorare il vulcano oppure sostenere l'infrastruttura con Premium Lifetime.
+      </p>
+    </header>
+
+    <div class="pricing-grid" id="plans">
+      <article class="pricing-card">
+        <span class="pill">Free</span>
+        <h2>Accesso gratuito</h2>
+        <p class="muted">Perfetto per esplorare il grafico e ricevere il primo alert di prova.</p>
+        <div class="pricing-card__price">€0<span class="muted" style="font-size:0.5em;">/mese</span></div>
+        <ul>
+          <li>Grafico realtime e storico 7 giorni</li>
+          <li>Primo alert di prova via Telegram</li>
+          <li>Dashboard responsive e note tecniche</li>
+        </ul>
+        <div class="page__actions">
+          {% if not session.user_id %}
+            <a href="{{ url_for('auth.login') }}" class="btn btn-secondary">Accedi con Google</a>
+          {% elif not current_user.has_premium_access %}
+            <button class="btn btn-secondary" type="button" disabled aria-disabled="true">Piano attuale</button>
+          {% else %}
+            <button class="btn btn-secondary" type="button" disabled aria-disabled="true">Disponibile downgrade</button>
+          {% endif %}
+        </div>
+      </article>
+
+      <article class="pricing-card pricing-card--highlight" id="lifetime">
+        <span class="pill">Premium</span>
+        <h2>Lifetime Supporter</h2>
+        <p class="muted">Una donazione unica per accesso illimitato a funzionalità avanzate e supporto diretto.</p>
+        <div class="pricing-card__price">€9,99<span class="muted" style="font-size:0.5em;"> una tantum</span></div>
+        <ul>
+          <li>Alert illimitati via Telegram ed email</li>
+          <li>Storico completo, esportazioni e API</li>
+          <li>Accesso anticipato a nuove feature</li>
+          <li>Supporto prioritario dal team</li>
+        </ul>
+        <div class="page__actions">
+          {% if not session.user_id %}
+            <a href="{{ url_for('auth.login', next=url_for('billing.donate')) }}" class="btn btn-primary">Accedi e richiedi</a>
+          {% else %}
+            <a href="{{ url_for('billing.donate') }}" class="btn btn-primary">Richiedi attivazione</a>
+          {% endif %}
+        </div>
+      </article>
+
+      <article class="pricing-card">
+        <span class="pill">Perché supportare</span>
+        <h2>Manteniamo il servizio libero</h2>
+        <p class="muted">Le donazioni finanziano server, storage storico, sviluppo AI e nuovi canali di divulgazione.</p>
+        <ul>
+          <li>Uptime garantito per il grafico live</li>
+          <li>Espansione dataset e ricerca applicata</li>
+          <li>Reportistica aperta per la community</li>
+        </ul>
+        <div class="page__actions">
+          <a href="{{ url_for('billing.donate') }}" class="btn btn-secondary">Scopri come donare</a>
+        </div>
+      </article>
     </div>
 
-    <div class="pricing-hero-inner">
-      <div class="hero-copy">
-        <div class="hero-brand" role="presentation">
-          <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="Logo EtnaMonitor" class="hero-logo">
-          <div class="hero-brand-text">
-            <span class="brand-name">EtnaMonitor</span>
-            <span class="brand-tagline">Volcano Intelligence Platform</span>
-          </div>
-        </div>
-
-        <h1 class="hero-title">Due piani semplici, zero confusione</h1>
-        <p class="hero-subtitle">
-          Scegli se restare sul piano gratuito con il primo alert di prova oppure supportare il progetto con la versione Premium Lifetime.
-        </p>
-
-        <div class="hero-actions">
-          {% if not session.user_id %}
-            <a href="{{ url_for('auth.login') }}" class="btn btn-premium" aria-label="Accedi con Google per attivare il piano gratuito">Accedi con Google</a>
-          {% elif current_user.has_premium_access %}
-            <a href="{{ url_for('billing.customer_portal') }}" class="btn btn-premium" aria-label="Gestisci il tuo abbonamento">Gestisci abbonamento</a>
-          {% else %}
-            <a href="#plans" class="btn btn-premium" aria-label="Scopri i piani disponibili">Guarda i piani</a>
-          {% endif %}
-          <a href="#lifetime" class="btn btn-secondary glass btn-lifetime" aria-label="Vai alla sezione Premium Lifetime">Premium Lifetime</a>
-        </div>
+    <div class="card card--outlined">
+      <h2>Come funziona Premium Lifetime</h2>
+      <ol class="timeline">
+        <li class="timeline__item">Effettua una donazione di <strong>€9,99</strong> tramite PayPal o bonifico.</li>
+        <li class="timeline__item">Indica l'email EtnaMonitor nel messaggio della donazione.</li>
+        <li class="timeline__item">Compila il form "Ho già donato" oppure scrivici a <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a>.</li>
+        <li class="timeline__item">Attiveremo il piano entro 24 ore lavorative.</li>
+      </ol>
+      <div class="page__actions" role="group" aria-label="Donazione Premium Lifetime">
+        <form action="https://www.paypal.com/donate" method="post" target="_top">
+          <input type="hidden" name="hosted_button_id" value="2T6DKB7U2ZSK8" />
+          <input type="image" src="https://www.paypalobjects.com/it_IT/IT/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Fai una donazione con il pulsante PayPal" />
+          <img alt="" border="0" src="https://www.paypal.com/it_IT/i/scr/pixel.gif" width="1" height="1" />
+        </form>
+        <a href="{{ url_for('billing.donate') }}" class="btn btn-secondary">Ho già donato</a>
       </div>
     </div>
-  </section>
 
-  <section id="plans" class="plans-section animate-premium-slide" aria-labelledby="plans-title">
-    <div class="section-header">
-      <h2 id="plans-title">Scegli l'esperienza che fa per te</h2>
-      <p>Abbiamo ridotto tutto a due opzioni chiare: resta sul piano Free per iniziare oppure passa a Premium Lifetime con una donazione unica.</p>
+    <div class="cta-panel">
+      <div>
+        <h2>Serve assistenza?</h2>
+        <p>Scrivici a <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a> oppure contatta @EtnaMonitorBot su Telegram.</p>
+      </div>
+      <div class="cta-panel__actions">
+        <a class="btn btn-secondary" href="mailto:salvoferro16@gmail.com">Contatta il team</a>
+      </div>
     </div>
-
-    <div class="plan-grid">
-      <article class="plan-card plan-card-free" aria-label="Piano Gratuito">
-        <header class="plan-header">
-          <div class="plan-labels">
-            <span class="plan-name">Gratuito</span>
-            <span class="plan-tag">Per conoscere EtnaMonitor</span>
-          </div>
-          <div class="plan-price">
-            <span class="currency">€</span><span class="amount">0</span>
-            <span class="period">/mese</span>
-          </div>
-        </header>
-
-        <ul class="plan-features" role="list">
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Primo alert gratuito per testare il sistema</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Ultimi 7 giorni di storico tremore</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-check"></i></span> Dashboard e collegamento Telegram inclusi</li>
-          <li><span class="feature-icon muted" aria-hidden="true"><i class="fa-solid fa-minus"></i></span> Alert successivi bloccati finché resti Free</li>
-        </ul>
-
-        <footer class="plan-footer">
-          {% if not session.user_id %}
-            <a href="{{ url_for('auth.login') }}" class="btn btn-secondary glass" aria-label="Accedi con Google per attivare il piano gratuito">Accedi con Google</a>
-          {% elif not current_user.has_premium_access %}
-            <button class="btn btn-secondary glass" disabled aria-disabled="true">Piano attuale</button>
-          {% else %}
-            <button class="btn btn-secondary glass" disabled aria-disabled="true">Disponibile downgrade</button>
-          {% endif %}
-        </footer>
-      </article>
-
-      <article id="lifetime" class="plan-card plan-card-lifetime" aria-label="Piano Premium Lifetime">
-        <header class="plan-header">
-          <div class="plan-labels">
-            <span class="plan-badge">Supporter</span>
-            <span class="plan-name">Premium Lifetime</span>
-            <span class="plan-tag">Donazione unica, accesso per sempre</span>
-          </div>
-          <div class="plan-price">
-            <span class="currency">€</span><span class="amount">9.99</span>
-            <span class="period">una tantum</span>
-          </div>
-        </header>
-
-        <ul class="plan-features" role="list">
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-infinity"></i></span> Premium illimitato senza abbonamento mensile</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-bolt"></i></span> Alert illimitati via Email e Telegram</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-database"></i></span> Storico completo, esportazioni e API</li>
-          <li><span class="feature-icon success" aria-hidden="true"><i class="fa-solid fa-hand-holding-heart"></i></span> Supporto diretto dal team EtnaMonitor</li>
-        </ul>
-
-        <footer class="plan-footer">
-          {% if not session.user_id %}
-            <a href="{{ url_for('auth.login', next=url_for('billing.donate')) }}" class="btn btn-premium" aria-label="Accedi con Google per richiedere il Premium Lifetime">Accedi e richiedi</a>
-          {% else %}
-            <a href="{{ url_for('billing.donate') }}" class="btn btn-premium" aria-label="Richiedi l'attivazione Premium Lifetime">Richiedi attivazione</a>
-          {% endif %}
-        </footer>
-      </article>
-    </div>
-  </section>
-  <section class="lifetime-steps glass animate-premium-fade" aria-labelledby="donation-title">
-    <div class="lifetime-steps__content">
-      <h2 id="donation-title">Come richiedere Premium Lifetime</h2>
-      <ol class="donation-steps">
-        <li>Effettua una donazione di <strong>€9,99</strong> con il pulsante PayPal.</li>
-        <li>Inserisci l'email con cui accedi a EtnaMonitor nel messaggio della donazione.</li>
-        <li>Completa il form <em>Ho donato</em> oppure scrivici a <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a>.</li>
-        <li>Attiviamo il tuo Premium entro 24 ore lavorative.</li>
-      </ol>
-    </div>
-    <div class="lifetime-steps__cta" role="group" aria-label="Donazione Premium Lifetime">
-      <form action="https://www.paypal.com/donate" method="post" target="_top" class="paypal-form">
-        <input type="hidden" name="hosted_button_id" value="2T6DKB7U2ZSK8" />
-        <input type="image" src="https://www.paypalobjects.com/it_IT/IT/i/btn/btn_donateCC_LG.gif" border="0" name="submit" title="PayPal - The safer, easier way to pay online!" alt="Fai una donazione con il pulsante PayPal" />
-        <img alt="" border="0" src="https://www.paypal.com/it_IT/i/scr/pixel.gif" width="1" height="1" />
-      </form>
-      <a href="{{ url_for('billing.donate') }}" class="btn btn-secondary glass">Ho già donato</a>
-    </div>
-  </section>
-
-  <section class="support-card glass animate-premium-fade" aria-label="Supporto EtnaMonitor">
-    <div>
-      <h2>Hai bisogno di aiuto?</h2>
-      <p>Scrivici a <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a> oppure contatta @EtnaMonitorBot su Telegram. Siamo qui per accompagnarti nella scelta più adatta.</p>
-    </div>
-  </section>
-</main>
+  </div>
+</section>
 {% endblock %}

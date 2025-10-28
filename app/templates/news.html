@@ -1,62 +1,43 @@
 {% extends "layout.html" %}
 {% set page_title = "News EtnaMonitor – Aggiornamenti su tremore e piattaforma" %}
-{% set page_description = "Rimani aggiornato sulle news di EtnaMonitor: articoli, analisi del tremore vulcanico dell'Etna e aggiornamenti sulla piattaforma." %}
+{% set page_description = "Editoriali, analisi e comunicazioni ufficiali di EtnaMonitor." %}
 {% set page_og_title = page_title %}
 {% set page_og_description = page_description %}
 {% set canonical_url = url_for('main.news', _external=True) %}
 
 {% block content %}
-<!-- # UX_REFACTOR_2025 -->
-<section class="page-wrapper" id="page-top">
-  <nav class="page-breadcrumb" aria-label="Percorso di navigazione">
-    <a href="{{ url_for('main.index') }}">Home</a>
-    <span aria-hidden="true">/</span>
-    <span>News</span>
-  </nav>
-
-  <header class="page-hero">
-    <span class="section-pill">Newsroom</span>
-    <h1>Analisi, comunicati e aggiornamenti dal vulcano</h1>
-    <p>
-      In questa sezione troverai prossimamente articoli editoriali, aggiornamenti sullo stato del tremore e insight dedicati alla
-      community EtnaMonitor. Il layout è già pronto per l'integrazione con un futuro CMS.
-    </p>
-  </header>
-
-  <div class="news-list" role="list">
-    <article class="news-item" role="listitem">
-      <h3>Integrazione CMS in arrivo</h3>
-      <p>
-        Stiamo finalizzando l'API per collegare un CMS headless: le news saranno pubblicate con categorie dedicate (tremore,
-        tecnologia, community) e notifiche automatiche.
+<section class="page">
+  <div class="container stack">
+    <header class="page__header">
+      <span class="eyebrow">Newsroom</span>
+      <h1>Editoriali, analisi e comunicati EtnaMonitor</h1>
+      <p class="page__lede">
+        Stiamo predisponendo l'integrazione con un CMS headless. Nel frattempo trovi il palinsesto delle rubriche che andranno live nei prossimi rilasci.
       </p>
-    </article>
-    <article class="news-item" role="listitem">
-      <h3>Report settimanale del tremore</h3>
-      <p>
-        Ogni settimana verrà pubblicata una sintesi delle variazioni più rilevanti rilevate dai modelli AI, con grafici
-        esportabili e link a dataset aperti.
-      </p>
-    </article>
-    <article class="news-item" role="listitem">
-      <h3>Spazio alla community</h3>
-      <p>
-        Contributor verificati potranno proporre articoli, analisi o racconti dal territorio. Sarà attivata una procedura di
-        revisione per garantire qualità e accuratezza.
-      </p>
-    </article>
-  </div>
+    </header>
 
-  <div class="page-related">
-    <strong>Continua a esplorare</strong>
-    <a href="{{ url_for('main.index') }}#grafico-etna">Grafico tremore live</a>
-    <a href="{{ url_for('main.tecnologia') }}">Tecnologia della piattaforma</a>
-    <a href="{{ url_for('main.progetto') }}">Visione e roadmap</a>
-  </div>
+    <div class="grid grid--columns-3">
+      <article class="card">
+        <h3>Integrazione CMS</h3>
+        <p>Publishing workflow con categorie Tremore, Tecnologia, Community e scheduling automatizzato.</p>
+        <p class="muted">Release prevista: Q1 2025</p>
+      </article>
+      <article class="card">
+        <h3>Report settimanali</h3>
+        <p>Insight dei modelli AI con grafici esportabili e riferimenti al dataset storico.</p>
+        <p class="muted">Release prevista: Q2 2025</p>
+      </article>
+      <article class="card">
+        <h3>Voce alla community</h3>
+        <p>Spazio editoriale per partner e contributor verificati, con revisione scientifica.</p>
+        <p class="muted">Release prevista: Q3 2025</p>
+      </article>
+    </div>
 
-  <div class="page-cta" role="group" aria-label="Azioni principali">
-    <a class="btn btn-primary" href="{{ url_for('main.index') }}#grafico-etna">Torna alla home</a>
-    <a class="btn btn-secondary glass" href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">Seguici su Telegram</a>
+    <div class="page__actions" role="group" aria-label="Azioni principali">
+      <a class="btn btn-primary" href="{{ url_for('main.index') }}#grafico-etna">Vai al grafico live</a>
+      <a class="btn btn-secondary" href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">Unisciti su Telegram</a>
+    </div>
   </div>
 </section>
 {% endblock %}

@@ -1,80 +1,53 @@
 {% extends "layout.html" %}
-
-{% block title %}Informativa sulla privacy - EtnaMonitor{% endblock %}
+{% set page_title = "Informativa sulla privacy - EtnaMonitor" %}
+{% set page_description = "Informativa privacy di EtnaMonitor." %}
+{% set page_og_title = page_title %}
+{% set page_og_description = page_description %}
+{% set canonical_url = url_for('main.privacy', _external=True) %}
 
 {% block content %}
-<section class="page-wrapper" id="page-top">
-  <nav class="page-breadcrumb" aria-label="Percorso di navigazione">
-    <a href="{{ url_for('main.index') }}">Home</a>
-    <span aria-hidden="true">/</span>
-    <span>Privacy</span>
-  </nav>
+<section class="page">
+  <div class="container stack">
+    <header class="page__header">
+      <span class="eyebrow">Privacy</span>
+      <h1>Informativa sulla privacy</h1>
+      <p class="page__lede">Come gestiamo i dati raccolti attraverso EtnaMonitor, Google OAuth2 e il bot Telegram.</p>
+    </header>
 
-  <header class="page-hero" aria-labelledby="privacy-title">
-    <span class="section-pill">Privacy</span>
-    <h1 id="privacy-title">Informativa sulla privacy</h1>
-    <p>
-      Questa informativa descrive come EtnaMonitor tratta i tuoi dati personali, con particolare attenzione alle
-      informazioni ricevute tramite Google OAuth2 durante l'accesso alla piattaforma.
-    </p>
-  </header>
+    <div class="card">
+      <h2>Dati raccolti</h2>
+      <p>Accedendo con Google riceviamo nome, email e immagine del profilo. Se colleghi il bot Telegram memorizziamo chat ID, piano, stato alert gratuito e versione dell'informativa accettata.</p>
+    </div>
 
-  <div class="page-stack">
-    <section class="page-section" aria-labelledby="privacy-collection">
-      <h2 id="privacy-collection">Dati che raccogliamo</h2>
-      <p>
-        Quando accedi con Google, Google OAuth2 ci fornisce il tuo nome, indirizzo email e immagine del profilo.
-        Non richiediamo né riceviamo altre informazioni del tuo account Google e non abbiamo accesso alle tue password.
-      </p>
-      <p>
-        Se colleghi il bot Telegram memorizziamo il tuo <code>telegram_chat_id</code>, il tipo di piano (Free o Premium),
-        il flag <code>free_alert_consumed</code>, la data del consenso (<code>consent_ts</code>) e la versione
-        dell'informativa privacy accettata. Questi dati servono esclusivamente a erogare l'unico alert gratuito previsto
-        dal piano Free e le notifiche illimitate del piano Premium.
-      </p>
-    </section>
-
-    <section class="page-section" aria-labelledby="privacy-usage">
-      <h2 id="privacy-usage">Come utilizziamo i dati</h2>
+    <div class="card">
+      <h2>Utilizzo</h2>
       <ul>
-        <li>Verificare la tua identità e consentire l'accesso al tuo account EtnaMonitor.</li>
-        <li>Personalizzare l'esperienza dell'applicazione mostrando il tuo nome e l'immagine del profilo.</li>
-        <li>Comunicare con te in merito ai servizi EtnaMonitor, inclusi aggiornamenti o notifiche importanti.</li>
-        <li>Inviare notifiche divulgative via Telegram rispettando le tue preferenze e il piano selezionato.</li>
+        <li>Verificare l'identità e garantire l'accesso al tuo account.</li>
+        <li>Mostrare dati personalizzati nella dashboard.</li>
+        <li>Inviare notifiche e comunicazioni legate al servizio.</li>
+        <li>Gestire gli alert Telegram in base al piano scelto.</li>
       </ul>
-    </section>
+    </div>
 
-    <section class="page-section" aria-labelledby="privacy-telegram">
-      <h2 id="privacy-telegram">Bot Telegram e trasparenza</h2>
-      <p>
-        Le notifiche Telegram sono fornite a scopo divulgativo: non sostituiscono le comunicazioni ufficiali dell'INGV e
-        non vengono utilizzate per finalità commerciali. Puoi scollegare il bot in qualsiasi momento dalla dashboard o
-        inviando il comando <code>/status</code> per verificare le informazioni memorizzate.
-      </p>
-    </section>
+    <div class="card">
+      <h2>Trasparenza Telegram</h2>
+      <p>Le notifiche sono divulgative e non sostituiscono comunicazioni ufficiali. Puoi scollegare il bot in qualunque momento dalla dashboard o con il comando <code>/status</code>.</p>
+    </div>
 
-    <section class="page-section" aria-labelledby="privacy-retention">
-      <h2 id="privacy-retention">Conservazione e condivisione</h2>
-      <p>
-        Conserviamo i dati ottenuti tramite Google OAuth2 per tutta la durata del tuo account. Non vendiamo né
-        condividiamo i tuoi dati con terze parti, ad eccezione dei fornitori strettamente necessari per erogare il
-        servizio, tutti vincolati da accordi di riservatezza e conformità al GDPR.
-      </p>
-    </section>
+    <div class="card">
+      <h2>Conservazione e condivisione</h2>
+      <p>Conserviamo i dati per il tempo necessario a mantenere l'account. Non vendiamo informazioni a terzi; utilizziamo solo fornitori conformi al GDPR.</p>
+    </div>
 
-    <section class="page-section" aria-labelledby="privacy-rights">
-      <h2 id="privacy-rights">I tuoi diritti</h2>
-      <p>
-        Puoi richiedere la cancellazione dei tuoi dati o revocare l'accesso a Google OAuth2 in qualsiasi momento
-        attraverso le impostazioni del tuo account Google. Per ulteriori domande, contattaci all'indirizzo
-        <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a>.
-      </p>
-    </section>
-  </div>
+    <div class="card">
+      <h2>Diritti</h2>
+      <p>Puoi chiedere la cancellazione dei dati o revocare l'accesso OAuth2 tramite Google. Per supporto scrivi a <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a>.</p>
+    </div>
 
-  <div class="page-cta" role="group" aria-label="Azioni privacy">
-    <a class="btn btn-primary" href="mailto:salvoferro16@gmail.com">Richiedi assistenza</a>
-    <a class="btn btn-secondary glass" href="{{ url_for('main.index') }}#grafico-etna">Torna alla home</a>
+    <div class="page__actions" role="group" aria-label="Azioni privacy">
+      <a class="btn btn-primary" href="mailto:salvoferro16@gmail.com">Richiedi assistenza</a>
+      <a class="btn btn-secondary" href="{{ url_for('main.index') }}#grafico-etna">Torna alla home</a>
+    </div>
   </div>
 </section>
 {% endblock %}
