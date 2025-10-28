@@ -576,11 +576,27 @@
       gap: var(--space-4);
     }
 
+    .site-nav__links--secondary {
+      margin-left: var(--space-4);
+      padding-left: var(--space-4);
+      border-left: 1px solid rgba(148, 163, 184, 0.35);
+    }
+
     .site-nav__link {
       padding: 0.35rem 0.75rem;
       border-radius: var(--radius-pill);
       border: 1px solid transparent;
       font-size: 0.9rem;
+    }
+
+    .site-nav__link--secondary {
+      color: var(--color-text-muted);
+    }
+
+    .site-nav__link--secondary:hover,
+    .site-nav__link--secondary:focus-visible,
+    .site-nav__link--secondary.is-active {
+      color: var(--color-heading);
     }
 
     .site-nav__link small {
