@@ -8,13 +8,30 @@
       <figure class="home-live-visual" role="img" aria-labelledby="grafico-title" aria-describedby="grafico-context">
         <div class="home-live-status" role="status" aria-live="polite">
           <span class="status-indicator" id="live-status-indicator" aria-hidden="true"></span>
-          <span class="status-text" id="live-status-text">Verifica connessione…</span>
+          {% if csv_snapshot.has_data %}
+            <span class="status-text" id="live-status-text">Verifica connessione…</span>
+          {% else %}
+            <span class="status-text" id="live-status-text">Dati in preparazione…</span>
+          {% endif %}
         </div>
-        <div id="home-preview-loading" class="chart-loading" aria-live="polite">
-          <div class="skeleton skeleton-chart"></div>
-          <p>Caricamento dati INGV…</p>
-        </div>
-        <div id="home-preview-plot" class="home-preview-plot" aria-hidden="true"></div>
+        {% if csv_snapshot.has_data %}
+          <div id="home-preview-loading" class="chart-loading" aria-live="polite">
+            <div class="skeleton skeleton-chart"></div>
+            <p>Caricamento dati INGV…</p>
+          </div>
+          <div id="home-preview-plot" class="home-preview-plot" aria-hidden="true"></div>
+        {% else %}
+          <div class="home-placeholder" aria-live="polite">
+            <div class="home-placeholder-card glass">
+              <h2>Stiamo acquisendo i dati INGV</h2>
+              <p>
+                Il file <code>{{ csv_snapshot.path }}</code> è vuoto al momento (motivo: {{ csv_snapshot.placeholder_reason }}).
+                Aggiorna tra pochi minuti: il grafico si popolerà automaticamente non appena saranno disponibili nuove
+                misurazioni.
+              </p>
+            </div>
+          </div>
+        {% endif %}
       </figure>
 
       <header class="home-live-header">
@@ -24,6 +41,9 @@
           {% if latest_value is not none and latest_timestamp_display %}
             Ultimo campione INGV del {{ latest_timestamp_display }}: <strong>{{ '%.2f' % latest_value }} mV</strong> con
             copertura delle ultime {{ data_points_count }} misurazioni.
+          {% elif not csv_snapshot.has_data %}
+            Visualizzazione temporaneamente offline: stiamo inizializzando la serie storica con gli ultimi dati INGV. Torna
+            tra qualche minuto per vedere il grafico interattivo.
           {% else %}
             Visualizzazione interattiva del tremore vulcanico dell'Etna aggiornata ogni cinque minuti con dati ufficiali INGV.
           {% endif %}
@@ -40,11 +60,11 @@
       <dl class="home-chart-info">
         <div class="info-block">
           <dt>Ultimo aggiornamento</dt>
-          <dd id="live-last-update">{% if latest_timestamp_display %}{{ latest_timestamp_display }}{% else %}--{% endif %}</dd>
+          <dd id="live-last-update">{% if latest_timestamp_display %}{{ latest_timestamp_display }}{% elif not csv_snapshot.has_data %}In attesa dati{% else %}--{% endif %}</dd>
         </div>
         <div class="info-block">
           <dt>Campioni elaborati</dt>
-          <dd id="live-data-points">{% if data_points_count %}{{ data_points_count }}{% else %}--{% endif %}</dd>
+          <dd id="live-data-points">{% if data_points_count %}{{ data_points_count }}{% elif not csv_snapshot.has_data %}0{% else %}--{% endif %}</dd>
         </div>
         <div class="info-block">
           <dt>Attività</dt>

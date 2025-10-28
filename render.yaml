@@ -1,0 +1,45 @@
+services:
+  - type: web
+    name: etna-monitor
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python startup.py
+    envVars:
+      - key: DATA_DIR
+        value: /data
+      - key: LOG_DIR
+        value: /data/log
+      - key: CSV_PATH
+        value: /data/curva.csv
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: TELEGRAM_BOT_MODE
+        value: polling
+  - type: worker
+    name: etna-monitor-worker
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.worker
+    envVars:
+      - key: DATA_DIR
+        value: /data
+      - key: LOG_DIR
+        value: /data/log
+      - key: CSV_PATH
+        value: /data/curva.csv
+      - key: SECRET_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: TELEGRAM_BOT_MODE
+        value: polling
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false

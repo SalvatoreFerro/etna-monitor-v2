@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from app.utils.logger import get_logger
@@ -41,4 +43,23 @@ class SchedulerService:
         """Run alert checking within Flask app context"""
         from flask import current_app
         with current_app.app_context():
-            self.telegram_service.check_and_send_alerts()
+            started_at = datetime.now(timezone.utc)
+            logger.info(
+                "[WORKER] scheduler.job.start",
+                extra={"job_id": "telegram_alerts", "started_at": started_at.isoformat()},
+            )
+            try:
+                self.telegram_service.check_and_send_alerts()
+            except Exception:  # pragma: no cover - defensive guard
+                logger.exception("[WORKER] scheduler.job.error", extra={"job_id": "telegram_alerts"})
+            else:
+                finished_at = datetime.now(timezone.utc)
+                duration = (finished_at - started_at).total_seconds()
+                logger.info(
+                    "[WORKER] scheduler.job.stop",
+                    extra={
+                        "job_id": "telegram_alerts",
+                        "finished_at": finished_at.isoformat(),
+                        "duration_s": duration,
+                    },
+                )

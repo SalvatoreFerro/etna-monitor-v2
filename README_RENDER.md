@@ -25,6 +25,9 @@ CSV_PATH=/data/curva.csv
 FLASK_ENV=production
 SECRET_KEY=your-production-secret-key
 DATABASE_URL=sqlite:////data/etna_monitor.db
+STATIC_ASSET_VERSION=$(git rev-parse --short HEAD)
+WORKER_HEARTBEAT_INTERVAL=30
+WORKER_ADVISORY_LOCK_ID=862421
 
 # Stripe Billing (Production Keys)
 STRIPE_PUBLIC_KEY=pk_live_...
@@ -48,16 +51,21 @@ STRIPE_PRICE_PREMIUM=price_...
 
 ## Start Command
 
-Set the Start Command to:
+Set the Start Command for the **web service** to:
 ```
 python startup.py
 ```
 
-The `startup.py` script configura i log, crea le directory richieste e invoca `flask db upgrade` prima di avviare Gunicorn.
+Add a second **worker service** with the Start Command:
+```
+python -m app.worker
+```
+
+Il comando `startup.py` configura i log, crea le directory richieste ed esegue `alembic upgrade head` prima di avviare Gunicorn. Il worker (`python -m app.worker`) si occupa di Telegram bot e scheduler APScheduler applicando un advisory lock Postgres per evitare istanze duplicate.
 
 ## Health Check Configuration
 
-Set the health check path in Render to: `/healthz`
+Set the health check path in Render to: `/healthz`. For the worker service you can use `/internal/worker/health` (solo per chiamate interne) per verificare l'heartbeat salvato in `DATA_DIR/worker-heartbeat.json`.
 
 ## Stripe Webhook Configuration
 

@@ -102,6 +102,43 @@ def test_google_callback_creates_user(monkeypatch, client, app):
         assert user.email_alerts is False
 
 
+def test_google_callback_uses_aligned_schema(monkeypatch, client, app):
+    token_response = DummyResponse(200, {"access_token": "access"})
+    userinfo_response = DummyResponse(
+        200,
+        {
+            "sub": "aligned-google-user",
+            "email": "aligned@example.com",
+            "name": "Aligned User",
+        },
+    )
+
+    responses = iter([token_response, userinfo_response])
+
+    def fake_google_request(*args, **kwargs):
+        return next(responses)
+
+    from app.routes import auth as auth_routes
+
+    monkeypatch.setattr("app.routes.auth._google_oauth_request", fake_google_request)
+
+    def fail_fallback(**kwargs):  # pragma: no cover - defensive helper
+        raise AssertionError("Fallback insert should not be used with aligned schema")
+
+    monkeypatch.setattr(auth_routes, "_create_user_with_existing_columns", fail_fallback)
+
+    with client.session_transaction() as session:
+        session["oauth_state"] = "state-token"
+
+    response = client.get("/auth/callback?code=auth-code&state=state-token")
+    assert response.status_code == 302
+
+    with app.app_context():
+        user = User.query.filter_by(email="aligned@example.com").one()
+        assert user.theme_preference == "system"
+        assert user.subscription_status == "free"
+
+
 def test_google_callback_handles_missing_google_id(monkeypatch, client, app):
     from sqlalchemy.exc import SQLAlchemyError
 

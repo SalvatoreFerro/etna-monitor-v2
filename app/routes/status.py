@@ -1,7 +1,8 @@
-from flask import Blueprint, jsonify
 import os
-import pandas as pd
 from pathlib import Path
+
+from flask import Blueprint, current_app, jsonify
+import pandas as pd
 import time
 import hashlib
 
@@ -11,9 +12,9 @@ status_bp = Blueprint("status", __name__)
 def get_status():
     """Extended status endpoint with comprehensive system information"""
     try:
-        csv_path = os.getenv("CSV_PATH", "/var/tmp/curva.csv")
+        csv_path = current_app.config.get("CURVA_CSV_PATH") or current_app.config.get("CSV_PATH") or "/var/tmp/curva.csv"
         threshold = float(os.getenv("DEFAULT_THRESHOLD", "2.0"))
-        
+
         status_data = {
             "ok": True,
             "timestamp": time.time(),
@@ -24,7 +25,7 @@ def get_status():
             "render_region": os.getenv("RENDER_REGION", "unknown")
         }
         
-        if os.path.exists(csv_path):
+        if Path(csv_path).exists():
             try:
                 df = pd.read_csv(csv_path, parse_dates=["timestamp"])
                 if not df.empty:

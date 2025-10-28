@@ -37,10 +37,11 @@ from .routes.auth import bp as auth_bp, legacy_bp as legacy_auth_bp
 from .routes.api import api_bp
 from .routes.status import status_bp
 from .routes.billing import bp as billing_bp
+from .routes.internal import internal_bp
 from backend.routes.admin_stats import admin_stats_bp
+from .bootstrap import ensure_curva_csv
 from .models import db
 from .utils.csrf import generate_csrf_token
-from .services.scheduler_service import SchedulerService
 from .utils.logger import configure_logging
 from config import Config, get_database_uri_from_env
 from .extensions import cache
@@ -296,7 +297,14 @@ def create_app(config_overrides: dict | None = None):
     app.config.from_object(Config)
     if config_overrides:
         app.config.update(config_overrides)
+    app.config.setdefault("DATA_DIR", Config.DATA_DIR)
+    app.config.setdefault("CSV_PATH", Config.CSV_PATH)
+    app.config.setdefault("STATIC_ASSET_VERSION", Config.STATIC_ASSET_VERSION)
+    app.config.setdefault(
+        "WORKER_HEARTBEAT_INTERVAL", int(os.getenv("WORKER_HEARTBEAT_INTERVAL", "30"))
+    )
     app.jinja_env.globals["csrf_token"] = generate_csrf_token
+    app.jinja_env.globals["static_asset_version"] = app.config["STATIC_ASSET_VERSION"]
 
     configure_logging(app.config.get("LOG_DIR"))
     app.logger.info(
@@ -310,13 +318,17 @@ def create_app(config_overrides: dict | None = None):
     if secret_from_env:
         app.config["SECRET_KEY"] = secret_from_env
     secret_key = app.config.get("SECRET_KEY")
-    if not secret_key or secret_key in {"dev", "change-me"}:
+    if app.config.get("TESTING"):
+        if not secret_key or secret_key in {"dev", "change-me"}:
+            app.config["SECRET_KEY"] = "test-secret-key"
+    elif not secret_key or secret_key in {"dev", "change-me"}:
         raise RuntimeError(
             "SECRET_KEY environment variable must be set to a secure, non-default value."
         )
 
     app.config.setdefault("SESSION_COOKIE_SECURE", True)
     app.config.setdefault("SESSION_COOKIE_SAMESITE", "Lax")
+    app.config.setdefault("COMPRESS_ALGORITHM", ["br", "gzip"])
 
     app.config.setdefault("LAST_CSV_READ_AT", None)
     app.config.setdefault("LAST_CSV_LAST_TS", None)
@@ -499,6 +511,8 @@ def create_app(config_overrides: dict | None = None):
 
     db.init_app(app)
     migrate.init_app(app, db)
+    curva_path = ensure_curva_csv(app)
+    app.config["CURVA_CSV_PATH"] = str(curva_path)
 
     # Auto-migrazione opzionale (DISABILITATA di default). Richiede app context.
     if _migrate_available and os.getenv("AUTO_MIGRATE", "0").lower() in {"1", "true", "yes"}:
@@ -547,12 +561,9 @@ def create_app(config_overrides: dict | None = None):
             "[BOOT] Scheduler disabled via DISABLE_SCHEDULER environment variable"
         )
     else:
-        try:
-            scheduler = SchedulerService()
-            scheduler.init_app(app)
-            app.logger.info("[BOOT] Scheduler initialized")
-        except Exception:
-            app.logger.exception("[BOOT] Scheduler initialization failed")
+        app.logger.info(
+            "[BOOT] Scheduler execution delegated to worker process (python -m app.worker)"
+        )
 
     telegram_mode = (app.config.get("TELEGRAM_BOT_MODE") or "off").lower()
     telegram_status = {
@@ -607,12 +618,17 @@ def create_app(config_overrides: dict | None = None):
         frame_options="SAMEORIGIN",
     )
 
-    cache_config = {"CACHE_TYPE": "SimpleCache", "CACHE_DEFAULT_TIMEOUT": 90}
+    redis_url = os.getenv("REDIS_URL")
+    cache_config = {"CACHE_DEFAULT_TIMEOUT": 90}
+    if redis_url:
+        cache_config.update(
+            {"CACHE_TYPE": "RedisCache", "CACHE_REDIS_URL": redis_url}
+        )
+    else:
+        cache_config["CACHE_TYPE"] = "SimpleCache"
     cache.init_app(app, config=cache_config)
 
     Compress(app)
-
-    redis_url = os.getenv("REDIS_URL")
     if redis_url:
         limiter = Limiter(
             key_func=get_remote_address,
@@ -679,6 +695,7 @@ def create_app(config_overrides: dict | None = None):
     app.register_blueprint(admin_stats_bp, url_prefix="/admin/api")
     app.register_blueprint(api_bp)
     app.register_blueprint(status_bp)
+    app.register_blueprint(internal_bp)
 
     if seo_blueprint is not None:
         app.register_blueprint(seo_blueprint)
