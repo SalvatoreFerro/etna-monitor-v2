@@ -629,6 +629,21 @@
     }
   }
 
+  @media (min-width: 1200px) {
+    .hero__layout {
+      grid-template-columns: minmax(0, 1.1fr) minmax(520px, 620px);
+    }
+
+    .chart-card {
+      min-height: 440px;
+    }
+
+    #home-preview-plot {
+      min-height: 340px;
+      aspect-ratio: 16 / 10;
+    }
+  }
+
   .hero__copy {
     display: grid;
     gap: var(--space-4);
