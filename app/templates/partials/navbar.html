@@ -44,10 +44,10 @@
           {% endfor %}
         </ul>
 
-        <ul class="site-nav__links">
+        <ul class="site-nav__links site-nav__links--secondary">
           {% for link in secondary_links %}
             <li>
-              <a class="site-nav__link {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">
+              <a class="site-nav__link site-nav__link--secondary {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">
                 <span>{{ link.label }}</span>
                 <small>{{ link.caption }}</small>
               </a>
