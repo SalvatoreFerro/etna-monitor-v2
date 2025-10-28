@@ -67,6 +67,35 @@ body {
   text-decoration: none;
 }
 
+/* Brand logo sizing - constrain logo to prevent it from covering mobile screens */
+.brand-logo {
+  height: 32px;
+  width: auto;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+
+/* Scale logo slightly larger on tablets and desktop */
+@media (min-width: 768px) {
+  .brand-logo {
+    height: 36px;
+  }
+}
+
+/* On very small screens, hide brand text to save space */
+@media (max-width: 360px) {
+  .brand-text {
+    display: none;
+  }
+}
+
+/* Footer logo sizing - prevent oversized logos in footer */
+.site-footer__logo img {
+  max-height: 40px;
+  width: auto;
+  object-fit: contain;
+}
+
 .navbar-inline {
   display: flex;
   align-items: center;
