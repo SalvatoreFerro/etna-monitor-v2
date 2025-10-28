@@ -1165,6 +1165,7 @@
     display: grid;
     gap: var(--space-3);
   }
+}
 
   .site-footer__title {
     font-size: 0.9rem;
@@ -1239,7 +1240,6 @@
   .nav-locked {
     overflow: hidden;
   }
-}
 
 @layer components {
   .pwa-prompt {
