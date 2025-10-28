@@ -225,7 +225,10 @@ def test_google_login_handles_missing_theme_preference(monkeypatch, client, app)
         )
 
     monkeypatch.setattr(user_columns_utils, "get_login_safe_user_columns", safe_columns_without_theme)
-    monkeypatch.setattr(auth_routes, "get_login_safe_user_columns", safe_columns_without_theme)
+    if hasattr(auth_routes, "get_login_safe_user_columns"):
+        monkeypatch.setattr(
+            auth_routes, "get_login_safe_user_columns", safe_columns_without_theme
+        )
 
     def failing_get(*args, **kwargs):
         raise ProgrammingError(

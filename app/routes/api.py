@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 import pandas as pd
 from flask import Blueprint, current_app, jsonify, request
@@ -11,12 +12,13 @@ api_bp = Blueprint("api", __name__)
 @api_bp.get("/api/curva")
 def get_curva():
     """Return curva.csv data as JSON with no-cache headers"""
-    csv_path = os.getenv("CSV_PATH", "/var/tmp/curva.csv")
-    
-    if not os.path.exists(csv_path) or os.path.getsize(csv_path) <= 20:
+    csv_path_setting = current_app.config.get("CURVA_CSV_PATH") or current_app.config.get("CSV_PATH") or "/var/tmp/curva.csv"
+    csv_path = Path(csv_path_setting)
+
+    if not csv_path.exists() or csv_path.stat().st_size <= 20:
         try:
             ingv_url = os.getenv('INGV_URL', 'https://www.ct.ingv.it/RMS_Etna/2.png')
-            result = process_png_to_csv(ingv_url, csv_path)
+            result = process_png_to_csv(ingv_url, str(csv_path))
             current_app.logger.info("[API] Auto-generated curva.csv with %s rows", result['rows'])
         except Exception as e:
             current_app.logger.exception("[API] Failed to auto-generate curva.csv")
@@ -62,17 +64,18 @@ def get_curva():
         return jsonify({
             "ok": False,
             "error": str(e),
-            "csv_path": csv_path
+            "csv_path": str(csv_path)
         }), 500
 
 @api_bp.route("/api/status")
 def get_status():
     """Return current status and metrics"""
-    csv_path = os.getenv("CSV_PATH", "/var/tmp/curva.csv")
+    csv_path_setting = current_app.config.get("CURVA_CSV_PATH") or current_app.config.get("CSV_PATH") or "/var/tmp/curva.csv"
+    csv_path = Path(csv_path_setting)
     threshold = float(os.getenv("ALERT_THRESHOLD_DEFAULT", "2.0"))
     
     try:
-        if os.path.exists(csv_path):
+        if csv_path.exists():
             df = pd.read_csv(csv_path, parse_dates=["timestamp"])
             last_ts = df["timestamp"].max() if not df.empty else None
             record_csv_read(len(df), last_ts)
@@ -112,9 +115,9 @@ def force_update():
     """Force update of tremor data from INGV source"""
     try:
         ingv_url = os.getenv('INGV_URL', 'https://www.ct.ingv.it/RMS_Etna/2.png')
-        csv_path = os.getenv('CSV_PATH', '/var/tmp/curva.csv')
+        csv_path_setting = current_app.config.get('CURVA_CSV_PATH') or current_app.config.get('CSV_PATH') or '/var/tmp/curva.csv'
 
-        result = process_png_to_csv(ingv_url, csv_path)
+        result = process_png_to_csv(ingv_url, csv_path_setting)
         last_ts_value = None
         if result.get("last_ts"):
             try:

@@ -58,7 +58,7 @@ def inject_user_theme():
     Returns:
         dict: Contains 'user_theme' key with the theme name
     """
-    default_theme = 'volcano_tech'
+    default_theme = 'system'
     
     preview_theme = request.args.get('preview')
     if preview_theme in ['maintenance', 'volcano_tech', 'apple_minimal']:
