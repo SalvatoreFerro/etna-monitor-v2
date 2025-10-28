@@ -28,6 +28,7 @@ DATABASE_URL=sqlite:////data/etna_monitor.db
 STATIC_ASSET_VERSION=$(git rev-parse --short HEAD)
 WORKER_HEARTBEAT_INTERVAL=30
 WORKER_ADVISORY_LOCK_ID=862421
+RUN_DB_INIT_ON_STARTUP=1
 
 # Stripe Billing (Production Keys)
 STRIPE_PUBLIC_KEY=pk_live_...
@@ -53,7 +54,7 @@ STRIPE_PRICE_PREMIUM=price_...
 
 Set the Start Command for the **web service** to:
 ```
-python startup.py
+gunicorn app:app -k gthread -w 2 -b 0.0.0.0:$PORT
 ```
 
 Add a second **worker service** with the Start Command:
@@ -61,7 +62,7 @@ Add a second **worker service** with the Start Command:
 python -m app.worker
 ```
 
-Il comando `startup.py` configura i log, crea le directory richieste ed esegue `alembic upgrade head` prima di avviare Gunicorn. Il worker (`python -m app.worker`) si occupa di Telegram bot e scheduler APScheduler applicando un advisory lock Postgres per evitare istanze duplicate.
+L'applicazione esegue `init_db()` automaticamente durante la creazione dell'app Flask (sia nel processo web che nel worker). Se le migrazioni dovessero fallire, viene applicato un fallback di "schema guard" che effettua gli `ALTER TABLE IF NOT EXISTS` per le colonne critiche (`theme_preference`, `plan_type`, `subscription_status`, ecc.). Il worker (`python -m app.worker`) si occupa di Telegram bot e scheduler APScheduler applicando un advisory lock Postgres per evitare istanze duplicate.
 
 ## Health Check Configuration
 

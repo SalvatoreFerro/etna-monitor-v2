@@ -6,11 +6,12 @@ import logging
 import os
 from pathlib import Path
 
-from alembic import command
-from alembic.config import Config as AlembicConfig
-from alembic.util import CommandError
 from flask import Flask, current_app
-from sqlalchemy import inspect, text
+from flask_migrate import init as migrate_init
+from flask_migrate import stamp as migrate_stamp
+from flask_migrate import upgrade as migrate_upgrade
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from .models import db
 
@@ -22,70 +23,150 @@ except Exception:  # pragma: no cover - backend utilities may be unavailable in 
 logger = logging.getLogger(__name__)
 
 _CURVA_WARNING_FLAG = "_curva_bootstrap_warning_emitted"
+_MIGRATIONS_DIRNAME = "migrations"
+
+_USER_SCHEMA_GUARD_COLUMNS = {
+    "telegram_chat_id": "BIGINT",
+    "telegram_opt_in": "BOOLEAN NOT NULL DEFAULT FALSE",
+    "free_alert_consumed": "INTEGER NOT NULL DEFAULT 0",
+    "free_alert_event_id": "VARCHAR(255)",
+    "last_alert_sent_at": "TIMESTAMP",
+    "alert_count_30d": "INTEGER NOT NULL DEFAULT 0",
+    "consent_ts": "TIMESTAMP",
+    "privacy_version": "VARCHAR(32)",
+    "threshold": "DOUBLE PRECISION",
+    "email_alerts": "BOOLEAN NOT NULL DEFAULT FALSE",
+    "stripe_customer_id": "VARCHAR(100)",
+    "subscription_status": "VARCHAR(20) NOT NULL DEFAULT 'free'",
+    "subscription_id": "VARCHAR(100)",
+    "current_period_end": "TIMESTAMP",
+    "trial_end": "TIMESTAMP",
+    "billing_email": "VARCHAR(120)",
+    "company_name": "VARCHAR(200)",
+    "vat_id": "VARCHAR(50)",
+    "google_id": "VARCHAR(255)",
+    "name": "VARCHAR(255)",
+    "picture_url": "VARCHAR(512)",
+    "premium": "BOOLEAN NOT NULL DEFAULT FALSE",
+    "is_premium": "BOOLEAN NOT NULL DEFAULT FALSE",
+    "premium_lifetime": "BOOLEAN NOT NULL DEFAULT FALSE",
+    "premium_since": "TIMESTAMP",
+    "donation_tx": "VARCHAR(255)",
+    "chat_id": "BIGINT",
+    "plan_type": "VARCHAR(20) NOT NULL DEFAULT 'free'",
+    "theme_preference": "VARCHAR(16) DEFAULT 'system'",
+}
 
 
-def _alembic_config(app: Flask) -> AlembicConfig:
-    """Return an Alembic configuration bound to the current Flask app."""
-
-    project_root = Path(app.root_path).parent
-    ini_path = project_root / "alembic.ini"
-    cfg = AlembicConfig(str(ini_path))
-    cfg.set_main_option("script_location", str(project_root / "migrations"))
-    cfg.set_main_option("sqlalchemy.url", app.config["SQLALCHEMY_DATABASE_URI"])
-    cfg.attributes["configure_logger"] = False
-    return cfg
+def _migrations_directory(app: Flask) -> Path:
+    return Path(app.root_path).parent / _MIGRATIONS_DIRNAME
 
 
-def _ensure_alembic_environment(app: Flask, cfg: AlembicConfig) -> None:
-    """Verify that Alembic can run against the current database."""
+def _ensure_migrations_initialized(app: Flask, migrations_dir: Path, log: logging.Logger) -> None:
+    """Initialise a Flask-Migrate environment when running on a fresh image."""
 
-    script_location = Path(cfg.get_main_option("script_location"))
-    if not script_location.exists():
-        raise RuntimeError(
-            f"Alembic environment missing at {script_location}. Ensure migrations/ exists in the deployment image."
+    env_py = migrations_dir / "env.py"
+    if env_py.exists():
+        return
+
+    log.warning(
+        "[BOOT] migrations environment missing at %s – initialising via Flask-Migrate", migrations_dir
+    )
+    try:
+        migrate_init(directory=str(migrations_dir))
+    except Exception as exc:  # pragma: no cover - defensive guard
+        log.error("[BOOT] Flask-Migrate init failed: %s", exc)
+        raise
+
+    try:
+        migrate_stamp(directory=str(migrations_dir), revision="head")
+    except Exception as exc:  # pragma: no cover - defensive guard
+        log.warning("[BOOT] Unable to stamp migrations to head after init: %s", exc)
+
+
+def ensure_user_schema_guard(app: Flask, log: logging.Logger | None = None) -> None:
+    """Fallback guard that ensures critical ``users`` columns exist."""
+
+    guard_statements = []
+    for column_name, ddl in _USER_SCHEMA_GUARD_COLUMNS.items():
+        guard_statements.append(
+            f"""
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns
+                WHERE table_name='users' AND column_name='{column_name}'
+            ) THEN
+                ALTER TABLE users ADD COLUMN {column_name} {ddl};
+            END IF;
+            """.strip()
         )
 
-    engine = db.engine
-    if engine.dialect.name == "postgresql":
-        # Ensure the ``alembic_version`` table exists to avoid permissions issues
-        with engine.connect() as conn:
-            inspector = inspect(conn)
-            if not inspector.has_table("alembic_version"):
-                conn.execute(text("CREATE TABLE IF NOT EXISTS alembic_version (version_num VARCHAR(32) NOT NULL)"))
+    guard_sql = "\n".join(guard_statements)
+    logger_to_use = log or getattr(app, "logger", logger)
+
+    try:
+        engine = db.engine
+        if engine.dialect.name == "sqlite":
+            with engine.connect() as conn:
+                table_exists = conn.execute(
+                    text(
+                        "SELECT name FROM sqlite_master WHERE type='table' AND name='users'"
+                    )
+                ).fetchone()
+                if table_exists is None:
+                    logger_to_use.debug("[BOOT] Schema guard skipped; users table missing (sqlite)")
+                    return
+                existing_columns = {
+                    row._mapping["name"]
+                    for row in conn.execute(text("PRAGMA table_info(users)"))
+                }
+                for column_name, ddl in _USER_SCHEMA_GUARD_COLUMNS.items():
+                    if column_name in existing_columns:
+                        continue
+                    conn.execute(text(f"ALTER TABLE users ADD COLUMN {column_name} {ddl}"))
                 conn.commit()
+        else:
+            with engine.connect() as conn:
+                conn.execute(
+                    text(
+                        f"""
+                        DO $$
+                        BEGIN
+                        {guard_sql}
+                        END$$;
+                        """
+                    )
+                )
+                conn.commit()
+    except SQLAlchemyError as exc:  # pragma: no cover - defensive fallback
+        logger_to_use.warning("[BOOT] Schema guard failed: %s", exc)
+    else:
+        logger_to_use.info("[BOOT] Schema guard completed")
 
 
-def init_db(app: Flask | None = None) -> None:
+def init_db(app: Flask) -> bool:
     """Run database migrations idempotently before serving traffic."""
 
-    app_provided = app is not None
-    if app is None:
-        from . import create_app  # pylint: disable=import-outside-toplevel
+    if app is None:  # pragma: no cover - sanity check
+        raise ValueError("init_db requires a Flask application instance")
 
-        app = create_app()
-
-    assert app is not None  # pragma: no cover - mypy hint
     log = app.logger if app.logger else logger  # type: ignore[assignment]
+    log.info("[BOOT] Running database initialization (Flask-Migrate upgrade head)...")
 
-    log.info("[BOOT] Running database initialization (Alembic upgrade head)...")
+    migrations_dir = _migrations_directory(app)
 
     try:
         with app.app_context():
-            cfg = _alembic_config(app)
-            _ensure_alembic_environment(app, cfg)
-            command.upgrade(cfg, "head")
-    except CommandError as exc:
-        log.exception("[BOOT] Alembic upgrade failed: %s", exc)
-        raise
-    except Exception as exc:  # pragma: no cover - defensive catch
-        log.exception("[BOOT] Unexpected error during database initialization: %s", exc)
-        raise
+            migrations_dir.mkdir(parents=True, exist_ok=True)
+            _ensure_migrations_initialized(app, migrations_dir, log)
+            migrate_upgrade(directory=str(migrations_dir))
+    except Exception as exc:  # pragma: no cover - defensive guard
+        log.exception("[BOOT] Database migration failed: %s", exc)
+        log.warning("[BOOT] Falling back to schema guard for critical columns")
+        ensure_user_schema_guard(app, log)
+        return False
     else:
-        log.info("[BOOT] Database schema is up to date.")
-    finally:
-        if not app_provided:
-            # Drop the application context when we created it just for migrations
-            db.session.remove()
+        log.info("[BOOT] Alembic upgrade head OK")
+        return True
 
 
 def ensure_curva_csv(app: Flask | None = None) -> Path:
@@ -129,5 +210,5 @@ def ensure_curva_csv(app: Flask | None = None) -> Path:
     return csv_path
 
 
-__all__ = ["ensure_curva_csv", "init_db"]
+__all__ = ["ensure_curva_csv", "ensure_user_schema_guard", "init_db"]
 

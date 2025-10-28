@@ -106,7 +106,14 @@ def main() -> None:
 
     app = create_app()
 
-    init_db(app)
+    try:
+        migrations_ok = init_db(app)
+    except Exception:
+        logger.exception("[WORKER] init_db raised an unexpected error during bootstrap")
+        migrations_ok = False
+
+    if not migrations_ok:
+        logger.warning("[WORKER] Proceeding after schema guard fallback")
     ensure_curva_csv(app)
 
     with app.app_context():

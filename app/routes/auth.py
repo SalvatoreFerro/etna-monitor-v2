@@ -484,8 +484,6 @@ def auth_callback():
                 user.name = name
             if picture_url and not getattr(user, "picture_url", None):
                 user.picture_url = picture_url
-            if getattr(user, "password_hash", None) is None:
-                user.password_hash = ""
         else:
             user = User(
                 email=email,
@@ -500,8 +498,11 @@ def auth_callback():
 
         admin_set = current_app.config.get("ADMIN_EMAILS_SET", set())
         should_promote_admin = email and email in admin_set
-        if should_promote_admin and getattr(user, "is_admin", False) is False:
-            user.is_admin = True
+        if should_promote_admin:
+            try:
+                user.is_admin = True
+            except AttributeError:  # pragma: no cover - defensive guard
+                current_app.logger.warning("[LOGIN] User model missing is_admin attribute during promotion")
 
         try:
             db.session.commit()
@@ -555,6 +556,12 @@ def auth_callback():
 
         try:
             user_id = user.id
+        except ProgrammingError as exc:
+            current_app.logger.error(
+                "[LOGIN] ProgrammingError while loading user.id after OAuth commit", exc_info=exc
+            )
+            flash("Aggiorna la pagina e riprova", "error")
+            return redirect(url_for("auth.login"))
         except Exception as exc:  # pragma: no cover - defensive guard
             current_app.logger.error(
                 "[LOGIN] Unable to materialize user.id after OAuth commit", exc_info=exc

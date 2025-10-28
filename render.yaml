@@ -4,7 +4,7 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python startup.py
+    startCommand: gunicorn app:app -k gthread -w 2 -b 0.0.0.0:$PORT
     envVars:
       - key: DATA_DIR
         value: /data

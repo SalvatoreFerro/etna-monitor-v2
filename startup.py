@@ -34,10 +34,15 @@ def main() -> None:
         sys.exit(1)
 
     try:
-        init_db(app)
+        migrations_ok = init_db(app)
     except Exception:
-        logger.critical("Aborting startup because database migrations failed")
-        sys.exit(1)
+        logger.exception("[BOOT] init_db raised an unexpected error during startup")
+        migrations_ok = False
+
+    if not migrations_ok:
+        logger.warning(
+            "[BOOT] Proceeding with application startup after schema guard fallback"
+        )
 
     try:
         ensure_curva_csv(app)

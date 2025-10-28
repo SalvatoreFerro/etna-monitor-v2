@@ -39,7 +39,7 @@ from .routes.status import status_bp
 from .routes.billing import bp as billing_bp
 from .routes.internal import internal_bp
 from backend.routes.admin_stats import admin_stats_bp
-from .bootstrap import ensure_curva_csv
+from .bootstrap import ensure_curva_csv, ensure_user_schema_guard, init_db
 from .models import db
 from .utils.csrf import generate_csrf_token
 from .utils.logger import configure_logging
@@ -64,71 +64,6 @@ def _mask_database_uri(uri: str) -> str:
 
 
 SLOW_REQUEST_THRESHOLD_MS = 300
-
-def _ensure_user_schema(app: Flask) -> None:
-    """Ensure all columns required by ``app.models.user.User`` exist."""
-    column_definitions = {
-        "telegram_chat_id": "BIGINT",
-        "telegram_opt_in": "BOOLEAN NOT NULL DEFAULT FALSE",
-        "free_alert_consumed": "INTEGER NOT NULL DEFAULT 0",
-        "free_alert_event_id": "VARCHAR(255)",
-        "last_alert_sent_at": "TIMESTAMP",
-        "alert_count_30d": "INTEGER NOT NULL DEFAULT 0",
-        "consent_ts": "TIMESTAMP",
-        "privacy_version": "VARCHAR(32)",
-        "threshold": "DOUBLE PRECISION",
-        "email_alerts": "BOOLEAN NOT NULL DEFAULT FALSE",
-        "stripe_customer_id": "VARCHAR(100)",
-        "subscription_status": "VARCHAR(20) NOT NULL DEFAULT 'free'",
-        "subscription_id": "VARCHAR(100)",
-        "current_period_end": "TIMESTAMP",
-        "trial_end": "TIMESTAMP",
-        "billing_email": "VARCHAR(120)",
-        "company_name": "VARCHAR(200)",
-        "vat_id": "VARCHAR(50)",
-        "google_id": "VARCHAR(255)",
-        "name": "VARCHAR(255)",
-        "picture_url": "VARCHAR(512)",
-        "premium": "BOOLEAN NOT NULL DEFAULT FALSE",
-        "is_premium": "BOOLEAN NOT NULL DEFAULT FALSE",
-        "premium_lifetime": "BOOLEAN NOT NULL DEFAULT FALSE",
-        "premium_since": "TIMESTAMP",
-        "donation_tx": "VARCHAR(255)",
-        "chat_id": "BIGINT",
-        "plan_type": "VARCHAR(20) NOT NULL DEFAULT 'free'",
-    }
-
-    checks = []
-    for column_name, ddl in column_definitions.items():
-        checks.append(
-            f"""
-            IF NOT EXISTS (
-                SELECT 1 FROM information_schema.columns
-                WHERE table_name='users' AND column_name='{column_name}'
-            ) THEN
-                ALTER TABLE users ADD COLUMN {column_name} {ddl};
-            END IF;
-            """.strip()
-        )
-
-    guard_sql = "\n".join(checks)
-
-    try:
-        with db.engine.connect() as conn:
-            conn.execute(
-                text(
-                    f"""
-                    DO $$
-                    BEGIN
-                    {guard_sql}
-                    END$$;
-                    """
-                )
-            )
-            conn.commit()
-        app.logger.info("[BOOT] Schema guard completed")
-    except Exception as ex:  # pragma: no cover - defensive fallback
-        app.logger.warning("[BOOT] Schema guard failed: %s", ex)
 
 
 def _ensure_partners_table(app: Flask) -> None:
@@ -300,6 +235,7 @@ def create_app(config_overrides: dict | None = None):
     app.config.setdefault("DATA_DIR", Config.DATA_DIR)
     app.config.setdefault("CSV_PATH", Config.CSV_PATH)
     app.config.setdefault("STATIC_ASSET_VERSION", Config.STATIC_ASSET_VERSION)
+    app.config.setdefault("SEND_FILE_MAX_AGE_DEFAULT", 60 * 60 * 24 * 7)
     app.config.setdefault(
         "WORKER_HEARTBEAT_INTERVAL", int(os.getenv("WORKER_HEARTBEAT_INTERVAL", "30"))
     )
@@ -514,6 +450,26 @@ def create_app(config_overrides: dict | None = None):
     curva_path = ensure_curva_csv(app)
     app.config["CURVA_CSV_PATH"] = str(curva_path)
 
+    run_db_init = os.getenv("RUN_DB_INIT_ON_STARTUP", "1").lower() in {"1", "true", "yes"}
+    if app.config.get("TESTING"):
+        run_db_init = False
+        app.logger.debug("[BOOT] Skipping init_db during tests")
+    if run_db_init:
+        try:
+            migrations_ok = init_db(app)
+        except Exception:  # pragma: no cover - defensive logging
+            app.logger.exception("[BOOT] init_db execution raised an unexpected exception")
+            migrations_ok = False
+        if not migrations_ok:
+            app.logger.warning(
+                "[BOOT] Database migration fallback executed; review schema_guard logs for details"
+            )
+    else:
+        app.logger.info("[BOOT] RUN_DB_INIT_ON_STARTUP disabled; skipping migration bootstrap")
+
+    curva_path = ensure_curva_csv(app)
+    app.config["CURVA_CSV_PATH"] = str(curva_path)
+
     # Auto-migrazione opzionale (DISABILITATA di default). Richiede app context.
     if _migrate_available and os.getenv("AUTO_MIGRATE", "0").lower() in {"1", "true", "yes"}:
         try:  # pragma: no cover - integration with alembic CLI
@@ -585,7 +541,7 @@ def create_app(config_overrides: dict | None = None):
     app.config["TELEGRAM_BOT_STATUS"] = telegram_status
 
     with app.app_context():
-        _ensure_user_schema(app)
+        ensure_user_schema_guard(app)
         _ensure_partners_table(app)
         _ensure_sponsor_tables(app)
 
