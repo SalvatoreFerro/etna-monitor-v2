@@ -1,0 +1,73 @@
+{% set primary_links = [
+  {'label': 'Grafico', 'url': url_for('main.index') ~ '#grafico-etna', 'endpoint': 'main.index'},
+  {'label': 'Tecnologia', 'url': url_for('main.tecnologia'), 'endpoint': 'main.tecnologia'},
+  {'label': 'Progetto', 'url': url_for('main.progetto'), 'endpoint': 'main.progetto'},
+  {'label': 'Team', 'url': url_for('main.team'), 'endpoint': 'main.team'},
+  {'label': 'News', 'url': url_for('main.news'), 'endpoint': 'main.news'},
+] %}
+
+{% set secondary_links = [
+  {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
+  {'label': 'Roadmap', 'url': url_for('main.roadmap'), 'endpoint': 'main.roadmap'},
+  {'label': 'Prezzi', 'url': url_for('main.pricing'), 'endpoint': 'main.pricing'},
+] %}
+
+<nav class="navbar" id="mainNav" role="navigation" aria-label="Navigazione principale">
+  <div class="container navbar__inner">
+    <a class="navbar__brand" href="/" aria-label="EtnaMonitor Home">
+      <img src="{{ url_for('static', filename='images/logo.svg') }}?v={{ STATIC_ASSET_VERSION }}" alt="EtnaMonitor" />
+      <span>EtnaMonitor</span>
+    </a>
+
+    <button
+      class="navbar__toggle"
+      type="button"
+      aria-label="Apri il menu di navigazione"
+      aria-controls="navbar-menu"
+      aria-expanded="false"
+      data-nav-toggle
+    >
+      <span class="sr-only">Apri il menu</span>
+      <span class="navbar__toggle-line" aria-hidden="true"></span>
+      <span class="navbar__toggle-line" aria-hidden="true"></span>
+      <span class="navbar__toggle-line" aria-hidden="true"></span>
+    </button>
+
+    <div class="navbar__menu" id="navbar-menu" data-nav-menu hidden aria-hidden="true">
+      <div class="navbar__menu-inner">
+        <div class="navbar__group">
+          <ul class="navbar__links">
+            {% for link in primary_links %}
+              <li>
+                <a class="navbar__link {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">{{ link.label }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+          <ul class="navbar__links navbar__links--secondary">
+            {% for link in secondary_links %}
+              <li>
+                <a class="navbar__link {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">{{ link.label }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
+
+        <div class="navbar__actions">
+          {% if session.user_id %}
+            {% set display_name = (current_user.name if current_user else None) or (current_user.email if current_user else None) or 'Utente EtnaMonitor' %}
+            <a class="btn btn-secondary" href="{{ url_for('dashboard.dashboard_home') }}">Dashboard</a>
+            <a class="btn btn-primary" href="{{ url_for('auth.logout') }}">Esci</a>
+            <span class="navbar__user" aria-hidden="true">{{ display_name }}</span>
+          {% else %}
+            <form class="navbar__auth" action="{{ url_for('auth.auth_google') }}" method="post">
+              <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}" />
+              <button type="submit" class="btn btn-secondary">Accedi</button>
+            </form>
+            <a class="btn btn-primary" href="{{ url_for('main.pricing') }}">Piani Premium</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</nav>
+<div class="navbar__backdrop" data-nav-backdrop hidden aria-hidden="true"></div>

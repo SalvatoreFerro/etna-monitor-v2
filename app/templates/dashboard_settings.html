@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 
 {% block head %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}?v={{ STATIC_ASSET_VERSION }}">
 <style>
 .settings-container {
   max-width: 960px;

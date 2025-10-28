@@ -2,7 +2,7 @@
 
 {% block head %}
   {{ super() }}
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
   <script src="{{ url_for('static', filename='vendor/plotly.min.js') }}" nonce="{{ script_nonce }}"></script>
 {% endblock %}
 
