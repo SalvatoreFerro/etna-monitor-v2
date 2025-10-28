@@ -3,6 +3,7 @@ import io
 from datetime import datetime, timedelta
 
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, make_response, current_app
+from flask_login import current_user
 from sqlalchemy import and_, func, or_
 
 from ..utils.auth import admin_required
@@ -755,3 +756,45 @@ def banner_update(banner_id: int):
 
     flash('Banner aggiornato.', 'success')
     return redirect(url_for('admin.banner_list'))
+
+
+@bp.route("/theme_manager")
+@admin_required
+def theme_manager():
+    """Theme manager page for admins to select site templates"""
+    from sqlalchemy import func
+    
+    current_theme = current_user.theme_preference if current_user else 'volcano_tech'
+    
+    stats = {
+        'total_users': User.query.count(),
+        'maintenance_users': User.query.filter_by(theme_preference='maintenance').count(),
+        'volcano_users': User.query.filter_by(theme_preference='volcano_tech').count(),
+        'apple_users': User.query.filter_by(theme_preference='apple_minimal').count(),
+    }
+    
+    return render_template('admin/theme_manager.html', current_theme=current_theme, stats=stats)
+
+
+@bp.route("/set_theme", methods=["POST"])
+@admin_required
+def set_theme():
+    """Set the theme preference for the current admin user"""
+    data = request.get_json()
+    theme = data.get('theme')
+    
+    valid_themes = ['maintenance', 'volcano_tech', 'apple_minimal']
+    if theme not in valid_themes:
+        return jsonify({
+            'success': False,
+            'message': f'Invalid theme. Must be one of: {", ".join(valid_themes)}'
+        }), 400
+    
+    current_user.theme_preference = theme
+    db.session.commit()
+    
+    return jsonify({
+        'success': True,
+        'message': f'Theme changed to {theme}',
+        'theme': theme
+    })

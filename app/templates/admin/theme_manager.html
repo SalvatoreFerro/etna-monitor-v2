@@ -1,0 +1,493 @@
+{% extends "layout.html" %}
+
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+  <style nonce="{{ script_nonce }}">
+    .theme-manager {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: var(--space-6);
+    }
+
+    .theme-manager-header {
+      margin-bottom: var(--space-6);
+    }
+
+    .theme-manager-header h1 {
+      margin-bottom: var(--space-3);
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .theme-manager-header p {
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-lg);
+    }
+
+    .theme-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: var(--space-6);
+      margin-bottom: var(--space-6);
+    }
+
+    .theme-card {
+      background: var(--gradient-surface);
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-2xl);
+      overflow: hidden;
+      transition: all var(--transition-normal);
+      position: relative;
+    }
+
+    .theme-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-floating);
+      border-color: var(--color-border-light);
+    }
+
+    .theme-card.active {
+      border-color: var(--color-accent-primary);
+      box-shadow: 0 0 0 3px rgba(0, 210, 255, 0.2);
+    }
+
+    .theme-preview {
+      width: 100%;
+      height: 240px;
+      position: relative;
+      overflow: hidden;
+      background: var(--color-bg-primary);
+    }
+
+    .theme-preview-content {
+      padding: var(--space-4);
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-3);
+    }
+
+    .theme-preview-navbar {
+      height: 40px;
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
+      padding: 0 var(--space-3);
+      gap: var(--space-2);
+    }
+
+    .theme-preview-card {
+      flex: 1;
+      border-radius: var(--radius-lg);
+      padding: var(--space-3);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+    }
+
+    .theme-preview-line {
+      height: 8px;
+      border-radius: var(--radius-sm);
+      opacity: 0.7;
+    }
+
+    .theme-preview-line.short {
+      width: 60%;
+    }
+
+    .theme-preview-line.medium {
+      width: 80%;
+    }
+
+    .theme-preview-button {
+      height: 32px;
+      border-radius: var(--radius-md);
+      width: 120px;
+      margin-top: auto;
+    }
+
+    /* Maintenance Theme Preview */
+    .theme-preview.maintenance {
+      background: #1a1a1a;
+    }
+
+    .theme-preview.maintenance .theme-preview-navbar {
+      background: rgba(26, 26, 26, 0.95);
+      border-bottom: 3px solid #ffa500;
+    }
+
+    .theme-preview.maintenance .theme-preview-card {
+      background: linear-gradient(135deg, rgba(34, 34, 34, 0.95) 0%, rgba(42, 42, 42, 0.98) 100%);
+      border: 2px solid #3a3a3a;
+      border-left: 4px solid #ffa500;
+    }
+
+    .theme-preview.maintenance .theme-preview-line {
+      background: #cccccc;
+    }
+
+    .theme-preview.maintenance .theme-preview-button {
+      background: linear-gradient(135deg, #ffa500 0%, #ff6b00 100%);
+    }
+
+    /* Volcano Tech Theme Preview */
+    .theme-preview.volcano-tech {
+      background: #0a0e1a;
+    }
+
+    .theme-preview.volcano-tech .theme-preview-navbar {
+      background: rgba(10, 14, 26, 0.92);
+      border-bottom: 1px solid #1f2a44;
+    }
+
+    .theme-preview.volcano-tech .theme-preview-card {
+      background: linear-gradient(135deg, rgba(15, 26, 48, 0.9) 0%, rgba(31, 48, 82, 0.95) 100%);
+      border: 1px solid #1f2a44;
+    }
+
+    .theme-preview.volcano-tech .theme-preview-line {
+      background: linear-gradient(90deg, #00d2ff 0%, #ff4757 50%, #ffa502 100%);
+    }
+
+    .theme-preview.volcano-tech .theme-preview-button {
+      background: linear-gradient(135deg, #00d2ff 0%, #ff4757 50%, #ffa502 100%);
+    }
+
+    /* Apple Minimal Theme Preview */
+    .theme-preview.apple-minimal {
+      background: #ffffff;
+    }
+
+    .theme-preview.apple-minimal .theme-preview-navbar {
+      background: rgba(255, 255, 255, 0.72);
+      backdrop-filter: blur(20px);
+      border-bottom: 0.5px solid rgba(0, 0, 0, 0.08);
+    }
+
+    .theme-preview.apple-minimal .theme-preview-card {
+      background: #ffffff;
+      border: 0.5px solid #d2d2d7;
+      box-shadow: 0 2px 8px 0 rgba(0, 0, 0, 0.08);
+    }
+
+    .theme-preview.apple-minimal .theme-preview-line {
+      background: #1d1d1f;
+    }
+
+    .theme-preview.apple-minimal .theme-preview-button {
+      background: #0071e3;
+      border-radius: 20px;
+    }
+
+    .theme-info {
+      padding: var(--space-5);
+    }
+
+    .theme-info h3 {
+      margin: 0 0 var(--space-2) 0;
+      font-size: var(--font-size-xl);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .theme-info p {
+      color: var(--color-text-secondary);
+      margin: 0 0 var(--space-4) 0;
+      line-height: var(--line-height-relaxed);
+    }
+
+    .theme-features {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      margin-bottom: var(--space-4);
+    }
+
+    .theme-feature {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-1);
+      padding: var(--space-1) var(--space-3);
+      background: var(--color-highlight);
+      color: var(--color-accent-primary);
+      border-radius: var(--radius-full);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-medium);
+    }
+
+    .theme-actions {
+      display: flex;
+      gap: var(--space-3);
+    }
+
+    .theme-actions .btn {
+      flex: 1;
+    }
+
+    .current-theme-badge {
+      position: absolute;
+      top: var(--space-3);
+      right: var(--space-3);
+      background: var(--color-accent-primary);
+      color: white;
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-full);
+      font-size: var(--font-size-xs);
+      font-weight: var(--font-weight-bold);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      box-shadow: var(--shadow-md);
+      z-index: 10;
+    }
+
+    .theme-stats {
+      background: var(--gradient-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-xl);
+      padding: var(--space-5);
+      margin-bottom: var(--space-6);
+    }
+
+    .theme-stats h2 {
+      margin: 0 0 var(--space-4) 0;
+      font-size: var(--font-size-2xl);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: var(--space-4);
+    }
+
+    .stat-item {
+      text-align: center;
+      padding: var(--space-4);
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--color-border);
+    }
+
+    .stat-value {
+      font-size: var(--font-size-3xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--color-accent-primary);
+      margin-bottom: var(--space-2);
+    }
+
+    .stat-label {
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    @media (max-width: 768px) {
+      .theme-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .theme-actions {
+        flex-direction: column;
+      }
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+<section class="theme-manager" aria-labelledby="theme-manager-title">
+  <header class="theme-manager-header">
+    <h1 id="theme-manager-title">
+      <i class="fas fa-palette"></i>
+      Gestione Template Sito
+    </h1>
+    <p>Seleziona uno dei 3 template professionali per cambiare l'estetica del sito. Ogni template è completamente responsive e si applica a tutte le pagine.</p>
+  </header>
+
+  <div class="theme-stats">
+    <h2><i class="fas fa-chart-bar"></i> Statistiche Template</h2>
+    <div class="stats-grid">
+      <div class="stat-item">
+        <div class="stat-value">{{ stats.total_users }}</div>
+        <div class="stat-label">Utenti Totali</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">{{ stats.maintenance_users }}</div>
+        <div class="stat-label">Maintenance Mode</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">{{ stats.volcano_users }}</div>
+        <div class="stat-label">Volcano Tech</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value">{{ stats.apple_users }}</div>
+        <div class="stat-label">Apple Minimal</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="theme-grid">
+    <!-- Maintenance Mode Theme -->
+    <article class="theme-card {% if current_theme == 'maintenance' %}active{% endif %}">
+      {% if current_theme == 'maintenance' %}
+        <span class="current-theme-badge">
+          <i class="fas fa-check-circle"></i> Attivo
+        </span>
+      {% endif %}
+      <div class="theme-preview maintenance">
+        <div class="theme-preview-content">
+          <div class="theme-preview-navbar"></div>
+          <div class="theme-preview-card">
+            <div class="theme-preview-line"></div>
+            <div class="theme-preview-line short"></div>
+            <div class="theme-preview-line medium"></div>
+            <div class="theme-preview-button"></div>
+          </div>
+        </div>
+      </div>
+      <div class="theme-info">
+        <h3>
+          <i class="fas fa-hard-hat"></i>
+          Maintenance Mode
+        </h3>
+        <p>Design industriale con estetica da cantiere. Colori giallo/arancio/nero con strisce di attenzione e stile tecnico-costruttivo.</p>
+        <div class="theme-features">
+          <span class="theme-feature"><i class="fas fa-exclamation-triangle"></i> Industriale</span>
+          <span class="theme-feature"><i class="fas fa-paint-brush"></i> Giallo/Arancio</span>
+          <span class="theme-feature"><i class="fas fa-mobile-alt"></i> Responsive</span>
+        </div>
+        <div class="theme-actions">
+          <button class="btn btn-premium" onclick="selectTheme('maintenance')">
+            <i class="fas fa-check"></i>
+            {% if current_theme == 'maintenance' %}Attivo{% else %}Seleziona{% endif %}
+          </button>
+          <a href="{{ url_for('main.index') }}?preview=maintenance" class="btn btn-secondary glass" target="_blank">
+            <i class="fas fa-eye"></i> Anteprima
+          </a>
+        </div>
+      </div>
+    </article>
+
+    <!-- Volcano Tech Theme -->
+    <article class="theme-card {% if current_theme == 'volcano_tech' %}active{% endif %}">
+      {% if current_theme == 'volcano_tech' %}
+        <span class="current-theme-badge">
+          <i class="fas fa-check-circle"></i> Attivo
+        </span>
+      {% endif %}
+      <div class="theme-preview volcano-tech">
+        <div class="theme-preview-content">
+          <div class="theme-preview-navbar"></div>
+          <div class="theme-preview-card">
+            <div class="theme-preview-line"></div>
+            <div class="theme-preview-line short"></div>
+            <div class="theme-preview-line medium"></div>
+            <div class="theme-preview-button"></div>
+          </div>
+        </div>
+      </div>
+      <div class="theme-info">
+        <h3>
+          <i class="fas fa-volcano"></i>
+          Volcano Tech
+        </h3>
+        <p>Design tech moderno con colori ispirati al vulcano Etna. Gradiente cyan/rosso/arancio che richiama il bagliore della lava e l'attività vulcanica.</p>
+        <div class="theme-features">
+          <span class="theme-feature"><i class="fas fa-fire"></i> Vulcanico</span>
+          <span class="theme-feature"><i class="fas fa-palette"></i> Multi-colore</span>
+          <span class="theme-feature"><i class="fas fa-mobile-alt"></i> Responsive</span>
+        </div>
+        <div class="theme-actions">
+          <button class="btn btn-premium" onclick="selectTheme('volcano_tech')">
+            <i class="fas fa-check"></i>
+            {% if current_theme == 'volcano_tech' %}Attivo{% else %}Seleziona{% endif %}
+          </button>
+          <a href="{{ url_for('main.index') }}?preview=volcano_tech" class="btn btn-secondary glass" target="_blank">
+            <i class="fas fa-eye"></i> Anteprima
+          </a>
+        </div>
+      </div>
+    </article>
+
+    <!-- Apple Minimal Theme -->
+    <article class="theme-card {% if current_theme == 'apple_minimal' %}active{% endif %}">
+      {% if current_theme == 'apple_minimal' %}
+        <span class="current-theme-badge">
+          <i class="fas fa-check-circle"></i> Attivo
+        </span>
+      {% endif %}
+      <div class="theme-preview apple-minimal">
+        <div class="theme-preview-content">
+          <div class="theme-preview-navbar"></div>
+          <div class="theme-preview-card">
+            <div class="theme-preview-line"></div>
+            <div class="theme-preview-line short"></div>
+            <div class="theme-preview-line medium"></div>
+            <div class="theme-preview-button"></div>
+          </div>
+        </div>
+      </div>
+      <div class="theme-info">
+        <h3>
+          <i class="fab fa-apple"></i>
+          Apple Minimal
+        </h3>
+        <p>Design minimalista ispirato ad Apple. Pulito, elegante e raffinato con tipografia San Francisco, spazi generosi e animazioni fluide.</p>
+        <div class="theme-features">
+          <span class="theme-feature"><i class="fas fa-sparkles"></i> Minimale</span>
+          <span class="theme-feature"><i class="fas fa-sun"></i> Chiaro</span>
+          <span class="theme-feature"><i class="fas fa-mobile-alt"></i> Responsive</span>
+        </div>
+        <div class="theme-actions">
+          <button class="btn btn-premium" onclick="selectTheme('apple_minimal')">
+            <i class="fas fa-check"></i>
+            {% if current_theme == 'apple_minimal' %}Attivo{% else %}Seleziona{% endif %}
+          </button>
+          <a href="{{ url_for('main.index') }}?preview=apple_minimal" class="btn btn-secondary glass" target="_blank">
+            <i class="fas fa-eye"></i> Anteprima
+          </a>
+        </div>
+      </div>
+    </article>
+  </div>
+</section>
+
+<script nonce="{{ script_nonce }}">
+  function selectTheme(themeName) {
+    if (!confirm(`Sei sicuro di voler cambiare il template in "${themeName}"? Questo cambierà l'aspetto del sito per il tuo account.`)) {
+      return;
+    }
+
+    const button = event.target.closest('button');
+    const originalText = button.innerHTML;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Applicazione...';
+    button.disabled = true;
+
+    fetch('/admin/set_theme', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ theme: themeName })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        alert('✅ Template applicato con successo! La pagina verrà ricaricata.');
+        window.location.reload();
+      } else {
+        alert('❌ Errore: ' + (data.message || 'Impossibile applicare il template'));
+        button.innerHTML = originalText;
+        button.disabled = false;
+      }
+    })
+    .catch(error => {
+      alert('❌ Errore di connessione: ' + error.message);
+      button.innerHTML = originalText;
+      button.disabled = false;
+    });
+  }
+</script>
+{% endblock %}

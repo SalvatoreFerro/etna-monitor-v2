@@ -1,0 +1,496 @@
+/* EtnaMonitor - Volcano Tech Theme */
+/* Professional tech aesthetic with volcanic color palette inspired by Mount Etna */
+
+:root {
+  /* Colors - Volcanic Tech Theme with lava-inspired accents */
+  --color-bg-primary: #0a0e1a;
+  --color-bg-secondary: #0f1427;
+  --color-bg-tertiary: #141c33;
+  --color-surface: #0f1a30;
+  --color-surface-hover: #172640;
+  --color-surface-active: #1f3052;
+
+  --color-text-primary: #f4f8ff;
+  --color-text-secondary: #c0cae6;
+  --color-text-tertiary: #8f9bb9;
+  --color-text-inverse: #04060d;
+
+  /* Volcanic accent colors - Cyan (lava glow) + Magma red/orange */
+  --color-accent-primary: #00d2ff;
+  --color-accent-secondary: #ff4757;
+  --color-accent-tertiary: #ffa502;
+  --color-highlight: rgba(0, 210, 255, 0.12);
+  --color-success: #22c55e;
+  --color-warning: #facc15;
+  --color-error: #ff4757;
+  --color-info: #38bdf8;
+
+  /* Volcanic specific colors */
+  --color-lava-red: #ff4757;
+  --color-lava-orange: #ffa502;
+  --color-magma: #ff6348;
+  --color-volcanic-glow: #00d2ff;
+
+  --color-border: #1f2a44;
+  --color-border-light: #2a3656;
+  --color-divider: #111827;
+
+  /* Gradients - Volcanic lava flows and glowing effects */
+  --gradient-primary: linear-gradient(135deg, #00d2ff 0%, #ff4757 50%, #ffa502 100%);
+  --gradient-lava: linear-gradient(135deg, #ff4757 0%, #ff6348 50%, #ffa502 100%);
+  --gradient-surface: linear-gradient(135deg, rgba(15, 26, 48, 0.9) 0%, rgba(31, 48, 82, 0.95) 100%);
+  --gradient-glass: linear-gradient(135deg, rgba(244, 248, 255, 0.12) 0%, rgba(244, 248, 255, 0.04) 100%);
+  --gradient-hero: radial-gradient(circle at top left, rgba(0, 210, 255, 0.35), rgba(255, 71, 87, 0.25) 40%, rgba(10, 14, 26, 0.95) 100%);
+  --gradient-card-premium: linear-gradient(135deg, rgba(0, 210, 255, 0.18) 0%, rgba(255, 71, 87, 0.12) 50%, rgba(255, 165, 2, 0.08) 100%);
+  --gradient-volcanic-flow: linear-gradient(180deg, rgba(255, 71, 87, 0.3) 0%, rgba(255, 99, 72, 0.2) 50%, rgba(255, 165, 2, 0.15) 100%);
+
+  /* Typography */
+  --font-family-primary: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-family-headings: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  --font-family-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+
+  --font-size-2xs: 0.6875rem;
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-base: 1rem;
+  --font-size-md: 1.0625rem;
+  --font-size-lg: 1.125rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 1.875rem;
+  --font-size-4xl: 2.25rem;
+  --font-size-5xl: 3rem;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.4;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  /* Spacing scale */
+  --space-2xs: 0.25rem;
+  --space-xs: 0.5rem;
+  --space-sm: 0.75rem;
+  --space-md: 1rem;
+  --space-lg: 1.25rem;
+  --space-xl: 1.5rem;
+  --space-2xl: 2rem;
+  --space-3xl: 2.5rem;
+  --space-4xl: 3rem;
+  --space-5xl: 4rem;
+  --space-6xl: 5rem;
+  --space-7xl: 6rem;
+
+  /* Border Radius */
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* Shadows - Enhanced with volcanic glow */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  --shadow-elevated: 0 18px 40px rgba(2, 8, 20, 0.55);
+  --shadow-floating: 0 24px 60px rgba(3, 17, 38, 0.65);
+
+  /* Volcanic shadows with multi-color glow */
+  --shadow-premium: 0 20px 45px rgba(0, 210, 255, 0.15), 0 18px 36px rgba(255, 71, 87, 0.12), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-card-premium: 0 18px 40px rgba(12, 20, 39, 0.55), 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 20px rgba(0, 210, 255, 0.08);
+  --shadow-button-premium: 0 12px 30px rgba(0, 210, 255, 0.35), 0 8px 20px rgba(255, 71, 87, 0.25);
+  --shadow-volcanic-glow: 0 0 30px rgba(255, 71, 87, 0.4), 0 0 60px rgba(255, 165, 2, 0.2);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Blur effects */
+  --blur-glass: blur(20px);
+  --blur-backdrop: blur(40px);
+
+  /* Layout metrics */
+  --navbar-height: 72px;
+  --navbar-offset: calc(var(--navbar-height) + var(--space-lg));
+
+  /* Z-index */
+  --z-base: 1;
+  --z-backdrop: 1090;
+  --z-nav: 1100;
+  --z-dropdown: 1110;
+  --z-sticky: 1120;
+  --z-fixed: 1130;
+  --z-modal-backdrop: 1140;
+  --z-modal: 1150;
+  --z-popover: 1160;
+  --z-tooltip: 1170;
+  --z-toast: 1180;
+}
+
+/* Body and base styles with volcanic atmosphere */
+body {
+  background: var(--color-bg-primary);
+  color: var(--color-text-primary);
+  font-family: var(--font-family-primary);
+  position: relative;
+}
+
+/* Add subtle volcanic glow effect */
+body::before {
+  content: '';
+  position: fixed;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(
+    circle at 30% 20%,
+    rgba(255, 71, 87, 0.08) 0%,
+    rgba(255, 99, 72, 0.05) 20%,
+    transparent 50%
+  ),
+  radial-gradient(
+    circle at 70% 80%,
+    rgba(0, 210, 255, 0.06) 0%,
+    rgba(0, 210, 255, 0.03) 20%,
+    transparent 50%
+  );
+  pointer-events: none;
+  z-index: 0;
+  animation: volcanic-pulse 15s ease-in-out infinite;
+}
+
+@keyframes volcanic-pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+/* Ensure content is above the glow */
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Heading Typography */
+h1, h2, h3, h4, h5, h6,
+.hero-title,
+.brand-text,
+.card h2,
+.card h3,
+.dashboard-header h1,
+.pricing-header h1,
+.footer-section h4 {
+  font-family: var(--font-family-headings);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+/* Add volcanic glow to main headings */
+h1, .hero-title {
+  text-shadow: 0 0 30px rgba(0, 210, 255, 0.3), 0 0 60px rgba(255, 71, 87, 0.2);
+}
+
+/* Navbar - Tech style with volcanic accents */
+.navbar {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: var(--z-nav);
+  background: rgba(10, 14, 26, 0.92);
+  backdrop-filter: blur(24px);
+  border-bottom: 1px solid var(--color-border);
+  box-shadow: 0 12px 30px rgba(4, 10, 24, 0.65), 0 0 20px rgba(0, 210, 255, 0.05);
+  min-height: var(--navbar-height);
+}
+
+/* Add subtle volcanic glow to navbar bottom */
+.navbar::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(0, 210, 255, 0.5) 25%, 
+    rgba(255, 71, 87, 0.5) 50%, 
+    rgba(255, 165, 2, 0.5) 75%, 
+    transparent 100%
+  );
+  opacity: 0.6;
+}
+
+/* Buttons - Volcanic style with lava gradient */
+.btn-premium {
+  background: var(--gradient-primary);
+  border: none;
+  border-radius: var(--radius-xl);
+  padding: var(--space-4) var(--space-6);
+  font-weight: var(--font-weight-semibold);
+  box-shadow: var(--shadow-button-premium);
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+  color: white;
+}
+
+.btn-premium::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  transition: left var(--transition-slow);
+}
+
+.btn-premium:hover::before {
+  left: 100%;
+}
+
+.btn-premium:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-premium);
+}
+
+/* Add volcanic pulse effect to premium buttons */
+@keyframes volcanic-button-pulse {
+  0%, 100% {
+    box-shadow: var(--shadow-button-premium);
+  }
+  50% {
+    box-shadow: var(--shadow-premium);
+  }
+}
+
+.btn-premium:focus-visible {
+  animation: volcanic-button-pulse 1.5s ease-in-out infinite;
+}
+
+/* Cards - Tech panels with volcanic accents */
+.card {
+  background: var(--gradient-surface);
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-elevated);
+  border: 1px solid var(--color-border);
+  margin-bottom: var(--space-6);
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Add subtle volcanic glow to card edges */
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, 
+    rgba(0, 210, 255, 0.5) 0%, 
+    rgba(255, 71, 87, 0.5) 50%, 
+    rgba(255, 165, 2, 0.5) 100%
+  );
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+}
+
+.card:hover::before {
+  opacity: 1;
+}
+
+.card:hover {
+  transform: translateY(-6px);
+  box-shadow: var(--shadow-floating), var(--shadow-volcanic-glow);
+  border-color: var(--color-border-light);
+}
+
+/* Premium Card Styles with volcanic enhancement */
+.card-premium {
+  background: var(--gradient-card-premium);
+  backdrop-filter: var(--blur-glass);
+  border: 1px solid rgba(0, 210, 255, 0.2);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-card-premium);
+  transition: all var(--transition-normal);
+  position: relative;
+}
+
+.card-premium::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-2xl);
+  padding: 2px;
+  background: linear-gradient(135deg, 
+    rgba(0, 210, 255, 0.5) 0%, 
+    rgba(255, 71, 87, 0.5) 50%, 
+    rgba(255, 165, 2, 0.5) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+  pointer-events: none;
+}
+
+.card-premium:hover::after {
+  opacity: 0.6;
+}
+
+.card-premium:hover {
+  transform: translateY(-8px);
+  box-shadow: var(--shadow-premium), var(--shadow-volcanic-glow);
+}
+
+/* Status indicators - Volcanic style */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.badge.premium {
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.2), rgba(255, 71, 87, 0.15));
+  color: var(--color-accent-primary);
+  border: 1px solid rgba(0, 210, 255, 0.4);
+  box-shadow: 0 0 15px rgba(0, 210, 255, 0.3);
+}
+
+.badge.warning {
+  background: rgba(250, 204, 21, 0.2);
+  color: var(--color-warning);
+  border: 1px solid rgba(250, 204, 21, 0.4);
+}
+
+/* Google login button - Volcanic tech style */
+.btn-google {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5);
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(0, 210, 255, 0.32);
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.15), rgba(255, 71, 87, 0.1));
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+  text-shadow: 0 2px 8px rgba(4, 6, 13, 0.45);
+  box-shadow: var(--shadow-button-premium);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), background var(--transition-fast);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.btn-google:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-premium);
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.25), rgba(255, 71, 87, 0.2));
+  border-color: rgba(0, 210, 255, 0.5);
+}
+
+/* Footer - Tech style with volcanic accent */
+footer {
+  background: var(--color-bg-secondary);
+  border-top: 1px solid var(--color-border);
+  position: relative;
+}
+
+footer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    rgba(0, 210, 255, 0.5) 25%, 
+    rgba(255, 71, 87, 0.5) 50%, 
+    rgba(255, 165, 2, 0.5) 75%, 
+    transparent 100%
+  );
+  opacity: 0.6;
+}
+
+/* Scrollbar - Volcanic style */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--color-accent-primary), var(--color-lava-red));
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, var(--color-volcanic-glow), var(--color-magma));
+}
+
+/* Selection */
+::selection {
+  background: linear-gradient(135deg, rgba(0, 210, 255, 0.4), rgba(255, 71, 87, 0.4));
+  color: var(--color-text-primary);
+}
+
+/* Focus Styles */
+:focus-visible {
+  outline: 2px solid var(--color-accent-primary);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 0 0 4px rgba(0, 210, 255, 0.2);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  :root {
+    --navbar-height: 64px;
+    --navbar-offset: calc(var(--navbar-height) + 12px);
+  }
+}
+
+/* Volcanic activity indicator animation */
+@keyframes volcanic-activity {
+  0%, 100% {
+    opacity: 0.6;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+}
+
+.volcanic-indicator {
+  animation: volcanic-activity 2s ease-in-out infinite;
+}

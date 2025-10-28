@@ -87,6 +87,12 @@ class User(UserMixin, db.Model):
     google_id = db.Column(db.String(255), unique=True, nullable=True)
     name = db.Column(db.String(255), nullable=True)
     picture_url = db.Column(db.String(512), nullable=True)
+    theme_preference = db.Column(
+        db.String(50),
+        nullable=False,
+        default='volcano_tech',
+        server_default='volcano_tech',
+    )
     created_at = db.Column(
         db.DateTime(timezone=True),
         nullable=False,
