@@ -5,11 +5,6 @@
   const FETCH_TIMEOUTS = [5000, 20000];
   const RETRY_DELAYS = [800];
 
-  if (window.__chartReady) {
-    return;
-  }
-  window.__chartReady = true;
-
   const plotElement = document.getElementById('home-preview-plot');
   const loadingElement = document.getElementById('home-preview-loading');
   const quickUpdateBtn = document.getElementById('quick-update-btn');
@@ -56,6 +51,11 @@
   if (!plotElement || !loadingElement) {
     return;
   }
+
+  if (window.__chartReady) {
+    return;
+  }
+  window.__chartReady = true;
 
   function fetchWithTimeout(url, options = {}, timeout = FETCH_TIMEOUTS[0]) {
     const controller = new AbortController();
@@ -291,7 +291,9 @@
     const plotly = await ensurePlotly();
 
     const timestamps = normalized.map((row) => row.timestamp);
-    const values = normalized.map((row) => row.plotValue);
+    const values = normalized.map((row) => (row.plotValue > 0 ? row.plotValue : 0.001));
+    const threshold = 2;
+    const isDarkTheme = (document.documentElement.getAttribute('data-theme') || 'dark') !== 'light';
 
     const trace = {
       x: timestamps,
@@ -299,28 +301,40 @@
       type: 'scatter',
       mode: 'lines',
       name: 'Tremore',
-      line: { color: '#00D2FF', width: 2 },
-      hoverlabel: { bgcolor: '#0B1220', font: { color: '#F4F8FF' } }
+      line: { color: '#4ade80', width: 2 },
+      showlegend: false
     };
 
     const layout = {
-      margin: { l: 52, r: 16, t: 20, b: 56 },
-      paper_bgcolor: 'rgba(0,0,0,0)',
+      margin: { l: 60, r: 20, t: 40, b: 48 },
+      template: isDarkTheme ? 'plotly_dark' : 'plotly_white',
       plot_bgcolor: 'rgba(0,0,0,0)',
-      font: { color: '#F4F8FF', size: 12 },
+      paper_bgcolor: 'rgba(0,0,0,0)',
+      font: { color: isDarkTheme ? '#e6e7ea' : '#111827', size: 12 },
       xaxis: {
-        title: 'Data/Ora',
+        title: 'Time',
         type: 'date',
-        tickformat: '%d/%m/%Y %H:%M:%S',
+        tickformat: '%d/%m/%Y %H:%M',
         showgrid: true,
-        gridcolor: 'rgba(0, 210, 255, 0.12)'
+        gridcolor: isDarkTheme ? '#374151' : '#e5e7eb'
       },
       yaxis: {
-        title: 'mV',
+        title: 'Amplitude (mV)',
         type: 'log',
+        range: [-1, 1],
         showgrid: true,
-        gridcolor: 'rgba(0, 210, 255, 0.12)'
-      }
+        gridcolor: isDarkTheme ? '#374151' : '#e5e7eb'
+      },
+      shapes: [
+        {
+          type: 'line',
+          x0: timestamps[0],
+          x1: timestamps[timestamps.length - 1],
+          y0: threshold,
+          y1: threshold,
+          line: { color: '#ef4444', width: 2, dash: 'dash' }
+        }
+      ]
     };
 
     const config = {
@@ -338,6 +352,7 @@
     }
     plotElement.classList.add('loaded');
     plotElement.removeAttribute('aria-hidden');
+    plotElement.style.display = 'block';
     ensureResizeListener();
     hideSpinner();
   }

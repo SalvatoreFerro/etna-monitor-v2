@@ -46,7 +46,7 @@
   --layout-max: 1180px;
   --layout-max-wide: 1380px;
   --layout-gutter: clamp(1.25rem, 4vw, 3.5rem);
-  --nav-height: 76px;
+  --nav-height: 64px;
 
   --gradient-sky: radial-gradient(circle at 0% -20%, rgba(100, 244, 255, 0.38), transparent 55%),
     radial-gradient(circle at 100% 0%, rgba(168, 85, 247, 0.28), transparent 55%),
