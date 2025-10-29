@@ -44,12 +44,16 @@
           <div>
             <span class="pill">Grafico tremore</span>
           </div>
-          <span class="muted">Scala lineare · aggiornamento 5'</span>
+          <span class="muted">Scala logaritmica 10<sup>-1</sup>–10<sup>1</sup> · aggiornamento 5'</span>
         </div>
         <h2 id="grafico-title">Curva del tremore vulcanico</h2>
         {% if csv_snapshot.has_data %}
           <div id="home-preview-loading" class="chart-loading" aria-live="polite">
-            <div class="chart-spinner" aria-hidden="true"></div>
+            <div class="chart-spinner" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
             <p>Caricamento dati INGV…</p>
           </div>
           <div id="home-preview-plot" aria-hidden="true"></div>
