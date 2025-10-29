@@ -15,6 +15,18 @@
     { value: 5, label: '5' },
     { value: 10, label: '10¹' }
   ];
+  const PRIMARY_LINE_COLOR_DARK = '#4ade80';
+  const PRIMARY_LINE_COLOR_LIGHT = '#0f172a';
+  const PRIMARY_FILL_COLOR_DARK = 'rgba(74, 222, 128, 0.08)';
+  const PRIMARY_FILL_COLOR_LIGHT = 'rgba(15, 23, 42, 0.08)';
+  const GRID_COLOR_DARK = '#1f2937';
+  const GRID_COLOR_LIGHT = '#e2e8f0';
+  const AXIS_LINE_COLOR_DARK = '#334155';
+  const AXIS_LINE_COLOR_LIGHT = '#94a3b8';
+  const THRESHOLD_COLOR_DARK = '#ef4444';
+  const THRESHOLD_COLOR_LIGHT = '#b91c1c';
+  const HOVER_BG_DARK = 'rgba(15, 23, 42, 0.92)';
+  const HOVER_BG_LIGHT = '#f8fafc';
   const THRESHOLD_LEVEL = 4;
 
   const plotElement = document.getElementById('home-preview-plot');
@@ -308,12 +320,12 @@
     const timestamps = filtered.map((row) => row.timestamp);
     const values = filtered.map((row) => row.value);
     const clampedValues = values.map((value) => (value >= LOG_SCALE_MIN ? value : LOG_SCALE_MIN));
-    const isDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark';
-    const lineColor = isDarkTheme ? '#64f4ff' : '#0f172a';
-    const fillColor = isDarkTheme ? 'rgba(100, 244, 255, 0.08)' : 'rgba(14, 116, 144, 0.12)';
-    const gridColor = isDarkTheme ? '#1f2937' : '#e2e8f0';
-    const axisLineColor = isDarkTheme ? '#334155' : '#94a3b8';
-    const thresholdColor = isDarkTheme ? '#ef4444' : '#b91c1c';
+    const isDarkTheme = document.documentElement.getAttribute('data-theme') !== 'light';
+    const lineColor = isDarkTheme ? PRIMARY_LINE_COLOR_DARK : PRIMARY_LINE_COLOR_LIGHT;
+    const fillColor = isDarkTheme ? PRIMARY_FILL_COLOR_DARK : PRIMARY_FILL_COLOR_LIGHT;
+    const gridColor = isDarkTheme ? GRID_COLOR_DARK : GRID_COLOR_LIGHT;
+    const axisLineColor = isDarkTheme ? AXIS_LINE_COLOR_DARK : AXIS_LINE_COLOR_LIGHT;
+    const thresholdColor = isDarkTheme ? THRESHOLD_COLOR_DARK : THRESHOLD_COLOR_LIGHT;
 
     const minExponent = Math.log10(Math.min(...clampedValues));
     const maxExponent = Math.log10(Math.max(...clampedValues));
@@ -383,7 +395,7 @@
       },
       shapes,
       hoverlabel: {
-        bgcolor: isDarkTheme ? 'rgba(15, 23, 42, 0.92)' : '#f8fafc',
+        bgcolor: isDarkTheme ? HOVER_BG_DARK : HOVER_BG_LIGHT,
         bordercolor: thresholdColor,
         font: { color: isDarkTheme ? '#f8fafc' : '#0f172a' }
       }

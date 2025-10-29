@@ -1,3 +1,27 @@
+const LOG_SCALE_MIN = 0.1;
+const LOG_SCALE_MAX = 10;
+const LOG_TICKS = [
+    { value: 0.1, label: '10⁻¹' },
+    { value: 0.2, label: '0.2' },
+    { value: 0.5, label: '0.5' },
+    { value: 1, label: '1' },
+    { value: 2, label: '2' },
+    { value: 5, label: '5' },
+    { value: 10, label: '10¹' }
+];
+const PRIMARY_LINE_COLOR_DARK = '#4ade80';
+const PRIMARY_LINE_COLOR_LIGHT = '#0f172a';
+const PRIMARY_FILL_COLOR_DARK = 'rgba(74, 222, 128, 0.08)';
+const PRIMARY_FILL_COLOR_LIGHT = 'rgba(15, 23, 42, 0.08)';
+const GRID_COLOR_DARK = '#1f2937';
+const GRID_COLOR_LIGHT = '#e2e8f0';
+const AXIS_LINE_COLOR_DARK = '#334155';
+const AXIS_LINE_COLOR_LIGHT = '#94a3b8';
+const THRESHOLD_COLOR_DARK = '#ef4444';
+const THRESHOLD_COLOR_LIGHT = '#b91c1c';
+const HOVER_BG_DARK = 'rgba(15, 23, 42, 0.92)';
+const HOVER_BG_LIGHT = '#f8fafc';
+
 class EtnaDashboard {
     constructor() {
         this.ingvMode = localStorage.getItem('ingv-mode') === 'true';
@@ -191,35 +215,40 @@ class EtnaDashboard {
     renderPlot(data) {
         const plotDiv = document.getElementById('tremor-plot');
         if (!plotDiv) return;
-        
-        if (!data.data || data.data.length === 0) {
+
+        const rows = Array.isArray(data.data) ? data.data : [];
+        const normalized = rows
+            .map((row) => {
+                if (!row) return null;
+                const timestamp = row.timestamp || row[0];
+                const rawValue = row.value ?? row[1];
+                const numericValue = Number(rawValue);
+                if (!timestamp || Number.isNaN(numericValue)) return null;
+                return { timestamp, value: numericValue };
+            })
+            .filter((row) => row && Number.isFinite(row.value) && row.value > 0);
+
+        if (!normalized.length) {
             this.showNoDataMessage();
             return;
         }
-        
+
         console.log(`curva loaded: ${data.rows}, last_ts: ${data.last_ts}`);
-        
-        const timestamps = data.data.map(row => row.timestamp);
-        const values = data.data.map(row => row.value);
-        const threshold = parseFloat(document.getElementById('threshold-slider')?.value || 2.0);
-        
-        const trace = {
-            x: timestamps,
-            y: values,
-            type: 'scatter',
-            mode: 'lines',
-            name: this.ingvMode ? 'RMS' : 'Etna Volcanic Tremor',
-            line: {
-                color: this.ingvMode ? '#00AA00' : '#4ade80',
-                width: this.ingvMode ? 1 : 2
-            },
-            showlegend: false
-        };
-        
-        let layout;
-        
+
+        const timestamps = normalized.map((row) => row.timestamp);
+        const values = normalized.map((row) => row.value);
+        const clampedValues = values.map((value) => (value >= LOG_SCALE_MIN ? value : LOG_SCALE_MIN));
+
+        const thresholdSlider = document.getElementById('threshold-slider');
+        let threshold = parseFloat(thresholdSlider?.value || 2.0);
+        if (!Number.isFinite(threshold)) {
+            threshold = 2.0;
+        }
+
+        const hasExistingPlot = Boolean(plotDiv.data && plotDiv.data.length);
+
         if (this.ingvMode) {
-            layout = {
+            const layout = {
                 title: 'ECBD - RMS (UTC Time)',
                 title_font: { size: 14, color: 'black' },
                 xaxis: {
@@ -233,12 +262,12 @@ class EtnaDashboard {
                 yaxis: {
                     title: 'Amplitude (mV)',
                     type: 'log',
-                    range: [-1, 1],
+                    range: [Math.log10(LOG_SCALE_MIN), Math.log10(LOG_SCALE_MAX)],
                     showgrid: true,
                     gridwidth: 1,
                     gridcolor: 'lightgray',
-                    tickvals: [0.1, 1, 10],
-                    ticktext: ['10⁻¹', '10⁰', '10¹']
+                    tickvals: LOG_TICKS.map((tick) => tick.value),
+                    ticktext: LOG_TICKS.map((tick) => tick.label)
                 },
                 template: 'plotly_white',
                 plot_bgcolor: 'white',
@@ -246,55 +275,137 @@ class EtnaDashboard {
                 font: { family: 'Arial', size: 10, color: 'black' },
                 margin: { l: 60, r: 20, t: 40, b: 40 },
                 showlegend: false,
-                shapes: [{
+                shapes: threshold > 0 ? [{
                     type: 'line',
                     x0: timestamps[0],
                     x1: timestamps[timestamps.length - 1],
                     y0: threshold,
                     y1: threshold,
                     line: { color: '#FF0000', width: 1, dash: 'solid' }
-                }]
+                }] : []
             };
-        } else {
-            const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-            layout = {
-                title: 'Etna Volcanic Tremor',
-                title_font: { size: 16, color: isDark ? '#e6e7ea' : '#000000' },
-                xaxis: { 
-                    title: 'Time',
-                    showgrid: true,
-                    gridcolor: isDark ? '#374151' : '#e5e7eb'
+
+            const trace = {
+                x: timestamps,
+                y: clampedValues,
+                type: 'scatter',
+                mode: 'lines',
+                name: 'RMS',
+                line: {
+                    color: '#00AA00',
+                    width: 1.6
                 },
-                yaxis: {
-                    title: 'Amplitude (mV)',
-                    type: 'log',
-                    range: [-1, 1],
-                    showgrid: true,
-                    gridcolor: isDark ? '#374151' : '#e5e7eb'
-                },
-                template: isDark ? 'plotly_dark' : 'plotly_white',
-                plot_bgcolor: 'rgba(0,0,0,0)',
-                paper_bgcolor: 'rgba(0,0,0,0)',
-                font: { color: isDark ? '#e6e7ea' : '#000000' },
-                margin: { l: 60, r: 20, t: 50, b: 40 },
-                shapes: [{
-                    type: 'line',
-                    x0: timestamps[0],
-                    x1: timestamps[timestamps.length - 1],
-                    y0: threshold,
-                    y1: threshold,
-                    line: { color: '#ef4444', width: 2, dash: 'dash' }
-                }]
+                hovertemplate: '<b>%{y:.2f} mV</b><br>%{x|%d/%m %H:%M}<extra></extra>',
+                showlegend: false
             };
+
+            const config = {
+                displayModeBar: false,
+                responsive: true,
+                staticPlot: false
+            };
+
+            if (hasExistingPlot) {
+                Plotly.react(plotDiv, [trace], layout, config);
+            } else {
+                Plotly.newPlot(plotDiv, [trace], layout, config);
+            }
+            return;
         }
-        
+
+        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+        const lineColor = isDark ? PRIMARY_LINE_COLOR_DARK : PRIMARY_LINE_COLOR_LIGHT;
+        const fillColor = isDark ? PRIMARY_FILL_COLOR_DARK : PRIMARY_FILL_COLOR_LIGHT;
+        const gridColor = isDark ? GRID_COLOR_DARK : GRID_COLOR_LIGHT;
+        const axisLineColor = isDark ? AXIS_LINE_COLOR_DARK : AXIS_LINE_COLOR_LIGHT;
+        const thresholdColor = isDark ? THRESHOLD_COLOR_DARK : THRESHOLD_COLOR_LIGHT;
+
+        const minExponent = Math.log10(Math.min(...clampedValues));
+        const maxExponent = Math.log10(Math.max(...clampedValues));
+        const yRange = [
+            Math.min(Math.log10(LOG_SCALE_MIN), Math.floor(minExponent * 10) / 10),
+            Math.max(Math.log10(LOG_SCALE_MAX), Math.ceil(maxExponent * 10) / 10)
+        ];
+
+        const shapes = threshold > 0 ? [{
+            type: 'line',
+            x0: timestamps[0],
+            x1: timestamps[timestamps.length - 1],
+            y0: threshold,
+            y1: threshold,
+            line: { color: thresholdColor, width: 2, dash: 'dash' }
+        }] : [];
+
+        const trace = {
+            x: timestamps,
+            y: clampedValues,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'Segnale Tremore',
+            line: { color: lineColor, width: 2.4, shape: 'spline', smoothing: 1.15 },
+            fill: 'tozeroy',
+            fillcolor: fillColor,
+            hovertemplate: '<b>%{y:.2f} mV</b><br>%{x|%d/%m %H:%M}<extra></extra>',
+            showlegend: false
+        };
+
+        const layout = {
+            margin: { l: 64, r: 32, t: 48, b: 56 },
+            hovermode: 'x unified',
+            plot_bgcolor: 'rgba(0,0,0,0)',
+            paper_bgcolor: 'rgba(0,0,0,0)',
+            font: { color: isDark ? '#e2e8f0' : '#0f172a' },
+            xaxis: {
+                type: 'date',
+                title: '',
+                showgrid: true,
+                gridcolor: gridColor,
+                linewidth: 1,
+                linecolor: axisLineColor,
+                hoverformat: '%d/%m %H:%M',
+                tickfont: { size: 12 },
+                ticks: 'outside',
+                tickcolor: axisLineColor
+            },
+            yaxis: {
+                title: 'Ampiezza (mV)',
+                type: 'log',
+                range: yRange,
+                showgrid: true,
+                gridcolor: gridColor,
+                linewidth: 1,
+                linecolor: axisLineColor,
+                tickfont: { size: 12 },
+                tickvals: LOG_TICKS.map((tick) => tick.value),
+                ticktext: LOG_TICKS.map((tick) => tick.label),
+                ticksuffix: ' mV',
+                exponentformat: 'power',
+                minor: { ticklen: 4, showgrid: false },
+                zeroline: false
+            },
+            shapes,
+            hoverlabel: {
+                bgcolor: isDark ? HOVER_BG_DARK : HOVER_BG_LIGHT,
+                bordercolor: thresholdColor,
+                font: { color: isDark ? '#f8fafc' : '#0f172a' }
+            }
+        };
+
         const config = {
             displayModeBar: false,
+            displaylogo: false,
             responsive: true,
-            staticPlot: false
+            staticPlot: false,
+            modeBarButtonsToRemove: ['select2d', 'lasso2d']
         };
-        
-        Plotly.newPlot(plotDiv, [trace], layout, config);
+
+        if (hasExistingPlot) {
+            Plotly.react(plotDiv, [trace], layout, config);
+        } else {
+            Plotly.newPlot(plotDiv, [trace], layout, config);
+        }
+
+        plotDiv.classList.add('loaded');
     }
     
     updateStats(data) {
