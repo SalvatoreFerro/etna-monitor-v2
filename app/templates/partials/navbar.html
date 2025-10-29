@@ -7,7 +7,9 @@
   {'label': 'Prezzi', 'url': url_for('main.pricing'), 'endpoint': 'main.pricing'},
 ] %}
 
-<nav class="site-nav" id="mainNav" role="navigation" aria-label="Navigazione principale">
+{% set default_selection = quick_links[:3] %}
+
+<nav class="site-nav" role="navigation" aria-label="Navigazione principale">
   <div class="container site-nav__inner">
     <a class="site-nav__brand" href="/" aria-label="EtnaMonitor home">
       <span class="site-nav__mark">EM</span>
@@ -38,22 +40,62 @@
           {% endfor %}
         </ul>
 
-        <div class="site-nav__actions">
-          {% if session.user_id %}
-            {% set display_name = (current_user.name if current_user else None) or (current_user.email if current_user else None) or 'Utente' %}
-            <a class="btn btn-secondary" href="{{ url_for('dashboard.dashboard_home') }}">Dashboard</a>
-            <a class="btn btn-primary" href="{{ url_for('auth.logout') }}">Esci</a>
-            <span class="muted" aria-hidden="true">{{ display_name }}</span>
-          {% else %}
-            <form class="site-nav__actions" action="{{ url_for('auth.auth_google') }}" method="post">
-              <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}" />
-              <button type="submit" class="btn btn-secondary">Accedi con Google</button>
-            </form>
-            <a class="btn btn-primary" href="{{ url_for('main.pricing') }}">Piani Premium</a>
-          {% endif %}
+      <div class="nav-multiselect" data-nav-multiselect>
+        <button
+          type="button"
+          class="nav-multiselect__toggle"
+          data-nav-toggle
+          aria-haspopup="true"
+          aria-expanded="false"
+          aria-controls="nav-multiselect-menu"
+        >
+          <span class="nav-multiselect__label">Sezioni rapide</span>
+          <span class="nav-multiselect__count" data-nav-count>{{ default_selection|length }}</span>
+          <span class="nav-multiselect__icon" aria-hidden="true"></span>
+        </button>
+        <div class="nav-multiselect__menu" id="nav-multiselect-menu" data-nav-menu hidden>
+          <fieldset>
+            <legend>Personalizza scorciatoie</legend>
+            <ul class="nav-multiselect__list">
+              {% for link in quick_links %}
+                {% set is_default = link in default_selection %}
+                <li>
+                  <label>
+                    <input
+                      type="checkbox"
+                      value="{{ link.endpoint }}"
+                      data-nav-option
+                      data-url="{{ link.url }}"
+                      data-label="{{ link.label }}"
+                      {% if is_default %}checked data-default="true"{% endif %}
+                    />
+                    <span>{{ link.label }}</span>
+                  </label>
+                </li>
+              {% endfor %}
+            </ul>
+          </fieldset>
+          <div class="nav-multiselect__actions">
+            <button type="button" class="btn btn-primary btn-sm" data-nav-apply>Applica</button>
+            <button type="button" class="btn btn-ghost btn-sm" data-nav-reset>Reset</button>
+          </div>
         </div>
       </div>
     </div>
+
+    <div class="site-nav__auth">
+      {% if session.user_id %}
+        {% set display_name = (current_user.name if current_user else None) or (current_user.email if current_user else None) or 'Utente' %}
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('dashboard.dashboard_home') }}">Dashboard</a>
+        <a class="btn btn-primary btn-sm" href="{{ url_for('auth.logout') }}">Esci</a>
+        <span class="muted" aria-hidden="true">{{ display_name }}</span>
+      {% else %}
+        <form class="site-nav__auth-form" action="{{ url_for('auth.auth_google') }}" method="post">
+          <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}" />
+          <button type="submit" class="btn btn-ghost btn-sm">Accedi</button>
+        </form>
+        <a class="btn btn-primary btn-sm" href="{{ url_for('main.pricing') }}">Piani</a>
+      {% endif %}
+    </div>
   </div>
 </nav>
-<div class="site-nav__backdrop" data-nav-backdrop hidden aria-hidden="true"></div>
