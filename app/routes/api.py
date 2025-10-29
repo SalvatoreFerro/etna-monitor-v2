@@ -75,6 +75,15 @@ def get_curva():
             })
 
         df = df.sort_values("timestamp")
+
+        if "timestamp" in df.columns:
+            try:
+                df["timestamp"] = df["timestamp"].apply(
+                    lambda ts: ts.isoformat() if hasattr(ts, "isoformat") else str(ts)
+                )
+            except Exception:
+                df["timestamp"] = df["timestamp"].astype(str)
+
         data = df.to_dict(orient="records")
 
         payload = {
