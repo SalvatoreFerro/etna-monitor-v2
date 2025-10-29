@@ -43,7 +43,7 @@ from .models import db
 from .utils.csrf import generate_csrf_token
 from .utils.logger import configure_logging
 from config import Config, get_database_uri_from_env
-from .extensions import cache
+from .extensions import cache, compress
 from .security import build_csp, talisman
 
 login_manager = LoginManager()
@@ -584,6 +584,9 @@ def create_app(config_overrides: dict | None = None):
         cache_config["CACHE_TYPE"] = "SimpleCache"
     cache.init_app(app, config=cache_config)
 
+    # Initialize Flask-Compress for response compression (Brotli/Gzip)
+    compress.init_app(app)
+
     if redis_url:
         limiter = Limiter(
             key_func=get_remote_address,
@@ -673,10 +676,20 @@ def create_app(config_overrides: dict | None = None):
                 app.logger.warning(
                     "[SLOW] %s %s took %.1f ms", request.method, request.path, elapsed_ms
                 )
+        
+        # Cache-Control headers for performance
         if request.path.startswith("/static/"):
+            # Static assets: 1 week cache, immutable
             response.headers.setdefault(
                 "Cache-Control", "public, max-age=604800, immutable"
             )
+        elif request.method == "GET" and response.status_code == 200:
+            # HTML pages: 5 minutes cache for public pages
+            if not any(request.path.startswith(p) for p in ["/admin", "/dashboard", "/auth", "/api"]):
+                response.headers.setdefault(
+                    "Cache-Control", "public, max-age=300"
+                )
+        
         return response
 
     return app
