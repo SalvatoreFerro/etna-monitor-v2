@@ -2,6 +2,7 @@
 import re
 import pytest
 from app import create_app
+from app.routes.seo import EXCLUDED_PREFIXES
 
 
 @pytest.fixture
@@ -89,12 +90,9 @@ def test_sitemap_excludes_private_routes(client):
     # Extract all URLs from sitemap
     urls = re.findall(r'<loc>(.*?)</loc>', content)
     
-    # Check that no excluded paths are in the sitemap
-    excluded_patterns = ['/admin', '/dashboard', '/auth', '/api', '/internal', 
-                        '/billing', '/livez', '/readyz', '/healthz', '/seo']
-    
+    # Check that no excluded paths are in the sitemap (use shared constants)
     for url in urls:
-        for pattern in excluded_patterns:
+        for pattern in EXCLUDED_PREFIXES:
             assert pattern not in url.lower(), f"Excluded pattern {pattern} found in URL: {url}"
 
 

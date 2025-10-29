@@ -8,6 +8,17 @@ from flask import Blueprint, Response, current_app, request, url_for
 
 bp = Blueprint("seo", __name__)
 
+# SEO exclusion patterns shared between sitemap and tests
+EXCLUDED_PREFIXES = (
+    "/admin", "/dashboard", "/auth", "/api", "/internal", 
+    "/seo", "/billing", "/livez", "/readyz", "/healthz"
+)
+
+EXCLUDED_ENDPOINTS = {
+    "static", "legacy_auth.legacy_login", "main.ads_txt", 
+    "seo.robots_txt", "seo.sitemap"
+}
+
 
 @bp.route("/seo/health")
 def health() -> str:
@@ -43,16 +54,6 @@ def sitemap() -> Response:
     # Build a map of static routes with their changefreq
     static_map = dict(_static_routes())
     
-    # Excluded prefixes for routes that should not appear in sitemap
-    excluded_prefixes = (
-        "/admin", "/dashboard", "/auth", "/api", "/internal", 
-        "/seo", "/billing", "/livez", "/readyz", "/healthz"
-    )
-    
-    # Excluded specific endpoints
-    excluded_endpoints = {"static", "legacy_auth.legacy_login", "main.ads_txt", 
-                          "seo.robots_txt", "seo.sitemap"}
-    
     urls = []
     seen_urls = set()
     
@@ -63,11 +64,11 @@ def sitemap() -> Response:
             continue
             
         # Skip excluded endpoints
-        if rule.endpoint in excluded_endpoints:
+        if rule.endpoint in EXCLUDED_ENDPOINTS:
             continue
             
         # Skip routes that start with excluded prefixes
-        if any(rule.rule.startswith(prefix) for prefix in excluded_prefixes):
+        if any(rule.rule.startswith(prefix) for prefix in EXCLUDED_PREFIXES):
             continue
         
         try:
@@ -83,7 +84,8 @@ def sitemap() -> Response:
             changefreq = static_map.get(rule.endpoint, "weekly")
             urls.append((absolute, changefreq))
         except Exception:
-            # Skip routes that can't be built (e.g., missing parameters)
+            # Skip routes that can't be built (e.g., missing parameters, invalid URLs)
+            # This catches werkzeug.routing.BuildError and other URL-related exceptions
             continue
     
     # Sort URLs alphabetically for consistency
