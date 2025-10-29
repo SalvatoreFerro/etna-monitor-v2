@@ -1,12 +1,23 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Iterable, Tuple
 
 from flask import Blueprint, Response, current_app, request, url_for
 
 
 bp = Blueprint("seo", __name__)
+
+# SEO exclusion patterns shared between sitemap and tests
+EXCLUDED_PREFIXES = (
+    "/admin", "/dashboard", "/auth", "/api", "/internal", 
+    "/seo", "/billing", "/livez", "/readyz", "/healthz"
+)
+
+EXCLUDED_ENDPOINTS = {
+    "static", "legacy_auth.legacy_login", "main.ads_txt", 
+    "seo.robots_txt", "seo.sitemap"
+}
 
 
 @bp.route("/seo/health")
@@ -37,16 +48,48 @@ def _static_routes() -> Iterable[Tuple[str, str]]:
 
 @bp.route("/sitemap.xml")
 def sitemap() -> Response:
-    lastmod = datetime.utcnow().date().isoformat()
+    lastmod = datetime.now(timezone.utc).date().isoformat()
     base_url = _canonical_base_url()
+    
+    # Build a map of static routes with their changefreq
+    static_map = dict(_static_routes())
+    
     urls = []
-    for endpoint, changefreq in _static_routes():
-        try:
-            absolute = url_for(endpoint, _external=True)
-        except Exception:
+    seen_urls = set()
+    
+    # Traverse all Flask rules to find GET routes without parameters
+    for rule in current_app.url_map.iter_rules():
+        # Only include GET routes without parameters
+        if "GET" not in rule.methods or "<" in str(rule):
             continue
-        absolute = absolute.replace(request.host_url.rstrip("/"), base_url, 1)
-        urls.append((absolute, changefreq))
+            
+        # Skip excluded endpoints
+        if rule.endpoint in EXCLUDED_ENDPOINTS:
+            continue
+            
+        # Skip routes that start with excluded prefixes
+        if any(rule.rule.startswith(prefix) for prefix in EXCLUDED_PREFIXES):
+            continue
+        
+        try:
+            absolute = url_for(rule.endpoint, _external=True)
+            absolute = absolute.replace(request.host_url.rstrip("/"), base_url, 1)
+            
+            # Avoid duplicates (some routes may have multiple rules)
+            if absolute in seen_urls:
+                continue
+            seen_urls.add(absolute)
+            
+            # Use predefined changefreq if available, otherwise default to "weekly"
+            changefreq = static_map.get(rule.endpoint, "weekly")
+            urls.append((absolute, changefreq))
+        except Exception:
+            # Skip routes that can't be built (e.g., missing parameters, invalid URLs)
+            # This catches werkzeug.routing.BuildError and other URL-related exceptions
+            continue
+    
+    # Sort URLs alphabetically for consistency
+    urls.sort(key=lambda x: x[0])
 
     xml = [
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
@@ -71,14 +114,15 @@ def sitemap() -> Response:
 def robots_txt() -> Response:
     base_url = _canonical_base_url()
     sitemap_url = f"{base_url}/sitemap.xml"
-    content_lines = [
-        "User-agent: *",
-        "Disallow: /admin",
-        "Disallow: /dashboard",
-        "Disallow: /auth",
-        "Disallow: /api",
-        f"Sitemap: {sitemap_url}",
-        "",
-    ]
+    
+    # Build content dynamically using shared exclusion constants
+    content_lines = ["User-agent: *", "Allow: /"]
+    
+    # Add Disallow directives from shared constants
+    for prefix in EXCLUDED_PREFIXES:
+        content_lines.append(f"Disallow: {prefix}")
+    
+    content_lines.extend([f"Sitemap: {sitemap_url}", ""])
+    
     content = "\n".join(content_lines)
     return Response(content, mimetype="text/plain")
