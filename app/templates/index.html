@@ -4,15 +4,15 @@
 <section class="hero">
   <div class="container container--wide hero__layout">
     <div class="hero__copy">
-      <span class="eyebrow">Nuova interfaccia 2025</span>
-      <h1>Monitoraggio Etna, riprogettato da zero</h1>
+      <span class="eyebrow">Monitoraggio in tempo reale</span>
+      <h1>Il tremore dell'Etna torna chiaro e familiare</h1>
       <p class="lead">
-        Una piattaforma immersiva per leggere il tremore vulcanico in tempo reale, con grafico interattivo, indicatori live e
-        controlli rapidi ottimizzati per ogni dispositivo.
+        Abbiamo riportato il grafico storico in primo piano, con colori sobri, lettura immediata e pulsanti rapidi per avere
+        sotto controllo l'attività vulcanica senza fronzoli.
       </p>
       <div class="hero__actions">
         <button id="quick-update-btn" class="btn btn-primary" type="button">Aggiorna dati live</button>
-        <a class="btn btn-secondary" href="{{ url_for('main.tecnologia') }}">Scopri la pipeline</a>
+        <a class="btn btn-secondary" href="{{ url_for('main.tecnologia') }}">Approfondisci la raccolta dati</a>
       </div>
       <div class="hero__meta">
         <div class="chart-card__status">
@@ -44,7 +44,7 @@
           <div>
             <span class="pill">Grafico tremore</span>
           </div>
-          <span class="muted">Scala logaritmica · aggiornamento 5'</span>
+          <span class="muted">Scala lineare · aggiornamento 5'</span>
         </div>
         <h2 id="grafico-title">Curva del tremore vulcanico</h2>
         {% if csv_snapshot.has_data %}

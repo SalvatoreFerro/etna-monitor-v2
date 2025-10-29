@@ -14,7 +14,70 @@
     }
   }
 
-  function init() {
+  function initSiteNavMenu() {
+    const menu = document.querySelector('[data-site-nav-menu]');
+    const toggle = document.querySelector('[data-site-nav-toggle]');
+    if (!menu || !toggle) {
+      return;
+    }
+
+    const desktopQuery = window.matchMedia('(min-width: 1024px)');
+    let isOpen = false;
+
+    menu.classList.add('is-enhanced');
+
+    function applyState(open, { fromResize = false } = {}) {
+      isOpen = open;
+      menu.classList.toggle('is-open', open);
+      menu.setAttribute('aria-hidden', open ? 'false' : 'true');
+      if (!desktopQuery.matches || fromResize) {
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+    }
+
+    function syncToViewport() {
+      if (desktopQuery.matches) {
+        applyState(true, { fromResize: true });
+      } else {
+        applyState(false, { fromResize: true });
+      }
+    }
+
+    function handleToggle(event) {
+      if (desktopQuery.matches) {
+        return;
+      }
+      event.preventDefault();
+      applyState(!isOpen);
+    }
+
+    function handleMenuClick(event) {
+      if (!desktopQuery.matches && event.target.closest('a')) {
+        applyState(false);
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (!desktopQuery.matches && event.key === 'Escape' && isOpen) {
+        applyState(false);
+        toggle.focus({ preventScroll: true });
+      }
+    }
+
+    syncToViewport();
+
+    if (typeof desktopQuery.addEventListener === 'function') {
+      desktopQuery.addEventListener('change', syncToViewport);
+    } else if (typeof desktopQuery.addListener === 'function') {
+      desktopQuery.addListener(syncToViewport);
+    }
+
+    toggle.addEventListener('click', handleToggle);
+    menu.addEventListener('click', handleMenuClick);
+    document.addEventListener('keydown', handleKeyDown, true);
+  }
+
+  function initQuickLinks() {
     const container = document.querySelector('[data-nav-multiselect]');
     const selectedContainer = document.querySelector('[data-nav-selected]');
     if (!container || !selectedContainer) {
@@ -197,9 +260,14 @@
     }
   }
 
+  function onReady() {
+    initSiteNavMenu();
+    initQuickLinks();
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', onReady, { once: true });
   } else {
-    init();
+    onReady();
   }
 })();

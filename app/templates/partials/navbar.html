@@ -23,23 +23,28 @@
       aria-label="Apri il menu di navigazione"
       aria-controls="navbar-menu"
       aria-expanded="false"
-      data-nav-toggle
+      data-site-nav-toggle
     >
       <span class="sr-only">Apri il menu</span>
       <span class="site-nav__toggle-bars" aria-hidden="true"></span>
     </button>
 
-    <div class="site-nav__menu" id="navbar-menu" data-nav-menu hidden aria-hidden="true">
-      <div class="site-nav__menu-inner">
-        <ul class="site-nav__quick-links">
-          {% for link in nav_links %}
-            <li>
-              <a class="site-nav__quick-link {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">
-                <span>{{ link.label }}</span>
-              </a>
-            </li>
-          {% endfor %}
-        </ul>
+    <div class="site-nav__controls">
+      <div
+        class="site-nav__selected"
+        data-nav-selected
+        data-nav-current-endpoint="{{ request.endpoint or '' }}"
+      >
+        {% for link in default_selection %}
+          <a
+            class="nav-chip {{ 'is-active' if request.endpoint == link.endpoint }}"
+            href="{{ link.url }}"
+            data-endpoint="{{ link.endpoint }}"
+          >
+            {{ link.label }}
+          </a>
+        {% endfor %}
+      </div>
 
       <div class="nav-multiselect" data-nav-multiselect>
         <button
@@ -81,6 +86,20 @@
             <button type="button" class="btn btn-ghost btn-sm" data-nav-reset>Reset</button>
           </div>
         </div>
+      </div>
+    </div>
+
+    <div class="site-nav__menu" id="navbar-menu" data-site-nav-menu aria-hidden="true">
+      <div class="site-nav__menu-inner">
+        <ul class="site-nav__quick-links">
+          {% for link in nav_links %}
+            <li>
+              <a class="site-nav__quick-link {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">
+                <span>{{ link.label }}</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
       </div>
     </div>
 
