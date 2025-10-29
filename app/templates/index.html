@@ -53,6 +53,11 @@
             <p>Caricamento dati INGV…</p>
           </div>
           <div id="home-preview-plot" aria-hidden="true"></div>
+          {% if preview_rows %}
+            <script id="home-bootstrap-data" type="application/json">
+              {{ preview_rows | tojson(indent=0) | safe }}
+            </script>
+          {% endif %}
         {% else %}
           <div class="chart-loading" aria-live="polite">
             <p><strong>Dati in preparazione</strong></p>

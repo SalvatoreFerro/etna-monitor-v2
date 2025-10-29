@@ -19,12 +19,43 @@
   const statusIndicator = document.getElementById('live-status-indicator');
   const statusText = document.getElementById('live-status-text');
   const defaultLoadingMarkup = loadingElement ? loadingElement.innerHTML : '';
+  const bootstrapScript = document.getElementById('home-bootstrap-data');
+  let bootstrapRows = [];
+  if (bootstrapScript) {
+    try {
+      const parsed = JSON.parse(bootstrapScript.textContent || '[]');
+      if (Array.isArray(parsed)) {
+        bootstrapRows = parsed
+          .map((row) => {
+            if (!row) return null;
+            const timestamp = row.timestamp || row[0];
+            const value = row.value ?? row[1];
+            const numericValue = Number(value);
+            if (!timestamp || Number.isNaN(numericValue)) return null;
+            return {
+              timestamp: typeof timestamp === 'string' ? timestamp : String(timestamp),
+              value: numericValue,
+            };
+          })
+          .filter(Boolean);
+      }
+      bootstrapScript.remove();
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error('Impossibile analizzare i dati bootstrap del grafico', error);
+      bootstrapRows = [];
+    }
+  }
+
+  let resizeBound = false;
+  let chartDrawn = false;
+  let plotlyReadyPromise = null;
+  let noticeTimer = null;
+  let lastSuccessfulPayload = null;
 
   if (!plotElement || !loadingElement) {
     return;
   }
-
-  let resizeBound = false;
 
   function fetchWithTimeout(url, options = {}, timeout = FETCH_TIMEOUTS[0]) {
     const controller = new AbortController();
@@ -37,6 +68,11 @@
 
   function showSpinner() {
     if (!loadingElement) return;
+    if (noticeTimer) {
+      window.clearTimeout(noticeTimer);
+      noticeTimer = null;
+    }
+    loadingElement.classList.remove('chart-notice');
     loadingElement.innerHTML = defaultLoadingMarkup;
     loadingElement.hidden = false;
     loadingElement.setAttribute('aria-hidden', 'false');
@@ -44,6 +80,11 @@
 
   function hideSpinner() {
     if (!loadingElement) return;
+    if (noticeTimer) {
+      window.clearTimeout(noticeTimer);
+      noticeTimer = null;
+    }
+    loadingElement.classList.remove('chart-notice');
     loadingElement.hidden = true;
     loadingElement.setAttribute('aria-hidden', 'true');
   }
@@ -167,13 +208,90 @@
     });
   }
 
-  async function drawPlot(rows) {
-    if (!window.Plotly) {
-      throw new Error('Plotly non disponibile');
+  function normalizeRows(rows) {
+    if (!Array.isArray(rows)) return [];
+    return rows
+      .map((row) => {
+        if (!row) return null;
+        const timestamp = row.timestamp || row[0];
+        const rawValue = row.value ?? row[1];
+        const numericValue = Number(rawValue);
+        if (!timestamp || Number.isNaN(numericValue)) return null;
+        const sanitized = numericValue > 0 ? numericValue : 0.0001;
+        return {
+          timestamp: typeof timestamp === 'string' ? timestamp : String(timestamp),
+          value: numericValue,
+          plotValue: sanitized,
+        };
+      })
+      .filter(Boolean);
+  }
+
+  function ensurePlotly() {
+    if (window.Plotly) {
+      return Promise.resolve(window.Plotly);
+    }
+    if (plotlyReadyPromise) {
+      return plotlyReadyPromise;
     }
 
-    const timestamps = rows.map((row) => row.timestamp);
-    const values = rows.map((row) => Number(row.value));
+    plotlyReadyPromise = new Promise((resolve, reject) => {
+      const step = 100;
+      const timeout = 8000;
+      let elapsed = 0;
+
+      const checkReady = () => {
+        if (window.Plotly) {
+          resolve(window.Plotly);
+          return true;
+        }
+        return false;
+      };
+
+      if (checkReady()) {
+        return;
+      }
+
+      const poller = window.setInterval(() => {
+        elapsed += step;
+        if (checkReady()) {
+          window.clearInterval(poller);
+        } else if (elapsed >= timeout) {
+          window.clearInterval(poller);
+          reject(new Error('Plotly non disponibile'));
+        }
+      }, step);
+
+      const script = Array.from(document.getElementsByTagName('script')).find((el) => el.src && el.src.includes('plotly'));
+      if (script) {
+        script.addEventListener('load', () => {
+          if (checkReady()) {
+            window.clearInterval(poller);
+          }
+        }, { once: true });
+        script.addEventListener('error', () => {
+          window.clearInterval(poller);
+          reject(new Error('Plotly non disponibile'));
+        }, { once: true });
+      }
+    }).catch((error) => {
+      plotlyReadyPromise = null;
+      throw error;
+    });
+
+    return plotlyReadyPromise;
+  }
+
+  async function drawPlot(rows) {
+    const normalized = normalizeRows(rows);
+    if (!normalized.length) {
+      throw new Error('Dati non disponibili');
+    }
+
+    const plotly = await ensurePlotly();
+
+    const timestamps = normalized.map((row) => row.timestamp);
+    const values = normalized.map((row) => row.plotValue);
 
     const trace = {
       x: timestamps,
@@ -212,10 +330,16 @@
       doubleClick: 'reset'
     };
 
-    await window.Plotly.newPlot(plotElement, [trace], layout, config);
+    if (chartDrawn) {
+      await plotly.react(plotElement, [trace], layout, config);
+    } else {
+      await plotly.newPlot(plotElement, [trace], layout, config);
+      chartDrawn = true;
+    }
     plotElement.classList.add('loaded');
     plotElement.removeAttribute('aria-hidden');
     ensureResizeListener();
+    hideSpinner();
   }
 
   async function loadChart(options = {}) {
@@ -238,10 +362,6 @@
       if (!Array.isArray(payload.data) || !payload.data.length) {
         throw new Error('Dati non disponibili');
       }
-      await drawPlot(payload.data);
-      hideSpinner();
-      updateMetrics(payload);
-      updateStatus(payload.source === 'fallback' ? 'fallback' : 'online');
       return payload;
     } catch (error) {
       console.error('Errore caricamento curva', error);
@@ -289,7 +409,8 @@
         if (typeof payload.current_value === 'number') {
           updateActivity(payload.current_value);
         }
-        const fallbackActive = statusIndicator && statusIndicator.classList.contains('fallback');
+        const fallbackActive = (lastSuccessfulPayload && lastSuccessfulPayload.source === 'fallback')
+          || (statusIndicator && statusIndicator.classList.contains('fallback'));
         updateStatus(fallbackActive ? 'fallback' : 'online');
       }
     } catch (error) {
@@ -305,9 +426,15 @@
       quickUpdateBtn.disabled = true;
       quickUpdateBtn.textContent = 'Aggiornamento…';
       try {
-        await loadChartWithRetry();
+        const payload = await loadChartWithRetry({ showLoader: !chartDrawn });
+        if (payload) {
+          await drawPlot(payload.data);
+          updateMetrics(payload);
+          updateStatus(payload.source === 'fallback' ? 'fallback' : 'online');
+          lastSuccessfulPayload = payload;
+        }
       } catch (error) {
-        handleLoadError(error);
+        handleLoadError(error, { keepExisting: chartDrawn });
       } finally {
         try {
           await refreshStatus();
@@ -346,20 +473,67 @@
     targets.forEach(({ target }) => observer.observe(target));
   }
 
-  function handleLoadError(error) {
-    hideSpinner();
+  function handleLoadError(error, options = {}) {
+    const { keepExisting = false } = options;
     const isAbort = error && error.name === 'AbortError';
     const message = isAbort
       ? 'Timeout di rete, riprova.'
       : (error && error.message ? error.message : 'Impossibile caricare il grafico');
-    showError(message);
+    if (keepExisting && chartDrawn) {
+      if (noticeTimer) {
+        window.clearTimeout(noticeTimer);
+        noticeTimer = null;
+      }
+      if (loadingElement) {
+        loadingElement.classList.add('chart-notice');
+        loadingElement.innerHTML = `<p>${message}</p>`;
+        loadingElement.hidden = false;
+        loadingElement.setAttribute('aria-hidden', 'false');
+        noticeTimer = window.setTimeout(() => {
+          if (!loadingElement) return;
+          loadingElement.hidden = true;
+          loadingElement.setAttribute('aria-hidden', 'true');
+          loadingElement.classList.remove('chart-notice');
+          noticeTimer = null;
+        }, 6000);
+      }
+    } else {
+      showError(message);
+    }
     updateStatus('offline');
   }
 
-  function init() {
-    loadChartWithRetry().catch((error) => {
-      handleLoadError(error);
-    });
+  async function init() {
+    if (bootstrapRows.length) {
+      try {
+        await drawPlot(bootstrapRows);
+        updateMetrics({
+          data: bootstrapRows,
+          rows: bootstrapRows.length,
+          last_ts: bootstrapRows[bootstrapRows.length - 1]
+            ? bootstrapRows[bootstrapRows.length - 1].timestamp
+            : undefined,
+        });
+        updateStatus('online');
+      } catch (error) {
+        console.error('Errore rendering dati bootstrap', error);
+        showSpinner();
+      }
+    } else {
+      showSpinner();
+    }
+
+    loadChartWithRetry({ showLoader: !chartDrawn })
+      .then(async (payload) => {
+        lastSuccessfulPayload = payload;
+        await drawPlot(payload.data);
+        updateMetrics(payload);
+        updateStatus(payload.source === 'fallback' ? 'fallback' : 'online');
+      })
+      .catch((error) => {
+        handleLoadError(error, { keepExisting: chartDrawn });
+      });
+
     refreshStatus();
     bindQuickUpdate();
     setupMobileNavObserver();

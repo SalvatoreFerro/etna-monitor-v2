@@ -59,6 +59,7 @@ def index():
     csv_path = Path(csv_path_setting or "/var/tmp/curva.csv")
     timestamps: list[str] = []
     values: list[float] = []
+    preview_rows: list[dict[str, object]] = []
     temporal_start_iso: str | None = None
     temporal_end_iso: str | None = None
     temporal_coverage: str | None = None
@@ -84,6 +85,25 @@ def index():
                 timestamps = df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S").tolist()
                 values = df["value"].tolist()
                 data_points = len(df)
+
+                preview_slice = df.tail(168)
+                preview_rows = []
+                for row in preview_slice.itertuples(index=False):
+                    value = getattr(row, "value", None)
+                    if value is None:
+                        continue
+                    ts = row.timestamp
+                    iso_timestamp = (
+                        ts.isoformat()
+                        if hasattr(ts, "isoformat")
+                        else str(ts)
+                    )
+                    preview_rows.append(
+                        {
+                            "timestamp": iso_timestamp,
+                            "value": float(value),
+                        }
+                    )
 
                 temporal_start = df["timestamp"].iloc[0]
                 temporal_end = df["timestamp"].iloc[-1]
@@ -254,6 +274,7 @@ def index():
         data_points_count=data_points,
         temporal_coverage=temporal_coverage,
         csv_snapshot=csv_snapshot,
+        preview_rows=preview_rows,
     )
 
 
