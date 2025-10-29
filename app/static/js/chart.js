@@ -2,7 +2,8 @@
 (function () {
   const CHART_ENDPOINT = '/api/curva?limit=168';
   const STATUS_ENDPOINT = '/api/status';
-  const REQUEST_TIMEOUT = 5000;
+  const FETCH_TIMEOUTS = [5000, 20000];
+  const RETRY_DELAYS = [800];
 
   if (window.__chartReady) {
     return;
@@ -25,9 +26,9 @@
 
   let resizeBound = false;
 
-  function fetchWithTimeout(url, options = {}) {
+  function fetchWithTimeout(url, options = {}, timeout = FETCH_TIMEOUTS[0]) {
     const controller = new AbortController();
-    const timer = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+    const timer = window.setTimeout(() => controller.abort(), timeout);
     const config = { ...options, signal: controller.signal };
 
     return fetch(url, config)
@@ -47,11 +48,29 @@
     loadingElement.setAttribute('aria-hidden', 'true');
   }
 
-  function updateStatus(isOnline) {
+  function updateStatus(state) {
     if (!statusIndicator || !statusText) return;
-    statusIndicator.classList.toggle('online', isOnline);
-    statusIndicator.classList.toggle('offline', !isOnline);
-    statusText.textContent = isOnline ? 'Dati online' : 'Connessione assente';
+    let statusState;
+    if (typeof state === 'string') {
+      if (state === 'fallback') {
+        statusState = 'fallback';
+      } else if (state === 'offline') {
+        statusState = 'offline';
+      } else {
+        statusState = 'online';
+      }
+    } else {
+      statusState = state ? 'online' : 'offline';
+    }
+    statusIndicator.classList.toggle('online', statusState === 'online');
+    statusIndicator.classList.toggle('offline', statusState === 'offline');
+    statusIndicator.classList.toggle('fallback', statusState === 'fallback');
+
+    if (statusState === 'fallback') {
+      statusText.textContent = 'Dati backup';
+    } else {
+      statusText.textContent = statusState === 'online' ? 'Dati online' : 'Connessione assente';
+    }
   }
 
   function updateActivity(value) {
@@ -129,8 +148,8 @@
     button.className = 'btn btn-secondary btn-sm';
     button.textContent = 'Riprova';
     button.addEventListener('click', () => {
-      loadChart().catch(() => {
-        /* errors handled in loadChart */
+      loadChartWithRetry().catch((error) => {
+        handleLoadError(error);
       });
     });
     wrapper.appendChild(text);
@@ -199,13 +218,16 @@
     ensureResizeListener();
   }
 
-  async function loadChart() {
-    showSpinner();
+  async function loadChart(options = {}) {
+    const { timeout = FETCH_TIMEOUTS[0], showLoader = true } = options;
+    if (showLoader) {
+      showSpinner();
+    }
     try {
       const response = await fetchWithTimeout(CHART_ENDPOINT, {
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' }
-      });
+      }, timeout);
       if (!response.ok) {
         throw new Error('Risposta non valida dal server');
       }
@@ -219,18 +241,35 @@
       await drawPlot(payload.data);
       hideSpinner();
       updateMetrics(payload);
-      updateStatus(true);
+      updateStatus(payload.source === 'fallback' ? 'fallback' : 'online');
       return payload;
     } catch (error) {
       console.error('Errore caricamento curva', error);
-      hideSpinner();
-      const message = error && error.name === 'AbortError'
-        ? 'Timeout di rete, riprova.'
-        : (error && error.message ? error.message : 'Impossibile caricare il grafico');
-      showError(message);
-      updateStatus(false);
       throw error;
     }
+  }
+
+  async function loadChartWithRetry(options = {}) {
+    let lastError;
+    for (let attempt = 0; attempt < FETCH_TIMEOUTS.length; attempt += 1) {
+      const timeout = FETCH_TIMEOUTS[Math.min(attempt, FETCH_TIMEOUTS.length - 1)];
+      const showLoader = options.showLoader !== false ? attempt === 0 : false;
+      try {
+        const payload = await loadChart({ timeout, showLoader });
+        return payload;
+      } catch (error) {
+        lastError = error;
+        const isAbort = error && error.name === 'AbortError';
+        if (!isAbort || attempt === FETCH_TIMEOUTS.length - 1) {
+          break;
+        }
+        const delay = RETRY_DELAYS[Math.min(attempt, RETRY_DELAYS.length - 1)] || 0;
+        if (delay) {
+          await new Promise((resolve) => window.setTimeout(resolve, delay));
+        }
+      }
+    }
+    throw lastError;
   }
 
   async function refreshStatus() {
@@ -250,7 +289,8 @@
         if (typeof payload.current_value === 'number') {
           updateActivity(payload.current_value);
         }
-        updateStatus(true);
+        const fallbackActive = statusIndicator && statusIndicator.classList.contains('fallback');
+        updateStatus(fallbackActive ? 'fallback' : 'online');
       }
     } catch (error) {
       updateStatus(false);
@@ -265,10 +305,15 @@
       quickUpdateBtn.disabled = true;
       quickUpdateBtn.textContent = 'Aggiornamento…';
       try {
-        await Promise.all([loadChart(), refreshStatus()]);
+        await loadChartWithRetry();
       } catch (error) {
-        // handled in loadChart/refreshStatus
+        handleLoadError(error);
       } finally {
+        try {
+          await refreshStatus();
+        } catch (error) {
+          updateStatus(false);
+        }
         quickUpdateBtn.disabled = false;
         quickUpdateBtn.textContent = originalText;
       }
@@ -301,9 +346,19 @@
     targets.forEach(({ target }) => observer.observe(target));
   }
 
+  function handleLoadError(error) {
+    hideSpinner();
+    const isAbort = error && error.name === 'AbortError';
+    const message = isAbort
+      ? 'Timeout di rete, riprova.'
+      : (error && error.message ? error.message : 'Impossibile caricare il grafico');
+    showError(message);
+    updateStatus('offline');
+  }
+
   function init() {
-    loadChart().catch(() => {
-      /* initial error handled in loadChart */
+    loadChartWithRetry().catch((error) => {
+      handleLoadError(error);
     });
     refreshStatus();
     bindQuickUpdate();

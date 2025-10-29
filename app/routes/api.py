@@ -15,6 +15,9 @@ def get_curva():
     csv_path_setting = current_app.config.get("CURVA_CSV_PATH") or current_app.config.get("CSV_PATH") or "/var/tmp/curva.csv"
     csv_path = Path(csv_path_setting)
 
+    fallback_used = False
+    preloaded_df = None
+
     if not csv_path.exists() or csv_path.stat().st_size <= 20:
         try:
             ingv_url = os.getenv('INGV_URL', 'https://www.ct.ingv.it/RMS_Etna/2.png')
@@ -23,15 +26,43 @@ def get_curva():
         except Exception as e:
             current_app.logger.exception("[API] Failed to auto-generate curva.csv")
             record_csv_error(str(e))
-            return jsonify({
-                "ok": True,
-                "data": [],
-                "last_ts": None,
-                "rows": 0
-            })
+
+            fallback_setting = current_app.config.get("CURVA_FALLBACK_PATH")
+            fallback_path = (
+                Path(fallback_setting)
+                if fallback_setting
+                else Path(current_app.root_path).parent / "data" / "curva.csv"
+            )
+
+            if fallback_path.exists() and fallback_path.stat().st_size > 20:
+                try:
+                    preloaded_df = pd.read_csv(fallback_path, parse_dates=["timestamp"])
+                    preloaded_df.to_csv(csv_path, index=False)
+                    fallback_used = True
+                    current_app.logger.info(
+                        "[API] Served fallback curva.csv from %s", fallback_path
+                    )
+                except Exception as fallback_exc:
+                    current_app.logger.exception(
+                        "[API] Failed to load fallback curva.csv from %s", fallback_path
+                    )
+                    record_csv_error(f"fallback_error::{fallback_exc}")
+                    preloaded_df = None
+
+            if preloaded_df is None:
+                return jsonify({
+                    "ok": False,
+                    "error": "Dati INGV non disponibili al momento",
+                    "csv_path": str(csv_path),
+                    "placeholder_reason": "bootstrap_failed",
+                }), 503
 
     try:
-        df = pd.read_csv(csv_path, parse_dates=["timestamp"])
+        df = (
+            preloaded_df
+            if preloaded_df is not None
+            else pd.read_csv(csv_path, parse_dates=["timestamp"])
+        )
         last_ts = df["timestamp"].max() if not df.empty else None
         record_csv_read(len(df), last_ts)
 
@@ -43,15 +74,20 @@ def get_curva():
                 "rows": 0
             })
 
+        df = df.sort_values("timestamp")
         data = df.to_dict(orient="records")
 
-        response = jsonify({
+        payload = {
             "ok": True,
             "data": data,
             "last_ts": last_ts.isoformat() if pd.notna(last_ts) else None,
-            "rows": len(data)
-        })
-        
+            "rows": len(data),
+        }
+        if fallback_used:
+            payload["source"] = "fallback"
+
+        response = jsonify(payload)
+
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
