@@ -633,11 +633,10 @@
     flex-shrink: 0;
   }
 
-  .site-nav__auth .btn {
-    height: 34px;
-    padding-inline: 0.85rem;
-    font-size: 0.8rem;
-  }
+  @media (min-width: 1024px) {
+    .site-nav {
+      background: rgba(3, 6, 15, 0.55);
+    }
 
     .site-nav__toggle {
       display: none;

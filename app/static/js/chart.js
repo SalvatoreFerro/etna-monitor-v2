@@ -291,9 +291,9 @@
     const plotly = await ensurePlotly();
 
     const timestamps = normalized.map((row) => row.timestamp);
-    const values = normalized.map((row) => (row.plotValue > 0 ? row.plotValue : 0.001));
+    const values = normalized.map((row) => row.plotValue);
     const threshold = 2;
-    const isDarkTheme = (document.documentElement.getAttribute('data-theme') || 'dark') !== 'light';
+    const isDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark';
 
     const trace = {
       x: timestamps,
@@ -306,15 +306,16 @@
     };
 
     const layout = {
-      margin: { l: 60, r: 20, t: 40, b: 48 },
+      title: 'Etna Volcanic Tremor',
+      title_font: { size: 16, color: isDarkTheme ? '#e6e7ea' : '#000000' },
+      margin: { l: 60, r: 20, t: 50, b: 40 },
       template: isDarkTheme ? 'plotly_dark' : 'plotly_white',
       plot_bgcolor: 'rgba(0,0,0,0)',
       paper_bgcolor: 'rgba(0,0,0,0)',
-      font: { color: isDarkTheme ? '#e6e7ea' : '#111827', size: 12 },
+      font: { color: isDarkTheme ? '#e6e7ea' : '#000000' },
       xaxis: {
         title: 'Time',
         type: 'date',
-        tickformat: '%d/%m/%Y %H:%M',
         showgrid: true,
         gridcolor: isDarkTheme ? '#374151' : '#e5e7eb'
       },
@@ -338,10 +339,9 @@
     };
 
     const config = {
-      responsive: true,
       displayModeBar: false,
-      scrollZoom: false,
-      doubleClick: 'reset'
+      responsive: true,
+      staticPlot: false
     };
 
     if (chartDrawn) {

@@ -6,6 +6,7 @@
   {'label': 'Experience', 'url': url_for('experience.experience_home'), 'endpoint': 'experience.experience_home'},
   {'label': 'Prezzi', 'url': url_for('main.pricing'), 'endpoint': 'main.pricing'},
 ] %}
+{% set quick_links = nav_links %}
 
 {% set default_selection = quick_links[:3] %}
 
