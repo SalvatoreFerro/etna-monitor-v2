@@ -114,16 +114,15 @@ def sitemap() -> Response:
 def robots_txt() -> Response:
     base_url = _canonical_base_url()
     sitemap_url = f"{base_url}/sitemap.xml"
-    content_lines = [
-        "User-agent: *",
-        "Allow: /",
-        "Disallow: /admin",
-        "Disallow: /dashboard",
-        "Disallow: /auth",
-        "Disallow: /api",
-        "Disallow: /internal",
-        f"Sitemap: {sitemap_url}",
-        "",
-    ]
+    
+    # Build content dynamically using shared exclusion constants
+    content_lines = ["User-agent: *", "Allow: /"]
+    
+    # Add Disallow directives from shared constants
+    for prefix in EXCLUDED_PREFIXES:
+        content_lines.append(f"Disallow: {prefix}")
+    
+    content_lines.extend([f"Sitemap: {sitemap_url}", ""])
+    
     content = "\n".join(content_lines)
     return Response(content, mimetype="text/plain")
