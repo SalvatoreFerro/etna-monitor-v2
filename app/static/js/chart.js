@@ -5,11 +5,6 @@
   const FETCH_TIMEOUTS = [5000, 20000];
   const RETRY_DELAYS = [800];
 
-  if (window.__chartReady) {
-    return;
-  }
-  window.__chartReady = true;
-
   const plotElement = document.getElementById('home-preview-plot');
   const loadingElement = document.getElementById('home-preview-loading');
   const quickUpdateBtn = document.getElementById('quick-update-btn');
@@ -56,6 +51,11 @@
   if (!plotElement || !loadingElement) {
     return;
   }
+
+  if (window.__chartReady) {
+    return;
+  }
+  window.__chartReady = true;
 
   function fetchWithTimeout(url, options = {}, timeout = FETCH_TIMEOUTS[0]) {
     const controller = new AbortController();
