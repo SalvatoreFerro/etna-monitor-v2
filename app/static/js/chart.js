@@ -4,6 +4,30 @@
   const STATUS_ENDPOINT = '/api/status';
   const FETCH_TIMEOUTS = [5000, 20000];
   const RETRY_DELAYS = [800];
+  const LOG_SCALE_MIN = 0.1;
+  const LOG_SCALE_MAX = 10;
+  const LOG_TICKS = [
+    { value: 0.1, label: '10⁻¹' },
+    { value: 0.2, label: '0.2' },
+    { value: 0.5, label: '0.5' },
+    { value: 1, label: '1' },
+    { value: 2, label: '2' },
+    { value: 5, label: '5' },
+    { value: 10, label: '10¹' }
+  ];
+  const PRIMARY_LINE_COLOR_DARK = '#4ade80';
+  const PRIMARY_LINE_COLOR_LIGHT = '#0f172a';
+  const PRIMARY_FILL_COLOR_DARK = 'rgba(74, 222, 128, 0.08)';
+  const PRIMARY_FILL_COLOR_LIGHT = 'rgba(15, 23, 42, 0.08)';
+  const GRID_COLOR_DARK = '#1f2937';
+  const GRID_COLOR_LIGHT = '#e2e8f0';
+  const AXIS_LINE_COLOR_DARK = '#334155';
+  const AXIS_LINE_COLOR_LIGHT = '#94a3b8';
+  const THRESHOLD_COLOR_DARK = '#ef4444';
+  const THRESHOLD_COLOR_LIGHT = '#b91c1c';
+  const HOVER_BG_DARK = 'rgba(15, 23, 42, 0.92)';
+  const HOVER_BG_LIGHT = '#f8fafc';
+  const THRESHOLD_LEVEL = 4;
 
   const plotElement = document.getElementById('home-preview-plot');
   const loadingElement = document.getElementById('home-preview-loading');
@@ -286,30 +310,37 @@
       throw new Error('Dati non disponibili');
     }
 
+    const filtered = normalized.filter((row) => Number.isFinite(row.value) && row.value > 0);
+    if (!filtered.length) {
+      throw new Error('Dati non compatibili con scala logaritmica');
+    }
+
     const plotly = await ensurePlotly();
 
-    const timestamps = normalized.map((row) => row.timestamp);
-    const values = normalized.map((row) => row.value);
-    const isDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark';
-    const lineColor = isDarkTheme ? '#38bdf8' : '#2563eb';
-    const fillColor = isDarkTheme ? 'rgba(56, 189, 248, 0.15)' : 'rgba(37, 99, 235, 0.16)';
-    const gridColor = isDarkTheme ? '#334155' : '#e2e8f0';
-    const axisLineColor = isDarkTheme ? '#475569' : '#cbd5f5';
-    const thresholdLevel = 4;
+    const timestamps = filtered.map((row) => row.timestamp);
+    const values = filtered.map((row) => row.value);
+    const clampedValues = values.map((value) => (value >= LOG_SCALE_MIN ? value : LOG_SCALE_MIN));
+    const isDarkTheme = document.documentElement.getAttribute('data-theme') !== 'light';
+    const lineColor = isDarkTheme ? PRIMARY_LINE_COLOR_DARK : PRIMARY_LINE_COLOR_LIGHT;
+    const fillColor = isDarkTheme ? PRIMARY_FILL_COLOR_DARK : PRIMARY_FILL_COLOR_LIGHT;
+    const gridColor = isDarkTheme ? GRID_COLOR_DARK : GRID_COLOR_LIGHT;
+    const axisLineColor = isDarkTheme ? AXIS_LINE_COLOR_DARK : AXIS_LINE_COLOR_LIGHT;
+    const thresholdColor = isDarkTheme ? THRESHOLD_COLOR_DARK : THRESHOLD_COLOR_LIGHT;
 
-    const minValue = Math.min(...values);
-    const maxValue = Math.max(...values);
-    const padding = Math.max((maxValue - minValue) * 0.1, 0.5);
-    const yStart = Math.max(0, minValue - padding);
-    const yEnd = maxValue + padding;
+    const minExponent = Math.log10(Math.min(...clampedValues));
+    const maxExponent = Math.log10(Math.max(...clampedValues));
+    const yRange = [
+      Math.min(Math.log10(LOG_SCALE_MIN), Math.floor(minExponent * 10) / 10),
+      Math.max(Math.log10(LOG_SCALE_MAX), Math.ceil(maxExponent * 10) / 10)
+    ];
 
     const trace = {
       x: timestamps,
-      y: values,
+      y: clampedValues,
       type: 'scatter',
       mode: 'lines',
       name: 'Tremore',
-      line: { color: lineColor, width: 2 },
+      line: { color: lineColor, width: 2.4, shape: 'spline', smoothing: 1.15 },
       fill: 'tozeroy',
       fillcolor: fillColor,
       hovertemplate: '<b>%{y:.2f} mV</b><br>%{x|%d/%m %H:%M}<extra></extra>',
@@ -317,19 +348,19 @@
     };
 
     const shapes = [];
-    if (Number.isFinite(thresholdLevel) && thresholdLevel > 0) {
+    if (Number.isFinite(THRESHOLD_LEVEL) && THRESHOLD_LEVEL > 0) {
       shapes.push({
         type: 'line',
         x0: timestamps[0],
         x1: timestamps[timestamps.length - 1],
-        y0: thresholdLevel,
-        y1: thresholdLevel,
-        line: { color: isDarkTheme ? '#f87171' : '#b91c1c', width: 2, dash: 'dash' }
+        y0: THRESHOLD_LEVEL,
+        y1: THRESHOLD_LEVEL,
+        line: { color: thresholdColor, width: 2, dash: 'dash' }
       });
     }
 
     const layout = {
-      margin: { l: 60, r: 30, t: 20, b: 48 },
+      margin: { l: 64, r: 32, t: 24, b: 56 },
       hovermode: 'x unified',
       plot_bgcolor: 'rgba(0,0,0,0)',
       paper_bgcolor: 'rgba(0,0,0,0)',
@@ -342,20 +373,32 @@
         linewidth: 1,
         linecolor: axisLineColor,
         hoverformat: '%d/%m %H:%M',
-        tickfont: { size: 12 }
+        tickfont: { size: 12 },
+        ticks: 'outside',
+        tickcolor: axisLineColor
       },
       yaxis: {
         title: 'Ampiezza (mV)',
+        type: 'log',
+        range: yRange,
         showgrid: true,
         gridcolor: gridColor,
         linewidth: 1,
         linecolor: axisLineColor,
-        rangemode: 'tozero',
-        range: [yStart, yEnd],
         tickfont: { size: 12 },
+        tickvals: LOG_TICKS.map((tick) => tick.value),
+        ticktext: LOG_TICKS.map((tick) => tick.label),
+        ticksuffix: ' mV',
+        exponentformat: 'power',
+        minor: { ticklen: 4, showgrid: false },
         zeroline: false
       },
-      shapes
+      shapes,
+      hoverlabel: {
+        bgcolor: isDarkTheme ? HOVER_BG_DARK : HOVER_BG_LIGHT,
+        bordercolor: thresholdColor,
+        font: { color: isDarkTheme ? '#f8fafc' : '#0f172a' }
+      }
     };
 
     const config = {
