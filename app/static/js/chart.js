@@ -217,11 +217,9 @@
         const rawValue = row.value ?? row[1];
         const numericValue = Number(rawValue);
         if (!timestamp || Number.isNaN(numericValue)) return null;
-        const sanitized = numericValue > 0 ? numericValue : 0.0001;
         return {
           timestamp: typeof timestamp === 'string' ? timestamp : String(timestamp),
           value: numericValue,
-          plotValue: sanitized,
         };
       })
       .filter(Boolean);
@@ -291,9 +289,19 @@
     const plotly = await ensurePlotly();
 
     const timestamps = normalized.map((row) => row.timestamp);
-    const values = normalized.map((row) => row.plotValue);
-    const threshold = 2;
+    const values = normalized.map((row) => row.value);
     const isDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark';
+    const lineColor = isDarkTheme ? '#38bdf8' : '#2563eb';
+    const fillColor = isDarkTheme ? 'rgba(56, 189, 248, 0.15)' : 'rgba(37, 99, 235, 0.16)';
+    const gridColor = isDarkTheme ? '#334155' : '#e2e8f0';
+    const axisLineColor = isDarkTheme ? '#475569' : '#cbd5f5';
+    const thresholdLevel = 4;
+
+    const minValue = Math.min(...values);
+    const maxValue = Math.max(...values);
+    const padding = Math.max((maxValue - minValue) * 0.1, 0.5);
+    const yStart = Math.max(0, minValue - padding);
+    const yEnd = maxValue + padding;
 
     const trace = {
       x: timestamps,
@@ -301,47 +309,61 @@
       type: 'scatter',
       mode: 'lines',
       name: 'Tremore',
-      line: { color: '#4ade80', width: 2 },
+      line: { color: lineColor, width: 2 },
+      fill: 'tozeroy',
+      fillcolor: fillColor,
+      hovertemplate: '<b>%{y:.2f} mV</b><br>%{x|%d/%m %H:%M}<extra></extra>',
       showlegend: false
     };
 
+    const shapes = [];
+    if (Number.isFinite(thresholdLevel) && thresholdLevel > 0) {
+      shapes.push({
+        type: 'line',
+        x0: timestamps[0],
+        x1: timestamps[timestamps.length - 1],
+        y0: thresholdLevel,
+        y1: thresholdLevel,
+        line: { color: isDarkTheme ? '#f87171' : '#b91c1c', width: 2, dash: 'dash' }
+      });
+    }
+
     const layout = {
-      title: 'Etna Volcanic Tremor',
-      title_font: { size: 16, color: isDarkTheme ? '#e6e7ea' : '#000000' },
-      margin: { l: 60, r: 20, t: 50, b: 40 },
-      template: isDarkTheme ? 'plotly_dark' : 'plotly_white',
+      margin: { l: 60, r: 30, t: 20, b: 48 },
+      hovermode: 'x unified',
       plot_bgcolor: 'rgba(0,0,0,0)',
       paper_bgcolor: 'rgba(0,0,0,0)',
-      font: { color: isDarkTheme ? '#e6e7ea' : '#000000' },
+      font: { color: isDarkTheme ? '#e2e8f0' : '#0f172a' },
       xaxis: {
-        title: 'Time',
         type: 'date',
+        title: '',
         showgrid: true,
-        gridcolor: isDarkTheme ? '#374151' : '#e5e7eb'
+        gridcolor: gridColor,
+        linewidth: 1,
+        linecolor: axisLineColor,
+        hoverformat: '%d/%m %H:%M',
+        tickfont: { size: 12 }
       },
       yaxis: {
-        title: 'Amplitude (mV)',
-        type: 'log',
-        range: [-1, 1],
+        title: 'Ampiezza (mV)',
         showgrid: true,
-        gridcolor: isDarkTheme ? '#374151' : '#e5e7eb'
+        gridcolor: gridColor,
+        linewidth: 1,
+        linecolor: axisLineColor,
+        rangemode: 'tozero',
+        range: [yStart, yEnd],
+        tickfont: { size: 12 },
+        zeroline: false
       },
-      shapes: [
-        {
-          type: 'line',
-          x0: timestamps[0],
-          x1: timestamps[timestamps.length - 1],
-          y0: threshold,
-          y1: threshold,
-          line: { color: '#ef4444', width: 2, dash: 'dash' }
-        }
-      ]
+      shapes
     };
 
     const config = {
       displayModeBar: false,
+      displaylogo: false,
       responsive: true,
-      staticPlot: false
+      staticPlot: false,
+      modeBarButtonsToRemove: ['select2d', 'lasso2d']
     };
 
     if (chartDrawn) {
