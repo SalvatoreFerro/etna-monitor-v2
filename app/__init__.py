@@ -64,6 +64,9 @@ def _mask_database_uri(uri: str) -> str:
 
 SLOW_REQUEST_THRESHOLD_MS = 300
 
+# Paths that should not have public caching (admin, dashboard, auth, api)
+PRIVATE_PATH_PREFIXES = ('/admin', '/dashboard', '/auth', '/api')
+
 
 def _ensure_partners_table(app: Flask) -> None:
     """Ensure the partners table exists with the expected schema."""
@@ -685,7 +688,7 @@ def create_app(config_overrides: dict | None = None):
             )
         elif request.method == "GET" and response.status_code == 200:
             # HTML pages: 5 minutes cache for public pages
-            if not any(request.path.startswith(p) for p in ["/admin", "/dashboard", "/auth", "/api"]):
+            if not request.path.startswith(PRIVATE_PATH_PREFIXES):
                 response.headers.setdefault(
                     "Cache-Control", "public, max-age=300"
                 )
