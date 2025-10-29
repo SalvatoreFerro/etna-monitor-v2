@@ -1,14 +1,10 @@
-{% set quick_links = [
+{% set nav_links = [
   {'label': 'Home', 'url': url_for('main.index'), 'endpoint': 'main.index'},
-  {'label': 'Tecnologia', 'url': url_for('main.tecnologia'), 'endpoint': 'main.tecnologia'},
   {'label': 'Progetto', 'url': url_for('main.progetto'), 'endpoint': 'main.progetto'},
   {'label': 'Team', 'url': url_for('main.team'), 'endpoint': 'main.team'},
-  {'label': 'News', 'url': url_for('main.news'), 'endpoint': 'main.news'},
   {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
   {'label': 'Experience', 'url': url_for('experience.experience_home'), 'endpoint': 'experience.experience_home'},
-  {'label': 'Roadmap', 'url': url_for('main.roadmap'), 'endpoint': 'main.roadmap'},
   {'label': 'Prezzi', 'url': url_for('main.pricing'), 'endpoint': 'main.pricing'},
-  {'label': 'Supporta', 'url': url_for('main.sponsor'), 'endpoint': 'main.sponsor'},
 ] %}
 
 {% set default_selection = quick_links[:3] %}
@@ -20,19 +16,29 @@
       <span>EtnaMonitor</span>
     </a>
 
-    <div class="site-nav__controls">
-      <div
-        class="site-nav__selected"
-        data-nav-selected
-        data-nav-current-endpoint="{{ request.endpoint or '' }}"
-        aria-live="polite"
-      >
-        {% for link in default_selection %}
-          <a class="nav-chip {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">
-            {{ link.label }}
-          </a>
-        {% endfor %}
-      </div>
+    <button
+      class="site-nav__toggle"
+      type="button"
+      aria-label="Apri il menu di navigazione"
+      aria-controls="navbar-menu"
+      aria-expanded="false"
+      data-nav-toggle
+    >
+      <span class="sr-only">Apri il menu</span>
+      <span class="site-nav__toggle-bars" aria-hidden="true"></span>
+    </button>
+
+    <div class="site-nav__menu" id="navbar-menu" data-nav-menu hidden aria-hidden="true">
+      <div class="site-nav__menu-inner">
+        <ul class="site-nav__quick-links">
+          {% for link in nav_links %}
+            <li>
+              <a class="site-nav__quick-link {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">
+                <span>{{ link.label }}</span>
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
 
       <div class="nav-multiselect" data-nav-multiselect>
         <button

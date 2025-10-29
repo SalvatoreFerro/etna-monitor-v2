@@ -560,10 +560,18 @@
     width: min(320px, 90vw);
     padding: var(--space-4);
     background: var(--color-surface);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border);
-    box-shadow: var(--shadow-md);
-    z-index: 1100;
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    box-shadow: var(--shadow-lg);
+    padding: var(--space-6);
+    display: grid;
+    gap: var(--space-6);
+    max-height: calc(100vh - var(--nav-height) - var(--space-6));
+    overflow-y: auto;
+    transform: translateY(-8px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
   }
 
   .nav-multiselect__menu fieldset {
@@ -574,11 +582,9 @@
     gap: 0.75rem;
   }
 
-  .nav-multiselect__menu legend {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.2em;
-    color: var(--color-text-muted);
+  .site-nav__menu-inner {
+    display: grid;
+    gap: var(--space-6);
   }
 
   .nav-multiselect__list {
@@ -633,14 +639,9 @@
     font-size: 0.8rem;
   }
 
-  .site-nav__auth .muted {
-    font-size: 0.75rem;
-    color: var(--color-text-muted);
-  }
-
-  .site-nav__auth-form {
-    display: inline-flex;
-  }
+    .site-nav__toggle {
+      display: none;
+    }
 
   @media (max-width: 767px) {
     .site-nav__inner {
@@ -650,27 +651,25 @@
     .site-nav__controls {
       order: 3;
       width: 100%;
-      margin-top: var(--space-2);
-      flex-wrap: wrap;
-      justify-content: space-between;
-      gap: var(--space-2);
+      min-width: 0;
+      gap: var(--space-6);
     }
 
-    .site-nav__selected {
-      width: 100%;
-      justify-content: flex-start;
-      gap: 0.4rem;
+    .site-nav__quick-links {
+      display: flex;
+      align-items: center;
+      flex-wrap: nowrap;
+      gap: var(--space-3);
+      overflow-x: auto;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      padding-bottom: 0.25rem;
     }
 
-    .nav-multiselect {
-      order: 2;
-    }
-
-    .site-nav__auth {
-      order: 2;
-      width: 100%;
-      justify-content: flex-end;
-      gap: var(--space-2);
+    .site-nav__quick-link {
+      width: auto;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.9rem;
     }
   }
 
@@ -684,12 +683,10 @@
       gap: clamp(1.25rem, 2.5vw, var(--space-5));
     }
 
-    .site-nav__controls {
-      gap: var(--space-4);
-    }
-
-    .site-nav__selected {
-      gap: 0.6rem;
+    .site-nav__actions {
+      flex-direction: row;
+      align-items: center;
+      gap: var(--space-3);
     }
 
     .nav-multiselect__menu {
@@ -697,7 +694,6 @@
     }
   }
 }
-
 @layer hero {
   .hero {
     position: relative;
