@@ -1,15 +1,12 @@
-{% set quick_links = [
+{% set nav_links = [
   {'label': 'Home', 'url': url_for('main.index'), 'endpoint': 'main.index'},
-  {'label': 'Tecnologia', 'url': url_for('main.tecnologia'), 'endpoint': 'main.tecnologia'},
   {'label': 'Progetto', 'url': url_for('main.progetto'), 'endpoint': 'main.progetto'},
   {'label': 'Team', 'url': url_for('main.team'), 'endpoint': 'main.team'},
-  {'label': 'News', 'url': url_for('main.news'), 'endpoint': 'main.news'},
   {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
   {'label': 'Experience', 'url': url_for('experience.experience_home'), 'endpoint': 'experience.experience_home'},
-  {'label': 'Roadmap', 'url': url_for('main.roadmap'), 'endpoint': 'main.roadmap'},
   {'label': 'Prezzi', 'url': url_for('main.pricing'), 'endpoint': 'main.pricing'},
-  {'label': 'Supporta', 'url': url_for('main.sponsor'), 'endpoint': 'main.sponsor'},
 ] %}
+{% set quick_links = nav_links %}
 
 <nav class="site-nav" id="mainNav" role="navigation" aria-label="Navigazione principale">
   <div class="container site-nav__inner">
@@ -33,7 +30,7 @@
     <div class="site-nav__menu" id="navbar-menu" data-nav-menu hidden aria-hidden="true">
       <div class="site-nav__menu-inner">
         <ul class="site-nav__quick-links">
-          {% for link in quick_links %}
+          {% for link in nav_links %}
             <li>
               <a class="site-nav__quick-link {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">
                 <span>{{ link.label }}</span>

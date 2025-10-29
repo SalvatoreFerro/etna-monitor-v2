@@ -480,19 +480,18 @@
     position: fixed;
     inset: var(--nav-height) var(--space-6) auto var(--space-6);
     background: var(--color-surface);
-    border-radius: var(--radius-lg);
-    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(148, 163, 184, 0.12);
     box-shadow: var(--shadow-lg);
     padding: var(--space-6);
     display: grid;
     gap: var(--space-6);
-    max-height: calc(100vh - var(--nav-height) - var(--space-6) * 2);
-    overflow: auto;
-    transform-origin: top right;
-    transform: translateY(-10px);
+    max-height: calc(100vh - var(--nav-height) - var(--space-6));
+    overflow-y: auto;
+    transform: translateY(-8px);
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.25s ease, transform 0.25s ease;
+    transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease;
   }
 
   .site-nav__menu.is-open {
@@ -503,9 +502,7 @@
 
   .site-nav__menu-inner {
     display: grid;
-    gap: var(--space-5);
-    align-content: start;
-    min-width: 0;
+    gap: var(--space-6);
   }
 
   .site-nav__quick-links {
@@ -563,13 +560,6 @@
       background: rgba(3, 6, 15, 0.55);
     }
 
-    .site-nav__inner {
-      flex-wrap: nowrap;
-      align-items: center;
-      gap: clamp(1.25rem, 2.5vw, var(--space-6));
-      min-width: 0;
-    }
-
     .site-nav__toggle {
       display: none;
     }
@@ -599,7 +589,7 @@
       justify-content: space-between;
       width: 100%;
       min-width: 0;
-      gap: clamp(1.25rem, 2.5vw, var(--space-6));
+      gap: var(--space-6);
     }
 
     .site-nav__quick-links {
@@ -611,23 +601,12 @@
       scrollbar-width: none;
       -ms-overflow-style: none;
       padding-bottom: 0.25rem;
-      padding-right: clamp(var(--space-3), 2vw, var(--space-5));
-      flex: 1 1 auto;
-      min-width: 0;
-      scroll-snap-type: x proximity;
-    }
-
-    .site-nav__quick-links::after {
-      content: '';
-      flex: 0 0 var(--space-2);
     }
 
     .site-nav__quick-link {
       width: auto;
-      padding: 0.4rem 0.75rem;
-      font-size: 0.85rem;
-      flex-shrink: 0;
-      scroll-snap-align: start;
+      padding: 0.45rem 0.9rem;
+      font-size: 0.9rem;
     }
 
     .site-nav__quick-links::-webkit-scrollbar {
@@ -641,12 +620,7 @@
     .site-nav__actions {
       flex-direction: row;
       align-items: center;
-      gap: var(--space-2);
-      flex-wrap: nowrap;
-    }
-
-    .site-nav__actions > * {
-      flex-shrink: 0;
+      gap: var(--space-3);
     }
 
     .site-nav__backdrop {
@@ -654,7 +628,6 @@
     }
   }
 }
-
 @layer hero {
   .hero {
     position: relative;
