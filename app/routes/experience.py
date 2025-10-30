@@ -46,16 +46,31 @@ def experience_home():
 
     selected_category = normalize_category(request.args.get("category"))
 
+    stats = {"total": 0, "guides": 0, "verified": 0, "categories": 0}
+
     try:
-        query = Partner.query.filter(Partner.visible.is_(True))
+        base_query = Partner.query.filter(Partner.visible.is_(True))
+        partners_query = base_query
         if selected_category:
-            query = query.filter(Partner.category == selected_category)
+            partners_query = partners_query.filter(Partner.category == selected_category)
 
         partners = (
-            query.order_by(Partner.verified.desc(), Partner.created_at.desc())
+            partners_query.order_by(Partner.verified.desc(), Partner.created_at.desc())
             .limit(200)
             .all()
         )
+
+        stats["total"] = base_query.count()
+        stats["guides"] = base_query.filter(Partner.category == "Guide").count()
+        stats["verified"] = base_query.filter(Partner.verified.is_(True)).count()
+
+        category_rows = (
+            db.session.query(Partner.category)
+            .filter(Partner.visible.is_(True))
+            .distinct()
+            .all()
+        )
+        stats["categories"] = len({row[0] or "Altro" for row in category_rows})
     except SQLAlchemyError:
         current_app.logger.exception("Failed to load partners for experience page")
         db.session.rollback()
@@ -71,11 +86,19 @@ def experience_home():
             "info",
         )
 
+    experience_stats = [
+        {"label": "Esperienze pubblicate", "value": stats["total"]},
+        {"label": "Guide specializzate", "value": stats["guides"]},
+        {"label": "Partner verificati", "value": stats["verified"]},
+        {"label": "Categorie coperte", "value": stats["categories"]},
+    ]
+
     return render_template(
         "experience.html",
         partners=partners,
         filter_labels=_available_filters(),
         selected_category=selected_category,
+        experience_stats=experience_stats,
         user=get_current_user(),
         page_title="Etna Experience – Scopri le attività e le guide dell'Etna",
         page_description="Strutture, escursioni e tour selezionati collegati all'attività vulcanica.",
