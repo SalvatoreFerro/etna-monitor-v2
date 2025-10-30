@@ -1342,6 +1342,11 @@
     display: block;
   }
 
+  .experience-section--directory {
+    display: grid;
+    gap: clamp(var(--space-5), 4vw, var(--space-7));
+  }
+
   .experience-info-bar {
     display: grid;
     gap: var(--space-4);
@@ -1417,12 +1422,7 @@
   .experience-stats {
     display: grid;
     gap: var(--space-4);
-  }
-
-  @media (min-width: 480px) {
-    .experience-stats {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   }
 
   .experience-stat__value {
