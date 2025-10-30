@@ -1,5 +1,17 @@
 :root {
   color-scheme: dark;
+  --chart-signal-color: #5eead4;
+  --chart-threshold-color: #ef4444;
+}
+
+[data-theme="light"] {
+  --chart-signal-color: #0f172a;
+  --chart-threshold-color: #b91c1c;
+}
+
+[data-theme="dark"] {
+  --chart-signal-color: #5eead4;
+  --chart-threshold-color: #ef4444;
 }
 
 .dashboard-main {
@@ -376,6 +388,14 @@
   width: 12px;
   height: 12px;
   border-radius: 4px;
+}
+
+.legend-color-signal {
+  background: var(--chart-signal-color);
+}
+
+.legend-color-threshold {
+  background: var(--chart-threshold-color);
 }
 
 .side-grid {
