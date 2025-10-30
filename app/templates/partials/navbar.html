@@ -1,3 +1,4 @@
+{% set current_destination = request.full_path.rstrip('?') if request.query_string else request.path %}
 {% set nav_links = [
   {'label': 'Home', 'url': url_for('main.index'), 'endpoint': 'main.index'},
   {'label': 'Progetto', 'url': url_for('main.progetto'), 'endpoint': 'main.progetto'},
@@ -5,6 +6,17 @@
   {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
   {'label': 'Experience', 'url': url_for('experience.experience_home'), 'endpoint': 'experience.experience_home'},
   ] %}
+{% if not session.user_id %}
+  {% set nav_links = nav_links + [
+    {
+      'label': 'Accedi con Google',
+      'url': url_for('auth.auth_google', next=current_destination),
+      'endpoint': 'auth.auth_google',
+      'extra_class': 'site-nav__link--mobile-only site-nav__link--cta',
+      'icon': 'fa-brands fa-google'
+    }
+  ] %}
+{% endif %}
 
 <nav class="site-nav" role="navigation" aria-label="Navigazione principale">
   <div class="container site-nav__inner">
@@ -28,8 +40,11 @@
       <ul class="site-nav__links">
         {% for link in nav_links %}
           <li>
-            <a class="site-nav__link {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">
-              {{ link.label }}
+            <a class="site-nav__link {{ link.extra_class or '' }} {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">
+              {% if link.icon %}
+                <span class="site-nav__link-icon" aria-hidden="true"><i class="{{ link.icon }}"></i></span>
+              {% endif %}
+              <span class="site-nav__link-label">{{ link.label }}</span>
             </a>
           </li>
         {% endfor %}

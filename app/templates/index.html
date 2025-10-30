@@ -117,8 +117,21 @@
 
 <section class="home-section">
   <div class="container container--wide spotlight">
-    <figure class="spotlight__media" role="presentation">
-      <img src="{{ url_for('static', filename='screenshots/desktop.png') }}" alt="Anteprima dashboard EtnaMonitor" loading="lazy" decoding="async" />
+    <figure class="spotlight__media" aria-labelledby="visual-layer-caption">
+      <img
+        src="{{ url_for('static', filename='screenshots/desktop.png') }}"
+        alt="Anteprima della dashboard Visual Layer di EtnaMonitor con grafici e webcam"
+        loading="lazy"
+        decoding="async"
+        width="1280"
+        height="720"
+      />
+      <figcaption id="visual-layer-caption" class="spotlight__caption">
+        <span class="pill">Anteprima Visual Layer</span>
+        <p class="spotlight__caption-text">
+          Screenshot statico della plancia che combina modello 3D, timeline del tremore e selezione di webcam in diretta.
+        </p>
+      </figcaption>
     </figure>
     <div class="spotlight__content">
       <span class="eyebrow">Visual layer</span>
