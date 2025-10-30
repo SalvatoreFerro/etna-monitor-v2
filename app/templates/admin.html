@@ -128,19 +128,32 @@
 
 <script nonce="{{ script_nonce }}">
   const ADMIN_AUDIT_ENDPOINT = "{{ url_for('admin_stats.get_audit_feed') }}";
+  const csrfToken = '{{ csrf_token() }}';
 
   function togglePremium(userId) {
     fetch(`/admin/toggle_premium/${userId}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-      }
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ csrf_token: csrfToken })
     })
-    .then(response => response.json())
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response.json();
+    })
     .then(data => {
       if (data.success) {
         location.reload();
+      } else if (data.message) {
+        alert(data.message);
       }
+    })
+    .catch(error => {
+      alert('Impossibile aggiornare il piano premium: ' + error.message);
     });
   }
 
@@ -150,15 +163,25 @@
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-        }
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify({ csrf_token: csrfToken })
       })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+      })
       .then(data => {
         if (data.success) {
           location.reload();
         } else {
           alert(data.message);
         }
+      })
+      .catch(error => {
+        alert('Impossibile eliminare l\'utente: ' + error.message);
       });
     }
   }
@@ -168,9 +191,16 @@
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-      }
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ csrf_token: csrfToken })
     })
-    .then(response => response.json())
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response.json();
+    })
     .then(data => {
       if (data.success) {
         location.reload();
@@ -202,9 +232,16 @@
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-      }
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({ csrf_token: csrfToken })
     })
-    .then(response => response.json())
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      return response.json();
+    })
     .then(data => {
       button.innerHTML = originalText;
       button.disabled = false;

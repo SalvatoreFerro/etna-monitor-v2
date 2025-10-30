@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, make_response, current_app
 from flask_login import current_user
-from sqlalchemy import and_, func, or_
+from sqlalchemy import and_, cast, func, or_
 
 from ..utils.auth import admin_required
 from ..models import db
@@ -84,6 +84,19 @@ def admin_home():
 @bp.route("/toggle_premium/<int:user_id>", methods=["POST"])
 @admin_required
 def toggle_premium(user_id):
+    data = request.get_json(silent=True)
+    is_json = request.is_json and data is not None
+    if not is_json:
+        data = {}
+
+    csrf_token = data.get("csrf_token") if is_json else request.form.get("csrf_token")
+    if not validate_csrf_token(csrf_token):
+        if is_json:
+            return jsonify({"success": False, "message": "Token CSRF non valido."}), 400
+
+        flash("Token CSRF non valido. Riprova.", "error")
+        return redirect(url_for('admin.admin_home'))
+
     user = User.query.get_or_404(user_id)
     user.premium = not user.premium
 
@@ -101,7 +114,7 @@ def toggle_premium(user_id):
 
     db.session.commit()
 
-    if request.is_json:
+    if is_json:
         return jsonify({
             "success": True,
             "premium": user.has_premium_access,
@@ -115,6 +128,19 @@ def toggle_premium(user_id):
 @bp.route("/delete_user/<int:user_id>", methods=["POST"])
 @admin_required
 def delete_user(user_id):
+    data = request.get_json(silent=True)
+    is_json = request.is_json and data is not None
+    if not is_json:
+        data = {}
+
+    csrf_token = data.get("csrf_token") if is_json else request.form.get("csrf_token")
+    if not validate_csrf_token(csrf_token):
+        if is_json:
+            return jsonify({"success": False, "message": "Token CSRF non valido."}), 400
+
+        flash("Token CSRF non valido. Riprova.", "error")
+        return redirect(url_for('admin.admin_home'))
+
     user = User.query.get_or_404(user_id)
 
     if user.is_admin:
@@ -128,7 +154,7 @@ def delete_user(user_id):
     db.session.delete(user)
     db.session.commit()
 
-    if request.is_json:
+    if is_json:
         return jsonify({"success": True, "message": f"User {user.email} deleted successfully"})
     else:
         flash(f"User {user.email} deleted successfully", "success")
@@ -139,20 +165,33 @@ def delete_user(user_id):
 @admin_required
 def test_alert():
     """Test alert endpoint - manually trigger Telegram alert checking"""
+    data = request.get_json(silent=True) or {}
+    if not validate_csrf_token(data.get("csrf_token")):
+        return jsonify({"success": False, "message": "Token CSRF non valido."}), 400
+
     try:
         telegram_service = TelegramService()
         telegram_service.check_and_send_alerts()
+
+        normalized_chat_id = func.nullif(
+            func.trim(cast(User.chat_id, db.String)),
+            "",
+        )
+        normalized_telegram_chat_id = func.nullif(
+            func.trim(cast(User.telegram_chat_id, db.String)),
+            "",
+        )
 
         premium_users = User.query.filter(
             or_(User.premium.is_(True), User.is_premium.is_(True)),
             or_(
                 and_(
-                    User.telegram_chat_id.isnot(None),
-                    User.telegram_chat_id > 0,
+                    normalized_telegram_chat_id.isnot(None),
+                    normalized_telegram_chat_id != "0",
                 ),
                 and_(
-                    User.chat_id.isnot(None),
-                    User.chat_id > 0,
+                    normalized_chat_id.isnot(None),
+                    normalized_chat_id != "0",
                 ),
             ),
             User.telegram_opt_in.is_(True),
@@ -197,13 +236,26 @@ def users_list():
 @bp.route("/reset_free_trial/<int:user_id>", methods=["POST"])
 @admin_required
 def reset_free_trial(user_id: int):
+    data = request.get_json(silent=True)
+    is_json = request.is_json and data is not None
+    if not is_json:
+        data = {}
+
+    csrf_token = data.get("csrf_token") if is_json else request.form.get("csrf_token")
+    if not validate_csrf_token(csrf_token):
+        if is_json:
+            return jsonify({"success": False, "message": "Token CSRF non valido."}), 400
+
+        flash("Token CSRF non valido. Riprova.", "error")
+        return redirect(url_for('admin.admin_home'))
+
     user = User.query.get_or_404(user_id)
     user.free_alert_consumed = 0
     user.free_alert_event_id = None
     user.last_alert_sent_at = None
     db.session.commit()
 
-    if request.is_json:
+    if is_json:
         return jsonify({
             "success": True,
             "message": f"Alert di prova ripristinato per {user.email}",
