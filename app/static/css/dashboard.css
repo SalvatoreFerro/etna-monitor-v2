@@ -1,17 +1,33 @@
 :root {
   color-scheme: dark;
-  --chart-signal-color: #5eead4;
-  --chart-threshold-color: #ef4444;
+  --chart-line-color: #38bdf8;
+  --chart-fill-color: rgba(56, 189, 248, 0.18);
+  --chart-grid-color: rgba(148, 163, 184, 0.2);
+  --chart-axis-color: #94a3b8;
+  --chart-hover-bg: rgba(15, 23, 42, 0.92);
+  --chart-threshold-color: #f87171;
+  --chart-signal-color: var(--chart-line-color);
 }
 
 [data-theme="light"] {
-  --chart-signal-color: #0f172a;
-  --chart-threshold-color: #b91c1c;
+  color-scheme: light;
+  --chart-line-color: #1d4ed8;
+  --chart-fill-color: rgba(37, 99, 235, 0.12);
+  --chart-grid-color: rgba(148, 163, 184, 0.35);
+  --chart-axis-color: #475569;
+  --chart-hover-bg: #f8fafc;
+  --chart-threshold-color: #dc2626;
+  --chart-signal-color: var(--chart-line-color);
 }
 
 [data-theme="dark"] {
-  --chart-signal-color: #5eead4;
-  --chart-threshold-color: #ef4444;
+  --chart-line-color: #38bdf8;
+  --chart-fill-color: rgba(56, 189, 248, 0.18);
+  --chart-grid-color: rgba(148, 163, 184, 0.2);
+  --chart-axis-color: #94a3b8;
+  --chart-hover-bg: rgba(15, 23, 42, 0.92);
+  --chart-threshold-color: #f87171;
+  --chart-signal-color: var(--chart-line-color);
 }
 
 .dashboard-main {

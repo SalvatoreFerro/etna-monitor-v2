@@ -9,18 +9,24 @@ const LOG_TICKS = [
     { value: 5, label: '5' },
     { value: 10, label: '10¹' }
 ];
-const PRIMARY_LINE_COLOR_DARK = '#5eead4';
-const PRIMARY_LINE_COLOR_LIGHT = '#0f172a';
-const PRIMARY_FILL_COLOR_DARK = 'rgba(94, 234, 212, 0.12)';
-const PRIMARY_FILL_COLOR_LIGHT = 'rgba(15, 23, 42, 0.08)';
-const GRID_COLOR_DARK = '#1f2937';
-const GRID_COLOR_LIGHT = '#e2e8f0';
-const AXIS_LINE_COLOR_DARK = '#334155';
-const AXIS_LINE_COLOR_LIGHT = '#94a3b8';
-const THRESHOLD_COLOR_DARK = '#ef4444';
-const THRESHOLD_COLOR_LIGHT = '#b91c1c';
-const HOVER_BG_DARK = 'rgba(15, 23, 42, 0.92)';
-const HOVER_BG_LIGHT = '#f8fafc';
+const DEFAULT_THEME_COLORS = {
+    dark: {
+        line: '#38bdf8',
+        fill: 'rgba(56, 189, 248, 0.18)',
+        grid: 'rgba(148, 163, 184, 0.2)',
+        axis: '#94a3b8',
+        threshold: '#f87171',
+        hoverBg: 'rgba(15, 23, 42, 0.92)'
+    },
+    light: {
+        line: '#1d4ed8',
+        fill: 'rgba(37, 99, 235, 0.12)',
+        grid: 'rgba(148, 163, 184, 0.35)',
+        axis: '#475569',
+        threshold: '#dc2626',
+        hoverBg: '#f8fafc'
+    }
+};
 
 class EtnaDashboard {
     constructor() {
@@ -84,12 +90,29 @@ class EtnaDashboard {
             exportPNG.addEventListener('click', () => this.exportData('png'));
         }
     }
-    
+
+    getCssVariable(name, fallback) {
+        const value = getComputedStyle(document.documentElement).getPropertyValue(name);
+        return value ? value.trim() : fallback;
+    }
+
+    getThemeColors(isDark) {
+        const defaults = isDark ? DEFAULT_THEME_COLORS.dark : DEFAULT_THEME_COLORS.light;
+        return {
+            line: this.getCssVariable('--chart-line-color', defaults.line),
+            fill: this.getCssVariable('--chart-fill-color', defaults.fill),
+            grid: this.getCssVariable('--chart-grid-color', defaults.grid),
+            axis: this.getCssVariable('--chart-axis-color', defaults.axis),
+            threshold: this.getCssVariable('--chart-threshold-color', defaults.threshold),
+            hoverBg: this.getCssVariable('--chart-hover-bg', defaults.hoverBg)
+        };
+    }
+
     setupThemeToggle() {
         const themeToggle = document.getElementById('theme-toggle');
         const currentTheme = localStorage.getItem('theme') || 'dark';
         document.documentElement.setAttribute('data-theme', currentTheme);
-        
+
         if (themeToggle) {
             themeToggle.addEventListener('click', () => {
                 const newTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
@@ -246,6 +269,8 @@ class EtnaDashboard {
         }
 
         const hasExistingPlot = Boolean(plotDiv.data && plotDiv.data.length);
+        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+        const themeColors = this.getThemeColors(isDark);
 
         if (this.ingvMode) {
             const layout = {
@@ -281,7 +306,7 @@ class EtnaDashboard {
                     x1: timestamps[timestamps.length - 1],
                     y0: threshold,
                     y1: threshold,
-                    line: { color: '#FF0000', width: 1, dash: 'solid' }
+                    line: { color: themeColors.threshold || '#FF0000', width: 1, dash: 'solid' }
                 }] : []
             };
 
@@ -312,13 +337,7 @@ class EtnaDashboard {
             }
             return;
         }
-
-        const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
-        const lineColor = isDark ? PRIMARY_LINE_COLOR_DARK : PRIMARY_LINE_COLOR_LIGHT;
-        const fillColor = isDark ? PRIMARY_FILL_COLOR_DARK : PRIMARY_FILL_COLOR_LIGHT;
-        const gridColor = isDark ? GRID_COLOR_DARK : GRID_COLOR_LIGHT;
-        const axisLineColor = isDark ? AXIS_LINE_COLOR_DARK : AXIS_LINE_COLOR_LIGHT;
-        const thresholdColor = isDark ? THRESHOLD_COLOR_DARK : THRESHOLD_COLOR_LIGHT;
+        const { line: lineColor, fill: fillColor, grid: gridColor, axis: axisLineColor, threshold: thresholdColor, hoverBg } = themeColors;
 
         const minExponent = Math.log10(Math.min(...clampedValues));
         const maxExponent = Math.log10(Math.max(...clampedValues));
@@ -385,7 +404,7 @@ class EtnaDashboard {
             },
             shapes,
             hoverlabel: {
-                bgcolor: isDark ? HOVER_BG_DARK : HOVER_BG_LIGHT,
+                bgcolor: hoverBg,
                 bordercolor: thresholdColor,
                 font: { color: isDark ? '#f8fafc' : '#0f172a' }
             }
