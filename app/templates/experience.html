@@ -1,17 +1,144 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<section class="page">
+<section class="page page--experience">
   <div class="container stack">
-    <header class="page__header">
-      <span class="eyebrow">Etna Experience</span>
-      <h1>Guide, tour e strutture selezionate</h1>
-      <p class="page__lede">Scopri partner verificati e attività da vivere attorno all'Etna. La sezione sarà ampliata con suggerimenti automatici basati sul tremore.</p>
-      <div class="page__actions">
-        <a class="btn btn-primary" href="#partners">Esplora i partner</a>
-        <button class="btn btn-ghost" type="button" disabled>Consigli dinamici in arrivo</button>
+    <header class="experience-hero">
+      <div class="experience-hero__copy">
+        <span class="eyebrow">Etna Experience</span>
+        <h1>Vivi l'Etna come un insider</h1>
+        <p class="page__lede">Abbiamo selezionato le migliori guide, tour e strutture certificate per aiutarti a costruire l'itinerario perfetto tra crateri, vigneti e borghi sospesi nel tempo.</p>
+        <div class="experience-hero__badges">
+          <span class="experience-badge">Guide locali certificate</span>
+          <span class="experience-badge">Esperienze outdoor e gourmet</span>
+          <span class="experience-badge">Controlli qualità trimestrali</span>
+        </div>
+        <div class="page__actions experience-hero__actions">
+          <a class="btn btn-primary" href="#partners">Esplora i partner</a>
+          <a class="btn btn-secondary" href="#experience-journey">Scopri un itinerario tipo</a>
+          <button class="btn btn-ghost" type="button" disabled aria-disabled="true">Consigli dinamici in arrivo</button>
+        </div>
+      </div>
+      <div class="experience-hero__panel">
+        <div class="experience-hero__panel-inner">
+          <h2>Curato con cura</h2>
+          <p>Ogni proposta è stata verificata da un team misto di geologi, sommelier e guide alpine che conoscono il territorio metro per metro.</p>
+          <ul class="experience-stats" role="list">
+            <li>
+              <span class="experience-stat__value">32+</span>
+              <span class="experience-stat__label">Esperienze selezionate</span>
+            </li>
+            <li>
+              <span class="experience-stat__value">18</span>
+              <span class="experience-stat__label">Guide abilitate</span>
+            </li>
+            <li>
+              <span class="experience-stat__value">4 stagioni</span>
+              <span class="experience-stat__label">Di attività personalizzate</span>
+            </li>
+          </ul>
+        </div>
       </div>
     </header>
+
+    <section class="experience-section experience-section--features" aria-labelledby="experience-features">
+      <div class="card card--frosted">
+        <h2 id="experience-features">Cosa troverai in Etna Experience</h2>
+        <div class="experience-feature-grid">
+          <article class="experience-feature">
+            <div class="experience-feature__icon" aria-hidden="true">🌋</div>
+            <h3>Avventure vulcaniche guidate</h3>
+            <p>Escursioni all'alba, trekking in notturna e discese in grotta con guide alpine e geologi certificati.</p>
+          </article>
+          <article class="experience-feature">
+            <div class="experience-feature__icon" aria-hidden="true">🍷</div>
+            <h3>Degustazioni e terroir</h3>
+            <p>Wine tour, cene in vigna e visite alle cantine con pairing personalizzati realizzati da sommelier locali.</p>
+          </article>
+          <article class="experience-feature">
+            <div class="experience-feature__icon" aria-hidden="true">🏡</div>
+            <h3>Hospitality diffusa</h3>
+            <p>Resort, boutique hotel e rifugi di charme con servizi premium e concierge h24 per pianificare ogni dettaglio.</p>
+          </article>
+          <article class="experience-feature">
+            <div class="experience-feature__icon" aria-hidden="true">🧑‍🍳</div>
+            <h3>Laboratori e masterclass</h3>
+            <p>Cooking class siciliane, corsi di fotografia naturalistica e workshop di vulcanologia per tutte le età.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <div class="experience-info-bar" role="list">
+      <div class="experience-info-bar__item" role="listitem">
+        <span class="experience-info-bar__title">Selezione indipendente</span>
+        <p>Partner invitati su referenza, audit periodici e raccolta feedback da chi ha già vissuto l'esperienza.</p>
+      </div>
+      <div class="experience-info-bar__item" role="listitem">
+        <span class="experience-info-bar__title">Sostenibilità reale</span>
+        <p>Collaboriamo solo con attività che rispettano i protocolli vulcanologici e promuovono filiere locali.</p>
+      </div>
+      <div class="experience-info-bar__item" role="listitem">
+        <span class="experience-info-bar__title">Supporto dedicato</span>
+        <p>Hai bisogno di un consiglio? Scrivici e ti mettiamo in contatto con i partner più adatti alla tua idea di viaggio.</p>
+      </div>
+    </div>
+
+    <section class="experience-section experience-section--journey" id="experience-journey" aria-labelledby="experience-journey-title">
+      <div class="card card--outlined">
+        <div class="experience-journey__header">
+          <h2 id="experience-journey-title">Un itinerario perfetto in 4 mosse</h2>
+          <p>Usa Etna Experience come base per comporre un soggiorno dinamico, alternando adrenalina, gusto e relax.</p>
+        </div>
+        <ol class="experience-journey" role="list">
+          <li>
+            <h3>Briefing e scouting</h3>
+            <p>Contatta le guide certificate per definire il livello di difficoltà e gli orari migliori in base all'attività vulcanica.</p>
+          </li>
+          <li>
+            <h3>Salita al vulcano</h3>
+            <p>Esplora i crateri sommitali, le colate storiche e le grotte di ghiaccio con equipaggiamento fornito dai partner.</p>
+          </li>
+          <li>
+            <h3>Esperienze del gusto</h3>
+            <p>Concludi la giornata tra vigneti e masserie con tasting guidati da chef e produttori selezionati.</p>
+          </li>
+          <li>
+            <h3>Relax e benessere</h3>
+            <p>Prenota spa vulcaniche, bagni in botte o ritiri benessere immersi nel bosco etneo per riequilibrare corpo e mente.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="experience-section experience-section--highlights" aria-labelledby="experience-highlights">
+      <div class="card card--outlined">
+        <div class="experience-highlight-grid">
+          <div class="experience-highlight-grid__intro">
+            <h2 id="experience-highlights">Perché scegliere i nostri partner</h2>
+            <p>Storie autentiche, accoglienza sincera e attenzione ai dettagli. Ogni realtà è stata intervistata, provata sul campo e dotata di strumenti per accoglierti al meglio.</p>
+          </div>
+          <ul class="experience-highlight-list" role="list">
+            <li>
+              <span class="experience-highlight__badge">100% locale</span>
+              <p>Proprietari e staff vivono sul territorio e ti accompagnano oltre i circuiti turistici classici.</p>
+            </li>
+            <li>
+              <span class="experience-highlight__badge">Storytelling dedicato</span>
+              <p>Ogni partner riceve materiale personalizzato per raccontare l'Etna con voce unica e coinvolgente.</p>
+            </li>
+            <li>
+              <span class="experience-highlight__badge">Esperienze modulari</span>
+              <p>Combina più attività in modo fluido grazie a calendari sincronizzati e disponibilità in tempo reale.</p>
+            </li>
+            <li>
+              <span class="experience-highlight__badge">Community verificata</span>
+              <p>Raccogliamo recensioni verificate e suggerimenti per mantenere un livello di qualità costante.</p>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
 
     <div class="card card--outlined">
       <h2>Filtra per categoria</h2>
@@ -70,12 +197,55 @@
     <div class="cta-panel">
       <div>
         <h2>Vuoi apparire su Etna Experience?</h2>
-        <p>Compila il modulo dedicato e raccontaci la tua attività.</p>
+        <p>Compila il modulo dedicato, raccontaci la tua storia e condividi il tuo impegno per il territorio: il nostro team ti ricontatterà entro 72 ore.</p>
       </div>
       <div class="cta-panel__actions">
         <a class="btn btn-primary" href="{{ url_for('experience.become_partner') }}">Candidati come partner</a>
       </div>
     </div>
+
+    <section class="experience-section experience-section--voices" aria-labelledby="experience-voices">
+      <div class="card card--frosted">
+        <div class="experience-voices__header">
+          <h2 id="experience-voices">Voci dal territorio</h2>
+          <p>Un assaggio delle storie che rendono unica la nostra community Etna Experience.</p>
+        </div>
+        <div class="experience-voices">
+          <figure class="experience-voice">
+            <blockquote>
+              “Accompagniamo viaggiatori sulle colate del 2002 e chiudiamo le giornate con degustazioni al tramonto. Grazie a Etna Experience abbiamo avuto richieste da tutto il mondo.”
+            </blockquote>
+            <figcaption>— Martina, guida vulcanologica &amp; sommelier AIS</figcaption>
+          </figure>
+          <figure class="experience-voice">
+            <blockquote>
+              “La nostra masseria accoglie piccoli gruppi per cooking class siciliane. La piattaforma ci ha aiutato a creare pacchetti combinati con trekking e tour fotografici.”
+            </blockquote>
+            <figcaption>— Salvatore e Lucia, host di borgo diffuso</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section class="experience-section experience-section--faq" aria-labelledby="experience-faq">
+      <div class="card card--outlined">
+        <h2 id="experience-faq">Domande frequenti</h2>
+        <div class="experience-faq">
+          <details>
+            <summary>Come vengono selezionati i partner?</summary>
+            <p>Richiediamo documentazione aggiornata, referenze reali e un periodo di prova. Solo dopo almeno due feedback positivi vengono pubblicati su Etna Experience.</p>
+          </details>
+          <details>
+            <summary>Posso prenotare direttamente dal sito?</summary>
+            <p>Per ora ti mettiamo in contatto diretto con la struttura o la guida. A breve integreremo un sistema di prenotazione sicuro con pagamenti tracciati.</p>
+          </details>
+          <details>
+            <summary>È possibile organizzare esperienze su misura?</summary>
+            <p>Certamente. Scrivici tramite il form partner: il nostro concierge territoriale costruirà un pacchetto personalizzato combinando più attività.</p>
+          </details>
+        </div>
+      </div>
+    </section>
   </div>
 </section>
 
