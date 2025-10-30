@@ -9,9 +9,9 @@ const LOG_TICKS = [
     { value: 5, label: '5' },
     { value: 10, label: '10¹' }
 ];
-const PRIMARY_LINE_COLOR_DARK = '#4ade80';
+const PRIMARY_LINE_COLOR_DARK = '#5eead4';
 const PRIMARY_LINE_COLOR_LIGHT = '#0f172a';
-const PRIMARY_FILL_COLOR_DARK = 'rgba(74, 222, 128, 0.08)';
+const PRIMARY_FILL_COLOR_DARK = 'rgba(94, 234, 212, 0.12)';
 const PRIMARY_FILL_COLOR_LIGHT = 'rgba(15, 23, 42, 0.08)';
 const GRID_COLOR_DARK = '#1f2937';
 const GRID_COLOR_LIGHT = '#e2e8f0';
