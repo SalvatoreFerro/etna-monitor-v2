@@ -7,7 +7,10 @@
       <div class="experience-hero__copy">
         <span class="eyebrow">Etna Experience</span>
         <h1>Vivi l'Etna come un insider</h1>
-        <p class="page__lede">Abbiamo selezionato le migliori guide, tour e strutture certificate per aiutarti a costruire l'itinerario perfetto tra crateri, vigneti e borghi sospesi nel tempo.</p>
+        <p class="page__lede">
+          Abbiamo selezionato le migliori guide, tour e strutture certificate per aiutarti a costruire l'itinerario perfetto
+          tra crateri, vigneti e borghi sospesi nel tempo.
+        </p>
         <div class="experience-hero__badges">
           <span class="experience-badge">Guide locali certificate</span>
           <span class="experience-badge">Esperienze outdoor e gourmet</span>
@@ -16,13 +19,35 @@
         <div class="page__actions experience-hero__actions">
           <a class="btn btn-primary" href="#partners">Esplora i partner</a>
           <a class="btn btn-secondary" href="#experience-journey">Scopri un itinerario tipo</a>
-          <button class="btn btn-ghost" type="button" disabled aria-disabled="true">Consigli dinamici in arrivo</button>
+          <button
+            class="btn btn-ghost"
+            type="button"
+            id="experience-recommendations-toggle"
+            aria-expanded="false"
+            aria-controls="experience-recommendations"
+          >
+            Consigli dinamici
+          </button>
         </div>
       </div>
+      <figure class="experience-hero__media" aria-hidden="true">
+        <picture>
+          <source srcset="{{ url_for('static', filename='images/etna-experience-hero.svg') }}" type="image/svg+xml" />
+          <img
+            src="{{ url_for('static', filename='images/etna-experience-hero.svg') }}"
+            loading="lazy"
+            decoding="async"
+            alt="Illustrazione del vulcano Etna al tramonto"
+          />
+        </picture>
+      </figure>
       <div class="experience-hero__panel">
         <div class="experience-hero__panel-inner">
           <h2>Curato con cura</h2>
-          <p>Ogni proposta è stata verificata da un team misto di geologi, sommelier e guide alpine che conoscono il territorio metro per metro.</p>
+          <p>
+            Ogni proposta è stata verificata da un team misto di geologi, sommelier e guide alpine che conoscono il territorio
+            metro per metro.
+          </p>
           <ul class="experience-stats" role="list">
             {% for stat in experience_stats %}
               <li>
@@ -35,9 +60,62 @@
       </div>
     </header>
 
+    {% if recommended_partners %}
+      <section class="experience-recommendations card card--frosted" id="experience-recommendations" hidden>
+        <header class="experience-recommendations__header">
+          <h2>Consigli dinamici</h2>
+          <p>
+            In base alle preferenze più frequenti della community, ti proponiamo tre combinazioni che intrecciano natura, gusto
+            e benessere.
+          </p>
+        </header>
+        <ol class="experience-recommendations__list" role="list">
+          {% for partner in recommended_partners %}
+            <li>
+              <article class="experience-recommendation">
+                <div class="experience-recommendation__badge">
+                  {{ partner.category_label() }}
+                  {% if partner.verified %}
+                    <span class="badge badge--success">Verificato</span>
+                  {% endif %}
+                </div>
+                <h3>{{ partner.name }}</h3>
+                {% if partner.description %}
+                  <p>{{ partner.description }}</p>
+                {% endif %}
+                <div class="experience-recommendation__actions">
+                  {% if partner.website %}
+                    <a href="{{ partner.website }}" class="btn btn-secondary" target="_blank" rel="noopener">
+                      Visita il sito
+                    </a>
+                  {% endif %}
+                  <button
+                    class="btn btn-ghost"
+                    type="button"
+                    data-lead-trigger
+                    data-partner-name="{{ partner.name }}"
+                  >
+                    Richiedi itinerario
+                  </button>
+                </div>
+              </article>
+            </li>
+          {% endfor %}
+        </ol>
+      </section>
+    {% endif %}
+
     <section class="experience-section experience-section--directory" id="partners" aria-labelledby="experience-directory-title">
       <div class="card card--outlined">
-        <h2 id="experience-directory-title">Filtra per categoria</h2>
+        <div class="experience-directory__header">
+          <div>
+            <h2 id="experience-directory-title">Filtra per categoria</h2>
+            <p class="muted">Stai esplorando: <strong>{{ category_label }}</strong></p>
+          </div>
+          <p class="experience-directory__results">
+            {{ pagination.total }} {{ 'risultato' if pagination.total == 1 else 'risultati' }} curati dal nostro team.
+          </p>
+        </div>
         <div class="filter-group" role="tablist" aria-label="Filtra partner per categoria">
           {% for value, label in filter_labels %}
             {% set is_active = (not selected_category and value == 'all') or (selected_category == value) %}
@@ -57,29 +135,77 @@
       <div class="grid grid--columns-3">
         {% if partners %}
           {% for partner in partners %}
-            <article class="card partner-card" data-category="{{ partner.category }}">
+            <article class="card partner-card">
+              <figure class="partner-card__media">
+                {% if partner.image_url %}
+                  <img
+                    src="{{ partner.image_url }}"
+                    alt="{{ partner.name }}"
+                    loading="lazy"
+                    decoding="async"
+                    onerror="this.src='{{ url_for('static', filename='images/experience-placeholder.svg') }}'"
+                  />
+                {% else %}
+                  <img
+                    src="{{ url_for('static', filename='images/experience-placeholder.svg') }}"
+                    alt="Illustrazione Etna Experience"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                {% endif %}
+              </figure>
               <header class="partner-card__header">
                 <div class="partner-card__meta">
                   <span class="pill">{{ partner.category_label() }}</span>
                   {% if partner.verified %}
-                    <span class="badge">Verified</span>
+                    <span class="badge badge--success">Verificato</span>
                   {% endif %}
                 </div>
                 <h3>{{ partner.name }}</h3>
                 {% if partner.contact %}
-                  <p class="muted">{{ partner.contact }}</p>
+                  <p class="partner-card__contact muted">{{ partner.contact }}</p>
                 {% endif %}
               </header>
               {% if partner.description %}
-                <p>{{ partner.description }}</p>
+                <p class="partner-card__description">{{ partner.description }}</p>
               {% endif %}
-              <div class="page__actions">
-                {% if partner.website %}
-                  <a href="{{ partner.website }}" class="btn btn-secondary" target="_blank" rel="noopener">Visita il sito</a>
-                {% else %}
-                  <button class="btn btn-ghost" type="button" disabled aria-disabled="true">Contatta la struttura</button>
+              <div class="partner-card__actions">
+                {% set actions = contact_actions.get(partner.id, []) %}
+                {% if actions %}
+                  {% for action in actions %}
+                    {% set is_external = action.href.startswith('http') %}
+                    <a
+                      href="{{ action.href }}"
+                      class="btn btn-secondary"
+                      {% if is_external %}target="_blank" rel="noopener"{% endif %}
+                    >
+                      {{ action.label }}
+                    </a>
+                  {% endfor %}
                 {% endif %}
+                {% if partner.website %}
+                  <a href="{{ partner.website }}" class="btn btn-ghost" target="_blank" rel="noopener">Visita il sito</a>
+                {% endif %}
+                <button
+                  class="btn btn-ghost"
+                  type="button"
+                  data-lead-trigger
+                  data-partner-name="{{ partner.name }}"
+                >
+                  Richiedi itinerario
+                </button>
               </div>
+              {% if partner.lat and partner.lon %}
+                <p class="partner-card__map">
+                  <a
+                    href="https://www.openstreetmap.org/?mlat={{ '%.5f'|format(partner.lat) }}&mlon={{ '%.5f'|format(partner.lon) }}#map=13/{{ '%.5f'|format(partner.lat) }}/{{ '%.5f'|format(partner.lon) }}"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    Vedi sulla mappa
+                  </a>
+                </p>
+              {% endif %}
             </article>
           {% endfor %}
         {% else %}
@@ -89,6 +215,38 @@
           </div>
         {% endif %}
       </div>
+
+      {% if pagination.pages > 1 %}
+        <nav class="pagination" aria-label="Navigazione pagine partner">
+          {% set category_param = selected_category if selected_category else None %}
+          {% if pagination.page > 1 %}
+            <a
+              class="pagination__link"
+              href="{{ url_for('experience.experience_home', category=category_param, page=pagination.page - 1) }}"
+              rel="prev"
+            >
+              ‹ Precedente
+            </a>
+          {% endif %}
+          {% for number in range(1, pagination.pages + 1) %}
+            <a
+              class="pagination__link {{ 'is-active' if number == pagination.page }}"
+              href="{{ url_for('experience.experience_home', category=category_param, page=number) }}"
+            >
+              {{ number }}
+            </a>
+          {% endfor %}
+          {% if pagination.page < pagination.pages %}
+            <a
+              class="pagination__link"
+              href="{{ url_for('experience.experience_home', category=category_param, page=pagination.page + 1) }}"
+              rel="next"
+            >
+              Successiva ›
+            </a>
+          {% endif %}
+        </nav>
+      {% endif %}
     </section>
 
     <section class="experience-section experience-section--features" aria-labelledby="experience-features">
@@ -193,12 +351,50 @@
     <div class="cta-panel">
       <div>
         <h2>Vuoi apparire su Etna Experience?</h2>
-        <p>Compila il modulo dedicato, raccontaci la tua storia e condividi il tuo impegno per il territorio: il nostro team ti ricontatterà entro 72 ore.</p>
+        <p>
+          Compila il modulo dedicato, raccontaci la tua storia e condividi il tuo impegno per il territorio: il nostro team ti ricontatterà entro 72 ore.
+        </p>
+        <ul class="cta-panel__metrics" role="list">
+          <li><strong>72h</strong> tempo medio di risposta</li>
+          <li><strong>68%</strong> candidature approvate</li>
+          <li><strong>Supporto</strong> one-to-one con il team editoriale</li>
+        </ul>
       </div>
       <div class="cta-panel__actions">
         <a class="btn btn-primary" href="{{ url_for('experience.become_partner') }}">Candidati come partner</a>
       </div>
     </div>
+
+    <section class="experience-section experience-section--lead" aria-labelledby="experience-lead-title">
+      <div class="card card--frosted">
+        <div class="experience-lead__intro">
+          <h2 id="experience-lead-title">Serve una mano per pianificare?</h2>
+          <p>Invia una richiesta rapida al concierge territoriale: prepareremo una proposta combinando i partner che hai scelto.</p>
+        </div>
+        <form class="lead-form" data-lead-form>
+          <div class="lead-form__group">
+            <label for="lead-partner">Partner preferito</label>
+            <input id="lead-partner" name="partner" type="text" placeholder="Seleziona un partner" data-lead-partner readonly />
+          </div>
+          <div class="lead-form__group">
+            <label for="lead-name">Il tuo nome</label>
+            <input id="lead-name" name="name" type="text" autocomplete="name" required />
+          </div>
+          <div class="lead-form__group">
+            <label for="lead-email">Email di contatto</label>
+            <input id="lead-email" name="email" type="email" autocomplete="email" required />
+          </div>
+          <div class="lead-form__group lead-form__group--wide">
+            <label for="lead-message">Cosa vorresti vivere?</label>
+            <textarea id="lead-message" name="message" rows="4" placeholder="Raccontaci periodo, numero di persone e attività desiderate." required></textarea>
+          </div>
+          <div class="lead-form__actions">
+            <button class="btn btn-primary" type="submit">Invia richiesta</button>
+            <p class="muted">Ti risponderemo entro un giorno lavorativo via email.</p>
+          </div>
+        </form>
+      </div>
+    </section>
 
     <section class="experience-section experience-section--voices" aria-labelledby="experience-voices">
       <div class="card card--frosted">
@@ -206,20 +402,33 @@
           <h2 id="experience-voices">Voci dal territorio</h2>
           <p>Un assaggio delle storie che rendono unica la nostra community Etna Experience.</p>
         </div>
-        <div class="experience-voices">
-          <figure class="experience-voice">
-            <blockquote>
-              “Accompagniamo viaggiatori sulle colate del 2002 e chiudiamo le giornate con degustazioni al tramonto. Grazie a Etna Experience abbiamo avuto richieste da tutto il mondo.”
-            </blockquote>
-            <figcaption>— Martina, guida vulcanologica &amp; sommelier AIS</figcaption>
-          </figure>
-          <figure class="experience-voice">
-            <blockquote>
-              “La nostra masseria accoglie piccoli gruppi per cooking class siciliane. La piattaforma ci ha aiutato a creare pacchetti combinati con trekking e tour fotografici.”
-            </blockquote>
-            <figcaption>— Salvatore e Lucia, host di borgo diffuso</figcaption>
-          </figure>
-        </div>
+        {% if community_quotes %}
+          <div class="experience-voices">
+            {% for quote in community_quotes %}
+              <figure class="experience-voice">
+                {% if quote.description %}
+                  <blockquote>“{{ quote.description }}”</blockquote>
+                {% endif %}
+                <figcaption>— {{ quote.name }} · {{ quote.category_label() }}</figcaption>
+              </figure>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="experience-voices">
+            <figure class="experience-voice">
+              <blockquote>
+                “Accompagniamo viaggiatori sulle colate del 2002 e chiudiamo le giornate con degustazioni al tramonto. Grazie a Etna Experience abbiamo avuto richieste da tutto il mondo.”
+              </blockquote>
+              <figcaption>— Martina, guida vulcanologica &amp; sommelier AIS</figcaption>
+            </figure>
+            <figure class="experience-voice">
+              <blockquote>
+                “La nostra masseria accoglie piccoli gruppi per cooking class siciliane. La piattaforma ci ha aiutato a creare pacchetti combinati con trekking e tour fotografici.”
+              </blockquote>
+              <figcaption>— Salvatore e Lucia, host di borgo diffuso</figcaption>
+            </figure>
+          </div>
+        {% endif %}
       </div>
     </section>
 
@@ -245,32 +454,80 @@
   </div>
 </section>
 
+{% if structured_data %}
+  <script type="application/ld+json">{{ structured_data | safe }}</script>
+{% endif %}
+
 <script nonce="{{ script_nonce }}">
-document.addEventListener('DOMContentLoaded', () => {
-  const buttons = Array.from(document.querySelectorAll('[data-filter]'));
-  const cards = Array.from(document.querySelectorAll('.partner-card'));
-  if (!buttons.length || !cards.length) {
-    return;
-  }
-  const applyFilter = (category) => {
-    cards.forEach((card) => {
-      const matches = category === 'all' || card.dataset.category === category;
-      card.classList.toggle('is-hidden', !matches);
-    });
-  };
-  const initial = buttons.find((btn) => btn.classList.contains('is-active'));
-  applyFilter(initial ? initial.dataset.filter : 'all');
-  buttons.forEach((button) => {
-    button.addEventListener('click', () => {
-      buttons.forEach((btn) => {
-        btn.classList.remove('is-active');
-        btn.setAttribute('aria-selected', 'false');
+  document.addEventListener('DOMContentLoaded', () => {
+    const filterButtons = Array.from(document.querySelectorAll('[data-filter]'));
+    if (filterButtons.length) {
+      filterButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+          const category = button.dataset.filter;
+          const url = new URL(window.location.href);
+          if (category === 'all') {
+            url.searchParams.delete('category');
+          } else {
+            url.searchParams.set('category', category);
+          }
+          url.searchParams.delete('page');
+          window.location.assign(url.toString());
+        });
       });
-      button.classList.add('is-active');
-      button.setAttribute('aria-selected', 'true');
-      applyFilter(button.dataset.filter);
-    });
+    }
+
+    const recommendationsToggle = document.getElementById('experience-recommendations-toggle');
+    const recommendationsPanel = document.getElementById('experience-recommendations');
+    if (recommendationsToggle && recommendationsPanel) {
+      recommendationsToggle.addEventListener('click', () => {
+        const isHidden = recommendationsPanel.hasAttribute('hidden');
+        if (isHidden) {
+          recommendationsPanel.removeAttribute('hidden');
+        } else {
+          recommendationsPanel.setAttribute('hidden', '');
+        }
+        recommendationsToggle.setAttribute('aria-expanded', String(isHidden));
+      });
+    }
+
+    const leadForm = document.querySelector('[data-lead-form]');
+    const leadInputs = {
+      partner: leadForm ? leadForm.querySelector('[data-lead-partner]') : null,
+      name: leadForm ? leadForm.querySelector('[name="name"]') : null,
+      email: leadForm ? leadForm.querySelector('[name="email"]') : null,
+      message: leadForm ? leadForm.querySelector('[name="message"]') : null,
+    };
+
+    if (leadForm) {
+      document.querySelectorAll('[data-lead-trigger]').forEach((trigger) => {
+        trigger.addEventListener('click', () => {
+          const partnerName = trigger.getAttribute('data-partner-name');
+          if (leadInputs.partner) {
+            leadInputs.partner.value = partnerName || '';
+            leadInputs.partner.focus();
+          }
+          window.scrollTo({ top: leadForm.offsetTop - 80, behavior: 'smooth' });
+        });
+      });
+
+      leadForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+        const partnerName = leadInputs.partner ? leadInputs.partner.value : '';
+        const name = leadInputs.name ? leadInputs.name.value.trim() : '';
+        const email = leadInputs.email ? leadInputs.email.value.trim() : '';
+        const message = leadInputs.message ? leadInputs.message.value.trim() : '';
+        if (!name || !email || !message) {
+          alert('Compila tutti i campi per inviare la richiesta.');
+          return;
+        }
+        const subject = encodeURIComponent(`Richiesta Etna Experience da ${name}`);
+        const body = encodeURIComponent(
+          `Partner di interesse: ${partnerName || 'Da suggerire'}\nEmail: ${email}\n\n${message}`,
+        );
+        window.location.href = `mailto:concierge@etnamonitor.it?subject=${subject}&body=${body}`;
+      });
+    }
   });
-});
 </script>
 {% endblock %}

@@ -1,0 +1,21 @@
+<svg width="480" height="320" viewBox="0 0 480 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Segnaposto Etna Experience</title>
+  <desc id="desc">Illustrazione stilizzata del profilo dell'Etna con gradienti blu e dettagli arancioni, utilizzata come immagine di cortesia.</desc>
+  <defs>
+    <linearGradient id="placeholder-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#1e293b" />
+    </linearGradient>
+    <linearGradient id="placeholder-lava" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fb923c" />
+      <stop offset="100%" stop-color="#f97316" />
+    </linearGradient>
+  </defs>
+  <rect width="480" height="320" rx="24" fill="url(#placeholder-bg)" />
+  <path d="M40 240 L140 180 L220 140 L260 170 L320 140 L420 210 L440 240 V280 H40 Z" fill="#111827" opacity="0.85" />
+  <path d="M220 160 C250 140 270 110 280 90 C288 70 300 80 300 100 C300 130 270 170 240 190" fill="url(#placeholder-lava)" opacity="0.7" />
+  <circle cx="360" cy="80" r="36" fill="#fbbf24" opacity="0.25" />
+  <text x="50%" y="86%" fill="#e2e8f0" font-size="18" text-anchor="middle" font-family="'Inter', 'Segoe UI', sans-serif" opacity="0.85">
+    Immagine in arrivo
+  </text>
+</svg>

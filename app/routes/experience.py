@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+from math import ceil
 from typing import Iterable, Tuple
 
 from flask import (
@@ -20,7 +22,12 @@ from ..models import db
 from ..models.partner import PARTNER_CATEGORIES, Partner
 from ..utils.auth import get_current_user
 from ..utils.csrf import validate_csrf_token
-from ..utils.partners import extract_partner_payload, normalize_category
+from ..utils.partners import (
+    build_contact_actions,
+    extract_partner_payload,
+    normalize_category,
+    serialize_partner_for_ldjson,
+)
 
 
 bp = Blueprint("experience", __name__)
@@ -45,18 +52,27 @@ def experience_home():
     """Display the public Etna Experience directory."""
 
     selected_category = normalize_category(request.args.get("category"))
+    page = max(request.args.get("page", default=1, type=int) or 1, 1)
+    per_page = 12
 
     stats = {"total": 0, "guides": 0, "verified": 0, "categories": 0}
+    base_query = Partner.query.filter(Partner.visible.is_(True))
+    partners: list[Partner] = []
+    recommended_partners: list[Partner] = []
+    community_quotes: list[Partner] = []
+    total_results = 0
 
     try:
-        base_query = Partner.query.filter(Partner.visible.is_(True))
         partners_query = base_query
         if selected_category:
             partners_query = partners_query.filter(Partner.category == selected_category)
 
+        total_results = partners_query.count()
+
         partners = (
             partners_query.order_by(Partner.verified.desc(), Partner.created_at.desc())
-            .limit(200)
+            .offset((page - 1) * per_page)
+            .limit(per_page)
             .all()
         )
 
@@ -79,12 +95,20 @@ def experience_home():
             "warning",
         )
         partners = []
+        total_results = 0
 
     if selected_category and not partners:
         flash(
             "Nessun partner disponibile per la categoria selezionata in questo momento.",
             "info",
         )
+
+    pagination = {
+        "page": page,
+        "per_page": per_page,
+        "total": total_results,
+        "pages": ceil(total_results / per_page) if total_results else 1,
+    }
 
     experience_stats = [
         {"label": "Esperienze pubblicate", "value": stats["total"]},
@@ -93,17 +117,74 @@ def experience_home():
         {"label": "Categorie coperte", "value": stats["categories"]},
     ]
 
+    if not recommended_partners:
+        recommended_partners = (
+            base_query.order_by(Partner.verified.desc(), Partner.created_at.desc())
+            .limit(3)
+            .all()
+        )
+
+    if not community_quotes:
+        community_quotes = (
+            base_query.filter(Partner.description.isnot(None))
+            .filter(Partner.description != "")
+            .order_by(Partner.verified.desc(), Partner.created_at.desc())
+            .limit(4)
+            .all()
+        )
+
+    structured_data = {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": "Etna Experience",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": index + 1,
+                "item": serialize_partner_for_ldjson(partner),
+            }
+            for index, partner in enumerate(partners)
+        ],
+    }
+
+    if selected_category:
+        structured_data["about"] = selected_category
+
+    category_label = "Tutte le categorie"
+    if selected_category:
+        category_label = _FILTER_LABELS.get(selected_category, selected_category)
+
+    meta_suffix = (
+        f" – {category_label}" if selected_category and category_label else ""
+    )
+
+    if pagination["page"] > 1:
+        meta_suffix += f" – Pagina {pagination['page']}"
+
+    page_title = f"Etna Experience{meta_suffix}"
+    page_description = "Strutture, escursioni e tour selezionati collegati all'attività vulcanica."
+    if selected_category:
+        page_description = (
+            f"Scopri le migliori esperienze {category_label.lower()} curate dal team Etna Experience."
+        )
+
     return render_template(
         "experience.html",
         partners=partners,
+        pagination=pagination,
         filter_labels=_available_filters(),
         selected_category=selected_category,
         experience_stats=experience_stats,
+        contact_actions={partner.id: build_contact_actions(partner) for partner in partners},
+        recommended_partners=recommended_partners,
+        community_quotes=community_quotes,
+        structured_data=json.dumps(structured_data, ensure_ascii=False),
+        category_label=category_label,
         user=get_current_user(),
-        page_title="Etna Experience – Scopri le attività e le guide dell'Etna",
-        page_description="Strutture, escursioni e tour selezionati collegati all'attività vulcanica.",
-        page_og_title="Etna Experience – Scopri le attività e le guide dell'Etna",
-        page_og_description="Strutture, escursioni e tour selezionati collegati all'attività vulcanica.",
+        page_title=f"{page_title} – Scopri le attività e le guide dell'Etna",
+        page_description=page_description,
+        page_og_title=f"{page_title} – Scopri le attività e le guide dell'Etna",
+        page_og_description=page_description,
     )
 
 

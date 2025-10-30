@@ -1,0 +1,39 @@
+<svg width="720" height="480" viewBox="0 0 720 480" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Panorama stilizzato dell'Etna al tramonto</title>
+  <desc id="desc">Illustrazione vettoriale con il profilo del vulcano Etna, colate laviche e cielo sfumato sui toni del blu e magenta.</desc>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#1e293b" />
+      <stop offset="100%" stop-color="#312e81" />
+    </linearGradient>
+    <linearGradient id="lava" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f97316" />
+      <stop offset="100%" stop-color="#ef4444" />
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="rgba(251,191,36,0.9)" />
+      <stop offset="100%" stop-color="rgba(244,63,94,0)" />
+    </linearGradient>
+    <radialGradient id="stars" cx="0.5" cy="0.1" r="0.8">
+      <stop offset="0%" stop-color="rgba(148,163,184,0.6)" />
+      <stop offset="100%" stop-color="rgba(148,163,184,0)" />
+    </radialGradient>
+  </defs>
+  <rect width="720" height="480" fill="url(#sky)" />
+  <circle cx="110" cy="90" r="160" fill="url(#stars)" />
+  <g fill="#cbd5f5" opacity="0.4">
+    <circle cx="120" cy="70" r="2" />
+    <circle cx="210" cy="40" r="1.5" />
+    <circle cx="320" cy="60" r="2" />
+    <circle cx="450" cy="30" r="1.8" />
+    <circle cx="560" cy="80" r="2" />
+    <circle cx="640" cy="50" r="1.4" />
+  </g>
+  <path d="M0 360 L160 300 L280 180 L360 210 L420 160 L520 260 L640 230 L720 300 V480 H0 Z" fill="#111827" opacity="0.9" />
+  <path d="M280 210 C320 180 350 150 360 120 C370 90 380 100 380 120 C380 160 340 210 300 240" fill="url(#lava)" opacity="0.65" />
+  <path d="M340 140 Q350 110 360 60 Q365 90 380 120 L360 130 Z" fill="url(#glow)" opacity="0.75" />
+  <path d="M0 480 H720 V420 C640 380 560 390 500 410 C440 430 360 450 280 430 C200 410 120 420 0 400 Z" fill="#0f172a" opacity="0.6" />
+  <path d="M100 420 Q160 400 220 420 T340 420" stroke="#1f2937" stroke-width="3" stroke-linecap="round" opacity="0.55" />
+  <path d="M420 410 Q480 390 540 410 T660 420" stroke="#1f2937" stroke-width="3" stroke-linecap="round" opacity="0.4" />
+</svg>
