@@ -205,9 +205,12 @@
     <script src="{{ url_for('static', filename='js/nav.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ script_nonce }}" defer></script>
 
     <script nonce="{{ script_nonce }}">
+      const assetVersion = "{{ STATIC_ASSET_VERSION }}";
+      window.__STATIC_ASSET_VERSION__ = assetVersion;
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/static/sw.js').catch(() => {});
+          const swUrl = `/static/sw.js?v=${encodeURIComponent(assetVersion)}`;
+          navigator.serviceWorker.register(swUrl).catch(() => {});
         });
       }
 

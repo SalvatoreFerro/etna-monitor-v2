@@ -1,13 +1,19 @@
-const CACHE_NAME = 'etna-monitor-v1';
-const STATIC_CACHE = 'etna-static-v1';
-const API_CACHE = 'etna-api-v1';
+const swUrl = new URL(self.location.href);
+const CACHE_VERSION = swUrl.searchParams.get('v') || 'v1';
+const CACHE_NAME = `etna-monitor-${CACHE_VERSION}`;
+const STATIC_CACHE = `etna-static-${CACHE_VERSION}`;
+const API_CACHE = `etna-api-${CACHE_VERSION}`;
+const VERSION_SUFFIX = `?v=${CACHE_VERSION}`;
 
 const STATIC_ASSETS = [
   '/',
-  '/static/css/style.css',
-  '/static/css/theme.css',
-  '/static/js/dashboard.js',
-  '/static/manifest.json',
+  `/static/css/style.css${VERSION_SUFFIX}`,
+  `/static/css/theme.css${VERSION_SUFFIX}`,
+  `/static/css/accessibility.css${VERSION_SUFFIX}`,
+  `/static/js/dashboard.js${VERSION_SUFFIX}`,
+  `/static/js/chart.js${VERSION_SUFFIX}`,
+  `/static/js/nav.js${VERSION_SUFFIX}`,
+  `/static/manifest.json${VERSION_SUFFIX}`,
   'https://cdn.plot.ly/plotly-2.32.0.min.js',
   'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
 ];
@@ -61,7 +67,8 @@ self.addEventListener('fetch', event => {
     return;
   }
   
-  if (STATIC_ASSETS.includes(url.pathname) || request.destination === 'style' || request.destination === 'script') {
+  const assetKey = `${url.pathname}${url.search}`;
+  if (STATIC_ASSETS.includes(assetKey) || STATIC_ASSETS.includes(url.pathname) || request.destination === 'style' || request.destination === 'script') {
     event.respondWith(
       caches.match(request).then(response => {
         return response || fetch(request).then(fetchResponse => {

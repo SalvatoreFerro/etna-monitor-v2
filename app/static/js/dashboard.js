@@ -44,18 +44,20 @@ class EtnaDashboard {
         this.setupINGVMode();
         this.setupAutoRefresh();
         this.loadInitialData();
-        
+
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/static/sw.js');
+            const swVersion = window.__STATIC_ASSET_VERSION__ || 'v1';
+            const swUrl = `/static/sw.js?v=${encodeURIComponent(swVersion)}`;
+            navigator.serviceWorker.register(swUrl).catch(() => {});
         }
     }
-    
+
     setupEventListeners() {
         const updateBtn = document.getElementById('update-btn');
         if (updateBtn) {
             updateBtn.addEventListener('click', () => this.forceUpdate());
         }
-        
+
         const timeRange = document.getElementById('time-range');
         if (timeRange) {
             timeRange.addEventListener('change', () => this.loadData());
@@ -89,6 +91,20 @@ class EtnaDashboard {
         if (exportPNG) {
             exportPNG.addEventListener('click', () => this.exportData('png'));
         }
+    }
+
+    getSelectedLimit() {
+        const select = document.getElementById('time-range');
+        const defaultLimit = 2016;
+        if (!select) {
+            return defaultLimit;
+        }
+        const parsed = parseInt(select.value, 10);
+        if (Number.isNaN(parsed)) {
+            return defaultLimit;
+        }
+        const clamped = Math.min(Math.max(parsed, 1), 4032);
+        return clamped;
     }
 
     getCssVariable(name, fallback) {
@@ -205,8 +221,8 @@ class EtnaDashboard {
     
     async loadData() {
         try {
-            const timeRange = document.getElementById('time-range')?.value || '7d';
-            const response = await fetch(`/api/curva?range=${timeRange}`);
+            const limit = this.getSelectedLimit();
+            const response = await fetch(`/api/curva?limit=${limit}`);
             const data = await response.json();
             
             if (data.ok && data.data) {
@@ -518,7 +534,8 @@ class EtnaDashboard {
     async exportData(format) {
         try {
             if (format === 'csv') {
-                const response = await fetch('/api/curva');
+                const limit = this.getSelectedLimit();
+                const response = await fetch(`/api/curva?limit=${limit}`);
                 const data = await response.json();
                 
                 if (data.ok && data.data) {

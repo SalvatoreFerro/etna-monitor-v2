@@ -6,7 +6,7 @@
 let chartRetryCount = 0;
 const chartMaxRetries = 3;
 
-async function fetchCurva(limit = 168) {
+async function fetchCurva(limit = 2016) {
   try {
     const url = limit ? `/api/curva?limit=${limit}` : '/api/curva';
     const response = await fetch(url, {
@@ -130,7 +130,7 @@ function renderHomePreview(data) {
 
 async function refreshHomePreview() {
   try {
-    const data = await fetchCurva(168); // Last 7 days at 1h intervals ≈ 168 points
+    const data = await fetchCurva(2016);
     await renderHomePreview(data);
     return data;
   } catch (error) {

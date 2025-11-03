@@ -6,8 +6,36 @@ from flask import Blueprint, current_app, jsonify, request
 
 from ..utils.metrics import record_csv_error, record_csv_read
 from backend.utils.extract_png import process_png_to_csv
+from backend.utils.time import to_iso_utc
+
+_RANGE_LIMITS: dict[str, int] = {
+    "24h": 288,
+    "3d": 864,
+    "7d": 2016,
+    "14d": 4032,
+    "all": 4032,
+}
+
+_DEFAULT_LIMIT = 2016
+_MIN_LIMIT = 1
+_MAX_LIMIT = 4032
 
 api_bp = Blueprint("api", __name__)
+
+
+def _prepare_tremor_dataframe(raw_df: pd.DataFrame) -> tuple[pd.DataFrame, str | None]:
+    """Normalise timestamp typing and detect empty datasets."""
+    if "timestamp" not in raw_df.columns:
+        return pd.DataFrame(columns=["timestamp", "value"]), "missing_timestamp"
+
+    df = raw_df.copy()
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+    df = df.dropna(subset=["timestamp"])
+
+    if df.empty:
+        return df, "empty_data"
+
+    return df, None
 
 @api_bp.get("/api/curva")
 def get_curva():
@@ -17,6 +45,7 @@ def get_curva():
 
     fallback_used = False
     preloaded_df = None
+    preloaded_reason: str | None = None
 
     if not csv_path.exists() or csv_path.stat().st_size <= 20:
         try:
@@ -36,12 +65,18 @@ def get_curva():
 
             if fallback_path.exists() and fallback_path.stat().st_size > 20:
                 try:
-                    preloaded_df = pd.read_csv(fallback_path, parse_dates=["timestamp"])
-                    preloaded_df.to_csv(csv_path, index=False)
-                    fallback_used = True
-                    current_app.logger.info(
-                        "[API] Served fallback curva.csv from %s", fallback_path
-                    )
+                    raw_fallback_df = pd.read_csv(fallback_path)
+                    preloaded_df, preloaded_reason = _prepare_tremor_dataframe(raw_fallback_df)
+                    if preloaded_reason is None:
+                        fallback_used = True
+                        df_to_save = preloaded_df.copy()
+                        df_to_save["timestamp"] = df_to_save["timestamp"].apply(to_iso_utc)
+                        df_to_save.to_csv(csv_path, index=False)
+                        current_app.logger.info(
+                            "[API] Served fallback curva.csv from %s", fallback_path
+                        )
+                    else:
+                        record_csv_error(f"fallback::{preloaded_reason}")
                 except Exception as fallback_exc:
                     current_app.logger.exception(
                         "[API] Failed to load fallback curva.csv from %s", fallback_path
@@ -58,38 +93,63 @@ def get_curva():
                 }), 503
 
     try:
-        df = (
-            preloaded_df
-            if preloaded_df is not None
-            else pd.read_csv(csv_path, parse_dates=["timestamp"])
-        )
-        last_ts = df["timestamp"].max() if not df.empty else None
-        record_csv_read(len(df), last_ts)
+        if preloaded_df is not None:
+            df = preloaded_df.copy()
+            reason = preloaded_reason
+        else:
+            raw_df = pd.read_csv(csv_path)
+            df, reason = _prepare_tremor_dataframe(raw_df)
 
-        if df.empty:
-            return jsonify({
-                "ok": True,
-                "data": [],
-                "last_ts": None,
-                "rows": 0
-            })
+        if reason is not None:
+            record_csv_error(reason)
+            status_code = 200
+            payload = {
+                "ok": False,
+                "reason": reason,
+                "rows": 0,
+            }
+            if fallback_used:
+                payload["source"] = "fallback"
+            return jsonify(payload), status_code
 
         df = df.sort_values("timestamp")
 
-        if "timestamp" in df.columns:
-            try:
-                df["timestamp"] = df["timestamp"].apply(
-                    lambda ts: ts.isoformat() if hasattr(ts, "isoformat") else str(ts)
-                )
-            except Exception:
-                df["timestamp"] = df["timestamp"].astype(str)
+        limit = request.args.get("limit", type=int)
+        if limit is None:
+            range_key = request.args.get("range")
+            if range_key:
+                limit = _RANGE_LIMITS.get(range_key)
 
-        data = df.to_dict(orient="records")
+        if limit is None:
+            limit = _DEFAULT_LIMIT
+
+        if not isinstance(limit, int) or limit < _MIN_LIMIT or limit > _MAX_LIMIT:
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "invalid_limit",
+                        "reason": "invalid_limit",
+                        "rows": 0,
+                    }
+                ),
+                400,
+            )
+
+        df = df.tail(limit)
+
+        last_ts = df["timestamp"].iloc[-1]
+        record_csv_read(len(df), last_ts.to_pydatetime())
+
+        response_df = df.copy()
+        response_df["timestamp"] = response_df["timestamp"].apply(to_iso_utc)
+
+        data = response_df.to_dict(orient="records")
 
         payload = {
             "ok": True,
             "data": data,
-            "last_ts": last_ts.isoformat() if pd.notna(last_ts) else None,
+            "last_ts": to_iso_utc(last_ts),
             "rows": len(data),
         }
         if fallback_used:
@@ -121,22 +181,37 @@ def get_status():
     
     try:
         if csv_path.exists():
-            df = pd.read_csv(csv_path, parse_dates=["timestamp"])
-            last_ts = df["timestamp"].max() if not df.empty else None
-            record_csv_read(len(df), last_ts)
-            if not df.empty:
+            raw_df = pd.read_csv(csv_path)
+            df, reason = _prepare_tremor_dataframe(raw_df)
+
+            if reason is None:
+                df = df.sort_values("timestamp")
+                last_ts = df["timestamp"].iloc[-1]
+                record_csv_read(len(df), last_ts.to_pydatetime())
+
                 current_value = float(df["value"].iloc[-1])
                 above_threshold = current_value > threshold
-                last_update = last_ts.isoformat() if pd.notna(last_ts) else None
 
                 return jsonify({
                     "ok": True,
                     "current_value": current_value,
                     "above_threshold": above_threshold,
                     "threshold": threshold,
-                    "last_update": last_update,
+                    "last_update": to_iso_utc(last_ts),
                     "total_points": len(df)
                 })
+
+            record_csv_error(f"status::{reason}")
+            status_code = 200
+            return jsonify({
+                "ok": False,
+                "reason": reason,
+                "current_value": None,
+                "above_threshold": False,
+                "threshold": threshold,
+                "last_update": None,
+                "total_points": 0,
+            }), status_code
 
         return jsonify({
             "ok": True,
@@ -165,18 +240,16 @@ def force_update():
         result = process_png_to_csv(ingv_url, csv_path_setting)
         last_ts_value = None
         if result.get("last_ts"):
-            try:
-                parsed = pd.to_datetime(result["last_ts"])
-                last_ts_value = parsed.to_pydatetime() if hasattr(parsed, "to_pydatetime") else parsed
-            except Exception:
-                last_ts_value = None
+            parsed = pd.to_datetime(result["last_ts"], utc=True, errors="coerce")
+            if pd.notna(parsed):
+                last_ts_value = parsed.to_pydatetime()
         record_csv_read(int(result.get("rows", 0)), last_ts_value)
         current_app.logger.info("[API] Force update generated %s rows", result.get("rows"))
 
         return jsonify({
             "ok": True,
             "rows": result["rows"],
-            "last_ts": result["last_ts"],
+            "last_ts": to_iso_utc(result.get("last_ts")),
             "output_path": result["output_path"]
         }), 200
 

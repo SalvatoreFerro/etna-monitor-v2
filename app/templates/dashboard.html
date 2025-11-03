@@ -110,10 +110,9 @@
           <div class="chart-controls">
             <label for="time-range" class="sr-only">Seleziona intervallo temporale per il grafico</label>
             <select id="time-range" class="input-base" aria-label="Selettore intervallo temporale">
-              <option value="24h">Ultime 24 ore</option>
-              <option value="3d">Ultimi 3 giorni</option>
-              <option value="7d" selected>Ultimi 7 giorni</option>
-              <option value="all">Tutti i dati</option>
+              <option value="288">Ultime 24 ore</option>
+              <option value="864">Ultimi 3 giorni</option>
+              <option value="2016" selected>Ultimi 7 giorni</option>
             </select>
 
             {% if user.has_premium_access %}

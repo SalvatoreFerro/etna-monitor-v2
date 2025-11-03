@@ -1,7 +1,9 @@
 /* global window, document, fetch */
 (function () {
-  const CHART_ENDPOINT = '/api/curva?limit=168';
+  const CURVA_ENDPOINT = '/api/curva';
   const STATUS_ENDPOINT = '/api/status';
+  const DEFAULT_LIMIT = 2016;
+  const LIMIT_BOUNDS = { min: 1, max: 4032 };
   const FETCH_TIMEOUTS = [5000, 20000];
   const RETRY_DELAYS = [800];
   const LOG_SCALE_MIN = 0.1;
@@ -32,6 +34,7 @@
   const plotElement = document.getElementById('home-preview-plot');
   const loadingElement = document.getElementById('home-preview-loading');
   const quickUpdateBtn = document.getElementById('quick-update-btn');
+  const rangeButtons = Array.from(document.querySelectorAll('.chart-range-btn'));
   const lastUpdateEl = document.getElementById('live-last-update');
   const pointsEl = document.getElementById('live-data-points');
   const activityBadge = document.getElementById('live-activity-badge');
@@ -71,6 +74,13 @@
   let plotlyReadyPromise = null;
   let noticeTimer = null;
   let lastSuccessfulPayload = null;
+  let currentLimit = DEFAULT_LIMIT;
+
+  if (rangeButtons.length) {
+    const activeButton = getActiveRangeButton() || rangeButtons[0];
+    currentLimit = resolveLimitFromButton(activeButton);
+    setActiveRangeButton(activeButton);
+  }
 
   if (!plotElement || !loadingElement) {
     return;
@@ -88,6 +98,48 @@
 
     return fetch(url, config)
       .finally(() => window.clearTimeout(timer));
+  }
+
+  function clampLimit(value) {
+    if (!Number.isFinite(value)) {
+      return DEFAULT_LIMIT;
+    }
+    const integer = Math.trunc(value);
+    if (integer < LIMIT_BOUNDS.min) {
+      return LIMIT_BOUNDS.min;
+    }
+    if (integer > LIMIT_BOUNDS.max) {
+      return LIMIT_BOUNDS.max;
+    }
+    return integer;
+  }
+
+  function resolveLimitFromButton(button) {
+    if (!button) {
+      return DEFAULT_LIMIT;
+    }
+    const parsed = Number(button.dataset.limit);
+    if (!Number.isFinite(parsed)) {
+      return DEFAULT_LIMIT;
+    }
+    return clampLimit(parsed);
+  }
+
+  function buildCurvaUrl(limit) {
+    const params = new URLSearchParams();
+    const resolved = clampLimit(limit);
+    params.set('limit', String(resolved));
+    return `${CURVA_ENDPOINT}?${params.toString()}`;
+  }
+
+  function getActiveRangeButton() {
+    return rangeButtons.find((button) => button.classList.contains('is-active')) || null;
+  }
+
+  function setActiveRangeButton(button) {
+    rangeButtons.forEach((item) => {
+      item.classList.toggle('is-active', item === button);
+    });
   }
 
   function showSpinner() {
@@ -213,7 +265,7 @@
     button.className = 'btn btn-secondary btn-sm';
     button.textContent = 'Riprova';
     button.addEventListener('click', () => {
-      loadChartWithRetry().catch((error) => {
+      loadChartWithRetry(currentLimit).catch((error) => {
         handleLoadError(error);
       });
     });
@@ -422,13 +474,13 @@
     hideSpinner();
   }
 
-  async function loadChart(options = {}) {
+  async function loadChart(limit, options = {}) {
     const { timeout = FETCH_TIMEOUTS[0], showLoader = true } = options;
     if (showLoader) {
       showSpinner();
     }
     try {
-      const response = await fetchWithTimeout(CHART_ENDPOINT, {
+      const response = await fetchWithTimeout(buildCurvaUrl(limit), {
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' }
       }, timeout);
@@ -449,13 +501,13 @@
     }
   }
 
-  async function loadChartWithRetry(options = {}) {
+  async function loadChartWithRetry(limit, options = {}) {
     let lastError;
     for (let attempt = 0; attempt < FETCH_TIMEOUTS.length; attempt += 1) {
       const timeout = FETCH_TIMEOUTS[Math.min(attempt, FETCH_TIMEOUTS.length - 1)];
       const showLoader = options.showLoader !== false ? attempt === 0 : false;
       try {
-        const payload = await loadChart({ timeout, showLoader });
+        const payload = await loadChart(limit, { timeout, showLoader });
         return payload;
       } catch (error) {
         lastError = error;
@@ -506,7 +558,7 @@
       quickUpdateBtn.disabled = true;
       quickUpdateBtn.textContent = 'Aggiornamento…';
       try {
-        const payload = await loadChartWithRetry({ showLoader: !chartDrawn });
+        const payload = await loadChartWithRetry(currentLimit, { showLoader: !chartDrawn });
         if (payload) {
           await drawPlot(payload.data);
           updateMetrics(payload);
@@ -524,6 +576,44 @@
         quickUpdateBtn.disabled = false;
         quickUpdateBtn.textContent = originalText;
       }
+    });
+  }
+
+  function bindRangeSelector() {
+    if (!rangeButtons.length) return;
+    rangeButtons.forEach((button) => {
+      button.addEventListener('click', async () => {
+        const desiredLimit = resolveLimitFromButton(button);
+        if (desiredLimit === currentLimit) {
+          return;
+        }
+
+        const previousButton = getActiveRangeButton();
+        const previousLimit = currentLimit;
+        currentLimit = desiredLimit;
+        setActiveRangeButton(button);
+
+        try {
+          const payload = await loadChartWithRetry(currentLimit, { showLoader: true });
+          if (payload) {
+            lastSuccessfulPayload = payload;
+            await drawPlot(payload.data);
+            updateMetrics(payload);
+            updateStatus(payload.source === 'fallback' ? 'fallback' : 'online');
+          }
+        } catch (error) {
+          currentLimit = previousLimit;
+          const fallbackButton = rangeButtons.find((item) => resolveLimitFromButton(item) === currentLimit) || previousButton;
+          setActiveRangeButton(fallbackButton);
+          handleLoadError(error, { keepExisting: chartDrawn });
+        } finally {
+          try {
+            await refreshStatus();
+          } catch (statusError) {
+            updateStatus(false);
+          }
+        }
+      });
     });
   }
 
@@ -603,7 +693,7 @@
       showSpinner();
     }
 
-    loadChartWithRetry({ showLoader: !chartDrawn })
+    loadChartWithRetry(currentLimit, { showLoader: !chartDrawn })
       .then(async (payload) => {
         lastSuccessfulPayload = payload;
         await drawPlot(payload.data);
@@ -615,6 +705,7 @@
       });
 
     refreshStatus();
+    bindRangeSelector();
     bindQuickUpdate();
     setupMobileNavObserver();
   }
