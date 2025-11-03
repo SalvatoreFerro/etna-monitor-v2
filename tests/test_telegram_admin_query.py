@@ -48,6 +48,13 @@ def test_admin_test_alert_filters_numeric_chat_ids(app_with_admin, monkeypatch):
         return None
 
     monkeypatch.setattr("app.routes.admin.TelegramService.check_and_send_alerts", _noop_check)
+    send_calls = []
+
+    def _fake_send(token, chat_id, text, **kwargs):
+        send_calls.append((token, chat_id, text))
+        return True
+
+    monkeypatch.setattr("app.services.telegram_service.send_telegram_alert", _fake_send)
 
     with app.app_context():
         admin = _make_user("admin@example.com", is_admin=True, telegram_opt_in=False)
@@ -99,7 +106,30 @@ def test_admin_test_alert_filters_numeric_chat_ids(app_with_admin, monkeypatch):
         payload = response.get_json()
         assert payload["success"] is True
         assert "Utenti Premium con Telegram: 2" in payload["message"]
+        assert len(send_calls) == 2
 
         # Ensure the dirty rows did not create alert events
         alert_events = Event.query.filter_by(event_type="alert").count()
         assert alert_events == 0
+
+
+def test_admin_test_alert_requires_token(app_with_admin, monkeypatch):
+    app = app_with_admin
+
+    with app.app_context():
+        admin = _make_user("admin@example.com", is_admin=True, telegram_opt_in=False)
+        admin_id = admin.id
+
+    # Remove token from both runtime config and fallback Config
+    monkeypatch.setattr(Config, "TELEGRAM_BOT_TOKEN", "")
+    app.config["TELEGRAM_BOT_TOKEN"] = ""
+
+    client = app.test_client()
+    with client.session_transaction() as session:
+        session["user_id"] = admin_id
+
+    response = client.post("/admin/test-alert")
+    assert response.status_code == 400
+    payload = response.get_json()
+    assert payload["success"] is False
+    assert "non configurato" in payload["message"].lower()

@@ -1,9 +1,11 @@
 import os
 from datetime import datetime, timedelta
+from decimal import Decimal, InvalidOperation
+from numbers import Integral
 from typing import Optional
 
 import pandas as pd
-import requests
+from flask import current_app, has_app_context
 from sqlalchemy import and_, func, or_
 
 from app.models import db
@@ -11,6 +13,7 @@ from app.models.event import Event
 from app.models.user import User
 from app.utils.logger import get_logger
 from app.utils.metrics import record_csv_error, record_csv_read
+from alerts.notifier import send_telegram_alert
 from config import Config
 
 logger = get_logger(__name__)
@@ -22,42 +25,83 @@ class TelegramService:
     RATE_LIMIT = timedelta(hours=2)
     UPSELL_COOLDOWN = timedelta(hours=24)
 
-    def __init__(self):
-        self.bot_token = Config.TELEGRAM_BOT_TOKEN
-        self.api_url = f"https://api.telegram.org/bot{self.bot_token}"
-    
     def send_message(self, chat_id: int | str | None, text: str) -> bool:
         """Send Telegram message to user"""
-        if not self.bot_token:
+        token = self._resolve_bot_token()
+        normalized_chat_id = self._normalize_chat_id(chat_id)
+
+        if not token or not normalized_chat_id:
             logger.warning("Missing bot token or chat_id")
             return False
 
-        parsed_chat_id: Optional[int] = None
-        if isinstance(chat_id, int):
-            parsed_chat_id = chat_id if chat_id > 0 else None
-        elif isinstance(chat_id, str):
-            stripped = chat_id.strip()
-            if stripped:
-                try:
-                    parsed_chat_id = int(stripped)
-                except ValueError:
-                    logger.warning("Invalid chat_id format received: %s", chat_id)
-                    parsed_chat_id = None
-
-        if parsed_chat_id is None:
-            logger.warning("Missing bot token or chat_id")
-            return False
-        
         try:
-            response = requests.post(f"{self.api_url}/sendMessage",
-                                   json={"chat_id": parsed_chat_id, "text": text},
-                                   timeout=10)
-            response.raise_for_status()
-            logger.info(f"Telegram message sent to {parsed_chat_id}")
-            return True
-        except Exception as e:
-            logger.error(f"Failed to send Telegram message: {e}")
+            if send_telegram_alert(token, normalized_chat_id, text):
+                logger.info("Telegram message sent to %s", normalized_chat_id)
+                return True
+        except Exception:  # pragma: no cover - defensive guard
+            logger.exception("Unexpected error while sending Telegram message")
             return False
+
+        logger.error("Failed to send Telegram message to %s", normalized_chat_id)
+        return False
+
+    def _resolve_bot_token(self) -> str:
+        token: str = ""
+        if has_app_context():
+            token = (current_app.config.get("TELEGRAM_BOT_TOKEN") or "").strip()
+        if not token:
+            token = (Config.TELEGRAM_BOT_TOKEN or "").strip()
+        return token
+
+    def is_configured(self) -> bool:
+        return bool(self._resolve_bot_token())
+
+    def _normalize_chat_id(self, chat_id: int | str | None) -> Optional[str]:
+        if chat_id is None or isinstance(chat_id, bool):
+            return None
+
+        value: Optional[int] = None
+
+        if isinstance(chat_id, Integral):
+            candidate = int(chat_id)
+            value = candidate if candidate != 0 else None
+        elif isinstance(chat_id, Decimal):
+            if chat_id == 0:
+                return None
+            try:
+                integral = chat_id.to_integral_value()
+            except Exception:  # pragma: no cover - Decimal edge cases
+                logger.warning("Invalid chat_id format received: %s", chat_id)
+                return None
+            if integral != chat_id:
+                logger.warning("Invalid chat_id format received: %s", chat_id)
+                return None
+            value = int(integral)
+        else:
+            raw = str(chat_id).strip()
+            if not raw:
+                return None
+            if raw.startswith("+"):
+                raw = raw[1:]
+            if raw.startswith("@"):
+                return raw  # Allow usernames/channels for manual tests
+            try:
+                value = int(raw)
+            except ValueError:
+                try:
+                    decimal_value = Decimal(raw)
+                except (InvalidOperation, ValueError):
+                    logger.warning("Invalid chat_id format received: %s", chat_id)
+                    return None
+                if decimal_value != decimal_value.to_integral_value():
+                    logger.warning("Invalid chat_id format received: %s", chat_id)
+                    return None
+                value = int(decimal_value)
+
+        if value is None or value == 0:
+            return None
+
+        return str(value)
     
     def calculate_moving_average(self, values, window_size=5):
         """Calculate moving average to avoid false positives"""
