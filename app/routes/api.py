@@ -8,6 +8,18 @@ from ..utils.metrics import record_csv_error, record_csv_read
 from backend.utils.extract_png import process_png_to_csv
 from backend.utils.time import to_iso_utc
 
+_RANGE_LIMITS: dict[str, int] = {
+    "24h": 288,
+    "3d": 864,
+    "7d": 2016,
+    "14d": 4032,
+    "all": 4032,
+}
+
+_DEFAULT_LIMIT = 2016
+_MIN_LIMIT = 1
+_MAX_LIMIT = 4032
+
 api_bp = Blueprint("api", __name__)
 
 
@@ -103,8 +115,28 @@ def get_curva():
         df = df.sort_values("timestamp")
 
         limit = request.args.get("limit", type=int)
-        if limit is not None and limit > 0:
-            df = df.tail(limit)
+        if limit is None:
+            range_key = request.args.get("range")
+            if range_key:
+                limit = _RANGE_LIMITS.get(range_key)
+
+        if limit is None:
+            limit = _DEFAULT_LIMIT
+
+        if not isinstance(limit, int) or limit < _MIN_LIMIT or limit > _MAX_LIMIT:
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "invalid_limit",
+                        "reason": "invalid_limit",
+                        "rows": 0,
+                    }
+                ),
+                400,
+            )
+
+        df = df.tail(limit)
 
         last_ts = df["timestamp"].iloc[-1]
         record_csv_read(len(df), last_ts.to_pydatetime())

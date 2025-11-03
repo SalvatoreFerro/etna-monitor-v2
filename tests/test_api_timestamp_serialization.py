@@ -65,3 +65,48 @@ def test_status_endpoint_serializes_iso_utc(client):
     assert payload["ok"] is True
     assert payload["last_update"].endswith("Z")
     assert payload["total_points"] == 2
+
+
+def test_curva_endpoint_respects_default_limit(client):
+    test_client, csv_path = client
+
+    timestamps = pd.date_range("2025-01-01", periods=2500, freq="5min", tz="UTC")
+    df = pd.DataFrame(
+        {
+            "timestamp": timestamps.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "value": [float(i % 10) + 0.1 for i in range(len(timestamps))],
+        }
+    )
+    df.to_csv(csv_path, index=False)
+
+    response = test_client.get("/api/curva")
+    assert response.status_code == 200
+
+    payload = json.loads(response.data)
+    assert payload["ok"] is True
+    assert payload["rows"] == 2016
+    assert len(payload["data"]) == 2016
+    first_timestamp = payload["data"][0]["timestamp"]
+    expected_first = timestamps[-2016].strftime("%Y-%m-%dT%H:%M:%SZ")
+    assert first_timestamp == expected_first
+
+
+def test_curva_endpoint_applies_limit_query(client):
+    test_client, csv_path = client
+
+    timestamps = pd.date_range("2025-01-01", periods=600, freq="5min", tz="UTC")
+    df = pd.DataFrame(
+        {
+            "timestamp": timestamps.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "value": [float(i % 7) + 0.5 for i in range(len(timestamps))],
+        }
+    )
+    df.to_csv(csv_path, index=False)
+
+    response = test_client.get("/api/curva?limit=288")
+    assert response.status_code == 200
+
+    payload = json.loads(response.data)
+    assert payload["ok"] is True
+    assert payload["rows"] == 288
+    assert len(payload["data"]) == 288

@@ -728,6 +728,36 @@
     color: var(--color-text-muted);
   }
 
+  .chart-range-selector {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 0 var(--space-1);
+  }
+
+  .chart-range-btn {
+    border: 1px solid var(--color-border-strong);
+    background: var(--color-surface-strong);
+    color: var(--color-text-muted);
+    padding: 0.4rem 0.85rem;
+    font-size: 0.85rem;
+    border-radius: var(--radius-pill);
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  }
+
+  .chart-range-btn:is(:hover, :focus-visible) {
+    color: var(--color-text-primary);
+    border-color: var(--color-primary);
+    background: rgba(56, 189, 248, 0.12);
+  }
+
+  .chart-range-btn.is-active {
+    background: var(--color-primary);
+    color: var(--color-base);
+    border-color: transparent;
+    box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.32);
+  }
+
   .chart-loading {
     border-radius: var(--radius-lg);
     border: 1px solid var(--color-border);

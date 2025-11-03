@@ -94,7 +94,7 @@ def index():
                     values = df["value"].tolist()
                     data_points = len(df)
 
-                    preview_slice = df.tail(168)
+                    preview_slice = df.tail(2016)
                     preview_rows = []
                     for row in preview_slice.itertuples(index=False):
                         value = getattr(row, "value", None)
