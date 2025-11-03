@@ -184,6 +184,15 @@ def test_alert():
 
     try:
         telegram_service = TelegramService()
+        if not telegram_service.is_configured():
+            return (
+                jsonify({
+                    "success": False,
+                    "message": "Bot Telegram non configurato. Imposta il token prima di eseguire il test.",
+                }),
+                400,
+            )
+
         telegram_service.check_and_send_alerts()
 
         normalized_chat_id = func.nullif(

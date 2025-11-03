@@ -8,19 +8,14 @@ os.environ.setdefault("DISABLE_SCHEDULER", "1")
 import pytest
 
 from app import create_app
+from decimal import Decimal
+
 from app.models import db
 from app.models.event import Event
 from app.models.user import User
 from app.services.telegram_service import TelegramService
 from config import Config
 import app.services.telegram_service as telegram_module
-
-
-class DummyResponse:
-    status_code = 200
-
-    def raise_for_status(self) -> None:
-        return
 
 
 def _write_curva_csv(base_dir: str, start: datetime, values: List[float], step_minutes: int = 1) -> None:
@@ -59,11 +54,17 @@ def app_ctx(tmp_path, monkeypatch):
 def message_spy(monkeypatch):
     sent: List[dict] = []
 
-    def fake_post(url, json=None, timeout=10):
-        sent.append(json or {})
-        return DummyResponse()
+    def fake_send(token, chat_id, text, *, parse_mode=None, disable_notification=False):
+        sent.append({
+            "token": token,
+            "chat_id": chat_id,
+            "text": text,
+            "parse_mode": parse_mode,
+            "disable_notification": disable_notification,
+        })
+        return True
 
-    monkeypatch.setattr(telegram_module.requests, "post", fake_post)
+    monkeypatch.setattr(telegram_module, "send_telegram_alert", fake_send)
     return sent
 
 
@@ -194,3 +195,12 @@ def test_hysteresis_prevents_duplicate_alerts(app_ctx, message_spy):
 
         alert_events = Event.query.filter_by(user_id=user.id, event_type="alert").count()
         assert alert_events == 2
+
+
+def test_send_message_accepts_decimal_chat_id(app_ctx, message_spy):
+    _, app = app_ctx
+    service = TelegramService()
+
+    with app.app_context():
+        assert service.send_message(Decimal("123456789"), "prova") is True
+        assert message_spy[-1]["chat_id"] == "123456789"
