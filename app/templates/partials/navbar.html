@@ -18,6 +18,16 @@
   ] %}
 {% endif %}
 
+{% if session.user_id %}
+  {% set nav_links = nav_links + [
+    {
+      'label': 'Dashboard',
+      'url': url_for('dashboard.dashboard_home'),
+      'endpoint': 'dashboard.dashboard_home'
+    }
+  ] %}
+{% endif %}
+
 <nav class="site-nav" role="navigation" aria-label="Navigazione principale">
   <div class="container site-nav__inner">
     <a class="site-nav__brand" href="/" aria-label="EtnaMonitor home">

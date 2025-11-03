@@ -132,17 +132,11 @@ class TelegramService:
     def _get_subscribed_users(self):
         return (
             User.query.filter(
-                or_(
-                    and_(
-                        User.telegram_chat_id.isnot(None),
-                        User.telegram_chat_id > 0,
-                    ),
-                    and_(
-                        User.chat_id.isnot(None),
-                        User.chat_id > 0,
-                    ),
-                ),
                 User.telegram_opt_in.is_(True),
+                or_(
+                    User.telegram_chat_id.isnot(None),
+                    User.chat_id.isnot(None),
+                ),
             )
             .order_by(User.id.asc())
             .all()
