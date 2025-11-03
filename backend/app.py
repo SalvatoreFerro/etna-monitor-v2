@@ -17,9 +17,16 @@ def force_update():
         ingv_url = os.getenv('INGV_URL', 'https://www.ct.ingv.it/RMS_Etna/2.png')
         
         DATA_DIR = os.getenv('DATA_DIR', 'data')
-        output_path = process_png_to_csv(ingv_url, os.path.join(DATA_DIR, "curva.csv"))
-        
-        return jsonify({"ok": True, "message": f"Data updated successfully in {output_path}"})
+        result = process_png_to_csv(ingv_url, os.path.join(DATA_DIR, "curva.csv"))
+
+        return jsonify({
+            "ok": True,
+            "message": f"Data updated successfully in {result['output_path']}",
+            "rows": result.get("rows"),
+            "first_ts": result.get("first_ts"),
+            "last_ts": result.get("last_ts"),
+            "output_path": result.get("output_path"),
+        })
     
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
