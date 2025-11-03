@@ -144,12 +144,22 @@ class TelegramService:
             record_csv_error("curva.csv not found")
             return None
 
-        df = pd.read_csv(curva_file, parse_dates=['timestamp'])
-        record_csv_read(len(df), df['timestamp'].max() if not df.empty else None)
+        df = pd.read_csv(curva_file)
+        if 'timestamp' not in df.columns:
+            logger.warning("Tremor CSV missing timestamp column")
+            record_csv_error("curva.csv missing timestamp column")
+            return None
+
+        df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+        df = df.dropna(subset=['timestamp'])
+
         if df.empty:
             logger.warning("Empty tremor data file")
             record_csv_error("curva.csv is empty")
             return None
+
+        last_ts = df['timestamp'].iloc[-1].to_pydatetime()
+        record_csv_read(len(df), last_ts)
 
         return df
 

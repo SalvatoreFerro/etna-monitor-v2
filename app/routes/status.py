@@ -6,6 +6,8 @@ import pandas as pd
 import time
 import hashlib
 
+from backend.utils.time import to_iso_utc
+
 status_bp = Blueprint("status", __name__)
 
 @status_bp.route("/api/status")
@@ -27,34 +29,52 @@ def get_status():
         
         if Path(csv_path).exists():
             try:
-                df = pd.read_csv(csv_path, parse_dates=["timestamp"])
-                if not df.empty:
-                    last_ts = df["timestamp"].max()
-                    current_value = df["value"].iloc[-1] if len(df) > 0 else None
-                    
-                    status_data.update({
-                        "last_ts": last_ts.isoformat(),
-                        "rows": len(df),
-                        "current_value": float(current_value) if current_value is not None else None,
-                        "above_threshold": bool(current_value > threshold) if current_value is not None else False,
-                        "data_age_minutes": int((time.time() - last_ts.timestamp()) / 60) if last_ts else None
-                    })
-                else:
-                    status_data.update({
-                        "last_ts": None,
-                        "rows": 0,
-                        "current_value": None,
-                        "above_threshold": False,
-                        "data_age_minutes": None
-                    })
-            except Exception as e:
+                df = pd.read_csv(csv_path)
+            except Exception as exc:
                 status_data.update({
-                    "csv_error": str(e),
+                    "ok": False,
+                    "csv_error": str(exc),
                     "last_ts": None,
                     "rows": 0,
                     "current_value": None,
                     "above_threshold": False
                 })
+            else:
+                if "timestamp" not in df.columns:
+                    status_data.update({
+                        "ok": False,
+                        "reason": "missing_timestamp",
+                        "last_ts": None,
+                        "rows": 0,
+                        "current_value": None,
+                        "above_threshold": False,
+                        "data_age_minutes": None,
+                    })
+                else:
+                    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+                    df = df.dropna(subset=["timestamp"])
+
+                    if df.empty:
+                        status_data.update({
+                            "ok": False,
+                            "reason": "empty_data",
+                            "last_ts": None,
+                            "rows": 0,
+                            "current_value": None,
+                            "above_threshold": False,
+                            "data_age_minutes": None,
+                        })
+                    else:
+                        df = df.sort_values("timestamp")
+                        last_ts = df["timestamp"].iloc[-1]
+                        current_value = df["value"].iloc[-1] if len(df) > 0 else None
+                        status_data.update({
+                            "last_ts": to_iso_utc(last_ts),
+                            "rows": len(df),
+                            "current_value": float(current_value) if current_value is not None else None,
+                            "above_threshold": bool(current_value > threshold) if current_value is not None else False,
+                            "data_age_minutes": int((time.time() - last_ts.timestamp()) / 60) if last_ts else None
+                        })
         else:
             status_data.update({
                 "csv_exists": False,

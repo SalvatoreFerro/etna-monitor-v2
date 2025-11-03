@@ -28,9 +28,17 @@ def dashboard_home():
     try:
         curva_file = os.path.join(DATA_DIR, "curva.csv")
         if os.path.exists(curva_file):
-            df = pd.read_csv(curva_file, parse_dates=['timestamp'])
+            df = pd.read_csv(curva_file)
+            if 'timestamp' in df.columns:
+                df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+                df = df.dropna(subset=['timestamp'])
+            else:
+                record_csv_error('curva.csv missing timestamp column')
+                df = pd.DataFrame(columns=['timestamp', 'value'])
+
             df = df.tail(100)  # Last 100 points for performance
-            record_csv_read(len(df), df['timestamp'].max() if not df.empty else None)
+            last_ts = df['timestamp'].iloc[-1].to_pydatetime() if not df.empty else None
+            record_csv_read(len(df), last_ts)
         else:
             Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
             empty_df = pd.DataFrame(columns=['timestamp', 'value'])
