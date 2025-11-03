@@ -232,6 +232,10 @@ def test_alert():
             "Le notifiche Telegram sono attive e il sistema è operativo."
         )
 
+        # In passato l'endpoint di test si limitava ad eseguire check_and_send_alerts
+        # senza spedire un messaggio esplicito, quindi il popup segnalava destinatari
+        # ma Telegram non riceveva nulla. Inviamo qui un alert reale verso ogni chat
+        # idonea così che l'operatore possa verificare la consegna dal pannello admin.
         for user in premium_users:
             chat_id = user.telegram_chat_id or user.chat_id
             if telegram_service.send_message(chat_id, test_message):
