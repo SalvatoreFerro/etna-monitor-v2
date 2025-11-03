@@ -23,6 +23,7 @@ from sqlalchemy import or_, text
 from ..extensions import cache
 from ..utils.metrics import get_csv_metrics, record_csv_error, record_csv_read
 from app.security import build_csp, talisman
+from backend.utils.time import to_iso_utc
 
 bp = Blueprint("main", __name__)
 
@@ -71,53 +72,60 @@ def index():
 
     if csv_path.exists():
         try:
-            df = pd.read_csv(csv_path, parse_dates=["timestamp"])
+            df = pd.read_csv(csv_path)
         except Exception as exc:
             placeholder_reason = "error"
             current_app.logger.exception("[HOME] Failed to read tremor CSV")
             record_csv_error(str(exc))
         else:
-            if df.empty:
-                placeholder_reason = "empty"
-                record_csv_error("curva.csv empty")
+            if "timestamp" not in df.columns:
+                placeholder_reason = "missing_timestamp"
+                record_csv_error("curva.csv missing timestamp column")
             else:
-                df = df.sort_values("timestamp")
-                timestamps = df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S").tolist()
-                values = df["value"].tolist()
-                data_points = len(df)
+                df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+                df = df.dropna(subset=["timestamp"])
 
-                preview_slice = df.tail(168)
-                preview_rows = []
-                for row in preview_slice.itertuples(index=False):
-                    value = getattr(row, "value", None)
-                    if value is None:
-                        continue
-                    ts = row.timestamp
-                    iso_timestamp = (
-                        ts.isoformat()
-                        if hasattr(ts, "isoformat")
-                        else str(ts)
-                    )
-                    preview_rows.append(
-                        {
-                            "timestamp": iso_timestamp,
-                            "value": float(value),
-                        }
-                    )
+                if df.empty:
+                    placeholder_reason = "empty"
+                    record_csv_error("curva.csv empty")
+                else:
+                    df = df.sort_values("timestamp")
+                    timestamps = df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S").tolist()
+                    values = df["value"].tolist()
+                    data_points = len(df)
 
-                temporal_start = df["timestamp"].iloc[0]
-                temporal_end = df["timestamp"].iloc[-1]
-                temporal_start_iso = temporal_start.strftime("%Y-%m-%dT%H:%M:%SZ")
-                temporal_end_iso = temporal_end.strftime("%Y-%m-%dT%H:%M:%SZ")
-                temporal_coverage = (
-                    f"{temporal_start_iso}/{temporal_end_iso}"
-                    if temporal_start_iso and temporal_end_iso
-                    else None
-                )
-                latest_value = float(df["value"].iloc[-1])
-                latest_timestamp_iso = temporal_end_iso
-                latest_timestamp_display = temporal_end.strftime("%d/%m/%Y %H:%M")
-                record_csv_read(len(df), temporal_end.to_pydatetime())
+                    preview_slice = df.tail(168)
+                    preview_rows = []
+                    for row in preview_slice.itertuples(index=False):
+                        value = getattr(row, "value", None)
+                        if value is None:
+                            continue
+                        ts = row.timestamp
+                        preview_rows.append(
+                            {
+                                "timestamp": to_iso_utc(ts),
+                                "value": float(value),
+                            }
+                        )
+
+                    temporal_start = df["timestamp"].iloc[0]
+                    temporal_end = df["timestamp"].iloc[-1]
+                    temporal_start_iso = to_iso_utc(temporal_start)
+                    temporal_end_iso = to_iso_utc(temporal_end)
+                    temporal_coverage = (
+                        f"{temporal_start_iso}/{temporal_end_iso}"
+                        if temporal_start_iso and temporal_end_iso
+                        else None
+                    )
+                    latest_value = float(df["value"].iloc[-1])
+                    latest_timestamp_iso = temporal_end_iso
+                    temporal_end_display = (
+                        temporal_end.tz_convert("UTC")
+                        if getattr(temporal_end, "tz", None) is not None
+                        else temporal_end.tz_localize("UTC")
+                    )
+                    latest_timestamp_display = temporal_end_display.strftime("%d/%m/%Y %H:%M")
+                    record_csv_read(len(df), temporal_end.to_pydatetime())
     else:
         placeholder_reason = "missing"
         if not current_app.config.get("_home_csv_missing_warned"):

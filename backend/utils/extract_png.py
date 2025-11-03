@@ -9,6 +9,8 @@ import numpy as np
 import pandas as pd
 import requests
 
+from .time import to_iso_utc
+
 
 EXTRACTION_DURATION = timedelta(days=7)
 
@@ -82,6 +84,10 @@ def extract_green_curve_from_png(
             timestamp = start_time + timedelta(seconds=seconds_per_pixel * x)
             data.append((timestamp, pixel_to_mV(y)))
 
+    if data:
+        last_value = data[-1][1]
+        data[-1] = (end_time, last_value)
+
     df = pd.DataFrame(data, columns=["timestamp", "value"])
     interval_seconds = seconds_per_pixel if width else None
     df.attrs["metadata"] = {
@@ -108,7 +114,10 @@ def clean_and_save_data(df, output_path=None):
 
     df_clean = df_clean[(df_clean["value"] >= 0.01) & (df_clean["value"] <= 100)]
 
-    df_clean.to_csv(output_path, index=False)
+    df_to_save = df_clean.copy()
+    df_to_save["timestamp"] = df_to_save["timestamp"].dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    df_to_save.to_csv(output_path, index=False)
     return output_path, df_clean
 
 def process_png_to_csv(url="https://www.ct.ingv.it/RMS_Etna/2.png", output_path=None):
@@ -124,11 +133,11 @@ def process_png_to_csv(url="https://www.ct.ingv.it/RMS_Etna/2.png", output_path=
 
     final_path, cleaned_df = clean_and_save_data(df, output_path)
 
-    last_ts = ""
-    first_ts = ""
+    last_ts = None
+    first_ts = None
     if not cleaned_df.empty:
-        last_ts = cleaned_df['timestamp'].iloc[-1].isoformat()
-        first_ts = cleaned_df['timestamp'].iloc[0].isoformat()
+        last_ts = cleaned_df['timestamp'].iloc[-1]
+        first_ts = cleaned_df['timestamp'].iloc[0]
 
     metadata = cleaned_df.attrs.get("metadata", {}) if not cleaned_df.empty else {}
     interval_minutes = None
@@ -138,22 +147,22 @@ def process_png_to_csv(url="https://www.ct.ingv.it/RMS_Etna/2.png", output_path=
     logger.info(
         "Estratti %s punti INGV start_ref=%s end_ref=%s durata=%ss colonne=%s intervallo≈%smin first_ts=%s last_ts=%s",
         len(cleaned_df),
-        metadata.get("start_time"),
-        metadata.get("end_time"),
+        to_iso_utc(metadata.get("start_time")),
+        to_iso_utc(metadata.get("end_time")),
         metadata.get("duration_seconds"),
         metadata.get("pixel_columns"),
         f"{interval_minutes:.2f}" if interval_minutes else "n/a",
-        first_ts,
-        last_ts,
+        to_iso_utc(first_ts),
+        to_iso_utc(last_ts),
     )
 
     return {
         "rows": len(cleaned_df),
-        "first_ts": first_ts,
-        "last_ts": last_ts,
+        "first_ts": to_iso_utc(first_ts),
+        "last_ts": to_iso_utc(last_ts),
         "output_path": final_path,
-        "start_time": metadata.get("start_time").isoformat() if metadata.get("start_time") else "",
-        "end_time": metadata.get("end_time").isoformat() if metadata.get("end_time") else "",
+        "start_time": to_iso_utc(metadata.get("start_time")),
+        "end_time": to_iso_utc(metadata.get("end_time")),
         "duration_minutes": (metadata.get("duration_seconds") / 60) if metadata.get("duration_seconds") else None,
         "interval_minutes": interval_minutes,
         "pixel_columns": metadata.get("pixel_columns"),

@@ -50,6 +50,7 @@ def test_clean_and_save_data_creates_csv():
         df_loaded = pd.read_csv(result_path)
         assert len(df_loaded) == 5
         assert list(df_loaded.columns) == ["timestamp", "value"]
+        assert df_loaded["timestamp"].str.endswith("Z").all()
 
     finally:
         if os.path.exists(output_path):
@@ -86,7 +87,7 @@ def test_process_png_to_csv_integration():
             result = process_png_to_csv("http://test.url", output_path)
             assert result["output_path"] == output_path
             assert result["rows"] == 2
-            assert result["last_ts"].endswith("+00:00")
+            assert result["last_ts"].endswith("Z")
             assert os.path.exists(output_path)
 
         finally:
