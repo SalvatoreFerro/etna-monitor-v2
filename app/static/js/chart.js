@@ -2,6 +2,7 @@
 (function () {
   const CURVA_ENDPOINT = '/api/curva';
   const STATUS_ENDPOINT = '/api/status';
+  const FORCE_UPDATE_ENDPOINT = '/api/force_update';
   const DEFAULT_LIMIT = 2016;
   const LIMIT_BOUNDS = { min: 1, max: 4032 };
   const FETCH_TIMEOUTS = [5000, 20000];
@@ -524,6 +525,47 @@
     throw lastError;
   }
 
+  async function forceUpdateCurva() {
+    const timeout = FETCH_TIMEOUTS[FETCH_TIMEOUTS.length - 1] || FETCH_TIMEOUTS[0];
+    try {
+      const response = await fetchWithTimeout(FORCE_UPDATE_ENDPOINT, {
+        method: 'POST',
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      }, timeout);
+      if (!response.ok) {
+        throw new Error('Impossibile contattare il servizio INGV');
+      }
+      const payload = await response.json();
+      if (!payload.ok) {
+        throw new Error(payload.error || 'Aggiornamento INGV non riuscito');
+      }
+      return payload;
+    } catch (error) {
+      console.error('Errore forza aggiornamento curva', error);
+      if (error && error.name === 'AbortError') {
+        throw new Error('Timeout durante l\'aggiornamento dei dati INGV');
+      }
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error('Aggiornamento INGV non riuscito');
+    }
+  }
+
+  async function performQuickUpdate(options = {}) {
+    const { showLoader = !chartDrawn } = options;
+    await forceUpdateCurva();
+    const payload = await loadChartWithRetry(currentLimit, { showLoader });
+    if (payload) {
+      lastSuccessfulPayload = payload;
+      await drawPlot(payload.data);
+      updateMetrics(payload);
+      updateStatus(payload.source === 'fallback' ? 'fallback' : 'online');
+    }
+    return payload;
+  }
+
   async function refreshStatus() {
     try {
       const response = await fetchWithTimeout(STATUS_ENDPOINT, { cache: 'no-store' });
@@ -558,13 +600,7 @@
       quickUpdateBtn.disabled = true;
       quickUpdateBtn.textContent = 'Aggiornamento…';
       try {
-        const payload = await loadChartWithRetry(currentLimit, { showLoader: !chartDrawn });
-        if (payload) {
-          await drawPlot(payload.data);
-          updateMetrics(payload);
-          updateStatus(payload.source === 'fallback' ? 'fallback' : 'online');
-          lastSuccessfulPayload = payload;
-        }
+        await performQuickUpdate({ showLoader: !chartDrawn });
       } catch (error) {
         handleLoadError(error, { keepExisting: chartDrawn });
       } finally {
@@ -577,6 +613,20 @@
         quickUpdateBtn.textContent = originalText;
       }
     });
+  }
+
+  async function runGlobalQuickUpdate() {
+    if (quickUpdateBtn && !quickUpdateBtn.disabled) {
+      quickUpdateBtn.click();
+      return;
+    }
+
+    try {
+      await performQuickUpdate({ showLoader: true });
+      await refreshStatus();
+    } catch (error) {
+      handleLoadError(error, { keepExisting: chartDrawn });
+    }
   }
 
   function bindRangeSelector() {
@@ -708,6 +758,10 @@
     bindRangeSelector();
     bindQuickUpdate();
     setupMobileNavObserver();
+  }
+
+  if (typeof window !== 'undefined') {
+    window.quickUpdate = runGlobalQuickUpdate;
   }
 
   if (document.readyState === 'loading') {
