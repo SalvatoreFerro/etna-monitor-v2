@@ -182,17 +182,6 @@
       </div>
     </footer>
 
-    <div id="pwa-install-prompt" class="pwa-prompt" style="display: none;">
-      <div class="pwa-prompt-content">
-        <h3>Installa EtnaMonitor</h3>
-        <p>Accedi rapidamente al monitoraggio del tremore direttamente dalla schermata principale.</p>
-        <div class="pwa-prompt-actions">
-          <button id="pwa-install-btn" class="btn btn-primary" type="button">Installa</button>
-          <button id="pwa-dismiss-btn" class="btn btn-ghost" type="button">Non ora</button>
-        </div>
-      </div>
-    </div>
-
     {% if analytics.ga_measurement_id %}
       <div class="consent-banner" id="consent-banner" hidden>
         <div class="consent-banner__content">
@@ -214,39 +203,6 @@
         window.addEventListener('load', () => {
           const swUrl = `/static/sw.js?v=${encodeURIComponent(assetVersion)}`;
           navigator.serviceWorker.register(swUrl).catch(() => {});
-        });
-      }
-
-      let deferredPrompt;
-      const pwaPrompt = document.getElementById('pwa-install-prompt');
-      const installBtn = document.getElementById('pwa-install-btn');
-      const dismissBtn = document.getElementById('pwa-dismiss-btn');
-
-      window.addEventListener('beforeinstallprompt', (event) => {
-        event.preventDefault();
-        deferredPrompt = event;
-        if (pwaPrompt) {
-          pwaPrompt.style.display = 'block';
-        }
-      });
-
-      if (installBtn) {
-        installBtn.addEventListener('click', async () => {
-          if (!deferredPrompt) return;
-          deferredPrompt.prompt();
-          await deferredPrompt.userChoice;
-          deferredPrompt = null;
-          if (pwaPrompt) {
-            pwaPrompt.style.display = 'none';
-          }
-        });
-      }
-
-      if (dismissBtn) {
-        dismissBtn.addEventListener('click', () => {
-          if (pwaPrompt) {
-            pwaPrompt.style.display = 'none';
-          }
         });
       }
 
