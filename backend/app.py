@@ -79,7 +79,7 @@ def list_archives():
     
     except Exception as e:
         app.logger.exception("Failed to list archives")
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": "Failed to list archives"}), 500
 
 @app.route('/api/archives/graph/<date_str>', methods=['GET'])
 def get_archive_graph(date_str):
@@ -107,7 +107,7 @@ def get_archive_graph(date_str):
     
     except Exception as e:
         app.logger.exception("Failed to retrieve archive graph")
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": "Failed to retrieve archive graph"}), 500
 
 @app.route('/api/archives/data/<date_str>', methods=['GET'])
 def get_archive_data(date_str):
@@ -151,7 +151,7 @@ def get_archive_data(date_str):
     
     except Exception as e:
         app.logger.exception("Failed to retrieve archive data")
-        return jsonify({"ok": False, "error": str(e)}), 500
+        return jsonify({"ok": False, "error": "Failed to retrieve archive data"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
