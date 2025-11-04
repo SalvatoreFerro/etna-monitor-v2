@@ -491,7 +491,15 @@ def create_app(config_overrides: dict | None = None):
             migration_status.get("current_revision"),
         )
 
-    if app_env == "production" and not migration_status.get("is_up_to_date"):
+    skip_schema_validation = os.getenv("SKIP_SCHEMA_VALIDATION", "0").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+
+    if app_env == "production" and not skip_schema_validation and not migration_status.get(
+        "is_up_to_date"
+    ):
         app.logger.critical(
             "[BOOT] Database schema not up to date (current=%s head=%s). "
             "Run 'alembic upgrade head' before starting or set ALLOW_AUTO_MIGRATE=1.",
@@ -499,6 +507,9 @@ def create_app(config_overrides: dict | None = None):
             migration_status.get("head_revision"),
         )
         sys.exit(2)
+
+    if skip_schema_validation:
+        app.logger.info("[BOOT] Schema validation skipped due to SKIP_SCHEMA_VALIDATION=1")
 
     curva_path = ensure_curva_csv(app)
     app.config["CURVA_CSV_PATH"] = str(curva_path)

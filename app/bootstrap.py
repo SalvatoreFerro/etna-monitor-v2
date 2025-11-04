@@ -182,9 +182,13 @@ def _run_auto_migrate(app: Flask, config: AlembicConfig, log: logging.Logger) ->
         log.info("[MIGRATE] Auto-migrate lock present at %s; skipping", lock_path)
         return False
 
+    skip_var = "SKIP_SCHEMA_VALIDATION"
+    previous_skip = os.environ.get(skip_var)
+
     try:
         os.write(fd, str(os.getpid()).encode("utf-8"))
         os.close(fd)
+        os.environ[skip_var] = "1"
         log.info("[MIGRATE] Running alembic upgrade head (auto-migrate enabled)")
         command.upgrade(config, "head")
         log.info("[MIGRATE] Alembic upgrade head completed")
@@ -193,6 +197,10 @@ def _run_auto_migrate(app: Flask, config: AlembicConfig, log: logging.Logger) ->
         log.exception("[MIGRATE] Alembic auto-migrate failed")
         raise
     finally:
+        if previous_skip is None:
+            os.environ.pop(skip_var, None)
+        else:
+            os.environ[skip_var] = previous_skip
         try:
             lock_path.unlink()
         except FileNotFoundError:
