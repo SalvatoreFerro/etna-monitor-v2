@@ -8,6 +8,8 @@ before applying structural changes.
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect, text
+from sqlalchemy.types import Integer, Boolean
 
 revision = '20240702_add_plan_fields'
 down_revision = None
@@ -80,7 +82,42 @@ def upgrade() -> None:
         op.execute("ALTER TABLE users ALTER COLUMN telegram_opt_in SET DEFAULT FALSE")
         op.execute("ALTER TABLE users ALTER COLUMN telegram_opt_in SET NOT NULL")
 
-    if 'free_alert_consumed' not in existing_columns:
+    # Handle free_alert_consumed column with type conversion if needed
+    if 'free_alert_consumed' in existing_columns:
+        # Check if column is INTEGER and convert to BOOLEAN
+        col_info = {c['name']: c for c in inspector.get_columns('users')}
+        col_type = col_info['free_alert_consumed']['type']
+        
+        # Convert INTEGER to BOOLEAN if needed (PostgreSQL only)
+        if isinstance(col_type, Integer) and bind.dialect.name == 'postgresql':
+            op.execute(text("""
+                ALTER TABLE users
+                ALTER COLUMN free_alert_consumed
+                TYPE boolean
+                USING (CASE
+                         WHEN free_alert_consumed = 1 THEN TRUE
+                         ELSE FALSE
+                       END)
+            """))
+        
+        # Normalize NULL to FALSE for all databases
+        op.execute(text("""
+            UPDATE users
+            SET free_alert_consumed = FALSE
+            WHERE free_alert_consumed IS NULL
+        """))
+        
+        # Set NOT NULL + default FALSE
+        # Use batch_alter_table for SQLite compatibility
+        # existing_type is omitted to let Alembic detect current type
+        with op.batch_alter_table('users', schema=None) as batch_op:
+            batch_op.alter_column(
+                'free_alert_consumed',
+                nullable=False,
+                server_default=BOOLEAN_DEFAULT_FALSE
+            )
+    else:
+        # If missing, create as BOOLEAN with NOT NULL and default
         op.add_column(
             'users',
             sa.Column(
@@ -90,10 +127,6 @@ def upgrade() -> None:
                 server_default=BOOLEAN_DEFAULT_FALSE,
             ),
         )
-    else:
-        op.execute("UPDATE users SET free_alert_consumed = FALSE WHERE free_alert_consumed IS NULL")
-        op.execute("ALTER TABLE users ALTER COLUMN free_alert_consumed SET DEFAULT FALSE")
-        op.execute("ALTER TABLE users ALTER COLUMN free_alert_consumed SET NOT NULL")
 
     if 'free_alert_event_id' not in existing_columns:
         op.add_column('users', sa.Column('free_alert_event_id', sa.String(length=255), nullable=True))
@@ -162,6 +195,20 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Convert free_alert_consumed back to INTEGER before dropping
+    # This ensures compatibility if column is kept or used elsewhere
+    bind = _get_bind()
+    inspector = sa.inspect(bind)
+    existing_columns = {col['name'] for col in inspector.get_columns('users')}
+    
+    if 'free_alert_consumed' in existing_columns and bind.dialect.name == 'postgresql':
+        op.execute(text("""
+            ALTER TABLE users
+            ALTER COLUMN free_alert_consumed
+            TYPE integer
+            USING (CASE WHEN free_alert_consumed THEN 1 ELSE 0 END)
+        """))
+    
     op.drop_constraint('uq_users_telegram_chat_id', 'users', type_='unique')
     op.drop_column('users', 'privacy_version')
     op.drop_column('users', 'consent_ts')
