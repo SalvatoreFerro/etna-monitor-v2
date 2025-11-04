@@ -167,9 +167,9 @@ def upgrade() -> None:
         SET plan_type = 'premium'
         WHERE plan_type = 'free'
           AND (
-                COALESCE(is_premium, 0) = 1
-             OR COALESCE(premium, 0) = 1
-             OR COALESCE(premium_lifetime, 0) = 1
+                LOWER(COALESCE(CAST(is_premium AS TEXT), 'false')) IN ('1', 'true', 't', 'yes', 'y')
+             OR LOWER(COALESCE(CAST(premium AS TEXT), 'false')) IN ('1', 'true', 't', 'yes', 'y')
+             OR LOWER(COALESCE(CAST(premium_lifetime AS TEXT), 'false')) IN ('1', 'true', 't', 'yes', 'y')
              OR LOWER(COALESCE(subscription_status, '')) IN ('active', 'trialing')
           )
         """
