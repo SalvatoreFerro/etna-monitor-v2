@@ -96,7 +96,7 @@ class ArchiveManager:
 
         # Use atomic write with temporary file
         temp_fd, temp_path = tempfile.mkstemp(
-            dir=archive_path.parent, suffix=".tmp"
+            dir=archive_path.parent, suffix=".tmp", prefix="archive_"
         )
         try:
             with os.fdopen(temp_fd, "wb") as f:

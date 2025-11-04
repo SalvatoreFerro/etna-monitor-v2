@@ -113,9 +113,11 @@ def get_archive_graph(date_str):
 def get_archive_data(date_str):
     """Get processed data for a specific date"""
     try:
+        from datetime import timezone
+        
         # Parse date from URL parameter
         try:
-            date = datetime.strptime(date_str, "%Y-%m-%d")
+            date = datetime.strptime(date_str, "%Y-%m-%d").replace(tzinfo=timezone.utc)
         except ValueError:
             return jsonify({"ok": False, "error": "Invalid date format. Use YYYY-MM-DD"}), 400
         

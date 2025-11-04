@@ -99,7 +99,8 @@ def archive_daily_graph():
     global last_archived_date
     
     try:
-        current_date = datetime.now().date()
+        from datetime import timezone
+        current_date = datetime.now(timezone.utc).date()
         
         # Check if we need to archive (new day or first run)
         if last_archived_date is None or current_date > last_archived_date:
@@ -109,7 +110,7 @@ def archive_daily_graph():
                     png_data = f.read()
                 
                 # Archive with the current date
-                archive_date = datetime.now()
+                archive_date = datetime.now(timezone.utc)
                 archive_manager.save_daily_graph(png_data, date=archive_date, compress=False)
                 logger.info("Successfully archived graph for %s", current_date)
                 
