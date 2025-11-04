@@ -126,3 +126,7 @@ class Config:
     DATA_DIR = os.getenv("DATA_DIR", "/var/tmp")
     CSV_PATH = os.getenv("CSV_PATH") or os.path.join(DATA_DIR, "curva.csv")
     STATIC_ASSET_VERSION = _resolve_static_asset_version()
+    
+    # Archive settings
+    ARCHIVE_BASE_PATH = os.getenv("ARCHIVE_BASE_PATH", "data/archives")
+    ARCHIVE_RETENTION_DAYS = int(os.getenv("ARCHIVE_RETENTION_DAYS", "90"))
