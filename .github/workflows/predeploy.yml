@@ -36,11 +36,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Install Playwright browsers
+        run: playwright install --with-deps chromium
+
       - name: Run database migrations
         run: alembic upgrade head
 
       - name: Run tests
         run: pytest -q
+
+      - name: Run SEO tests (alt tags and duplicates)
+        run: pytest tests/test_seo_*.py -v
+
+      - name: Run accessibility tests
+        run: pytest tests/test_accessibility.py -v
 
       - name: Import smoke test
         run: |

@@ -301,6 +301,6 @@
 
 <div id="toast-container" class="toast-container"></div>
 
-<script src="{{ url_for('static', filename='vendor/plotly.min.js') }}" nonce="{{ script_nonce }}"></script>
-<script src="{{ url_for('static', filename='js/dashboard.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ script_nonce }}"></script>
+<script defer src="{{ url_for('static', filename='vendor/plotly.min.js') }}" nonce="{{ script_nonce }}"></script>
+<script defer src="{{ url_for('static', filename='js/dashboard.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ script_nonce }}"></script>
 {% endblock %}

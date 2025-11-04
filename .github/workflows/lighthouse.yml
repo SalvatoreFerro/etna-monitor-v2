@@ -1,0 +1,51 @@
+name: Lighthouse CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli@0.13.x
+
+      - name: Run Lighthouse CI
+        run: |
+          lhci autorun --collect.url=https://etnamonitor.it \
+            --collect.numberOfRuns=3 \
+            --assert.preset=lighthouse:no-pwa \
+            --assert.assertions.categories:seo=error \
+            --assert.assertions.categories:seo.minScore=0.90 \
+            --upload.target=temporary-public-storage
+        continue-on-error: false
+
+      - name: Generate Lighthouse Report
+        if: always()
+        run: |
+          lhci autorun --collect.url=https://etnamonitor.it \
+            --collect.numberOfRuns=1 \
+            --upload.target=filesystem \
+            --upload.outputDir=./lighthouse-reports
+        continue-on-error: true
+
+      - name: Upload Lighthouse Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: lighthouse-reports/
+          retention-days: 30
