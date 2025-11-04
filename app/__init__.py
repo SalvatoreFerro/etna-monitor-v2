@@ -592,14 +592,15 @@ def create_app(config_overrides: dict | None = None):
     app.config["MIGRATIONS_AVAILABLE"] = _migrate_available
 
     disable_scheduler = os.getenv("DISABLE_SCHEDULER", "0").lower() in {"1", "true", "yes"}
-    if disable_scheduler:
-        app.logger.info(
-            "[BOOT] Scheduler disabled via DISABLE_SCHEDULER environment variable"
-        )
-    else:
-        app.logger.info(
-            "[BOOT] Scheduler execution delegated to worker process (python -m app.worker)"
-        )
+    if not alembic_running:
+        if disable_scheduler:
+            app.logger.info(
+                "[BOOT] Scheduler disabled via DISABLE_SCHEDULER environment variable"
+            )
+        else:
+            app.logger.info(
+                "[BOOT] Scheduler execution delegated to worker process (python -m app.worker)"
+            )
 
     telegram_mode = (app.config.get("TELEGRAM_BOT_MODE") or "off").lower()
     telegram_status = {
@@ -609,14 +610,15 @@ def create_app(config_overrides: dict | None = None):
         "last_error": None,
         "managed_by": "worker" if telegram_mode == "polling" else "app",
     }
-    if telegram_mode == "webhook":
-        app.logger.info(
-            "[BOOT] Telegram bot configured for webhook mode; polling is disabled"
-        )
-    elif telegram_mode == "polling":
-        app.logger.info("[BOOT] Telegram bot polling managed by background worker ✅")
-    else:
-        app.logger.info("[BOOT] Telegram bot disabled (mode=%s)", telegram_mode)
+    if not alembic_running:
+        if telegram_mode == "webhook":
+            app.logger.info(
+                "[BOOT] Telegram bot configured for webhook mode; polling is disabled"
+            )
+        elif telegram_mode == "polling":
+            app.logger.info("[BOOT] Telegram bot polling managed by background worker ✅")
+        else:
+            app.logger.info("[BOOT] Telegram bot disabled (mode=%s)", telegram_mode)
 
     app.config["TELEGRAM_BOT_STATUS"] = telegram_status
 

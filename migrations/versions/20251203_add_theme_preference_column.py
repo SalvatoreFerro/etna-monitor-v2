@@ -15,9 +15,11 @@ depends_on = None
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = inspect(bind)
-    columns = {column["name"] for column in inspector.get_columns("users")}
+    columns = {column["name"]: column for column in inspector.get_columns("users")}
 
-    if "theme_preference" not in columns:
+    theme_column = columns.get("theme_preference")
+
+    if theme_column is None:
         op.add_column(
             "users",
             sa.Column(
@@ -28,15 +30,16 @@ def upgrade() -> None:
             ),
         )
     else:
+        existing_default = theme_column.get("default")
         op.alter_column(
             "users",
             "theme_preference",
-            existing_type=sa.String(),
+            existing_type=theme_column["type"],
             type_=sa.String(length=16),
-            existing_nullable=True,
+            existing_nullable=theme_column.get("nullable", True),
             nullable=True,
             server_default=sa.text("'system'"),
-            existing_server_default=None,
+            existing_server_default=existing_default,
         )
 
     op.execute(
@@ -48,12 +51,23 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    columns = {column["name"]: column for column in inspector.get_columns("users")}
+
+    theme_column = columns.get("theme_preference")
+    if theme_column is None:
+        return
+
+    existing_default = theme_column.get("default")
+
     op.alter_column(
         "users",
         "theme_preference",
-        existing_type=sa.String(length=16),
-        type_=sa.String(length=16),
-        existing_nullable=True,
-        nullable=True,
-        server_default=None,
+        existing_type=theme_column["type"],
+        type_=sa.String(length=50),
+        existing_nullable=theme_column.get("nullable", True),
+        nullable=False,
+        server_default="volcano_tech",
+        existing_server_default=existing_default,
     )
