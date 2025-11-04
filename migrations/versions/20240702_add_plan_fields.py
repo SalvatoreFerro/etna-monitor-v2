@@ -95,7 +95,7 @@ def upgrade() -> None:
                 ALTER COLUMN free_alert_consumed
                 TYPE boolean
                 USING (CASE
-                         WHEN free_alert_consumed IN (1, TRUE) THEN TRUE
+                         WHEN free_alert_consumed = 1 THEN TRUE
                          ELSE FALSE
                        END)
             """))
@@ -109,10 +109,10 @@ def upgrade() -> None:
         
         # Set NOT NULL + default FALSE
         # Use batch_alter_table for SQLite compatibility
+        # existing_type is omitted to let Alembic detect current type
         with op.batch_alter_table('users', schema=None) as batch_op:
             batch_op.alter_column(
                 'free_alert_consumed',
-                existing_type=sa.Boolean(),
                 nullable=False,
                 server_default=BOOLEAN_DEFAULT_FALSE
             )
