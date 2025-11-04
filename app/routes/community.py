@@ -47,7 +47,78 @@ def blog_detail(slug: str):
 
     GamificationService().award("blog:read")
     db.session.commit()
-    return render_template("blog/detail.html", post=post)
+
+    related_posts = (
+        BlogPost.query.filter(
+            BlogPost.published.is_(True),
+            BlogPost.id != post.id,
+        )
+        .order_by(BlogPost.created_at.desc())
+        .limit(3)
+        .all()
+    )
+
+    previous_post = (
+        BlogPost.query.filter(
+            BlogPost.published.is_(True),
+            BlogPost.created_at < post.created_at,
+        )
+        .order_by(BlogPost.created_at.desc())
+        .first()
+    )
+
+    next_post = (
+        BlogPost.query.filter(
+            BlogPost.published.is_(True),
+            BlogPost.created_at > post.created_at,
+        )
+        .order_by(BlogPost.created_at.asc())
+        .first()
+    )
+
+    author_name = getattr(post, "author", None) or getattr(post, "author_name", None)
+    post_url = url_for("community.blog_detail", slug=post.slug, _external=True)
+
+    breadcrumb_schema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": url_for("main.index", _external=True),
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Community",
+                "item": url_for("community.forum_home", _external=True),
+            },
+            {
+                "@type": "ListItem",
+                "position": 3,
+                "name": "Blog",
+                "item": url_for("community.blog_index", _external=True),
+            },
+            {
+                "@type": "ListItem",
+                "position": 4,
+                "name": post.title,
+                "item": post_url,
+            },
+        ],
+    }
+
+    return render_template(
+        "blog/detail.html",
+        post=post,
+        author_name=author_name,
+        related_posts=related_posts,
+        previous_post=previous_post,
+        next_post=next_post,
+        breadcrumb_schema=breadcrumb_schema,
+    )
 
 
 @bp.route("/forum/", methods=["GET", "POST"])

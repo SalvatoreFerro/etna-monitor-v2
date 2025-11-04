@@ -11,35 +11,96 @@
 {% block head %}
   {{ super() }}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/article.css') }}?v={{ STATIC_ASSET_VERSION }}">
+  {% if breadcrumb_schema %}
+    <script type="application/ld+json">
+      {{ breadcrumb_schema | tojson(indent=2) }}
+    </script>
+  {% endif %}
 {% endblock %}
 
 {% block content %}
-<article class="blog-article post" itemscope itemtype="https://schema.org/Article">
-  <header class="blog-article__hero post__header">
-    <div class="container post__header-inner">
-      <a class="pill post__back" href="{{ url_for('community.blog_index') }}">← Torna al blog</a>
+<article class="post" itemscope itemtype="https://schema.org/Article">
+  <header class="post__header">
+    <div class="post__header-inner post--container container">
+      <nav class="post__breadcrumb" aria-label="Percorso">
+        <ol class="post__breadcrumb-list">
+          <li><a href="{{ url_for('main.index') }}">Home</a></li>
+          <li><a href="{{ url_for('community.forum_home') }}">Community</a></li>
+          <li><a href="{{ url_for('community.blog_index') }}">Blog</a></li>
+          <li aria-current="page">{{ post.title }}</li>
+        </ol>
+      </nav>
       <h1 class="post__title" itemprop="headline">{{ post.title }}</h1>
-      <div class="blog-article__meta post__meta">
+      <p class="post__meta">
         <time datetime="{{ post.created_at.isoformat() }}" itemprop="datePublished">{{ post.created_at.strftime('%d %B %Y') }}</time>
-        <span class="badge {{ 'success' if post.seo_score >= 70 else 'warning' if post.seo_score >= 40 else 'muted' }}">SEO {{ post.seo_score }}%</span>
-      </div>
+        {% if author_name %}
+          <span class="post__meta-separator" aria-hidden="true">·</span>
+          <span class="post__meta-author" itemprop="author" itemscope itemtype="https://schema.org/Person">
+            <span itemprop="name">{{ author_name }}</span>
+          </span>
+        {% endif %}
+        {% if post.seo_score is not none %}
+          <span class="badge {{ 'success' if post.seo_score >= 70 else 'warning' if post.seo_score >= 40 else 'muted' }}">SEO {{ post.seo_score }}%</span>
+        {% endif %}
+      </p>
       {% if post.summary %}
         <p class="lead post__abstract" itemprop="description">{{ post.summary }}</p>
       {% endif %}
     </div>
-    {% if post.hero_image %}
-      <figure class="blog-article__figure post__hero">
-        <img src="{{ post.hero_image }}" alt="{{ post.title }}" itemprop="image" loading="lazy" decoding="async" />
-      </figure>
-    {% endif %}
   </header>
 
-  <div class="container blog-article__body post__content prose prose-invert" itemprop="articleBody">
-    {{ post.content | md }}
+  {% if post.hero_image %}
+    <figure class="blog-article__figure">
+      <img src="{{ post.hero_image }}" alt="{{ post.title }}" itemprop="image" loading="lazy" decoding="async">
+    </figure>
+  {% endif %}
+
+  <div class="post__body post--container container">
+    <div class="post__content" itemprop="articleBody">
+      {{ post.content | md }}
+    </div>
   </div>
 
-  <footer class="blog-article__footer">
-    <div class="container">
+  <footer class="post__footer post--container container">
+    <div class="post__footer-nav">
+      <a class="post__back-link" href="{{ url_for('community.blog_index') }}">← Torna al blog</a>
+      {% if previous_post or next_post %}
+        <nav class="post__pagination" aria-label="Navigazione articoli">
+          {% if previous_post %}
+            <a class="post__pagination-link post__pagination-link--prev" href="{{ url_for('community.blog_detail', slug=previous_post.slug) }}">
+              <span class="post__pagination-direction" aria-hidden="true">←</span>
+              <span class="post__pagination-label">Articolo precedente</span>
+              <span class="post__pagination-title">{{ previous_post.title }}</span>
+            </a>
+          {% endif %}
+          {% if next_post %}
+            <a class="post__pagination-link post__pagination-link--next" href="{{ url_for('community.blog_detail', slug=next_post.slug) }}">
+              <span class="post__pagination-direction" aria-hidden="true">→</span>
+              <span class="post__pagination-label">Articolo successivo</span>
+              <span class="post__pagination-title">{{ next_post.title }}</span>
+            </a>
+          {% endif %}
+        </nav>
+      {% endif %}
+    </div>
+
+    {% if related_posts %}
+      <section class="post__related" aria-labelledby="post-related-title">
+        <h2 id="post-related-title" class="post__related-title">Articoli correlati</h2>
+        <div class="post__related-list">
+          {% for related in related_posts %}
+            <article class="post__related-card">
+              <h3 class="post__related-card-title">
+                <a href="{{ url_for('community.blog_detail', slug=related.slug) }}">{{ related.title }}</a>
+              </h3>
+              <time datetime="{{ related.created_at.isoformat() }}">{{ related.created_at.strftime('%d %B %Y') }}</time>
+            </article>
+          {% endfor %}
+        </div>
+      </section>
+    {% endif %}
+
+    <div class="post__footer-cta">
       <div class="cta-stack">
         <a class="btn btn-primary" href="{{ url_for('community.feedback_portal') }}">Ti è stato utile? Lascia un feedback</a>
         <a class="btn btn-secondary" href="{{ url_for('community.forum_home') }}">Fai una domanda nel forum</a>
