@@ -29,6 +29,7 @@ except Exception:  # pragma: no cover - optional dependency guard
 from ..services.telegram_service import TelegramService
 from ..utils.csrf import validate_csrf_token
 from ..utils.partners import extract_partner_payload
+from ..filters import strip_literal_breaks
 
 bp = Blueprint("admin", __name__)
 
@@ -108,7 +109,8 @@ def blog_manager():
 
         if action == "create":
             title = (request.form.get("title") or "").strip()
-            content = (request.form.get("content") or "").strip()
+            content_raw = (request.form.get("content") or "").strip()
+            content = strip_literal_breaks(content_raw).strip()
             if not title or not content:
                 flash("Titolo e contenuto sono obbligatori.", "error")
                 return redirect(url_for("admin.blog_manager"))
@@ -136,7 +138,8 @@ def blog_manager():
 
             post.title = (request.form.get("title") or post.title).strip()
             post.summary = (request.form.get("summary") or "").strip() or None
-            post.content = (request.form.get("content") or post.content).strip()
+            new_content = request.form.get("content") or post.content
+            post.content = strip_literal_breaks(new_content).strip()
             post.hero_image = (request.form.get("hero_image") or "").strip() or None
             post.published = request.form.get("published") == "1"
             if request.form.get("auto_seo") == "1":

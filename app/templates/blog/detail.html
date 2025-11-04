@@ -8,32 +8,34 @@
   {% set page_og_image = post.hero_image %}
 {% endif %}
 
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/article.css') }}?v={{ STATIC_ASSET_VERSION }}">
+{% endblock %}
+
 {% block content %}
-<article class="blog-article" itemscope itemtype="https://schema.org/Article">
-  <header class="blog-article__hero">
-    <div class="container">
-      <a class="pill" href="{{ url_for('community.blog_index') }}">← Torna al blog</a>
-      <h1 itemprop="headline">{{ post.title }}</h1>
-      <div class="blog-article__meta">
+<article class="blog-article post" itemscope itemtype="https://schema.org/Article">
+  <header class="blog-article__hero post__header">
+    <div class="container post__header-inner">
+      <a class="pill post__back" href="{{ url_for('community.blog_index') }}">← Torna al blog</a>
+      <h1 class="post__title" itemprop="headline">{{ post.title }}</h1>
+      <div class="blog-article__meta post__meta">
         <time datetime="{{ post.created_at.isoformat() }}" itemprop="datePublished">{{ post.created_at.strftime('%d %B %Y') }}</time>
         <span class="badge {{ 'success' if post.seo_score >= 70 else 'warning' if post.seo_score >= 40 else 'muted' }}">SEO {{ post.seo_score }}%</span>
-        {% if post.summary %}
-          <p class="lead" itemprop="description">{{ post.summary }}</p>
-        {% endif %}
       </div>
+      {% if post.summary %}
+        <p class="lead post__abstract" itemprop="description">{{ post.summary }}</p>
+      {% endif %}
     </div>
     {% if post.hero_image %}
-      <figure class="blog-article__figure">
+      <figure class="blog-article__figure post__hero">
         <img src="{{ post.hero_image }}" alt="{{ post.title }}" itemprop="image" loading="lazy" decoding="async" />
       </figure>
     {% endif %}
   </header>
 
-  <div class="container blog-article__body" itemprop="articleBody">
-    {% set blocks = (post.content or '').split('\n\n') %}
-    {% for block in blocks if block.strip() %}
-      <p>{{ block | e | replace('\n', '<br>') | safe }}</p>
-    {% endfor %}
+  <div class="container blog-article__body post__content prose prose-invert" itemprop="articleBody">
+    {{ post.content | md }}
   </div>
 
   <footer class="blog-article__footer">
