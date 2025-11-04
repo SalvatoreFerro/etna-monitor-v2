@@ -20,7 +20,6 @@ from app import create_app
 from app.bootstrap import ensure_curva_csv
 from app.models import db
 from app.services.scheduler_service import SchedulerService
-from app.services.telegram_bot_service import TelegramBotService
 from app.utils.logger import configure_logging, get_logger
 
 logger = get_logger(__name__)
@@ -127,10 +126,6 @@ def main() -> None:
             scheduler = SchedulerService()
             scheduler.init_app(app)
             logger.info("[WORKER] Scheduler ready")
-
-            telegram_service = TelegramBotService()
-            telegram_service.init_app(app)
-            logger.info("[WORKER] Telegram bot initialization requested")
 
             def _graceful_exit(*_args):
                 logger.info("[WORKER] Shutdown signal received")

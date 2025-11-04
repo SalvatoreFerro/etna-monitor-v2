@@ -1,10 +1,10 @@
 services:
   - type: web
-    name: etna-monitor
+    name: etnamonitor-web
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn app:app -k gthread -w 2 -b 0.0.0.0:$PORT
+    startCommand: gunicorn "app:create_app()"
     envVars:
       - key: DATA_DIR
         value: /data
@@ -21,25 +21,14 @@ services:
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: TELEGRAM_BOT_MODE
-        value: polling
+        value: off
   - type: worker
-    name: etna-monitor-worker
+    name: etnamonitor-telegram-bot
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: python -m app.worker
+    startCommand: python worker_telegram_bot.py
+    autoDeploy: true
     envVars:
-      - key: DATA_DIR
-        value: /data
-      - key: LOG_DIR
-        value: /data/log
-      - key: CSV_PATH
-        value: /data/curva.csv
-      - key: SECRET_KEY
-        sync: false
-      - key: DATABASE_URL
-        sync: false
-      - key: TELEGRAM_BOT_MODE
-        value: polling
       - key: TELEGRAM_BOT_TOKEN
         sync: false
