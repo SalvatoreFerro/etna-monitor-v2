@@ -9,7 +9,7 @@ before applying structural changes.
 from alembic import op
 import sqlalchemy as sa
 from sqlalchemy import inspect, text
-from sqlalchemy.types import Integer, Boolean
+from sqlalchemy.types import Integer, Boolean, BigInteger
 
 revision = '20240702_add_plan_fields'
 down_revision = None
@@ -42,7 +42,9 @@ def upgrade() -> None:
     plan_enum.create(bind, checkfirst=True)
 
     inspector = sa.inspect(bind)
-    existing_columns = {col['name'] for col in inspector.get_columns('users')}
+    inspector_columns = inspector.get_columns('users')
+    existing_columns = {col['name'] for col in inspector_columns}
+    column_info = {c['name']: c for c in inspector_columns}
 
     if 'plan_type' not in existing_columns:
         op.add_column(
@@ -65,7 +67,12 @@ def upgrade() -> None:
         )
 
     if 'telegram_chat_id' not in existing_columns:
-        op.add_column('users', sa.Column('telegram_chat_id', sa.String(length=64), nullable=True))
+        op.add_column('users', sa.Column('telegram_chat_id', sa.BigInteger(), nullable=True))
+    telegram_chat_type = (
+        column_info['telegram_chat_id']['type']
+        if 'telegram_chat_id' in column_info
+        else BigInteger()
+    )
 
     if 'telegram_opt_in' not in existing_columns:
         op.add_column(
@@ -85,8 +92,7 @@ def upgrade() -> None:
     # Handle free_alert_consumed column with type conversion if needed
     if 'free_alert_consumed' in existing_columns:
         # Check if column is INTEGER and convert to BOOLEAN
-        col_info = {c['name']: c for c in inspector.get_columns('users')}
-        col_type = col_info['free_alert_consumed']['type']
+        col_type = column_info['free_alert_consumed']['type']
         
         # Convert INTEGER to BOOLEAN if needed (PostgreSQL only)
         if isinstance(col_type, Integer) and bind.dialect.name == 'postgresql':
@@ -167,9 +173,9 @@ def upgrade() -> None:
         SET plan_type = 'premium'
         WHERE plan_type = 'free'
           AND (
-                COALESCE(is_premium, 0) = 1
-             OR COALESCE(premium, 0) = 1
-             OR COALESCE(premium_lifetime, 0) = 1
+                LOWER(COALESCE(CAST(is_premium AS TEXT), 'false')) IN ('1', 'true', 't', 'yes', 'y')
+             OR LOWER(COALESCE(CAST(premium AS TEXT), 'false')) IN ('1', 'true', 't', 'yes', 'y')
+             OR LOWER(COALESCE(CAST(premium_lifetime AS TEXT), 'false')) IN ('1', 'true', 't', 'yes', 'y')
              OR LOWER(COALESCE(subscription_status, '')) IN ('active', 'trialing')
           )
         """
@@ -181,13 +187,26 @@ def upgrade() -> None:
         WHERE plan_type IS NULL
         """
     )
-    op.execute(
-        """
-        UPDATE users
-        SET telegram_chat_id = chat_id
-        WHERE telegram_chat_id IS NULL AND chat_id IS NOT NULL AND chat_id <> ''
-        """
-    )
+    if 'chat_id' in existing_columns:
+        if isinstance(telegram_chat_type, BigInteger) and bind.dialect.name == 'postgresql':
+            op.execute(
+                """
+                UPDATE users
+                SET telegram_chat_id = CAST(chat_id AS BIGINT)
+                WHERE telegram_chat_id IS NULL
+                  AND chat_id IS NOT NULL
+                  AND chat_id <> ''
+                  AND chat_id ~ '^[0-9]+$'
+                """
+            )
+        else:
+            op.execute(
+                """
+                UPDATE users
+                SET telegram_chat_id = chat_id
+                WHERE telegram_chat_id IS NULL AND chat_id IS NOT NULL AND chat_id <> ''
+                """
+            )
     op.execute(
         """
         UPDATE users
