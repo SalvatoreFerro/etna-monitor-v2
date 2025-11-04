@@ -89,7 +89,7 @@ def upgrade() -> None:
         col_type = col_info['free_alert_consumed']['type']
         
         # Convert INTEGER to BOOLEAN if needed (PostgreSQL only)
-        if isinstance(col_type, sa.Integer) and bind.dialect.name == 'postgresql':
+        if isinstance(col_type, Integer) and bind.dialect.name == 'postgresql':
             op.execute(text("""
                 ALTER TABLE users
                 ALTER COLUMN free_alert_consumed
