@@ -10,6 +10,7 @@ import pandas as pd
 import requests
 
 from app.utils.logger import configure_logging
+from backend.utils.archive import ArchiveManager
 
 os.makedirs("grafici", exist_ok=True)
 os.makedirs("log", exist_ok=True)
@@ -21,6 +22,10 @@ CSV_LOG = os.path.join(os.getenv("LOG_DIR", "log"), "log.csv")
 configure_logging()
 logger = logging.getLogger(__name__)
 TOKEN_TELEGRAM = os.getenv("TELEGRAM_BOT_TOKEN", "")
+
+# Initialize archive manager
+archive_manager = ArchiveManager()
+last_archived_date = None
 
 def scarica_grafico():
     headers = {
@@ -89,11 +94,44 @@ def aggiorna_log():
     if df["mV"].max() > 5:
         invia_notifica("⚠️ Tremore elevato sull'Etna! Controlla il sito.")
 
+def archive_daily_graph():
+    """Archive the current graph if it's a new day."""
+    global last_archived_date
+    
+    try:
+        from datetime import timezone
+        current_date = datetime.now(timezone.utc).date()
+        
+        # Check if we need to archive (new day or first run)
+        if last_archived_date is None or current_date > last_archived_date:
+            if os.path.exists(GRAFICO_LOCALE):
+                # Read the current graph file
+                with open(GRAFICO_LOCALE, 'rb') as f:
+                    png_data = f.read()
+                
+                # Archive with the current date
+                archive_date = datetime.now(timezone.utc)
+                archive_manager.save_daily_graph(png_data, date=archive_date, compress=False)
+                logger.info("Successfully archived graph for %s", current_date)
+                
+                # Update last archived date
+                last_archived_date = current_date
+                
+                # Run cleanup to remove old archives
+                deleted_count = archive_manager.cleanup_old_archives()
+                if deleted_count > 0:
+                    logger.info("Cleaned up %d old archive(s)", deleted_count)
+            else:
+                logger.warning("Cannot archive: %s does not exist", GRAFICO_LOCALE)
+    except Exception as e:
+        logger.error("Failed to archive daily graph: %s", e, exc_info=True)
+
 if __name__ == "__main__":
     while True:
         logger.info("Download e aggiornamento in corso...")
         if scarica_grafico():
             aggiorna_log()
+            archive_daily_graph()  # Archive after successful download
             logger.info("Aggiornamento completato")
         else:
             logger.error("Errore nel download del PNG")
