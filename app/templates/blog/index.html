@@ -1,0 +1,47 @@
+{% extends "layout.html" %}
+
+{% set page_title = "Blog EtnaMonitor" %}
+{% set page_description = "Approfondimenti, guide e aggiornamenti dal team EtnaMonitor sul monitoraggio del vulcano Etna." %}
+
+{% block content %}
+<section class="page-hero" aria-labelledby="blog-hero-title">
+  <div class="container">
+    <span class="pill pill--glow">Community</span>
+    <h1 id="blog-hero-title">Blog EtnaMonitor</h1>
+    <p class="lead">Analisi tecniche, tutorial guidati e best practice per sfruttare al massimo la piattaforma.</p>
+    <div class="hero__actions">
+      <a class="btn btn-primary" href="{{ url_for('community.feedback_portal') }}">Lascia un feedback</a>
+      <a class="btn btn-secondary" href="{{ url_for('community.forum_home') }}">Vai al forum Q&amp;A</a>
+    </div>
+  </div>
+</section>
+
+<section class="blog-list" aria-label="Articoli pubblicati">
+  <div class="container">
+    {% if posts %}
+      <div class="blog-grid">
+        {% for post in posts %}
+          <article class="blog-card">
+            {% if post.hero_image %}
+              <img src="{{ post.hero_image }}" alt="{{ post.title }}" loading="lazy" decoding="async" />
+            {% endif %}
+            <div class="blog-card__content">
+              <span class="blog-card__date">{{ post.created_at.strftime('%d %B %Y') }}</span>
+              <h2><a href="{{ url_for('community.blog_detail', slug=post.slug) }}">{{ post.title }}</a></h2>
+              {% if post.summary %}
+                <p>{{ post.summary }}</p>
+              {% endif %}
+              <div class="blog-card__meta">
+                <span class="badge {{ 'success' if post.seo_score >= 70 else 'warning' if post.seo_score >= 40 else 'muted' }}">SEO {{ post.seo_score }}%</span>
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('community.blog_detail', slug=post.slug) }}">Leggi l'articolo</a>
+              </div>
+            </div>
+          </article>
+        {% endfor %}
+      </div>
+    {% else %}
+      <p class="lead">Stiamo preparando i primi contenuti. Torna a trovarci o proponi un tema nel forum!</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

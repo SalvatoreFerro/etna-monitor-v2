@@ -151,6 +151,9 @@
           <ul class="site-footer__list">
             <li><a href="{{ url_for('main.etna3d') }}">Etna 3D</a></li>
             <li><a href="{{ url_for('experience.experience_home') }}">Etna Experience</a></li>
+            <li><a href="{{ url_for('community.blog_index') }}">Blog</a></li>
+            <li><a href="{{ url_for('community.forum_home') }}">Forum Q&amp;A</a></li>
+            <li><a href="{{ url_for('community.feedback_portal') }}">Feedback</a></li>
             <li><a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">Bot Telegram</a></li>
             <li><a href="{{ url_for('billing.donate') }}">Sostieni il progetto</a></li>
           </ul>
@@ -349,6 +352,10 @@
         })();
       </script>
     {% endif %}
+
+    {% include 'partials/onboarding.html' %}
+
+    <script src="{{ url_for('static', filename='js/onboarding.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ script_nonce }}" defer></script>
 
     {% block extra_scripts %}{% endblock %}
   </body>

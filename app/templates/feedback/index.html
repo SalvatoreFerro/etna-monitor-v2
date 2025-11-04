@@ -1,0 +1,93 @@
+{% extends "layout.html" %}
+
+{% set page_title = "Lascia un feedback" %}
+{% set page_description = "Valuta EtnaMonitor, racconta la tua esperienza e aiuta il team a migliorare la piattaforma." %}
+
+{% block content %}
+<section class="page-hero" aria-labelledby="feedback-title">
+  <div class="container">
+    <span class="pill pill--glow">Community</span>
+    <h1 id="feedback-title">Feedback &amp; Recensioni</h1>
+    <p class="lead">La tua opinione ci guida: ogni suggerimento alimenta la roadmap e sblocca badge esclusivi.</p>
+    <div class="hero__actions">
+      <a class="btn btn-secondary" href="{{ url_for('community.blog_index') }}">Leggi il blog</a>
+      <a class="btn btn-secondary" href="{{ url_for('community.forum_home') }}">Entra nel forum</a>
+    </div>
+  </div>
+</section>
+
+<section class="feedback-form-section" aria-label="Modulo feedback">
+  <div class="container">
+    <form method="post" class="card" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <h2><i class="fas fa-star"></i> Raccontaci la tua esperienza</h2>
+      <label>
+        <span>Valutazione</span>
+        <div class="rating-selector" role="radiogroup" aria-label="Valutazione su cinque stelle">
+          {% for value in range(5, 0, -1) %}
+            <input type="radio" id="rating-{{ value }}" name="rating" value="{{ value }}" required />
+            <label for="rating-{{ value }}" title="{{ value }} su 5 stelle"><i class="fas fa-star"></i></label>
+          {% endfor %}
+        </div>
+      </label>
+      <label>
+        <span>Feedback</span>
+        <textarea name="comment" rows="5" minlength="10" required placeholder="Cosa funziona? Cosa possiamo migliorare?"></textarea>
+      </label>
+      <div class="form-grid">
+        <label>
+          <span>Categoria (opzionale)</span>
+          <select name="category">
+            <option value="">Seleziona…</option>
+            <option value="ux">Esperienza utente</option>
+            <option value="dati">Dati &amp; grafici</option>
+            <option value="alert">Notifiche</option>
+            <option value="community">Community &amp; formazione</option>
+            <option value="altro">Altro</option>
+          </select>
+        </label>
+        <label>
+          <span>Nome (opzionale)</span>
+          <input type="text" name="display_name" maxlength="120" />
+        </label>
+        <label>
+          <span>Email (opzionale)</span>
+          <input type="email" name="email" maxlength="255" />
+        </label>
+      </div>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Invia feedback</button>
+    </form>
+  </div>
+</section>
+
+<section class="feedback-wall" aria-label="Ultimi feedback">
+  <div class="container">
+    <h2>Le ultime voci della community</h2>
+    {% if latest_feedback %}
+      <ul class="feedback-wall__list">
+        {% for feedback in latest_feedback %}
+          <li>
+            <header>
+              <strong>{{ feedback.display_name or 'Utente EtnaMonitor' }}</strong>
+              <span class="rating" aria-label="{{ feedback.rating }} su 5">
+                {% for star in range(1, 6) %}
+                  <i class="{% if star <= feedback.rating %}fas fa-star{% else %}fa-regular fa-star{% endif %}"></i>
+                {% endfor %}
+              </span>
+            </header>
+            <p>{{ feedback.comment }}</p>
+            <footer>
+              <span class="muted">{{ feedback.created_at.strftime('%d/%m/%Y') }}</span>
+              {% if feedback.category %}
+                <span class="badge info">{{ feedback.category }}</span>
+              {% endif %}
+            </footer>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="lead">Siamo in attesa dei primi feedback. Condividi la tua esperienza per inaugurare il wall!</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

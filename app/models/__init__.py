@@ -9,6 +9,10 @@ def init_db(app):
 from .user import User
 from .event import Event
 from .partner import Partner
+from .blog import BlogPost
+from .forum import ForumThread, ForumReply
+from .feedback import UserFeedback, FeedbackVote
+from .gamification import UserGamificationProfile, UserBadge
 
 try:
     from .sponsor_banner import (
@@ -27,6 +31,13 @@ __all__ = [
     'User',
     'Event',
     'Partner',
+    'BlogPost',
+    'ForumThread',
+    'ForumReply',
+    'UserFeedback',
+    'FeedbackVote',
+    'UserGamificationProfile',
+    'UserBadge',
 ]
 
 if SponsorBanner is not None:
