@@ -1,59 +1,72 @@
-"""Minimal Telegram bot worker using polling mode."""
+"""Standalone Telegram bot worker for EtnaMonitor."""
 
-import asyncio
 import logging
 import os
-from typing import Optional
+import sys
+from typing import Final
 
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
-)
-
-TOKEN_ENV = "TELEGRAM_BOT_TOKEN"
+TOKEN_ENV: Final[str] = "TELEGRAM_BOT_TOKEN"
 
 
-async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Reply to /start with a welcome message."""
+async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the /start command."""
 
-    chat_id: Optional[int] = None
     if update.effective_chat:
-        chat_id = update.effective_chat.id
-    logging.info("Handling /start command chat_id=%s", chat_id)
-
+        logging.info("Handling /start command chat_id=%s", update.effective_chat.id)
     if update.message:
-        await update.message.reply_text("Ciao! Sono Etna Bot 👋")
+        await update.message.reply_text("Ciao, sono Etna Bot! 🔥")
 
 
-async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Reply to /help with a list of supported commands."""
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle the /help command."""
 
-    chat_id: Optional[int] = None
     if update.effective_chat:
-        chat_id = update.effective_chat.id
-    logging.info("Handling /help command chat_id=%s", chat_id)
-
+        logging.info("Handling /help command chat_id=%s", update.effective_chat.id)
     if update.message:
-        await update.message.reply_text("Comandi disponibili: /start /help")
+        await update.message.reply_text(
+            "Comandi disponibili:\n"
+            "• /start - Presentazione del bot\n"
+            "• /help - Mostra questo messaggio"
+        )
 
 
-async def main() -> None:
-    """Start polling the Telegram bot token configured in the environment."""
+def configure_logging() -> None:
+    """Configure logging for the worker."""
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+    )
+
+
+def get_token() -> str:
+    """Retrieve the Telegram bot token from the environment."""
 
     token = os.environ.get(TOKEN_ENV)
     if not token:
-        raise RuntimeError(f"{TOKEN_ENV} non impostato")
+        logging.error("Environment variable %s is not set. Exiting.", TOKEN_ENV)
+        sys.exit(1)
+    return token
 
-    app = Application.builder().token(token).build()
-    app.add_handler(CommandHandler("start", cmd_start))
-    app.add_handler(CommandHandler("help", cmd_help))
 
-    logging.info("Starting Telegram polling…")
-    await app.run_polling(drop_pending_updates=True, stop_signals=None)
+def main() -> None:
+    """Entry point for the Telegram bot worker."""
+
+    configure_logging()
+    token = get_token()
+
+    application = Application.builder().token(token).build()
+    application.add_handler(CommandHandler("start", start_command))
+    application.add_handler(CommandHandler("help", help_command))
+
+    logging.info("Bot is ready!")
+    logging.info("Starting Telegram polling...")
+
+    application.run_polling(drop_pending_updates=True, stop_signals=None)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
