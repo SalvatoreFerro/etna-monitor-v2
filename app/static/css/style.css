@@ -449,16 +449,6 @@
     display: none;
   }
 
-  @media (min-width: 640px) {
-    .site-nav__brand span:last-child {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      font-size: 0.95rem;
-      color: var(--color-text-muted);
-    }
-  }
-
   .site-nav__toggle {
     display: inline-flex;
     align-items: center;
