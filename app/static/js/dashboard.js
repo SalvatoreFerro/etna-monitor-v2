@@ -517,14 +517,22 @@ class EtnaDashboard {
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: `threshold=${threshold}`
             });
-            
+
+            let payload = null;
+            try {
+                payload = await response.json();
+            } catch (parseError) {
+                payload = null;
+            }
+
             if (response.ok) {
                 this.showToast('Soglia salvata con successo', 'success');
                 if (this.plotData) {
                     this.renderPlot(this.plotData);
                 }
             } else {
-                this.showToast('Errore nel salvare la soglia', 'error');
+                const message = payload?.message || 'Errore nel salvare la soglia';
+                this.showToast(message, 'error');
             }
         } catch (error) {
             this.showToast('Errore di rete', 'error');

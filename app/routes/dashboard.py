@@ -83,10 +83,41 @@ def dashboard_home():
                          page_title="Dashboard tremore Etna – EtnaMonitor",
                          page_description="Grafico del tremore vulcanico dell'Etna, soglie personalizzate e storico eventi per utenti Premium.")
 
-@bp.route("/settings")
+@bp.route("/settings", methods=["GET", "POST"])
 @login_required
 def settings():
     user = get_current_user()
+
+    if request.method == "POST":
+        if not user.has_premium_access:
+            return jsonify({"status": "error", "message": "Premium account required"}), 403
+
+        raw_threshold = (request.form.get("threshold") or "").strip()
+        try:
+            threshold = float(raw_threshold)
+        except (TypeError, ValueError):
+            return jsonify({"status": "error", "message": "Invalid threshold value"}), 400
+
+        if not 0.1 <= threshold <= 10:
+            return jsonify({"status": "error", "message": "Threshold out of range"}), 400
+
+        try:
+            user.threshold = threshold
+
+            event = Event(
+                user_id=user.id,
+                event_type="threshold_change",
+                threshold=threshold,
+                message=f"Threshold updated to {threshold:.2f} mV",
+            )
+            db.session.add(event)
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            logger.exception("Failed to update threshold for user %s", user.id)
+            return jsonify({"status": "error", "message": "Failed to update threshold"}), 500
+
+        return jsonify({"status": "success", "threshold": threshold})
 
     return render_template("dashboard_settings.html", user=user, default_threshold=Config.ALERT_THRESHOLD_DEFAULT)
 
