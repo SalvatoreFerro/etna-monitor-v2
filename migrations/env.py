@@ -5,13 +5,15 @@ from __future__ import annotations
 import os
 from logging.config import fileConfig
 
+# Ensure application bootstrap knows we are running inside Alembic before any
+# application modules are imported. This prevents ``app.__init__`` from running
+# side-effects (scheduler, schema guards, etc.) during Alembic execution.
+os.environ.setdefault("ALEMBIC_RUNNING", "1")
+
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.models import db  # noqa: F401 - ensures models are imported
-
-# Ensure application bootstrap knows we are running inside Alembic.
-os.environ.setdefault("ALEMBIC_RUNNING", "1")
 
 config = context.config
 
