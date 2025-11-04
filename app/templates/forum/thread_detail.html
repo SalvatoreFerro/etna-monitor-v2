@@ -1,0 +1,78 @@
+{% extends "layout.html" %}
+
+{% set page_title = thread.title %}
+{% set page_description = thread.body[:160] %}
+
+{% block content %}
+<article class="forum-thread" aria-labelledby="thread-title">
+  <header class="page-hero">
+    <div class="container">
+      <a class="pill" href="{{ url_for('community.forum_home') }}">← Torna al forum</a>
+      <h1 id="thread-title">{{ thread.title }}</h1>
+      <div class="forum-thread__meta">
+        <span><i class="fas fa-user"></i> {{ thread.author_name or 'Anonimo' }}</span>
+        <span><i class="fas fa-clock"></i> {{ thread.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+        <span class="badge {{ 'success' if thread.status == 'resolved' else 'info' }}">{{ 'Risolta' if thread.status == 'resolved' else 'In corso' }}</span>
+      </div>
+      <div class="forum-thread__body">
+        {% set blocks = (thread.body or '').split('\n\n') %}
+        {% for block in blocks if block.strip() %}
+          <p>{{ block | e | replace('\n', '<br>') | safe }}</p>
+        {% endfor %}
+      </div>
+    </div>
+  </header>
+
+  <section class="forum-replies" id="replies" aria-label="Risposte">
+    <div class="container">
+      <h2><i class="fas fa-comments"></i> {{ replies|length }} risposte</h2>
+      {% if replies %}
+        <ol class="forum-reply-list">
+          {% for reply in replies %}
+            <li>
+              <header>
+                <strong>{{ reply.author_name or 'Community' }}</strong>
+                <time datetime="{{ reply.created_at.isoformat() }}">{{ reply.created_at.strftime('%d/%m/%Y %H:%M') }}</time>
+              </header>
+              {% set blocks = (reply.body or '').split('\n\n') %}
+              {% for block in blocks if block.strip() %}
+                <p>{{ block | e | replace('\n', '<br>') | safe }}</p>
+              {% endfor %}
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <p class="lead">Ancora nessuna risposta. Condividi la tua esperienza e ottieni badge esclusivi!</p>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="forum-reply-form" aria-label="Lascia una risposta">
+    <div class="container">
+      <form method="post" class="card" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <h2><i class="fas fa-reply"></i> Rispondi alla discussione</h2>
+        <label>
+          <span>Messaggio</span>
+          <textarea name="body" rows="4" minlength="5" required placeholder="Condividi suggerimenti pratici, link e risorse"></textarea>
+        </label>
+        <div class="form-grid">
+          <label>
+            <span>Nome (opzionale)</span>
+            <input type="text" name="author_name" maxlength="120" />
+          </label>
+          <label>
+            <span>Email (opzionale)</span>
+            <input type="email" name="author_email" maxlength="255" />
+          </label>
+        </div>
+        <label class="checkbox">
+          <input type="checkbox" name="mark_resolved" value="1" />
+          <span>Segna la discussione come risolta</span>
+        </label>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Invia risposta</button>
+      </form>
+    </div>
+  </section>
+</article>
+{% endblock %}

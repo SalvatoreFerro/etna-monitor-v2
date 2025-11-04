@@ -1,0 +1,160 @@
+{% extends "layout.html" %}
+
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
+{% endblock %}
+
+{% block content %}
+<section class="admin-page admin-container" aria-labelledby="admin-blog-title">
+  <header class="admin-card admin-card--hero card-premium animate-premium-fade admin-header" id="admin-blog-title">
+    <div>
+      <h1><i class="fas fa-pen-nib"></i> Gestione Blog</h1>
+      <p>Pubblica articoli, ottimizza la SEO con un clic e mantieni la community aggiornata.</p>
+    </div>
+    <nav class="admin-actions" aria-label="Sezioni amministrative">
+      <a href="{{ url_for('admin.admin_home') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-arrow-left"></i> Torna alla dashboard</a>
+      <a href="{{ url_for('admin.feedback_center') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-comments"></i> Feedback utenti</a>
+    </nav>
+  </header>
+
+  <article class="admin-card card-premium animate-premium-slide">
+    <header class="admin-section-header">
+      <div>
+        <h2><i class="fas fa-plus"></i> Nuovo articolo</h2>
+        <p>Scrivi il contenuto, attiva la pubblicazione immediata e affida la SEO al nostro ottimizzatore automatico.</p>
+      </div>
+    </header>
+    <form method="post" class="admin-form admin-blog-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <input type="hidden" name="action" value="create" />
+      <div class="form-grid">
+        <label>
+          <span>Titolo</span>
+          <input type="text" name="title" required maxlength="180" placeholder="Titolo coinvolgente" />
+        </label>
+        <label>
+          <span>Hero image (URL)</span>
+          <input type="url" name="hero_image" placeholder="https://…" />
+        </label>
+      </div>
+      <label>
+        <span>Abstract</span>
+        <textarea name="summary" rows="3" maxlength="280" placeholder="Riassunto in 2-3 frasi"></textarea>
+      </label>
+      <label>
+        <span>Contenuto</span>
+        <textarea name="content" rows="8" required placeholder="Markdown o testo semplice supportato"></textarea>
+      </label>
+      <div class="form-grid">
+        <label class="checkbox">
+          <input type="checkbox" name="published" value="1" checked />
+          <span>Pubblica immediatamente</span>
+        </label>
+        <label class="checkbox">
+          <input type="checkbox" name="auto_seo" value="1" checked />
+          <span>Ottimizza SEO automaticamente</span>
+        </label>
+      </div>
+      <button type="submit" class="btn btn-premium"><i class="fas fa-rocket"></i> Pubblica articolo</button>
+    </form>
+  </article>
+
+  <article class="admin-card card-premium animate-premium-fade">
+    <header class="admin-section-header">
+      <div>
+        <h2><i class="fas fa-newspaper"></i> Articoli pubblicati</h2>
+        <p>Gestisci, aggiorna e ottimizza in un click gli articoli esistenti.</p>
+      </div>
+    </header>
+    {% if posts %}
+      <div class="admin-table-wrapper">
+        <table class="table table-premium admin-table">
+          <thead>
+            <tr>
+              <th>Titolo</th>
+              <th>Slug</th>
+              <th>SEO score</th>
+              <th>Pubblicato</th>
+              <th>Aggiornato</th>
+              <th>Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for post in posts %}
+              <tr>
+                <td data-label="Titolo">{{ post.title }}</td>
+                <td data-label="Slug"><code>{{ post.slug }}</code></td>
+                <td data-label="SEO score">
+                  <span class="badge {{ 'success' if post.seo_score >= 70 else 'warning' if post.seo_score >= 40 else 'danger' }}">{{ post.seo_score }} / 100</span>
+                </td>
+                <td data-label="Pubblicato">
+                  {% if post.published %}
+                    <span class="badge success">Visibile</span>
+                  {% else %}
+                    <span class="badge muted">Bozza</span>
+                  {% endif %}
+                </td>
+                <td data-label="Aggiornato">{{ post.updated_at.strftime('%d/%m/%Y %H:%M') if post.updated_at else '—' }}</td>
+                <td data-label="Azioni">
+                  <details class="admin-inline-editor">
+                    <summary class="btn btn-secondary glass btn-sm"><i class="fas fa-pen"></i> Modifica</summary>
+                    <form method="post" class="admin-form">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                      <input type="hidden" name="action" value="update" />
+                      <input type="hidden" name="post_id" value="{{ post.id }}" />
+                      <label>
+                        <span>Titolo</span>
+                        <input type="text" name="title" value="{{ post.title }}" maxlength="180" required />
+                      </label>
+                      <label>
+                        <span>Hero image</span>
+                        <input type="url" name="hero_image" value="{{ post.hero_image or '' }}" />
+                      </label>
+                      <label>
+                        <span>Abstract</span>
+                        <textarea name="summary" rows="3" maxlength="280">{{ post.summary or '' }}</textarea>
+                      </label>
+                      <label>
+                        <span>Contenuto</span>
+                        <textarea name="content" rows="6" required>{{ post.content }}</textarea>
+                      </label>
+                      <div class="form-grid">
+                        <label class="checkbox">
+                          <input type="checkbox" name="published" value="1" {% if post.published %}checked{% endif %} />
+                          <span>Mostra nel sito</span>
+                        </label>
+                        <label class="checkbox">
+                          <input type="checkbox" name="auto_seo" value="1" />
+                          <span>Ottimizza SEO</span>
+                        </label>
+                      </div>
+                      <div class="admin-inline-actions">
+                        <button type="submit" class="btn btn-premium btn-sm"><i class="fas fa-save"></i> Salva modifiche</button>
+                      </div>
+                    </form>
+                    <form method="post" class="admin-inline-actions">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                      <input type="hidden" name="action" value="optimize" />
+                      <input type="hidden" name="post_id" value="{{ post.id }}" />
+                      <button type="submit" class="btn btn-secondary glass btn-sm"><i class="fas fa-wand-magic-sparkles"></i> Boost SEO</button>
+                    </form>
+                    <form method="post" class="admin-inline-actions" onsubmit="return confirm('Eliminare definitivamente l\'articolo?');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                      <input type="hidden" name="action" value="delete" />
+                      <input type="hidden" name="post_id" value="{{ post.id }}" />
+                      <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i> Elimina</button>
+                    </form>
+                  </details>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="admin-caption">Ancora nessun articolo pubblicato. Inizia creando un contenuto strategico per la community.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}
