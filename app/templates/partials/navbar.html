@@ -1,11 +1,16 @@
 {% set current_destination = request.full_path.rstrip('?') if request.query_string else request.path %}
+{% set community_links = [
+  {'label': 'Blog', 'url': url_for('community.blog_index'), 'endpoint': 'community.blog_index'},
+  {'label': 'Forum', 'url': url_for('community.forum_home'), 'endpoint': 'community.forum_home'},
+  {'label': 'Feedback', 'url': url_for('community.feedback_portal'), 'endpoint': 'community.feedback_portal'},
+] %}
 {% set nav_links = [
-  {'label': 'Home', 'url': url_for('main.index'), 'endpoint': 'main.index'},
-  {'label': 'Progetto', 'url': url_for('main.progetto'), 'endpoint': 'main.progetto'},
-  {'label': 'Team', 'url': url_for('main.team'), 'endpoint': 'main.team'},
-  {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
+  {'label': 'Monitoraggio', 'url': url_for('main.index'), 'endpoint': 'main.index'},
   {'label': 'Experience', 'url': url_for('experience.experience_home'), 'endpoint': 'experience.experience_home'},
-  ] %}
+  {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
+  {'label': 'Community', 'children': community_links},
+] %}
+
 {% if not session.user_id %}
   {% set nav_links = nav_links + [
     {
@@ -19,13 +24,7 @@
 {% endif %}
 
 {% if session.user_id %}
-  {% set nav_links = nav_links + [
-    {
-      'label': 'Dashboard',
-      'url': url_for('dashboard.dashboard_home'),
-      'endpoint': 'dashboard.dashboard_home'
-    }
-  ] %}
+  {% set nav_links = nav_links + [{'label': 'Dashboard', 'url': url_for('dashboard.dashboard_home'), 'endpoint': 'dashboard.dashboard_home'}] %}
 {% endif %}
 
 <nav class="site-nav" role="navigation" aria-label="Navigazione principale">
@@ -49,19 +48,36 @@
     <div class="site-nav__menu" id="primary-navigation" data-site-nav-menu aria-hidden="true" hidden>
       <ul class="site-nav__links">
         {% for link in nav_links %}
-          <li>
-            <a class="site-nav__link {{ link.extra_class or '' }} {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">
-              {% if link.icon %}
-                <span class="site-nav__link-icon" aria-hidden="true"><i class="{{ link.icon }}"></i></span>
-              {% endif %}
-              <span class="site-nav__link-label">{{ link.label }}</span>
-            </a>
+          <li class="{{ 'site-nav__item--has-children' if link.children }}">
+            {% if link.children %}
+              <details class="site-nav__dropdown" data-site-nav-dropdown>
+                <summary class="site-nav__link {{ link.extra_class or '' }}">
+                  <span class="site-nav__link-label">{{ link.label }}</span>
+                  <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                </summary>
+                <ul class="site-nav__submenu" role="menu">
+                  {% for child in link.children %}
+                    <li>
+                      <a role="menuitem" class="site-nav__sublink {{ 'is-active' if request.endpoint == child.endpoint }}" href="{{ child.url }}">{{ child.label }}</a>
+                    </li>
+                  {% endfor %}
+                </ul>
+              </details>
+            {% else %}
+              <a class="site-nav__link {{ link.extra_class or '' }} {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">
+                {% if link.icon %}
+                  <span class="site-nav__link-icon" aria-hidden="true"><i class="{{ link.icon }}"></i></span>
+                {% endif %}
+                <span class="site-nav__link-label">{{ link.label }}</span>
+              </a>
+            {% endif %}
           </li>
         {% endfor %}
       </ul>
     </div>
 
     <div class="site-nav__actions">
+      <button type="button" class="btn btn-ghost btn-sm" data-onboarding-trigger><i class="fas fa-compass"></i> Guida rapida</button>
       {% if session.user_id %}
         {% set display_name = (current_user.name if current_user else None) or (current_user.email if current_user else None) or 'Utente' %}
         <a class="btn btn-ghost btn-sm" href="{{ url_for('dashboard.dashboard_home') }}">Dashboard</a>

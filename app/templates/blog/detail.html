@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+
+{% set page_title = post.seo_title or post.title %}
+{% set page_description = post.seo_description or post.summary or post.title %}
+{% set page_og_title = post.seo_title or post.title %}
+{% set page_og_description = page_description %}
+{% if post.hero_image %}
+  {% set page_og_image = post.hero_image %}
+{% endif %}
+
+{% block content %}
+<article class="blog-article" itemscope itemtype="https://schema.org/Article">
+  <header class="blog-article__hero">
+    <div class="container">
+      <a class="pill" href="{{ url_for('community.blog_index') }}">← Torna al blog</a>
+      <h1 itemprop="headline">{{ post.title }}</h1>
+      <div class="blog-article__meta">
+        <time datetime="{{ post.created_at.isoformat() }}" itemprop="datePublished">{{ post.created_at.strftime('%d %B %Y') }}</time>
+        <span class="badge {{ 'success' if post.seo_score >= 70 else 'warning' if post.seo_score >= 40 else 'muted' }}">SEO {{ post.seo_score }}%</span>
+        {% if post.summary %}
+          <p class="lead" itemprop="description">{{ post.summary }}</p>
+        {% endif %}
+      </div>
+    </div>
+    {% if post.hero_image %}
+      <figure class="blog-article__figure">
+        <img src="{{ post.hero_image }}" alt="{{ post.title }}" itemprop="image" loading="lazy" decoding="async" />
+      </figure>
+    {% endif %}
+  </header>
+
+  <div class="container blog-article__body" itemprop="articleBody">
+    {% set blocks = (post.content or '').split('\n\n') %}
+    {% for block in blocks if block.strip() %}
+      <p>{{ block | e | replace('\n', '<br>') | safe }}</p>
+    {% endfor %}
+  </div>
+
+  <footer class="blog-article__footer">
+    <div class="container">
+      <div class="cta-stack">
+        <a class="btn btn-primary" href="{{ url_for('community.feedback_portal') }}">Ti è stato utile? Lascia un feedback</a>
+        <a class="btn btn-secondary" href="{{ url_for('community.forum_home') }}">Fai una domanda nel forum</a>
+      </div>
+    </div>
+  </footer>
+</article>
+{% endblock %}

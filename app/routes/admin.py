@@ -7,10 +7,15 @@ from flask_login import current_user
 from sqlalchemy import and_, cast, func, or_
 
 from ..utils.auth import admin_required
-from ..models import db
+from ..models import (
+    db,
+    BlogPost,
+    UserFeedback,
+)
 from ..models.user import User
 from ..models.event import Event
 from ..models.partner import Partner
+from ..services.gamification_service import ensure_demo_profiles
 try:
     from ..models.sponsor_banner import (
         SponsorBanner,
@@ -84,8 +89,128 @@ def _serialize_partner(partner: Partner) -> dict:
 @bp.route("/")
 @admin_required
 def admin_home():
+    ensure_demo_profiles()
     users = User.query.all()
     return render_template("admin.html", users=users)
+
+
+@bp.route("/blog", methods=["GET", "POST"])
+@admin_required
+def blog_manager():
+    ensure_demo_profiles()
+    if request.method == "POST":
+        csrf_token = request.form.get("csrf_token")
+        if not _is_csrf_valid(csrf_token):
+            flash("Token CSRF non valido. Riprova.", "error")
+            return redirect(url_for("admin.blog_manager"))
+
+        action = request.form.get("action") or ""
+
+        if action == "create":
+            title = (request.form.get("title") or "").strip()
+            content = (request.form.get("content") or "").strip()
+            if not title or not content:
+                flash("Titolo e contenuto sono obbligatori.", "error")
+                return redirect(url_for("admin.blog_manager"))
+
+            post = BlogPost(
+                title=title,
+                summary=(request.form.get("summary") or "").strip() or None,
+                content=content,
+                hero_image=(request.form.get("hero_image") or "").strip() or None,
+                published=request.form.get("published") == "1",
+            )
+            if request.form.get("auto_seo") == "1":
+                post.apply_seo_boost()
+            db.session.add(post)
+            db.session.commit()
+            flash("Articolo creato con successo.", "success")
+            return redirect(url_for("admin.blog_manager"))
+
+        if action == "update":
+            post_id = request.form.get("post_id")
+            post = BlogPost.query.get(post_id)
+            if post is None:
+                flash("Articolo non trovato.", "error")
+                return redirect(url_for("admin.blog_manager"))
+
+            post.title = (request.form.get("title") or post.title).strip()
+            post.summary = (request.form.get("summary") or "").strip() or None
+            post.content = (request.form.get("content") or post.content).strip()
+            post.hero_image = (request.form.get("hero_image") or "").strip() or None
+            post.published = request.form.get("published") == "1"
+            if request.form.get("auto_seo") == "1":
+                post.apply_seo_boost()
+            db.session.commit()
+            flash("Articolo aggiornato.", "success")
+            return redirect(url_for("admin.blog_manager"))
+
+        if action == "delete":
+            post_id = request.form.get("post_id")
+            post = BlogPost.query.get(post_id)
+            if post is None:
+                flash("Articolo non trovato.", "error")
+            else:
+                db.session.delete(post)
+                db.session.commit()
+                flash("Articolo eliminato.", "success")
+            return redirect(url_for("admin.blog_manager"))
+
+        if action == "optimize":
+            post_id = request.form.get("post_id")
+            post = BlogPost.query.get(post_id)
+            if post is None:
+                flash("Articolo non trovato.", "error")
+            else:
+                post.apply_seo_boost()
+                db.session.commit()
+                flash("Ottimizzazione SEO completata.", "success")
+            return redirect(url_for("admin.blog_manager"))
+
+        flash("Azione non riconosciuta.", "error")
+        return redirect(url_for("admin.blog_manager"))
+
+    posts = (
+        BlogPost.query.order_by(BlogPost.updated_at.desc()).all()
+    )
+    return render_template("admin/blog.html", posts=posts)
+
+
+@bp.route("/feedback", methods=["GET", "POST"])
+@admin_required
+def feedback_center():
+    ensure_demo_profiles()
+    if request.method == "POST":
+        csrf_token = request.form.get("csrf_token")
+        if not _is_csrf_valid(csrf_token):
+            flash("Token CSRF non valido. Riprova.", "error")
+            return redirect(url_for("admin.feedback_center"))
+
+        action = request.form.get("action")
+        feedback_id = request.form.get("feedback_id")
+        feedback = UserFeedback.query.get(feedback_id) if feedback_id else None
+
+        if action == "review" and feedback:
+            feedback.mark_reviewed(current_user.email or "admin")
+            db.session.commit()
+            flash("Feedback contrassegnato come revisionato.", "success")
+        elif action == "archive" and feedback:
+            feedback.archive(current_user.email or "admin")
+            db.session.commit()
+            flash("Feedback archiviato.", "success")
+        elif action == "delete" and feedback:
+            db.session.delete(feedback)
+            db.session.commit()
+            flash("Feedback eliminato.", "success")
+        else:
+            flash("Azione non valida o feedback mancante.", "error")
+
+        return redirect(url_for("admin.feedback_center"))
+
+    feedback_list = (
+        UserFeedback.query.order_by(UserFeedback.created_at.desc()).all()
+    )
+    return render_template("admin/feedback.html", feedback_list=feedback_list)
 
 
 @bp.route("/toggle_premium/<int:user_id>", methods=["POST"])
