@@ -1,66 +1,71 @@
-import logging
+"""Alembic environment configuration without Flask app bootstrap."""
+
+from __future__ import annotations
+
+import os
 from logging.config import fileConfig
 
-from flask import current_app
+# Ensure application bootstrap knows we are running inside Alembic before any
+# application modules are imported. This prevents ``app.__init__`` from running
+# side-effects (scheduler, schema guards, etc.) during Alembic execution.
+os.environ.setdefault("ALEMBIC_RUNNING", "1")
+
 from alembic import context
+from sqlalchemy import engine_from_config, pool
 
-from app import create_app
-
-
-_app_context = None
-
-
-def _ensure_app_context() -> None:
-    """Ensure that a Flask app context is available for Alembic."""
-
-    global _app_context
-    try:
-        # Accessing an attribute forces the proxy to resolve the app.
-        current_app.name  # type: ignore[attr-defined]
-    except RuntimeError:
-        app = create_app()
-        _app_context = app.app_context()
-        _app_context.push()
-
-
-_ensure_app_context()
+from app.models import db  # noqa: F401 - ensures models are imported
 
 config = context.config
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
-logger = logging.getLogger('alembic.env')
 
 
-def _get_metadata():
+def _get_database_url() -> str:
     try:
-        return current_app.extensions['migrate'].db.metadata
-    except RuntimeError:
-        return None
+        return os.environ["DATABASE_URL"]
+    except KeyError as exc:  # pragma: no cover - defensive guard
+        raise RuntimeError("DATABASE_URL environment variable is required for migrations") from exc
 
 
-target_metadata = _get_metadata()
+database_url = _get_database_url()
+config.set_main_option("sqlalchemy.url", database_url)
+
+target_metadata = db.Model.metadata
+
 
 def run_migrations_offline() -> None:
-    url = current_app.config.get('SQLALCHEMY_DATABASE_URI')
-    context.configure(url=url, target_metadata=target_metadata, literal_binds=True)
+    """Run migrations in 'offline' mode."""
+
+    context.configure(
+        url=database_url,
+        target_metadata=target_metadata,
+        literal_binds=True,
+    )
 
     with context.begin_transaction():
         context.run_migrations()
 
+
 def run_migrations_online() -> None:
-    connectable = current_app.extensions['migrate'].db.engine
+    """Run migrations in 'online' mode."""
+
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
 
     with connectable.connect() as connection:
-        render_as_batch = connection.dialect.name == "sqlite"
         context.configure(
             connection=connection,
             target_metadata=target_metadata,
-            render_as_batch=render_as_batch,
+            render_as_batch=True,
         )
 
         with context.begin_transaction():
             context.run_migrations()
+
 
 if context.is_offline_mode():
     run_migrations_offline()

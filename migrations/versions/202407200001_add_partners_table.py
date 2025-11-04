@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy import inspect
 
 
 # revision identifiers, used by Alembic.
@@ -14,48 +15,57 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "partners",
-        sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("name", sa.Text(), nullable=False),
-        sa.Column(
-            "category",
-            sa.Text(),
-            nullable=False,
-            server_default="Altro",
-        ),
-        sa.Column("description", sa.Text(), nullable=True),
-        sa.Column("website", sa.Text(), nullable=True),
-        sa.Column("contact", sa.Text(), nullable=True),
-        sa.Column("image_url", sa.Text(), nullable=True),
-        sa.Column("lat", sa.Float(), nullable=True),
-        sa.Column("lon", sa.Float(), nullable=True),
-        sa.Column(
-            "verified",
-            sa.Boolean(),
-            nullable=False,
-            server_default=sa.text("false"),
-        ),
-        sa.Column(
-            "visible",
-            sa.Boolean(),
-            nullable=False,
-            server_default=sa.text("true"),
-        ),
-        sa.Column(
-            "created_at",
-            sa.DateTime(),
-            nullable=False,
-            server_default=sa.text("now()"),
-        ),
-        sa.CheckConstraint(
-            "category IN ('Guide','Hotel','Ristorante','Tour','Altro')",
-            name="ck_partners_category",
-        ),
-    )
-    op.create_index("ix_partners_visible", "partners", ["visible"])
-    op.create_index("ix_partners_verified", "partners", ["verified"])
-    op.create_index("ix_partners_category", "partners", ["category"])
+    bind = op.get_bind()
+    insp = inspect(bind)
+
+    if not insp.has_table("partners"):
+        op.create_table(
+            "partners",
+            sa.Column("id", sa.Integer(), primary_key=True),
+            sa.Column("name", sa.Text(), nullable=False),
+            sa.Column(
+                "category",
+                sa.Text(),
+                nullable=False,
+                server_default="Altro",
+            ),
+            sa.Column("description", sa.Text(), nullable=True),
+            sa.Column("website", sa.Text(), nullable=True),
+            sa.Column("contact", sa.Text(), nullable=True),
+            sa.Column("image_url", sa.Text(), nullable=True),
+            sa.Column("lat", sa.Float(), nullable=True),
+            sa.Column("lon", sa.Float(), nullable=True),
+            sa.Column(
+                "verified",
+                sa.Boolean(),
+                nullable=False,
+                server_default=sa.text("false"),
+            ),
+            sa.Column(
+                "visible",
+                sa.Boolean(),
+                nullable=False,
+                server_default=sa.text("true"),
+            ),
+            sa.Column(
+                "created_at",
+                sa.DateTime(),
+                nullable=False,
+                server_default=sa.text("now()"),
+            ),
+            sa.CheckConstraint(
+                "category IN ('Guide','Hotel','Ristorante','Tour','Altro')",
+                name="ck_partners_category",
+            ),
+        )
+
+    existing_indexes = {index["name"] for index in insp.get_indexes("partners")}
+    if "ix_partners_visible" not in existing_indexes:
+        op.create_index("ix_partners_visible", "partners", ["visible"])
+    if "ix_partners_verified" not in existing_indexes:
+        op.create_index("ix_partners_verified", "partners", ["verified"])
+    if "ix_partners_category" not in existing_indexes:
+        op.create_index("ix_partners_category", "partners", ["category"])
 
 
 def downgrade() -> None:
