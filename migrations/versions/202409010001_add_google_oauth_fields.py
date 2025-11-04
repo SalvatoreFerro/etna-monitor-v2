@@ -7,7 +7,7 @@ import sqlalchemy as sa
 
 
 revision = "202409010001_add_google_oauth_fields"
-down_revision = "202408010002_sync_partners"
+down_revision = "202409010000_extend_alembic_len"
 branch_labels = None
 depends_on = None
 

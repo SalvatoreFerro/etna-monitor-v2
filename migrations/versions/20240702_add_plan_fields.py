@@ -231,16 +231,27 @@ def downgrade() -> None:
             USING (CASE WHEN free_alert_consumed THEN 1 ELSE 0 END)
         """))
     
-    op.drop_constraint('uq_users_telegram_chat_id', 'users', type_='unique')
-    op.drop_column('users', 'privacy_version')
-    op.drop_column('users', 'consent_ts')
-    op.drop_column('users', 'alert_count_30d')
-    op.drop_column('users', 'last_alert_sent_at')
-    op.drop_column('users', 'free_alert_event_id')
-    op.drop_column('users', 'free_alert_consumed')
-    op.drop_column('users', 'telegram_opt_in')
-    op.drop_column('users', 'telegram_chat_id')
-    op.drop_column('users', 'plan_type')
+    existing_constraints = {
+        constraint['name']
+        for constraint in inspector.get_unique_constraints('users')
+    }
+
+    if 'uq_users_telegram_chat_id' in existing_constraints:
+        op.drop_constraint('uq_users_telegram_chat_id', 'users', type_='unique')
+
+    for column_name in [
+        'privacy_version',
+        'consent_ts',
+        'alert_count_30d',
+        'last_alert_sent_at',
+        'free_alert_event_id',
+        'free_alert_consumed',
+        'telegram_opt_in',
+        'telegram_chat_id',
+        'plan_type',
+    ]:
+        if column_name in existing_columns:
+            op.drop_column('users', column_name)
 
     bind = _get_bind()
     plan_enum = sa.Enum('free', 'premium', name='plan_type_enum')

@@ -71,6 +71,12 @@ def _mask_database_uri(uri: str) -> str:
 SLOW_REQUEST_THRESHOLD_MS = 300
 
 
+def _is_truthy_env(value: str | None) -> bool:
+    if value is None:
+        return False
+    return value.strip().lower() in {"1", "true", "yes"}
+
+
 def _ensure_partners_table(app: Flask) -> None:
     """Ensure the partners table exists with the expected schema."""
 
@@ -263,6 +269,13 @@ def create_app(config_overrides: dict | None = None):
         or "development"
     ).lower()
     app.config["APP_ENV"] = app_env
+
+    alembic_running = _is_truthy_env(os.getenv("ALEMBIC_RUNNING"))
+    app.config["ALEMBIC_RUNNING"] = alembic_running
+    if alembic_running:
+        app.logger.info(
+            "[BOOT] ALEMBIC_RUNNING detected – skipping startup side-effects"
+        )
 
     secret_from_env = os.getenv("SECRET_KEY")
     if secret_from_env:
@@ -478,13 +491,18 @@ def create_app(config_overrides: dict | None = None):
     db.init_app(app)
     migrate.init_app(app, db)
 
-    skip_schema_validation = os.getenv("SKIP_SCHEMA_VALIDATION", "0").lower() in {
-        "1",
-        "true",
-        "yes",
-    }
+    skip_schema_validation_env = _is_truthy_env(os.getenv("SKIP_SCHEMA_VALIDATION"))
 
-    if skip_schema_validation:
+    if alembic_running:
+        migration_status = {
+            "head_revision": None,
+            "current_revision": None,
+            "database_online": False,
+            "is_up_to_date": False,
+            "error": "Schema validation skipped via ALEMBIC_RUNNING",
+            "skipped": True,
+        }
+    elif skip_schema_validation_env:
         migration_status = {
             "head_revision": None,
             "current_revision": None,
@@ -499,33 +517,41 @@ def create_app(config_overrides: dict | None = None):
 
     app.config["ALEMBIC_MIGRATION_STATUS"] = migration_status
 
-    if not migration_status.get("database_online") and not skip_schema_validation:
-        app.logger.warning("[BOOT] Database connection unavailable during startup checks")
-    elif migration_status.get("is_up_to_date"):
-        app.logger.info(
-            "[BOOT] Database schema verified current (revision=%s)",
-            migration_status.get("current_revision"),
-        )
+    if not alembic_running:
+        if not migration_status.get("database_online") and not skip_schema_validation_env:
+            app.logger.warning("[BOOT] Database connection unavailable during startup checks")
+        elif migration_status.get("is_up_to_date"):
+            app.logger.info(
+                "[BOOT] Database schema verified current (revision=%s)",
+                migration_status.get("current_revision"),
+            )
 
-    if app_env == "production" and not skip_schema_validation and not migration_status.get(
-        "is_up_to_date"
-    ):
-        app.logger.critical(
-            "[BOOT] Database schema not up to date (current=%s head=%s). "
-            "Run 'alembic upgrade head' before starting or set ALLOW_AUTO_MIGRATE=1.",
-            migration_status.get("current_revision"),
-            migration_status.get("head_revision"),
-        )
-        sys.exit(2)
+        if app_env == "production" and not skip_schema_validation_env and not migration_status.get(
+            "is_up_to_date"
+        ):
+            app.logger.critical(
+                "[BOOT] Database schema not up to date (current=%s head=%s). "
+                "Run 'alembic upgrade head' before starting or set ALLOW_AUTO_MIGRATE=1.",
+                migration_status.get("current_revision"),
+                migration_status.get("head_revision"),
+            )
+            sys.exit(2)
 
-    if skip_schema_validation:
+    if skip_schema_validation_env and not alembic_running:
         app.logger.info("[BOOT] Schema validation skipped due to SKIP_SCHEMA_VALIDATION=1")
 
-    curva_path = ensure_curva_csv(app)
-    app.config["CURVA_CSV_PATH"] = str(curva_path)
+    if not alembic_running:
+        curva_path = ensure_curva_csv(app)
+        app.config["CURVA_CSV_PATH"] = str(curva_path)
+    else:
+        app.config["CURVA_CSV_PATH"] = None
 
     # Auto-migrazione opzionale (DISABILITATA di default). Richiede app context.
-    if _migrate_available and os.getenv("AUTO_MIGRATE", "0").lower() in {"1", "true", "yes"}:
+    if (
+        not alembic_running
+        and _migrate_available
+        and os.getenv("AUTO_MIGRATE", "0").lower() in {"1", "true", "yes"}
+    ):
         try:  # pragma: no cover - integration with alembic CLI
             from flask_migrate import upgrade as alembic_upgrade
             with app.app_context():
@@ -566,14 +592,15 @@ def create_app(config_overrides: dict | None = None):
     app.config["MIGRATIONS_AVAILABLE"] = _migrate_available
 
     disable_scheduler = os.getenv("DISABLE_SCHEDULER", "0").lower() in {"1", "true", "yes"}
-    if disable_scheduler:
-        app.logger.info(
-            "[BOOT] Scheduler disabled via DISABLE_SCHEDULER environment variable"
-        )
-    else:
-        app.logger.info(
-            "[BOOT] Scheduler execution delegated to worker process (python -m app.worker)"
-        )
+    if not alembic_running:
+        if disable_scheduler:
+            app.logger.info(
+                "[BOOT] Scheduler disabled via DISABLE_SCHEDULER environment variable"
+            )
+        else:
+            app.logger.info(
+                "[BOOT] Scheduler execution delegated to worker process (python -m app.worker)"
+            )
 
     telegram_mode = (app.config.get("TELEGRAM_BOT_MODE") or "off").lower()
     telegram_status = {
@@ -583,39 +610,41 @@ def create_app(config_overrides: dict | None = None):
         "last_error": None,
         "managed_by": "worker" if telegram_mode == "polling" else "app",
     }
-    if telegram_mode == "webhook":
-        app.logger.info(
-            "[BOOT] Telegram bot configured for webhook mode; polling is disabled"
-        )
-    elif telegram_mode == "polling":
-        app.logger.info("[BOOT] Telegram bot polling managed by background worker ✅")
-    else:
-        app.logger.info("[BOOT] Telegram bot disabled (mode=%s)", telegram_mode)
+    if not alembic_running:
+        if telegram_mode == "webhook":
+            app.logger.info(
+                "[BOOT] Telegram bot configured for webhook mode; polling is disabled"
+            )
+        elif telegram_mode == "polling":
+            app.logger.info("[BOOT] Telegram bot polling managed by background worker ✅")
+        else:
+            app.logger.info("[BOOT] Telegram bot disabled (mode=%s)", telegram_mode)
 
     app.config["TELEGRAM_BOT_STATUS"] = telegram_status
 
-    with app.app_context():
-        ensure_user_schema_guard(app)
-        _ensure_partners_table(app)
-        _ensure_sponsor_tables(app)
+    if not alembic_running:
+        with app.app_context():
+            ensure_user_schema_guard(app)
+            _ensure_partners_table(app)
+            _ensure_sponsor_tables(app)
 
-        # Auto-promozione admin
-        try:
-            with db.engine.connect() as conn:
-                for email in app.config.get("ADMIN_EMAILS_SET", set()):
-                    normalized_email = (email or "").strip().lower()
-                    if not normalized_email:
-                        continue
-                    conn.execute(
-                        text(
-                            "UPDATE users SET is_admin = TRUE WHERE lower(email) = :e"
-                        ),
-                        {"e": normalized_email},
-                    )
-                conn.commit()
-            app.logger.info("[BOOT] Admin auto-promotion applied to existing users.")
-        except Exception:
-            app.logger.exception("[BOOT] Admin auto-promotion failed")
+            # Auto-promozione admin
+            try:
+                with db.engine.connect() as conn:
+                    for email in app.config.get("ADMIN_EMAILS_SET", set()):
+                        normalized_email = (email or "").strip().lower()
+                        if not normalized_email:
+                            continue
+                        conn.execute(
+                            text(
+                                "UPDATE users SET is_admin = TRUE WHERE lower(email) = :e"
+                            ),
+                            {"e": normalized_email},
+                        )
+                    conn.commit()
+                app.logger.info("[BOOT] Admin auto-promotion applied to existing users.")
+            except Exception:
+                app.logger.exception("[BOOT] Admin auto-promotion failed")
 
     csp = build_csp()
     app.config["BASE_CONTENT_SECURITY_POLICY"] = build_csp()
