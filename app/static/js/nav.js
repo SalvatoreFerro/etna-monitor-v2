@@ -42,6 +42,8 @@
 
     function closeMenu() {
       menu.classList.remove('is-open');
+      const dropdowns = menu.querySelectorAll('[data-site-nav-dropdown]');
+      dropdowns.forEach((dropdown) => dropdown.removeAttribute('open'));
       if (!desktopQuery.matches) {
         menu.setAttribute('hidden', '');
         menu.setAttribute('aria-hidden', 'true');

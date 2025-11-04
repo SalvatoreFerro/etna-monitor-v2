@@ -16,9 +16,10 @@ from flask_login import current_user
 
 from ..utils.auth import get_current_user
 
+from app.bootstrap import get_alembic_status
 from app.models import db
 from app.models.user import User
-from sqlalchemy import or_, text
+from sqlalchemy import or_
 
 from ..extensions import cache
 from ..utils.metrics import get_csv_metrics, record_csv_error, record_csv_read
@@ -454,65 +455,42 @@ def healthcheck():
 
     csv_metrics = get_csv_metrics()
 
+    database_status = get_alembic_status(current_app)
+    db_online = bool(database_status.get("database_online"))
+    db_current = bool(database_status.get("is_up_to_date"))
+
     premium_count = 0
-    try:
-        premium_count = (
-            db.session.query(User)
-            .filter(or_(User.premium.is_(True), User.is_premium.is_(True)))
-            .count()
-        )
-    except Exception as exc:  # pragma: no cover - defensive logging
-        current_app.logger.warning("[HEALTH] Failed to count premium users: %s", exc)
+    premium_error = None
+    if db_online:
+        try:
+            premium_count = (
+                db.session.query(User)
+                .filter(or_(User.premium.is_(True), User.is_premium.is_(True)))
+                .count()
+            )
+        except Exception as exc:  # pragma: no cover - defensive logging
+            premium_error = str(exc)
+            current_app.logger.warning("[HEALTH] Failed to count premium users: %s", exc)
+    else:
+        premium_error = database_status.get("error")
 
     telegram_status = current_app.config.get("TELEGRAM_BOT_STATUS", {})
 
+    ok = db_online and db_current
     payload = {
-        "ok": True,
+        "ok": ok,
         "uptime_seconds": uptime,
         "csv": csv_metrics,
         "telegram_bot": telegram_status,
         "premium_users": premium_count,
+        "premium_users_error": premium_error,
         "build_sha": current_app.config.get("BUILD_SHA"),
+        "database": database_status,
     }
 
     if current_app.debug:
-        db_status = {
-            "database_revision": None,
-            "expected_head": None,
-            "is_up_to_date": None,
-            "error": None,
-        }
-
-        migrations_path = Path(current_app.root_path).parent / "migrations"
-        try:
-            from alembic.config import Config  # type: ignore import
-            from alembic.script import ScriptDirectory  # type: ignore import
-
-            if migrations_path.exists():
-                cfg = Config()
-                cfg.set_main_option("script_location", str(migrations_path))
-                script_dir = ScriptDirectory.from_config(cfg)
-                db_status["expected_head"] = script_dir.get_current_head()
-            else:
-                raise FileNotFoundError(f"Migrations path not found: {migrations_path}")
-        except Exception as exc:  # pragma: no cover - diagnostic only
-            current_app.logger.warning("[HEALTH] Failed to inspect Alembic head: %s", exc)
-            db_status["error"] = f"alembic:{exc}"
-
-        try:
-            with db.engine.connect() as connection:
-                result = connection.execute(text("SELECT version_num FROM alembic_version"))
-                db_revision = result.scalar()
-            db_status["database_revision"] = db_revision
-            if db_status["expected_head"]:
-                db_status["is_up_to_date"] = db_revision == db_status["expected_head"]
-        except Exception as exc:  # pragma: no cover - diagnostic only
-            current_app.logger.warning("[HEALTH] Failed to fetch alembic_version: %s", exc)
-            existing_error = db_status.get("error")
-            suffix = f"database:{exc}"
-            db_status["error"] = f"{existing_error}; {suffix}" if existing_error else suffix
-
-        payload["db_status"] = db_status
+        payload["db_status"] = database_status
 
     current_app.logger.info("[HEALTH] ok=%s premium_users=%s", payload["ok"], premium_count)
-    return jsonify(payload), 200
+    status_code = 200 if ok else 503
+    return jsonify(payload), status_code

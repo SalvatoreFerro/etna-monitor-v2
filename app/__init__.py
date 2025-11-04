@@ -1,9 +1,10 @@
-from flask import Flask, g, redirect, request, url_for, current_app
+from flask import Flask, g, redirect, request, render_template, url_for, current_app
 from flask_login import LoginManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from werkzeug.middleware.proxy_fix import ProxyFix  # Ensure proxy headers are honored for HTTPS redirects
 import os
+import sys
 import redis
 import warnings
 from datetime import datetime, timedelta
@@ -30,6 +31,7 @@ from sqlalchemy.pool import QueuePool, StaticPool
 
 from .routes.main import bp as main_bp
 from .routes.experience import bp as experience_bp
+from .routes.community import bp as community_bp
 from .routes.dashboard import bp as dashboard_bp
 from .routes.admin import bp as admin_bp
 from .routes.auth import bp as auth_bp, legacy_bp as legacy_auth_bp
@@ -38,7 +40,11 @@ from .routes.status import status_bp
 from .routes.billing import bp as billing_bp
 from .routes.internal import internal_bp
 from backend.routes.admin_stats import admin_stats_bp
-from .bootstrap import ensure_curva_csv, ensure_user_schema_guard, init_db
+from .bootstrap import (
+    ensure_curva_csv,
+    ensure_schema_current,
+    ensure_user_schema_guard,
+)
 from .models import db
 from .utils.csrf import generate_csrf_token
 from .utils.logger import configure_logging
@@ -250,17 +256,41 @@ def create_app(config_overrides: dict | None = None):
 
     warnings.filterwarnings("ignore", message="Using the in-memory storage")
 
+    app_env = (
+        os.getenv("APP_ENV")
+        or app.config.get("APP_ENV")
+        or os.getenv("FLASK_ENV")
+        or "development"
+    ).lower()
+    app.config["APP_ENV"] = app_env
+
     secret_from_env = os.getenv("SECRET_KEY")
     if secret_from_env:
         app.config["SECRET_KEY"] = secret_from_env
+
     secret_key = app.config.get("SECRET_KEY")
+
     if app.config.get("TESTING"):
         if not secret_key or secret_key in {"dev", "change-me"}:
             app.config["SECRET_KEY"] = "test-secret-key"
-    elif not secret_key or secret_key in {"dev", "change-me"}:
-        raise RuntimeError(
-            "SECRET_KEY environment variable must be set to a secure, non-default value."
-        )
+    elif app_env == "production":
+        normalized_secret = secret_key if isinstance(secret_key, str) else str(secret_key or "")
+        if not normalized_secret:
+            app.logger.critical(
+                "[BOOT] SECRET_KEY environment variable missing. Set a strong value (>=32 characters) before starting."
+            )
+            sys.exit(1)
+        if len(normalized_secret) < 32:
+            app.logger.critical(
+                "[BOOT] SECRET_KEY is too short. Provide a value with at least 32 characters."
+            )
+            sys.exit(1)
+    else:
+        if not secret_key or secret_key in {"dev", "change-me", ""}:
+            app.config["SECRET_KEY"] = "dev-secret-key"
+            app.logger.warning(
+                "[BOOT] SECRET_KEY not provided; using development fallback. Do not use in production."
+            )
 
     app.config.setdefault("SESSION_COOKIE_SECURE", True)
     app.config.setdefault("SESSION_COOKIE_SAMESITE", "Lax")
@@ -447,25 +477,28 @@ def create_app(config_overrides: dict | None = None):
 
     db.init_app(app)
     migrate.init_app(app, db)
-    curva_path = ensure_curva_csv(app)
-    app.config["CURVA_CSV_PATH"] = str(curva_path)
 
-    run_db_init = os.getenv("RUN_DB_INIT_ON_STARTUP", "1").lower() in {"1", "true", "yes"}
-    if app.config.get("TESTING"):
-        run_db_init = False
-        app.logger.debug("[BOOT] Skipping init_db during tests")
-    if run_db_init:
-        try:
-            migrations_ok = init_db(app)
-        except Exception:  # pragma: no cover - defensive logging
-            app.logger.exception("[BOOT] init_db execution raised an unexpected exception")
-            migrations_ok = False
-        if not migrations_ok:
-            app.logger.warning(
-                "[BOOT] Database migration fallback executed; review schema_guard logs for details"
-            )
-    else:
-        app.logger.info("[BOOT] RUN_DB_INIT_ON_STARTUP disabled; skipping migration bootstrap")
+    with app.app_context():
+        migration_status = ensure_schema_current(app)
+
+    app.config["ALEMBIC_MIGRATION_STATUS"] = migration_status
+
+    if not migration_status.get("database_online"):
+        app.logger.warning("[BOOT] Database connection unavailable during startup checks")
+    elif migration_status.get("is_up_to_date"):
+        app.logger.info(
+            "[BOOT] Database schema verified current (revision=%s)",
+            migration_status.get("current_revision"),
+        )
+
+    if app_env == "production" and not migration_status.get("is_up_to_date"):
+        app.logger.critical(
+            "[BOOT] Database schema not up to date (current=%s head=%s). "
+            "Run 'alembic upgrade head' before starting or set ALLOW_AUTO_MIGRATE=1.",
+            migration_status.get("current_revision"),
+            migration_status.get("head_revision"),
+        )
+        sys.exit(2)
 
     curva_path = ensure_curva_csv(app)
     app.config["CURVA_CSV_PATH"] = str(curva_path)
@@ -647,6 +680,7 @@ def create_app(config_overrides: dict | None = None):
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
     app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(billing_bp)
+    app.register_blueprint(community_bp)
     app.register_blueprint(admin_stats_bp, url_prefix="/admin/api")
     app.register_blueprint(api_bp)
     app.register_blueprint(status_bp)
@@ -678,6 +712,18 @@ def create_app(config_overrides: dict | None = None):
                 "Cache-Control", "public, max-age=604800, immutable"
             )
         return response
+
+    @app.errorhandler(500)
+    def render_internal_error(error):  # pragma: no cover - presentation only
+        app.logger.exception("[500] Internal server error")
+        return (
+            render_template(
+                "errors/500.html",
+                page_title="Qualcosa è andato storto",
+                page_description="Si è verificato un errore inaspettato. Riprova fra poco.",
+            ),
+            500,
+        )
 
     return app
 

@@ -62,7 +62,7 @@ Add a second **worker service** with the Start Command:
 python -m app.worker
 ```
 
-L'applicazione esegue `init_db()` automaticamente durante la creazione dell'app Flask (sia nel processo web che nel worker). Se le migrazioni dovessero fallire, viene applicato un fallback di "schema guard" che effettua gli `ALTER TABLE IF NOT EXISTS` per le colonne critiche (`theme_preference`, `plan_type`, `subscription_status`, ecc.). Il worker (`python -m app.worker`) si occupa di Telegram bot e scheduler APScheduler applicando un advisory lock Postgres per evitare istanze duplicate.
+L'applicazione verifica lo stato delle migrazioni Alembic durante la creazione dell'app Flask (sia nel processo web che nel worker). In produzione il bootstrap fallisce se lo schema non è aggiornato a `head`; facoltativamente puoi impostare `ALLOW_AUTO_MIGRATE=1` per eseguire un singolo `alembic upgrade head` con lock file prima di esporre il servizio. Il worker (`python -m app.worker`) si occupa di Telegram bot e scheduler APScheduler applicando un advisory lock Postgres per evitare istanze duplicate.
 
 ## Health Check Configuration
 
