@@ -1,0 +1,129 @@
+/* Blog article detail refinements */
+
+.post {
+  display: block;
+}
+
+.post__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.post__content img,
+.post__content video,
+.post__content iframe {
+  max-width: 100%;
+  height: auto;
+}
+
+.post__content pre {
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: rgba(15, 23, 42, 0.75);
+  overflow-x: auto;
+}
+
+.post__content blockquote {
+  margin-inline: 0;
+  padding: 1rem 1.5rem;
+  border-left: 3px solid rgba(148, 163, 184, 0.6);
+  background: rgba(15, 23, 42, 0.4);
+  border-radius: 0.75rem;
+}
+
+.post__content table {
+  width: 100%;
+  border-collapse: collapse;
+  overflow-x: auto;
+}
+
+.post__content table th,
+.post__content table td {
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.post__hero img {
+  width: 100%;
+  display: block;
+  border-radius: 1rem;
+}
+
+@media (min-width: 1024px) {
+  .post {
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+    max-width: 820px;
+  }
+
+  .post__title {
+    font-size: clamp(2rem, 1.6rem + 1.2vw, 2.6rem);
+    line-height: 1.2;
+    margin: 1.2rem 0 0.5rem;
+  }
+
+  .post__abstract {
+    opacity: 0.85;
+    font-size: 1.05rem;
+    line-height: 1.7;
+    margin-bottom: 1.5rem;
+  }
+
+  .post__content {
+    font-size: 1.05rem;
+    line-height: 1.8;
+    letter-spacing: 0.005em;
+    max-width: 820px;
+    margin: 0 auto;
+  }
+
+  .post__content h2 {
+    margin-top: 2.2rem;
+    margin-bottom: 0.8rem;
+    font-size: 1.6rem;
+    line-height: 1.3;
+  }
+
+  .post__content h3 {
+    margin-top: 1.8rem;
+    margin-bottom: 0.6rem;
+    font-size: 1.3rem;
+  }
+
+  .post__content p,
+  .post__content ul,
+  .post__content ol,
+  .post__content blockquote,
+  .post__content pre,
+  .post__content table {
+    margin: 1rem 0;
+  }
+
+  .post__content ul,
+  .post__content ol {
+    padding-left: 1.3em;
+  }
+
+  .post__content img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 10px;
+    margin: 1rem auto;
+  }
+
+  .post__hero {
+    margin: 0 calc(50% - 50vw);
+  }
+
+  .post__hero img {
+    width: 100vw;
+    height: clamp(240px, 40vh, 420px);
+    object-fit: cover;
+    display: block;
+    border-radius: 0;
+  }
+}
+

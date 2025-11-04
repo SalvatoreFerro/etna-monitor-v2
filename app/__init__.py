@@ -46,6 +46,7 @@ from .bootstrap import (
     ensure_user_schema_guard,
 )
 from .models import db
+from .filters import md
 from .utils.csrf import generate_csrf_token
 from .utils.logger import configure_logging
 from config import Config, get_database_uri_from_env
@@ -250,6 +251,7 @@ def create_app(config_overrides: dict | None = None):
     app.config.setdefault(
         "WORKER_HEARTBEAT_INTERVAL", int(os.getenv("WORKER_HEARTBEAT_INTERVAL", "30"))
     )
+    app.jinja_env.filters["md"] = md
     app.jinja_env.globals["csrf_token"] = generate_csrf_token
     app.jinja_env.globals["static_asset_version"] = app.config["STATIC_ASSET_VERSION"]
     app.jinja_env.globals["STATIC_ASSET_VERSION"] = app.config["STATIC_ASSET_VERSION"]
