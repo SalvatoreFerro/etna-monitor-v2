@@ -1,0 +1,19 @@
+{% extends "layout.html" %}
+{% block head %}
+  {{ super() }}
+  <meta name="robots" content="noindex" />
+{% endblock %}
+{% block title %}{{ page_title or "Errore interno" }} · EtnaMonitor{% endblock %}
+{% block content %}
+<section class="section section--narrow">
+  <div class="container container--narrow stack" style="text-align: center; max-width: 640px;">
+    <span class="pill pill--glow" aria-hidden="true">Errore 500</span>
+    <h1>{{ page_title or "Qualcosa è andato storto" }}</h1>
+    <p>{{ page_description or "Si è verificato un problema temporaneo. Il nostro team è stato avvisato e sta già indagando." }}</p>
+    <div class="stack" style="gap: var(--space-4);">
+      <a class="btn btn-primary" href="{{ url_for('main.index') }}">Torna alla home</a>
+      <a class="btn btn-ghost" href="mailto:salvoferro16@gmail.com">Segnala il problema</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

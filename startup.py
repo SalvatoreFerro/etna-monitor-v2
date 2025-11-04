@@ -8,7 +8,7 @@ import os
 import sys
 
 from app import create_app
-from app.bootstrap import ensure_curva_csv, init_db
+from app.bootstrap import ensure_curva_csv
 from app.utils.logger import configure_logging
 
 logger = logging.getLogger(__name__)
@@ -33,16 +33,14 @@ def main() -> None:
         logger.exception("Failed to create Flask application during startup")
         sys.exit(1)
 
-    try:
-        migrations_ok = init_db(app)
-    except Exception:
-        logger.exception("[BOOT] init_db raised an unexpected error during startup")
-        migrations_ok = False
-
-    if not migrations_ok:
-        logger.warning(
-            "[BOOT] Proceeding with application startup after schema guard fallback"
-        )
+    status = app.config.get("ALEMBIC_MIGRATION_STATUS", {})
+    logger.info(
+        "[STARTUP] Migration status database_online=%s current=%s head=%s up_to_date=%s",
+        status.get("database_online"),
+        status.get("current_revision"),
+        status.get("head_revision"),
+        status.get("is_up_to_date"),
+    )
 
     try:
         ensure_curva_csv(app)

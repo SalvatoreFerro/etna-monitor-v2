@@ -17,7 +17,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app import create_app
-from app.bootstrap import ensure_curva_csv, init_db
+from app.bootstrap import ensure_curva_csv
 from app.models import db
 from app.services.scheduler_service import SchedulerService
 from app.services.telegram_bot_service import TelegramBotService
@@ -106,14 +106,15 @@ def main() -> None:
 
     app = create_app()
 
-    try:
-        migrations_ok = init_db(app)
-    except Exception:
-        logger.exception("[WORKER] init_db raised an unexpected error during bootstrap")
-        migrations_ok = False
+    status = app.config.get("ALEMBIC_MIGRATION_STATUS", {})
+    logger.info(
+        "[WORKER] Migration status database_online=%s current=%s head=%s up_to_date=%s",
+        status.get("database_online"),
+        status.get("current_revision"),
+        status.get("head_revision"),
+        status.get("is_up_to_date"),
+    )
 
-    if not migrations_ok:
-        logger.warning("[WORKER] Proceeding after schema guard fallback")
     ensure_curva_csv(app)
 
     with app.app_context():

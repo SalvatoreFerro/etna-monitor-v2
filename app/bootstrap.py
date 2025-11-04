@@ -5,11 +5,14 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
+from typing import Optional
 
+from alembic import command
+from alembic.config import Config as AlembicConfig
+from alembic.script import ScriptDirectory
 from flask import Flask, current_app
 from flask_migrate import init as migrate_init
 from flask_migrate import stamp as migrate_stamp
-from flask_migrate import upgrade as migrate_upgrade
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -24,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 _CURVA_WARNING_FLAG = "_curva_bootstrap_warning_emitted"
 _MIGRATIONS_DIRNAME = "migrations"
+_AUTO_MIGRATE_LOCK = "alembic-autoupgrade.lock"
 
 _USER_SCHEMA_GUARD_COLUMNS = {
     "telegram_chat_id": "BIGINT",
@@ -58,8 +62,26 @@ _USER_SCHEMA_GUARD_COLUMNS = {
 }
 
 
+def _repository_root(app: Flask) -> Path:
+    return Path(app.root_path).parent
+
+
 def _migrations_directory(app: Flask) -> Path:
-    return Path(app.root_path).parent / _MIGRATIONS_DIRNAME
+    return _repository_root(app) / _MIGRATIONS_DIRNAME
+
+
+def _alembic_config(app: Flask) -> AlembicConfig:
+    repo_root = _repository_root(app)
+    ini_path = repo_root / "alembic.ini"
+    config = AlembicConfig(str(ini_path))
+    script_location = config.get_main_option("script_location")
+    migrations_path = repo_root / _MIGRATIONS_DIRNAME
+    if not script_location or script_location == _MIGRATIONS_DIRNAME:
+        config.set_main_option("script_location", str(migrations_path))
+    sqlalchemy_url = app.config.get("SQLALCHEMY_DATABASE_URI")
+    if sqlalchemy_url:
+        config.set_main_option("sqlalchemy.url", sqlalchemy_url)
+    return config
 
 
 def _ensure_migrations_initialized(app: Flask, migrations_dir: Path, log: logging.Logger) -> None:
@@ -143,30 +165,157 @@ def ensure_user_schema_guard(app: Flask, log: logging.Logger | None = None) -> N
         logger_to_use.info("[BOOT] Schema guard completed")
 
 
+def _run_auto_migrate(app: Flask, config: AlembicConfig, log: logging.Logger) -> bool:
+    """Execute ``alembic upgrade head`` while holding a filesystem lock."""
+
+    allow = os.getenv("ALLOW_AUTO_MIGRATE", "0").lower() in {"1", "true", "yes"}
+    if not allow:
+        return False
+
+    instance_path = Path(app.instance_path)
+    instance_path.mkdir(parents=True, exist_ok=True)
+    lock_path = instance_path / _AUTO_MIGRATE_LOCK
+
+    try:
+        fd = os.open(lock_path, os.O_CREAT | os.O_EXCL | os.O_RDWR)
+    except FileExistsError:
+        log.info("[MIGRATE] Auto-migrate lock present at %s; skipping", lock_path)
+        return False
+
+    skip_var = "SKIP_SCHEMA_VALIDATION"
+    previous_skip = os.environ.get(skip_var)
+
+    try:
+        os.write(fd, str(os.getpid()).encode("utf-8"))
+        os.close(fd)
+        os.environ[skip_var] = "1"
+        log.info("[MIGRATE] Running alembic upgrade head (auto-migrate enabled)")
+        command.upgrade(config, "head")
+        log.info("[MIGRATE] Alembic upgrade head completed")
+        return True
+    except Exception:
+        log.exception("[MIGRATE] Alembic auto-migrate failed")
+        raise
+    finally:
+        if previous_skip is None:
+            os.environ.pop(skip_var, None)
+        else:
+            os.environ[skip_var] = previous_skip
+        try:
+            lock_path.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def get_alembic_status(app: Flask, log: logging.Logger | None = None) -> dict[str, Optional[str] | bool]:
+    """Return the expected and applied Alembic revisions together with health info."""
+
+    logger_to_use = log or getattr(app, "logger", logger)
+
+    expected_revision: Optional[str] = None
+    current_revision: Optional[str] = None
+    error: Optional[str] = None
+    database_online = False
+
+    config = _alembic_config(app)
+
+    try:
+        script = ScriptDirectory.from_config(config)
+        expected_revision = script.get_current_head()
+    except Exception as exc:  # pragma: no cover - defensive guard
+        error = f"Unable to determine Alembic head: {exc}"
+        logger_to_use.warning("[MIGRATE] %s", error)
+
+    try:
+        engine = db.engine
+    except Exception as exc:  # pragma: no cover - defensive guard
+        error = f"Unable to access database engine: {exc}"
+        logger_to_use.warning("[MIGRATE] %s", error)
+    else:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+                database_online = True
+                try:
+                    result = conn.execute(text("SELECT version_num FROM alembic_version"))
+                except SQLAlchemyError as exc:  # pragma: no cover - fallback for missing table
+                    if error is None:
+                        error = f"Unable to read alembic_version table: {exc}"
+                    logger_to_use.warning("[MIGRATE] %s", error)
+                else:
+                    row = result.first()
+                    if row is not None:
+                        current_revision = row[0]
+        except SQLAlchemyError as exc:  # pragma: no cover - database offline
+            error = f"Database connectivity check failed: {exc}"
+            logger_to_use.warning("[MIGRATE] %s", error)
+
+    is_up_to_date = (
+        database_online
+        and expected_revision is not None
+        and current_revision is not None
+        and current_revision == expected_revision
+    )
+
+    return {
+        "head_revision": expected_revision,
+        "current_revision": current_revision,
+        "database_online": database_online,
+        "is_up_to_date": is_up_to_date,
+        "error": error,
+    }
+
+
+def ensure_schema_current(app: Flask, log: logging.Logger | None = None) -> dict[str, Optional[str] | bool]:
+    """Ensure the runtime database schema matches the Alembic head revision."""
+
+    logger_to_use = log or getattr(app, "logger", logger)
+    config = _alembic_config(app)
+    status = get_alembic_status(app, logger_to_use)
+
+    if status["is_up_to_date"]:
+        return status
+
+    if not status["database_online"]:
+        return status
+
+    try:
+        ran = _run_auto_migrate(app, config, logger_to_use)
+    except Exception:
+        return status
+
+    if ran:
+        status = get_alembic_status(app, logger_to_use)
+
+    return status
+
+
 def init_db(app: Flask) -> bool:
-    """Run database migrations idempotently before serving traffic."""
+    """Run Alembic migrations when ``ALLOW_AUTO_MIGRATE`` is enabled."""
 
     if app is None:  # pragma: no cover - sanity check
         raise ValueError("init_db requires a Flask application instance")
 
     log = app.logger if app.logger else logger  # type: ignore[assignment]
-    log.info("[BOOT] Running database initialization (Flask-Migrate upgrade head)...")
+    log.info("[BOOT] Checking database schema state...")
 
     migrations_dir = _migrations_directory(app)
 
-    try:
-        with app.app_context():
-            migrations_dir.mkdir(parents=True, exist_ok=True)
-            _ensure_migrations_initialized(app, migrations_dir, log)
-            migrate_upgrade(directory=str(migrations_dir))
-    except Exception as exc:  # pragma: no cover - defensive guard
-        log.exception("[BOOT] Database migration failed: %s", exc)
-        log.warning("[BOOT] Falling back to schema guard for critical columns")
-        ensure_user_schema_guard(app, log)
-        return False
-    else:
-        log.info("[BOOT] Alembic upgrade head OK")
+    with app.app_context():
+        migrations_dir.mkdir(parents=True, exist_ok=True)
+        _ensure_migrations_initialized(app, migrations_dir, log)
+        status = ensure_schema_current(app, log)
+
+    if status["is_up_to_date"]:
+        log.info("[BOOT] Database schema matches Alembic head (%s)", status["head_revision"])
         return True
+
+    log.warning(
+        "[BOOT] Database schema not up to date (current=%s head=%s)",
+        status["current_revision"],
+        status["head_revision"],
+    )
+    return False
 
 
 def ensure_curva_csv(app: Flask | None = None) -> Path:
@@ -210,5 +359,11 @@ def ensure_curva_csv(app: Flask | None = None) -> Path:
     return csv_path
 
 
-__all__ = ["ensure_curva_csv", "ensure_user_schema_guard", "init_db"]
+__all__ = [
+    "ensure_curva_csv",
+    "ensure_user_schema_guard",
+    "ensure_schema_current",
+    "get_alembic_status",
+    "init_db",
+]
 

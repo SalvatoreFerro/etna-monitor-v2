@@ -3,6 +3,8 @@ from playwright.sync_api import sync_playwright
 import os
 from pathlib import Path
 
+pytestmark = pytest.mark.e2e
+
 @pytest.fixture(scope="session")
 def browser():
     with sync_playwright() as p:

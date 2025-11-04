@@ -1,0 +1,79 @@
+{% extends "layout.html" %}
+
+{% set page_title = "Forum Community" %}
+{% set page_description = "Domande, risposte e discussioni tra gli appassionati di EtnaMonitor." %}
+
+{% block content %}
+<section class="page-hero" aria-labelledby="forum-hero-title">
+  <div class="container">
+    <span class="pill pill--glow">Community</span>
+    <h1 id="forum-hero-title">Forum Q&amp;A</h1>
+    <p class="lead">Condividi dubbi, best practice e suggerimenti: la community ti aiuta a interpretare i dati e usare al meglio la piattaforma.</p>
+    <div class="forum-highlights" role="list">
+      <div role="listitem">
+        <i class="fas fa-mountain"></i>
+        <span>Guide e workflow commentati dagli esperti.</span>
+      </div>
+      <div role="listitem">
+        <i class="fas fa-chart-line"></i>
+        <span>Alert sulle novità più votate.</span>
+      </div>
+      <div role="listitem">
+        <i class="fas fa-medal"></i>
+        <span>Badge gamification per chi supporta gli altri.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="forum-submit" aria-label="Apri nuova discussione">
+  <div class="container">
+    <form method="post" class="card" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <h2><i class="fas fa-plus"></i> Avvia una nuova domanda</h2>
+      <label>
+        <span>Titolo</span>
+        <input type="text" name="title" minlength="10" maxlength="160" required placeholder="Es. Come interpretare un picco improvviso?" />
+      </label>
+      <label>
+        <span>Messaggio</span>
+        <textarea name="body" rows="5" minlength="20" required placeholder="Descrivi il contesto, allega link o schermate…"></textarea>
+      </label>
+      <div class="form-grid">
+        <label>
+          <span>Il tuo nome (opzionale)</span>
+          <input type="text" name="author_name" maxlength="120" />
+        </label>
+        <label>
+          <span>Email per follow-up (opzionale)</span>
+          <input type="email" name="author_email" maxlength="255" />
+        </label>
+      </div>
+      <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Pubblica</button>
+    </form>
+  </div>
+</section>
+
+<section class="forum-threads" aria-label="Discussioni attive">
+  <div class="container">
+    {% if threads %}
+      <ul class="forum-thread-list">
+        {% for thread in threads %}
+          <li class="forum-thread-card">
+            <h2><a href="{{ url_for('community.thread_detail', slug=thread.slug) }}">{{ thread.title }}</a></h2>
+            <p>{{ thread.body[:220] }}{% if thread.body|length > 220 %}…{% endif %}</p>
+            <footer>
+              <span><i class="fas fa-user"></i> {{ thread.author_name or 'Anonimo' }}</span>
+              <span><i class="fas fa-clock"></i> {{ thread.updated_at.strftime('%d/%m/%Y %H:%M') }}</span>
+              <span><i class="fas fa-comments"></i> {{ thread.replies.count() }}</span>
+              <span class="badge {{ 'success' if thread.status == 'resolved' else 'info' }}">{{ 'Risolta' if thread.status == 'resolved' else 'In corso' }}</span>
+            </footer>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="lead">Sii il primo ad aprire una discussione! I nostri esperti monitorano costantemente la sezione.</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

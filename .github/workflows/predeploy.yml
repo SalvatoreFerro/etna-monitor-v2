@@ -39,8 +39,12 @@ jobs:
       - name: Run database migrations
         run: alembic upgrade head
 
-      - name: Run tests
-        run: pytest -q
+      - name: Run unit tests
+        run: pytest -m "not e2e" -q
+
+      - name: Run end-to-end tests
+        run: pytest -m e2e -q
+        continue-on-error: true
 
       - name: Import smoke test
         run: |

@@ -1,0 +1,74 @@
+{% extends "layout.html" %}
+
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
+{% endblock %}
+
+{% block content %}
+<section class="admin-page admin-container" aria-labelledby="admin-feedback-title">
+  <header class="admin-card admin-card--hero card-premium animate-premium-fade admin-header" id="admin-feedback-title">
+    <div>
+      <h1><i class="fas fa-comments"></i> Centro feedback</h1>
+      <p>Valuta le recensioni inviate dagli utenti e premia la partecipazione grazie al sistema di gamification.</p>
+    </div>
+    <nav class="admin-actions" aria-label="Sezioni amministrative">
+      <a href="{{ url_for('admin.admin_home') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-arrow-left"></i> Torna alla dashboard</a>
+      <a href="{{ url_for('admin.blog_manager') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-pen-nib"></i> Blog</a>
+    </nav>
+  </header>
+
+  <article class="admin-card card-premium animate-premium-fade">
+    <header class="admin-section-header">
+      <div>
+        <h2><i class="fas fa-star"></i> Feedback ricevuti</h2>
+        <p>Analizza valutazioni, categorizza le richieste e chiudi il ciclo di risposta agli utenti.</p>
+      </div>
+    </header>
+    {% if feedback_list %}
+      <ul class="feedback-list">
+        {% for feedback in feedback_list %}
+          <li class="feedback-card">
+            <header>
+              <strong>{{ feedback.display_name or 'Utente anonimo' }}</strong>
+              <span class="rating" aria-label="Valutazione: {{ feedback.rating }} su 5">
+                {% for star in range(1, 6) %}
+                  <i class="{% if star <= feedback.rating %}fas fa-star{% else %}fa-regular fa-star{% endif %}"></i>
+                {% endfor %}
+              </span>
+              <span class="badge {{ 'success' if feedback.status == 'reviewed' else 'warning' if feedback.status == 'archived' else 'info' }}">{{ feedback.status }}</span>
+              <time datetime="{{ feedback.created_at.isoformat() }}">{{ feedback.created_at.strftime('%d/%m/%Y %H:%M') }}</time>
+            </header>
+            {% if feedback.category %}
+              <p class="feedback-category">Categoria: <strong>{{ feedback.category }}</strong></p>
+            {% endif %}
+            <p class="feedback-comment">{{ feedback.comment }}</p>
+            <footer>
+              <form method="post" class="admin-inline-actions">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <input type="hidden" name="feedback_id" value="{{ feedback.id }}" />
+                <input type="hidden" name="action" value="review" />
+                <button type="submit" class="btn btn-secondary glass btn-sm"><i class="fas fa-check"></i> Contrassegna come gestito</button>
+              </form>
+              <form method="post" class="admin-inline-actions">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <input type="hidden" name="feedback_id" value="{{ feedback.id }}" />
+                <input type="hidden" name="action" value="archive" />
+                <button type="submit" class="btn btn-secondary glass btn-sm"><i class="fas fa-box-archive"></i> Archivia</button>
+              </form>
+              <form method="post" class="admin-inline-actions" onsubmit="return confirm('Eliminare questo feedback?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <input type="hidden" name="feedback_id" value="{{ feedback.id }}" />
+                <input type="hidden" name="action" value="delete" />
+                <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i> Elimina</button>
+              </form>
+            </footer>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="admin-caption">Non sono ancora arrivati feedback. Invita gli utenti a lasciare una recensione dalla nuova sezione community.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}
