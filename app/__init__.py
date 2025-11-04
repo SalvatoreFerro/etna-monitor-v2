@@ -478,24 +478,34 @@ def create_app(config_overrides: dict | None = None):
     db.init_app(app)
     migrate.init_app(app, db)
 
-    with app.app_context():
-        migration_status = ensure_schema_current(app)
+    skip_schema_validation = os.getenv("SKIP_SCHEMA_VALIDATION", "0").lower() in {
+        "1",
+        "true",
+        "yes",
+    }
+
+    if skip_schema_validation:
+        migration_status = {
+            "head_revision": None,
+            "current_revision": None,
+            "database_online": False,
+            "is_up_to_date": False,
+            "error": "Schema validation skipped via SKIP_SCHEMA_VALIDATION",
+            "skipped": True,
+        }
+    else:
+        with app.app_context():
+            migration_status = ensure_schema_current(app)
 
     app.config["ALEMBIC_MIGRATION_STATUS"] = migration_status
 
-    if not migration_status.get("database_online"):
+    if not migration_status.get("database_online") and not skip_schema_validation:
         app.logger.warning("[BOOT] Database connection unavailable during startup checks")
     elif migration_status.get("is_up_to_date"):
         app.logger.info(
             "[BOOT] Database schema verified current (revision=%s)",
             migration_status.get("current_revision"),
         )
-
-    skip_schema_validation = os.getenv("SKIP_SCHEMA_VALIDATION", "0").lower() in {
-        "1",
-        "true",
-        "yes",
-    }
 
     if app_env == "production" and not skip_schema_validation and not migration_status.get(
         "is_up_to_date"
