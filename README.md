@@ -258,6 +258,22 @@ ALERT_THRESHOLD_DEFAULT=2.0
 
   In questo modo le migrazioni vengono applicate automaticamente prima dell'avvio di Gunicorn.
 
+- Configurare il **Pre-deploy Command** su Render a:
+
+  ```bash
+  ALEMBIC_RUNNING=1 SKIP_SCHEMA_VALIDATION=1 PYTHONPATH=. alembic -c alembic.ini upgrade head
+  ```
+
+  Questo export evita side-effect applicativi durante l'esecuzione delle migration.
+
+- Se in produzione la tabella `partners` è già presente ma Alembic risulta fermo a `20240702_add_plan_fields`, dopo aver reso la migration idempotente puoi, se necessario, riallineare manualmente lo stato con:
+
+  ```bash
+  alembic stamp 202407200001
+  ```
+
+  Usa questo comando solo per sanare ambienti già esistenti; non automatizzarlo nel flusso di deploy.
+
 ## Sicurezza & Privacy
 - Non committare `.env`, token o database con dati reali; usare gitignore e segreti di deploy.
 - Validare e sanificare input utente; proteggere form con CSRF token e rate limiting.
