@@ -82,6 +82,10 @@
   gap: clamp(1rem, 2vw, 1.75rem);
 }
 
+.admin-card--metrics {
+  gap: clamp(1rem, 2vw, 1.5rem);
+}
+
 .admin-test-alert {
   display: flex;
   flex-wrap: wrap;
@@ -89,10 +93,93 @@
   gap: clamp(0.5rem, 1.5vw, 1rem);
 }
 
+.admin-analytics-grid {
+  display: grid;
+  gap: clamp(1rem, 2vw, 1.5rem);
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.admin-analytics-metric {
+  display: grid;
+  gap: 0.25rem;
+  padding: clamp(0.75rem, 2vw, 1rem);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.admin-analytics-label {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-tertiary);
+}
+
+.admin-analytics-value {
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+  font-weight: var(--font-weight-semibold);
+}
+
 .admin-caption {
   margin: 0;
   color: var(--color-text-tertiary);
   font-size: var(--font-size-sm);
+}
+
+.admin-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: clamp(0.75rem, 2vw, 1.5rem);
+}
+
+.admin-toolbar__primary {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.admin-toolbar__filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: clamp(0.75rem, 2vw, 1.25rem);
+}
+
+.admin-toolbar__summary {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+.admin-field {
+  display: grid;
+  gap: 0.35rem;
+  min-width: min(260px, 100%);
+}
+
+.admin-field__label {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.admin-field input[type="search"],
+.admin-field select {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(9, 16, 35, 0.65);
+  color: var(--color-text-primary);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-field input[type="search"]:focus,
+.admin-field select:focus {
+  outline: none;
+  border-color: rgba(129, 140, 248, 0.7);
+  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.25);
 }
 
 .admin-table-wrapper {
@@ -117,6 +204,41 @@
   border-radius: var(--radius-sm);
 }
 
+.admin-table-wrapper.is-loading {
+  position: relative;
+}
+
+.admin-table-wrapper.is-loading::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 16, 34, 0.6);
+  backdrop-filter: blur(2px);
+  border-radius: inherit;
+  z-index: 2;
+}
+
+.admin-table-wrapper.is-loading::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: -1.375rem 0 0 -1.375rem;
+  border-radius: 50%;
+  border: 3px solid rgba(129, 140, 248, 0.18);
+  border-top-color: rgba(129, 140, 248, 0.75);
+  animation: admin-spinner 0.8s linear infinite;
+  z-index: 3;
+}
+
+@keyframes admin-spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .admin-grid {
   display: grid;
   gap: clamp(1.25rem, 3vw, 2rem);
@@ -124,6 +246,10 @@
 
 .admin-grid--columns {
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.admin-grid--activity {
+  align-items: stretch;
 }
 
 .admin-blog-form textarea,
@@ -155,6 +281,24 @@
   gap: 0.5rem;
   flex-wrap: wrap;
   align-items: center;
+}
+
+.admin-empty {
+  margin: 0;
+  padding: clamp(0.75rem, 2vw, 1rem);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  text-align: center;
+  color: var(--color-text-tertiary);
+}
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .feedback-list {
@@ -375,6 +519,113 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+.toast-container {
+  position: fixed;
+  inset: auto 1.5rem 1.5rem auto;
+  display: grid;
+  gap: 0.75rem;
+  z-index: var(--z-toast, 1200);
+  max-width: min(320px, 90vw);
+}
+
+.toast {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-xl);
+  background: rgba(11, 19, 38, 0.92);
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  color: var(--color-text-primary);
+  box-shadow: 0 0.75rem 2.5rem rgba(15, 23, 42, 0.35);
+  animation: toast-in 180ms ease-out;
+}
+
+.toast--success {
+  border-color: rgba(34, 197, 94, 0.45);
+}
+
+.toast--error {
+  border-color: rgba(248, 113, 113, 0.55);
+}
+
+.toast-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: rgba(129, 140, 248, 0.15);
+  color: rgba(129, 140, 248, 0.95);
+}
+
+.toast--success .toast-icon {
+  background: rgba(34, 197, 94, 0.15);
+  color: rgba(34, 197, 94, 0.9);
+}
+
+.toast--error .toast-icon {
+  background: rgba(248, 113, 113, 0.18);
+  color: rgba(248, 113, 113, 0.95);
+}
+
+.toast-message {
+  font-size: var(--font-size-sm);
+  line-height: 1.45;
+}
+
+.toast-dismiss {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+
+.toast--leaving {
+  animation: toast-out 240ms ease-in forwards;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateX(12px) scale(0.97);
+  }
+}
+
+.admin-card .btn {
+  transition: transform 0.18s ease, box-shadow 0.25s ease, filter 0.25s ease;
+}
+
+.admin-card .btn:hover,
+.admin-card .btn:focus-visible {
+  transform: translateY(-1px);
+  box-shadow: 0 0 0.65rem rgba(99, 102, 241, 0.45);
+}
+
+.admin-card .btn.btn-premium:hover,
+.admin-card .btn.btn-premium:focus-visible {
+  box-shadow: 0 0 0.75rem rgba(192, 132, 252, 0.55);
+}
+
+.admin-card .btn.btn-danger:hover,
+.admin-card .btn.btn-danger:focus-visible {
+  box-shadow: 0 0 0.75rem rgba(248, 113, 113, 0.55);
 }
 
 /* Banner management */

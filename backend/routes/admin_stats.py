@@ -9,7 +9,7 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy import func
 from sqlalchemy.orm import selectinload
 
-from app.models import Event, User, db
+from app.models import AdminActionLog, Event, User, db
 from app.utils.auth import get_current_user
 
 admin_stats_bp = Blueprint("admin_stats", __name__)
@@ -63,6 +63,22 @@ def _serialize_event(event: Event) -> Dict[str, Any]:
             payload["threshold"] = event.threshold
 
     return payload
+
+
+def _serialize_admin_action(entry: AdminActionLog) -> Dict[str, Any]:
+    return {
+        "id": entry.id,
+        "action": entry.action,
+        "status": entry.status,
+        "message": entry.message,
+        "admin_id": entry.admin_id,
+        "admin_email": entry.admin_email,
+        "target_user_id": entry.target_user_id,
+        "target_email": entry.target_email,
+        "ip_address": entry.ip_address,
+        "context": entry.context,
+        "created_at": _serialize_timestamp(entry.created_at),
+    }
 
 
 def _require_admin_user() -> Optional[User]:
@@ -126,3 +142,74 @@ def get_audit_feed():
     }
 
     return jsonify(payload)
+
+
+@admin_stats_bp.get("/admin-actions")
+def get_admin_actions():
+    if _require_admin_user() is None:
+        return (
+            jsonify({"ok": False, "error": "Admin access required"}),
+            403,
+        )
+
+    entries_limit = _coerce_limit(request.args.get("limit"), default=25, maximum=100)
+    entries = (
+        AdminActionLog.query.order_by(AdminActionLog.created_at.desc())
+        .limit(entries_limit)
+        .all()
+    )
+
+    total_entries = db.session.query(func.count(AdminActionLog.id)).scalar() or 0
+
+    return jsonify(
+        {
+            "ok": True,
+            "generated_at": _serialize_timestamp(datetime.utcnow()),
+            "limit": entries_limit,
+            "total": int(total_entries),
+            "entries": [_serialize_admin_action(entry) for entry in entries],
+        }
+    )
+
+
+@admin_stats_bp.get("/analytics")
+def get_admin_analytics():
+    if _require_admin_user() is None:
+        return (
+            jsonify({"ok": False, "error": "Admin access required"}),
+            403,
+        )
+
+    total_users = db.session.query(func.count(User.id)).scalar() or 0
+    premium_users = (
+        db.session.query(func.count(User.id))
+        .select_from(User)
+        .filter(User.premium_status_clause())
+        .scalar()
+        or 0
+    )
+    free_users = max(0, int(total_users) - int(premium_users))
+
+    now = datetime.utcnow()
+    alerts_last_24h = (
+        Event.query.filter(
+            Event.event_type == "alert",
+            Event.timestamp >= now - timedelta(hours=24),
+        )
+        .with_entities(func.count(Event.id))
+        .scalar()
+        or 0
+    )
+
+    return jsonify(
+        {
+            "ok": True,
+            "generated_at": _serialize_timestamp(datetime.utcnow()),
+            "metrics": {
+                "total_users": int(total_users),
+                "premium_users": int(premium_users),
+                "free_users": int(free_users),
+                "alerts_last_24h": int(alerts_last_24h),
+            },
+        }
+    )

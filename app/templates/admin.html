@@ -21,29 +21,77 @@
     </nav>
   </header>
 
-  <div class="admin-card admin-card--table card-premium animate-premium-slide">
-    <div class="admin-test-alert">
-      <button type="button" id="admin-test-alert-button" class="btn btn-premium">
-        <i class="fas fa-bell"></i> Test Alert
-      </button>
-      <p class="admin-caption" id="admin-test-alert-caption">Esegue immediatamente il controllo degli alert Telegram.</p>
+  <section class="admin-card admin-card--metrics card-premium animate-premium-slide" aria-labelledby="admin-analytics-title">
+    <header class="admin-section-header">
+      <div>
+        <h2 id="admin-analytics-title"><i class="fas fa-chart-pie"></i> Analytics</h2>
+        <p>Panoramica aggiornata delle metriche principali.</p>
+      </div>
+      <span class="admin-caption" data-analytics-updated>In aggiornamento…</span>
+    </header>
+    <div class="admin-analytics-grid">
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">Utenti totali</span>
+        <span class="admin-analytics-value" data-analytics-total>{{ total_users }}</span>
+      </div>
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">Utenti Premium</span>
+        <span class="admin-analytics-value" data-analytics-premium>—</span>
+      </div>
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">Utenti Free</span>
+        <span class="admin-analytics-value" data-analytics-free>—</span>
+      </div>
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">Alert (24h)</span>
+        <span class="admin-analytics-value" data-analytics-alerts>—</span>
+      </div>
     </div>
+    <p class="admin-caption">Aggiornamento automatico ogni 5 minuti.</p>
+  </section>
 
-    <div class="admin-table-wrapper">
+  <div class="admin-card admin-card--table card-premium animate-premium-slide">
+    <header class="admin-toolbar">
+      <div class="admin-toolbar__primary">
+        <button type="button" id="admin-test-alert-button" class="btn btn-premium">
+          <i class="fas fa-bell"></i> Test Alert
+        </button>
+        <p class="admin-caption" id="admin-test-alert-caption">Esegue immediatamente il controllo degli alert Telegram.</p>
+      </div>
+      <div class="admin-toolbar__filters" role="search">
+        <label class="admin-field">
+          <span class="admin-field__label">Ricerca per email</span>
+          <input type="search" name="q" autocomplete="off" placeholder="es. mario@etna.it" value="{{ search_query }}" data-admin-search>
+        </label>
+        <label class="admin-field">
+          <span class="admin-field__label">Tipo account</span>
+          <select name="plan" data-admin-plan>
+            <option value="all" {% if plan_filter == 'all' %}selected{% endif %}>Tutti</option>
+            <option value="premium" {% if plan_filter == 'premium' %}selected{% endif %}>Premium</option>
+            <option value="free" {% if plan_filter == 'free' %}selected{% endif %}>Free</option>
+            <option value="admin" {% if plan_filter == 'admin' %}selected{% endif %}>Solo admin</option>
+          </select>
+        </label>
+        <p class="admin-caption admin-toolbar__summary" data-users-summary>Totale utenti: {{ total_users }}</p>
+      </div>
+    </header>
+
+    <div class="admin-table-wrapper" data-users-wrapper>
       <table class="table table-premium admin-table">
         <thead>
           <tr>
-            <th>Email</th>
-            <th>Tipo Account</th>
-            <th>Soglia Personalizzata</th>
-            <th>ID Chat</th>
-            <th>Prova gratuita</th>
-            <th>Azioni</th>
+            <th scope="col">Email</th>
+            <th scope="col">Tipo account</th>
+            <th scope="col">Soglia personalizzata</th>
+            <th scope="col">ID Chat</th>
+            <th scope="col">Prova gratuita</th>
+            <th scope="col">Azioni</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody data-users-table aria-live="polite">
           {% for user in users %}
-            <tr>
+            {% set has_chat = user.telegram_chat_id or user.chat_id %}
+            <tr data-user-row="{{ user.id }}">
               <td>{{ user.email }}</td>
               <td>
                 <span class="badge {{ 'premium' if user.has_premium_access else 'free' }}">
@@ -54,7 +102,7 @@
                 {% endif %}
               </td>
               <td>{{ user.threshold or 'Predefinita (2.0)' }} mV</td>
-              <td>{{ user.telegram_chat_id or user.chat_id or 'Non impostato' }}</td>
+              <td>{{ has_chat or 'Non impostato' }}</td>
               <td>
                 {% if user.free_alert_consumed %}
                   <span class="badge warning">Consumata</span>
@@ -63,7 +111,7 @@
                 {% endif %}
                 <button type="button"
                         class="btn btn-secondary glass btn-sm"
-                        data-reset-trial
+                        data-action="reset-trial"
                         data-user-id="{{ user.id }}">
                   <i class="fas fa-undo"></i> Reset prova
                 </button>
@@ -71,8 +119,15 @@
               <td>
                 <div class="action-buttons">
                   <button type="button"
+                          class="btn btn-secondary glass btn-sm"
+                          data-action="test-alert"
+                          data-user-id="{{ user.id }}"
+                          {% if not has_chat %}disabled aria-disabled="true"{% endif %}>
+                    <i class="fas fa-satellite-dish"></i> Test alert
+                  </button>
+                  <button type="button"
                           class="btn btn-premium btn-sm"
-                          data-toggle-premium
+                          data-action="toggle-premium"
                           data-user-id="{{ user.id }}">
                     <i class="fas fa-{{ 'star' if not user.has_premium_access else 'star-half-alt' }}"></i>
                     {{ 'Aggiorna' if not user.has_premium_access else 'Declassa' }}
@@ -80,7 +135,7 @@
                   {% if not user.is_admin %}
                     <button type="button"
                             class="btn btn-danger btn-sm"
-                            data-delete-user
+                            data-action="delete-user"
                             data-user-id="{{ user.id }}">
                       <i class="fas fa-trash"></i> Elimina
                     </button>
@@ -91,14 +146,47 @@
           {% endfor %}
         </tbody>
       </table>
+      <p class="admin-empty" data-users-empty {% if users %}hidden{% endif %}>Nessun utente trovato con i filtri correnti.</p>
     </div>
+
+    <footer class="admin-pagination">
+      <button type="button"
+              class="btn btn-secondary glass btn-sm"
+              data-pagination="prev"
+              {% if page <= 1 %}disabled aria-disabled="true"{% endif %}>
+        <i class="fas fa-angle-left"></i> Precedente
+      </button>
+      <span class="admin-caption" data-pagination-label>
+        Pagina {{ page }} di {{ pages or 1 }}
+      </span>
+      <button type="button"
+              class="btn btn-secondary glass btn-sm"
+              data-pagination="next"
+              {% if pages is not none and page >= pages %}disabled aria-disabled="true"{% endif %}>
+        Successiva <i class="fas fa-angle-right"></i>
+      </button>
+    </footer>
   </div>
 
-  <section class="admin-grid admin-grid--columns" aria-labelledby="admin-audit-title">
+  <section class="admin-grid admin-grid--columns admin-grid--activity" aria-label="Monitoraggio amministratore">
+    <article class="admin-card card-premium animate-premium-fade" id="admin-actions-card">
+      <header class="admin-section-header">
+        <div>
+          <h2><i class="fas fa-user-shield"></i> Attività amministratore</h2>
+          <p>Storico delle azioni di upgrade, reset e gestione account.</p>
+        </div>
+        <button type="button" class="btn btn-secondary glass btn-sm" data-admin-actions-refresh>
+          <i class="fas fa-rotate"></i> Aggiorna
+        </button>
+      </header>
+      <ol class="audit-list" data-admin-actions-list aria-live="polite" aria-busy="true"></ol>
+      <p class="admin-caption" data-admin-actions-empty hidden>Nessuna attività registrata nelle ultime ore.</p>
+    </article>
+
     <article class="admin-card card-premium animate-premium-fade">
       <header class="admin-section-header">
         <div>
-          <h2 id="admin-audit-title"><i class="fas fa-clipboard-list"></i> Registro attività</h2>
+          <h2 id="admin-audit-title"><i class="fas fa-clipboard-list"></i> Registro attività utenti</h2>
           <p>Monitoraggio degli ultimi eventi generati dagli utenti.</p>
         </div>
         <button type="button" class="btn btn-secondary glass btn-sm audit-refresh" data-audit-refresh>
@@ -134,418 +222,739 @@
 </section>
 
 <div class="audit-status" data-audit-status aria-live="polite"></div>
+<div id="toast-container" class="toast-container" aria-live="assertive" aria-atomic="true"></div>
 
 <script nonce="{{ script_nonce }}">
-  const ADMIN_AUDIT_ENDPOINT = "{{ url_for('admin_stats.get_audit_feed') }}";
   const csrfToken = '{{ csrf_token() }}';
+  const ADMIN_USERS_ENDPOINT = '{{ url_for('admin.users_list') }}';
+  const ADMIN_ANALYTICS_ENDPOINT = '{{ url_for('admin_stats.get_admin_analytics') }}';
+  const ADMIN_ACTIONS_ENDPOINT = '{{ url_for('admin_stats.get_admin_actions') }}';
+  const ADMIN_AUDIT_ENDPOINT = '{{ url_for('admin_stats.get_audit_feed') }}';
+  const ADMIN_GLOBAL_TEST_ENDPOINT = '{{ url_for('admin.test_alert') }}';
 
-  function normalizeUserId(value) {
-    const parsed = Number.parseInt(value, 10);
-    return Number.isNaN(parsed) ? null : parsed;
-  }
+  const initialUsers = {{ initial_users|tojson }};
+  const initialState = {
+    page: {{ page|int }},
+    pages: {{ pages|int if pages is not none else 0 }},
+    plan: {{ plan_filter|tojson }},
+    search: {{ search_query|tojson }},
+    perPage: {{ per_page|int }},
+    total: {{ total_users|int }},
+  };
 
-  function registerAdminActionHandlers() {
-    const premiumButtons = document.querySelectorAll('[data-toggle-premium]');
-    premiumButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        const userId = normalizeUserId(button.dataset.userId);
-        if (userId !== null) {
-          togglePremium(userId);
-        }
-      });
-    });
+  (function () {
+    'use strict';
 
-    const deleteButtons = document.querySelectorAll('[data-delete-user]');
-    deleteButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        const userId = normalizeUserId(button.dataset.userId);
-        if (userId !== null) {
-          deleteUser(userId);
-        }
-      });
-    });
+    const state = { ...initialState, items: Array.isArray(initialUsers) ? initialUsers : [] };
 
-    const resetButtons = document.querySelectorAll('[data-reset-trial]');
-    resetButtons.forEach((button) => {
-      button.addEventListener('click', () => {
-        const userId = normalizeUserId(button.dataset.userId);
-        if (userId !== null) {
-          resetFreeTrial(userId);
-        }
-      });
-    });
-  }
+    const tableBody = document.querySelector('[data-users-table]');
+    const emptyState = document.querySelector('[data-users-empty]');
+    const resultsSummary = document.querySelector('[data-users-summary]');
+    const paginationLabel = document.querySelector('[data-pagination-label]');
+    const prevButton = document.querySelector('[data-pagination="prev"]');
+    const nextButton = document.querySelector('[data-pagination="next"]');
+    const searchInput = document.querySelector('[data-admin-search]');
+    const planSelect = document.querySelector('[data-admin-plan]');
+    const usersWrapper = document.querySelector('[data-users-wrapper]');
+    const toastContainer = document.getElementById('toast-container');
+    const analyticsTotal = document.querySelector('[data-analytics-total]');
+    const analyticsPremium = document.querySelector('[data-analytics-premium]');
+    const analyticsFree = document.querySelector('[data-analytics-free]');
+    const analyticsAlerts = document.querySelector('[data-analytics-alerts]');
+    const analyticsUpdated = document.querySelector('[data-analytics-updated]');
+    const adminActionsList = document.querySelector('[data-admin-actions-list]');
+    const adminActionsEmpty = document.querySelector('[data-admin-actions-empty]');
+    const adminActionsRefresh = document.querySelector('[data-admin-actions-refresh]');
+    const auditStatus = document.querySelector('[data-audit-status]');
+    const globalTestButton = document.getElementById('admin-test-alert-button');
+    const globalTestCaption = document.getElementById('admin-test-alert-caption');
 
-  function togglePremium(userId) {
-    fetch(`/admin/toggle_premium/${userId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'same-origin',
-      body: JSON.stringify({ csrf_token: csrfToken })
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+    let analyticsTimer = null;
+    let adminActionsTimer = null;
+    let auditTimer = null;
+    let auditRefresher = null;
+
+    function escapeHtml(value) {
+      if (value === null || value === undefined) {
+        return '';
       }
-      return response.json();
-    })
-    .then(data => {
-      if (data.success) {
-        location.reload();
-      } else if (data.message) {
-        alert(data.message);
-      }
-    })
-    .catch(error => {
-      alert('Impossibile aggiornare il piano premium: ' + error.message);
-    });
-  }
-
-  function deleteUser(userId) {
-    if (confirm('Sei sicuro di voler eliminare questo utente? Questa azione non può essere annullata.')) {
-      fetch(`/admin/delete_user/${userId}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'same-origin',
-        body: JSON.stringify({ csrf_token: csrfToken })
-      })
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (data.success) {
-          location.reload();
-        } else {
-          alert(data.message);
-        }
-      })
-      .catch(error => {
-        alert('Impossibile eliminare l\'utente: ' + error.message);
-      });
-    }
-  }
-
-  function resetFreeTrial(userId) {
-    fetch(`/admin/reset_free_trial/${userId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'same-origin',
-      body: JSON.stringify({ csrf_token: csrfToken })
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return response.json();
-    })
-    .then(data => {
-      if (data.success) {
-        location.reload();
-      } else if (data.message) {
-        alert(data.message);
-      }
-    })
-    .catch(() => {
-      alert('Impossibile ripristinare la prova gratuita in questo momento.');
-    });
-  }
-
-  function testAlert(event) {
-    const button = document.getElementById('admin-test-alert-button');
-    if (!button) {
-      return;
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
     }
 
-    const caption = document.getElementById('admin-test-alert-caption');
-    const originalText = button.innerHTML;
-
-    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Controllo in corso...';
-    button.disabled = true;
-    if (caption) {
-      caption.textContent = 'Controllo in corso, attendi qualche istante.';
-    }
-
-    fetch('/admin/test-alert', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      credentials: 'same-origin',
-      body: JSON.stringify({ csrf_token: csrfToken })
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-      return response.json();
-    })
-    .then(data => {
-      button.innerHTML = originalText;
-      button.disabled = false;
-
-      if (caption) {
-        caption.textContent = 'Esegue immediatamente il controllo degli alert Telegram.';
-      }
-
-      if (data.success) {
-        alert('✅ Controllo alert eseguito con successo!\n\n' + data.message);
-      } else {
-        alert('❌ Errore durante il controllo: ' + data.message);
-      }
-    })
-    .catch(error => {
-      button.innerHTML = originalText;
-      button.disabled = false;
-      if (caption) {
-        caption.textContent = 'Si è verificato un errore durante il controllo.';
-      }
-      alert('❌ Errore di connessione: ' + error.message);
-    });
-  }
-
-  (function initAdminAudit() {
-    const eventsList = document.getElementById('admin-audit-events');
-    const alertsList = document.getElementById('admin-alert-feed');
-    const refreshButton = document.querySelector('[data-audit-refresh]');
-    const statusRegion = document.querySelector('[data-audit-status]');
-    const eventsCount = document.querySelector('[data-metric-events-count]');
-    const alerts24h = document.querySelector('[data-metric-alerts-24h]');
-    const eventsLimit = document.querySelector('[data-metric-events-limit]');
-    const updatedLabel = document.getElementById('admin-audit-updated');
-    const EVENT_LIMIT = 15;
-    const ALERT_LIMIT = 10;
-    let refreshTimer = null;
-
-    if (eventsLimit) {
-      eventsLimit.textContent = EVENT_LIMIT;
-    }
-
-    function formatTimestamp(value) {
+    function formatDateTime(value) {
       if (!value) {
         return '—';
       }
-
       try {
-        const date = new Date(value);
+        const date = value instanceof Date ? value : new Date(value);
         if (Number.isNaN(date.getTime())) {
           return value;
         }
-
         return new Intl.DateTimeFormat(navigator.language || 'it-IT', {
           year: 'numeric',
           month: 'short',
           day: '2-digit',
           hour: '2-digit',
-          minute: '2-digit'
+          minute: '2-digit',
         }).format(date);
       } catch (error) {
         return value;
       }
     }
 
-    function describeEvent(event) {
-      if (!event) {
-        return '';
-      }
-
-      if (event.message) {
-        return event.message;
-      }
-
-      if (event.event_type === 'alert' && typeof event.value === 'number') {
-        return `Alert tremore ${event.value.toFixed(2)} mV`;
-      }
-
-      if (event.event_type === 'threshold_change' && typeof event.threshold === 'number') {
-        return `Soglia aggiornata a ${event.threshold.toFixed(2)} mV`;
-      }
-
-      switch (event.event_type) {
-        case 'login':
-          return 'Accesso effettuato';
-        case 'subscription':
-          return 'Aggiornamento stato abbonamento';
-        default:
-          return event.event_type ? event.event_type.replace(/_/g, ' ') : 'Evento sistema';
-      }
-    }
-
-    function resolveIcon(eventType) {
-      switch (eventType) {
-        case 'alert':
-          return { icon: 'fa-exclamation-triangle', modifier: 'alert' };
-        case 'threshold_change':
-          return { icon: 'fa-sliders', modifier: 'success' };
-        case 'login':
-          return { icon: 'fa-right-to-bracket', modifier: '' };
-        case 'subscription':
-          return { icon: 'fa-crown', modifier: 'success' };
-        default:
-          return { icon: 'fa-circle-info', modifier: '' };
-      }
-    }
-
-    function renderList(container, items, emptyMessage, fallbackModifier = '') {
-      if (!container) {
+    function createToast(message, type = 'info') {
+      if (!toastContainer) {
+        window.alert(message);
         return;
       }
 
-      container.innerHTML = '';
+      const toast = document.createElement('div');
+      toast.className = `toast toast--${type}`;
 
-      if (!items || items.length === 0) {
-        const empty = document.createElement('p');
-        empty.className = 'audit-list__empty';
-        empty.textContent = emptyMessage;
-        container.appendChild(empty);
-        container.setAttribute('aria-busy', 'false');
+      const iconMap = {
+        success: 'fa-circle-check',
+        error: 'fa-circle-xmark',
+        info: 'fa-circle-info',
+      };
+      const icon = iconMap[type] || iconMap.info;
+      toast.innerHTML = `
+        <span class="toast-icon"><i class="fas ${icon}"></i></span>
+        <span class="toast-message">${escapeHtml(message)}</span>
+        <button type="button" class="toast-dismiss" aria-label="Chiudi notifica">&times;</button>
+      `;
+
+      toastContainer.appendChild(toast);
+
+      const removeToast = () => {
+        toast.classList.add('toast--leaving');
+        window.setTimeout(() => {
+          if (toast.parentElement === toastContainer) {
+            toastContainer.removeChild(toast);
+          }
+        }, 300);
+      };
+
+      toast.querySelector('.toast-dismiss')?.addEventListener('click', removeToast, { once: true });
+      window.setTimeout(removeToast, 4500);
+    }
+
+    function setButtonBusy(button, isBusy, label) {
+      if (!button) {
+        return;
+      }
+      if (isBusy) {
+        if (!button.dataset.originalLabel) {
+          button.dataset.originalLabel = button.innerHTML;
+        }
+        button.innerHTML = label || '<i class="fas fa-spinner fa-spin"></i>';
+        button.disabled = true;
+        button.setAttribute('aria-busy', 'true');
+      } else {
+        if (button.dataset.originalLabel) {
+          button.innerHTML = button.dataset.originalLabel;
+          delete button.dataset.originalLabel;
+        }
+        button.disabled = false;
+        button.removeAttribute('aria-busy');
+      }
+    }
+
+    function setTableLoading(isLoading) {
+      if (tableBody) {
+        tableBody.setAttribute('aria-busy', String(Boolean(isLoading)));
+      }
+      if (usersWrapper) {
+        usersWrapper.classList.toggle('is-loading', Boolean(isLoading));
+      }
+    }
+
+    function renderUsers(items) {
+      if (!tableBody) {
         return;
       }
 
-      const fragment = document.createDocumentFragment();
+      state.items = Array.isArray(items) ? items : [];
 
-      items.forEach((item) => {
-        const { icon, modifier } = resolveIcon(item.event_type);
-        const appliedModifier = modifier || fallbackModifier;
-        const listItem = document.createElement('li');
-        listItem.className = 'audit-list__item' + (appliedModifier ? ` audit-list__item--${appliedModifier}` : '');
+      if (!Array.isArray(items) || items.length === 0) {
+        tableBody.innerHTML = '';
+        if (emptyState) {
+          emptyState.hidden = false;
+        }
+        return;
+      }
 
-        const iconContainer = document.createElement('div');
-        iconContainer.className = 'audit-list__icon';
-        iconContainer.innerHTML = `<i class="fas ${icon}" aria-hidden="true"></i>`;
+      const rows = items.map((user) => {
+        const hasPremium = Boolean(user.has_premium);
+        const premiumClass = hasPremium ? 'premium' : 'free';
+        const premiumLabel = hasPremium ? 'Premium ⭐' : 'Gratuito';
+        const isAdmin = Boolean(user.is_admin);
+        const chatId = user.chat_id || 'Non impostato';
+        const hasChat = Boolean(user.chat_id);
+        const freeConsumed = Number(user.free_alert_consumed || 0) > 0;
 
-        const content = document.createElement('div');
-        content.className = 'audit-list__content';
+        let thresholdLabel = 'Predefinita (2.0) mV';
+        if (typeof user.threshold === 'number' && !Number.isNaN(user.threshold)) {
+          thresholdLabel = `${user.threshold.toFixed(2)} mV`;
+        }
 
-        const title = document.createElement('p');
-        title.className = 'audit-list__title';
-        title.textContent = describeEvent(item);
+        const testAlertDisabled = hasChat ? '' : ' disabled aria-disabled="true"';
+        const deleteButton = isAdmin
+          ? ''
+          : `
+            <button type="button"
+                    class="btn btn-danger btn-sm"
+                    data-action="delete-user"
+                    data-user-id="${user.id}">
+              <i class="fas fa-trash"></i> Elimina
+            </button>
+          `;
 
-        const meta = document.createElement('p');
-        meta.className = 'audit-list__meta';
+        return `
+          <tr data-user-row="${user.id}">
+            <td>${escapeHtml(user.email)}</td>
+            <td>
+              <span class="badge ${premiumClass}">${premiumLabel}</span>
+              ${isAdmin ? '<span class="badge admin">Admin</span>' : ''}
+            </td>
+            <td>${thresholdLabel}</td>
+            <td>${escapeHtml(chatId)}</td>
+            <td>
+              ${freeConsumed ? '<span class="badge warning">Consumata</span>' : '<span class="badge success">Disponibile</span>'}
+              <button type="button"
+                      class="btn btn-secondary glass btn-sm"
+                      data-action="reset-trial"
+                      data-user-id="${user.id}">
+                <i class="fas fa-undo"></i> Reset prova
+              </button>
+            </td>
+            <td>
+              <div class="action-buttons">
+                <button type="button"
+                        class="btn btn-secondary glass btn-sm"
+                        data-action="test-alert"
+                        data-user-id="${user.id}"${testAlertDisabled}>
+                  <i class="fas fa-satellite-dish"></i> Test alert
+                </button>
+                <button type="button"
+                        class="btn btn-premium btn-sm"
+                        data-action="toggle-premium"
+                        data-user-id="${user.id}">
+                  <i class="fas fa-${hasPremium ? 'star-half-alt' : 'star'}"></i>
+                  ${hasPremium ? 'Declassa' : 'Aggiorna'}
+                </button>
+                ${deleteButton}
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
 
-        const user = document.createElement('span');
-        user.innerHTML = `<i class="fas fa-user"></i> ${item.user_email || 'Utente sconosciuto'}`;
+      tableBody.innerHTML = rows;
+      if (emptyState) {
+        emptyState.hidden = true;
+      }
+    }
 
-        const timestamp = document.createElement('span');
-        timestamp.innerHTML = `<i class="fas fa-clock"></i> <time datetime="${item.timestamp || ''}">${formatTimestamp(item.timestamp)}</time>`;
+    function updateSummary() {
+      if (!resultsSummary) {
+        return;
+      }
+      const total = Number(state.total || 0);
+      const searchLabel = state.search ? ` per "${state.search}"` : '';
+      resultsSummary.textContent = `Totale utenti${searchLabel}: ${total}`;
+    }
 
-        meta.append(user, timestamp);
-        content.append(title, meta);
-        listItem.append(iconContainer, content);
-        fragment.appendChild(listItem);
+    function updatePagination() {
+      const totalPages = Math.max(1, Number(state.pages || 0));
+      const currentPage = Math.min(Math.max(1, Number(state.page || 1)), totalPages);
+
+      if (paginationLabel) {
+        paginationLabel.textContent = `Pagina ${currentPage} di ${totalPages}`;
+      }
+
+      if (prevButton) {
+        prevButton.disabled = currentPage <= 1;
+        prevButton.setAttribute('aria-disabled', String(prevButton.disabled));
+      }
+      if (nextButton) {
+        nextButton.disabled = currentPage >= totalPages || totalPages === 0;
+        nextButton.setAttribute('aria-disabled', String(nextButton.disabled));
+      }
+    }
+
+    async function fetchUsers() {
+      if (!tableBody) {
+        return;
+      }
+
+      const params = new URLSearchParams({
+        page: String(state.page || 1),
+        per_page: String(state.perPage || 20),
       });
 
-      container.appendChild(fragment);
-      container.setAttribute('aria-busy', 'false');
-    }
-
-    async function loadAuditData(manual = false) {
-      if (statusRegion) {
-        statusRegion.textContent = manual ? 'Aggiornamento manuale del registro in corso…' : 'Aggiornamento registro attività…';
+      if (state.search) {
+        params.set('q', state.search);
+      }
+      if (state.plan && state.plan !== 'all') {
+        params.set('plan', state.plan);
       }
 
-      if (eventsList) {
-        eventsList.setAttribute('aria-busy', 'true');
-      }
-
-      if (alertsList) {
-        alertsList.setAttribute('aria-busy', 'true');
-      }
-
+      setTableLoading(true);
       try {
-        const response = await fetch(`${ADMIN_AUDIT_ENDPOINT}?limit=${EVENT_LIMIT}&alerts_limit=${ALERT_LIMIT}`, {
-          headers: {
-            'Accept': 'application/json'
-          },
-          credentials: 'same-origin'
+        const response = await fetch(`${ADMIN_USERS_ENDPOINT}?${params.toString()}`, {
+          credentials: 'same-origin',
+          headers: { Accept: 'application/json' },
         });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
         const payload = await response.json();
-        if (!payload || payload.ok === false) {
-          throw new Error(payload && payload.error ? payload.error : 'Risposta non valida dal server');
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.message || `HTTP ${response.status}`);
         }
 
-        renderList(eventsList, payload.events, 'Nessun evento recente disponibile.');
-        renderList(alertsList, payload.alerts, 'Nessun alert recente registrato.', 'alert');
-
-        if (eventsCount) {
-          eventsCount.textContent = payload.events ? payload.events.length : '0';
+        if (state.page > 1 && payload.pages && state.page > payload.pages) {
+          state.page = payload.pages;
+          await fetchUsers();
+          return;
         }
 
-        if (alerts24h) {
-          alerts24h.textContent = payload.metrics ? payload.metrics.alerts_last_24h : '0';
-        }
-
-        if (updatedLabel) {
-          updatedLabel.textContent = `Ultimo aggiornamento: ${formatTimestamp(payload.generated_at)}`;
-        }
-
-        if (statusRegion) {
-          statusRegion.textContent = 'Registro aggiornato con successo.';
-        }
+        state.total = payload.total;
+        state.pages = payload.pages || 0;
+        renderUsers(payload.items || []);
+        updateSummary();
+        updatePagination();
       } catch (error) {
-        if (statusRegion) {
-          statusRegion.textContent = `Errore durante il recupero del registro: ${error.message}`;
-        }
+        createToast(error.message || 'Errore durante il caricamento degli utenti.', 'error');
+      } finally {
+        setTableLoading(false);
+      }
+    }
 
-        if (eventsList) {
-          eventsList.innerHTML = '<p class="audit-list__empty">Impossibile caricare gli eventi. Riprova più tardi.</p>';
-          eventsList.setAttribute('aria-busy', 'false');
-        }
+    function debounce(callback, delay = 300) {
+      let timer = null;
+      return (...args) => {
+        window.clearTimeout(timer);
+        timer = window.setTimeout(() => callback.apply(null, args), delay);
+      };
+    }
 
-        if (alertsList) {
-          alertsList.innerHTML = '<p class="audit-list__empty">Impossibile recuperare gli alert recenti.</p>';
-          alertsList.setAttribute('aria-busy', 'false');
+    async function sendAdminPost(url, payload = {}, button = null, loadingLabel = null) {
+      const body = { ...payload, csrf_token: csrfToken };
+      if (button) {
+        setButtonBusy(button, true, loadingLabel || '<i class="fas fa-spinner fa-spin"></i>');
+      }
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(body),
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || data.success === false) {
+          throw new Error(data.message || `HTTP ${response.status}`);
+        }
+        return data;
+      } finally {
+        if (button) {
+          setButtonBusy(button, false);
         }
       }
     }
 
-    function scheduleRefresh() {
-      clearInterval(refreshTimer);
-      refreshTimer = setInterval(() => {
-        if (document.visibilityState === 'visible') {
-          loadAuditData(false);
-        }
-      }, 60000);
+    function refreshAfterAction() {
+      fetchUsers();
+      loadAdminActions();
+      refreshAnalytics();
+      if (typeof auditRefresher === 'function') {
+        auditRefresher(true);
+      }
     }
 
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') {
-        loadAuditData(false);
+    const handleSearch = debounce(() => {
+      state.search = (searchInput?.value || '').trim();
+      state.page = 1;
+      fetchUsers();
+    }, 350);
+
+    searchInput?.addEventListener('input', handleSearch);
+
+    planSelect?.addEventListener('change', () => {
+      state.plan = planSelect.value;
+      state.page = 1;
+      fetchUsers();
+    });
+
+    prevButton?.addEventListener('click', () => {
+      if (state.page > 1) {
+        state.page -= 1;
+        fetchUsers();
       }
     });
 
-    if (refreshButton) {
-      refreshButton.addEventListener('click', () => {
-        loadAuditData(true);
-      });
+    nextButton?.addEventListener('click', () => {
+      const totalPages = Math.max(1, Number(state.pages || 0));
+      if (state.page < totalPages) {
+        state.page += 1;
+        fetchUsers();
+      }
+    });
+
+    tableBody?.addEventListener('click', async (event) => {
+      const target = event.target instanceof Element ? event.target.closest('[data-action]') : null;
+      if (!target) {
+        return;
+      }
+      const userId = Number.parseInt(target.dataset.userId || '', 10);
+      if (!userId) {
+        return;
+      }
+      const action = target.dataset.action;
+      try {
+        switch (action) {
+          case 'toggle-premium': {
+            const result = await sendAdminPost(`/admin/toggle_premium/${userId}`, {}, target, '<i class="fas fa-spinner fa-spin"></i>');
+            createToast(result.message || 'Stato premium aggiornato.', 'success');
+            refreshAfterAction();
+            break;
+          }
+          case 'delete-user': {
+            const confirmed = window.confirm('Sei sicuro di voler eliminare questo utente?');
+            if (!confirmed) {
+              return;
+            }
+            const result = await sendAdminPost(`/admin/delete_user/${userId}`, {}, target, '<i class="fas fa-spinner fa-spin"></i>');
+            createToast(result.message || 'Utente eliminato.', 'success');
+            if (state.page > 1 && state.items.length === 1) {
+              state.page -= 1;
+            }
+            refreshAfterAction();
+            break;
+          }
+          case 'reset-trial': {
+            const result = await sendAdminPost(`/admin/reset_free_trial/${userId}`, {}, target, '<i class="fas fa-spinner fa-spin"></i>');
+            createToast(result.message || 'Prova gratuita ripristinata.', 'success');
+            refreshAfterAction();
+            break;
+          }
+          case 'test-alert': {
+            const result = await sendAdminPost(`/admin/users/${userId}/test-alert`, {}, target, '<i class="fas fa-spinner fa-spin"></i>');
+            createToast(result.message || 'Alert di test inviato.', 'success');
+            loadAdminActions();
+            break;
+          }
+          default:
+            break;
+        }
+      } catch (error) {
+        createToast(error.message || 'Operazione non riuscita.', 'error');
+      }
+    });
+
+    globalTestButton?.addEventListener('click', async () => {
+      if (!globalTestButton) {
+        return;
+      }
+      setButtonBusy(globalTestButton, true, '<i class="fas fa-spinner fa-spin"></i> In corso...');
+      if (globalTestCaption) {
+        globalTestCaption.textContent = 'Controllo in corso, attendi qualche istante.';
+      }
+      try {
+        const result = await sendAdminPost(ADMIN_GLOBAL_TEST_ENDPOINT);
+        createToast(result.message || 'Controllo completato.', 'success');
+        loadAdminActions();
+      } catch (error) {
+        createToast(error.message || 'Errore durante il test alert.', 'error');
+      } finally {
+        if (globalTestCaption) {
+          globalTestCaption.textContent = 'Esegue immediatamente il controllo degli alert Telegram.';
+        }
+        setButtonBusy(globalTestButton, false);
+      }
+    });
+
+    function resolveAdminActionVisual(action, status) {
+      const normalizedStatus = (status || 'info').toLowerCase();
+      const visuals = {
+        upgrade: { icon: 'fa-star', title: 'Upgrade piano' },
+        downgrade: { icon: 'fa-star-half-alt', title: 'Downgrade piano' },
+        reset_trial: { icon: 'fa-undo', title: 'Reset prova' },
+        delete: { icon: 'fa-user-xmark', title: 'Eliminazione utente' },
+        test_alert: { icon: 'fa-satellite-dish', title: 'Test alert utente' },
+        test_alert_all: { icon: 'fa-bell', title: 'Test alert globale' },
+      };
+      const fallbackTitle = action ? action.replace(/_/g, ' ') : 'Azione amministratore';
+      const base = visuals[action] || { icon: 'fa-circle-info', title: fallbackTitle };
+      let modifier = '';
+      if (normalizedStatus === 'success') {
+        modifier = 'audit-list__item--success';
+      } else if (normalizedStatus === 'error') {
+        modifier = 'audit-list__item--error';
+      } else {
+        modifier = 'audit-list__item--alert';
+      }
+      return { ...base, modifier };
     }
 
-    loadAuditData(false).then(scheduleRefresh);
+    function renderAdminActions(entries) {
+      if (!adminActionsList) {
+        return;
+      }
+
+      if (!Array.isArray(entries) || entries.length === 0) {
+        adminActionsList.innerHTML = '';
+        if (adminActionsEmpty) {
+          adminActionsEmpty.hidden = false;
+        }
+        return;
+      }
+
+      const items = entries.map((entry) => {
+        const visuals = resolveAdminActionVisual(entry.action, entry.status);
+        const timestamp = formatDateTime(entry.created_at);
+        const statusLabel = entry.status ? entry.status.charAt(0).toUpperCase() + entry.status.slice(1) : '';
+        const message = entry.message || visuals.title;
+        const statusSuffix = statusLabel ? ` (${escapeHtml(statusLabel)})` : '';
+        const adminMeta = entry.admin_email ? `<span><i class="fas fa-user-shield"></i> ${escapeHtml(entry.admin_email)}</span>` : '';
+        const targetMeta = entry.target_email ? `<span><i class="fas fa-user"></i> ${escapeHtml(entry.target_email)}</span>` : '';
+        const ipMeta = entry.ip_address ? `<span><i class="fas fa-network-wired"></i> ${escapeHtml(entry.ip_address)}</span>` : '';
+
+        return `
+          <li class="audit-list__item ${visuals.modifier}">
+            <span class="audit-list__icon"><i class="fas ${visuals.icon}"></i></span>
+            <div class="audit-list__content">
+              <p class="audit-list__title">${escapeHtml(message)}${statusSuffix}</p>
+              <p class="audit-list__meta">
+                ${adminMeta}
+                ${targetMeta}
+                <span><i class="fas fa-clock"></i> ${escapeHtml(timestamp)}</span>
+                ${ipMeta}
+              </p>
+            </div>
+          </li>
+        `;
+      }).join('');
+
+      adminActionsList.innerHTML = items;
+      if (adminActionsEmpty) {
+        adminActionsEmpty.hidden = true;
+      }
+    }
+
+    async function loadAdminActions(showToastOnError = false) {
+      if (!adminActionsList) {
+        return;
+      }
+      adminActionsList.setAttribute('aria-busy', 'true');
+      try {
+        const response = await fetch(`${ADMIN_ACTIONS_ENDPOINT}?limit=25`, {
+          credentials: 'same-origin',
+          headers: { Accept: 'application/json' },
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || `HTTP ${response.status}`);
+        }
+        renderAdminActions(data.entries || []);
+      } catch (error) {
+        if (showToastOnError) {
+          createToast(error.message || 'Errore nel recupero delle attività amministratore.', 'error');
+        }
+      } finally {
+        adminActionsList.removeAttribute('aria-busy');
+      }
+    }
+
+    adminActionsRefresh?.addEventListener('click', () => loadAdminActions(true));
+
+    async function refreshAnalytics(showToastOnError = false) {
+      try {
+        const response = await fetch(ADMIN_ANALYTICS_ENDPOINT, {
+          credentials: 'same-origin',
+          headers: { Accept: 'application/json' },
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || `HTTP ${response.status}`);
+        }
+        const metrics = data.metrics || {};
+        if (analyticsTotal && typeof metrics.total_users === 'number') {
+          analyticsTotal.textContent = metrics.total_users;
+        }
+        if (analyticsPremium && typeof metrics.premium_users === 'number') {
+          analyticsPremium.textContent = metrics.premium_users;
+        }
+        if (analyticsFree && typeof metrics.free_users === 'number') {
+          analyticsFree.textContent = metrics.free_users;
+        }
+        if (analyticsAlerts && typeof metrics.alerts_last_24h === 'number') {
+          analyticsAlerts.textContent = metrics.alerts_last_24h;
+        }
+        if (analyticsUpdated) {
+          analyticsUpdated.textContent = `Aggiornato alle ${formatDateTime(data.generated_at)}`;
+        }
+      } catch (error) {
+        if (showToastOnError) {
+          createToast(error.message || 'Errore nel caricamento delle analytics.', 'error');
+        }
+      }
+    }
+
+    function initAdminAudit() {
+      const eventsList = document.getElementById('admin-audit-events');
+      const alertsList = document.getElementById('admin-alert-feed');
+      const refreshButton = document.querySelector('[data-audit-refresh]');
+      const eventsCount = document.querySelector('[data-metric-events-count]');
+      const alerts24h = document.querySelector('[data-metric-alerts-24h]');
+      const eventsLimit = document.querySelector('[data-metric-events-limit]');
+      const updatedLabel = document.getElementById('admin-audit-updated');
+      const EVENT_LIMIT = 15;
+      const ALERT_LIMIT = 10;
+
+      if (eventsLimit) {
+        eventsLimit.textContent = EVENT_LIMIT;
+      }
+
+      function describeEvent(event) {
+        if (!event) {
+          return '';
+        }
+        if (event.message) {
+          return event.message;
+        }
+        if (event.event_type === 'alert' && typeof event.value === 'number') {
+          return `Alert tremore ${event.value.toFixed(2)} mV`;
+        }
+        if (event.event_type === 'threshold_change' && typeof event.threshold === 'number') {
+          return `Soglia aggiornata a ${event.threshold.toFixed(2)} mV`;
+        }
+        switch (event.event_type) {
+          case 'login':
+            return 'Accesso effettuato';
+          case 'subscription':
+            return 'Aggiornamento stato abbonamento';
+          case 'test_alert':
+            return 'Alert di test inviato';
+          default:
+            return event.event_type ? event.event_type.replace(/_/g, ' ') : 'Evento sistema';
+        }
+      }
+
+      function resolveIcon(eventType) {
+        switch (eventType) {
+          case 'alert':
+            return { icon: 'fa-exclamation-triangle', modifier: 'audit-list__item--alert' };
+          case 'threshold_change':
+            return { icon: 'fa-sliders', modifier: 'audit-list__item--success' };
+          case 'login':
+            return { icon: 'fa-right-to-bracket', modifier: '' };
+          case 'subscription':
+            return { icon: 'fa-crown', modifier: 'audit-list__item--success' };
+          case 'test_alert':
+            return { icon: 'fa-satellite-dish', modifier: '' };
+          default:
+            return { icon: 'fa-circle-info', modifier: '' };
+        }
+      }
+
+      function renderList(container, items, emptyMessage) {
+        if (!container) {
+          return;
+        }
+        if (!Array.isArray(items) || items.length === 0) {
+          container.innerHTML = `<p class="audit-list__empty">${escapeHtml(emptyMessage)}</p>`;
+          container.setAttribute('aria-busy', 'false');
+          return;
+        }
+        const markup = items.map((item) => {
+          const visuals = resolveIcon(item.event_type);
+          const timestamp = formatDateTime(item.timestamp);
+          const title = describeEvent(item);
+          const userEmail = item.user_email ? `<span><i class="fas fa-user"></i> ${escapeHtml(item.user_email)}</span>` : '';
+          return `
+            <li class="audit-list__item ${visuals.modifier}">
+              <span class="audit-list__icon"><i class="fas ${visuals.icon}"></i></span>
+              <div class="audit-list__content">
+                <p class="audit-list__title">${escapeHtml(title)}</p>
+                <p class="audit-list__meta">
+                  ${userEmail}
+                  <span><i class="fas fa-clock"></i> ${escapeHtml(timestamp)}</span>
+                </p>
+              </div>
+            </li>
+          `;
+        }).join('');
+        container.innerHTML = markup;
+        container.setAttribute('aria-busy', 'false');
+      }
+
+      async function refreshAudit(manual = false) {
+        try {
+          const url = new URL(ADMIN_AUDIT_ENDPOINT, window.location.origin);
+          url.searchParams.set('limit', EVENT_LIMIT);
+          url.searchParams.set('alerts_limit', ALERT_LIMIT);
+          const response = await fetch(url.toString(), {
+            credentials: 'same-origin',
+            headers: { Accept: 'application/json' },
+          });
+          const data = await response.json();
+          if (!response.ok || !data.ok) {
+            throw new Error(data.error || `HTTP ${response.status}`);
+          }
+          if (Array.isArray(data.events)) {
+            renderList(eventsList, data.events, 'Nessun evento registrato.');
+            if (eventsCount) {
+              eventsCount.textContent = data.events.length;
+            }
+          }
+          if (Array.isArray(data.alerts)) {
+            renderList(alertsList, data.alerts, 'Nessun alert recente.');
+          }
+          if (alerts24h && data.metrics) {
+            alerts24h.textContent = data.metrics.alerts_last_24h;
+          }
+          if (updatedLabel) {
+            updatedLabel.textContent = `Aggiornato alle ${formatDateTime(data.generated_at)}`;
+          }
+          if (auditStatus) {
+            auditStatus.textContent = manual ? 'Registro aggiornato manualmente.' : 'Registro aggiornato automaticamente.';
+          }
+        } catch (error) {
+          if (auditStatus) {
+            auditStatus.textContent = `Errore aggiornamento registro: ${error.message}`;
+          }
+          if (manual) {
+            createToast(error.message || 'Errore durante l\'aggiornamento del registro.', 'error');
+          }
+        }
+      }
+
+      refreshButton?.addEventListener('click', () => refreshAudit(true));
+
+      refreshAudit();
+      auditTimer = window.setInterval(refreshAudit, 60000);
+      return refreshAudit;
+    }
+
+    auditRefresher = initAdminAudit();
+
+    renderUsers(state.items);
+    updateSummary();
+    updatePagination();
+    loadAdminActions();
+    refreshAnalytics();
+
+    analyticsTimer = window.setInterval(refreshAnalytics, 300000);
+    adminActionsTimer = window.setInterval(loadAdminActions, 120000);
+
+    window.addEventListener('beforeunload', () => {
+      window.clearInterval(analyticsTimer);
+      window.clearInterval(adminActionsTimer);
+      window.clearInterval(auditTimer);
+    });
   })();
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', registerAdminActionHandlers);
-  } else {
-    registerAdminActionHandlers();
-  }
-
-  const testAlertButton = document.getElementById('admin-test-alert-button');
-  if (testAlertButton) {
-    testAlertButton.addEventListener('click', testAlert);
-  }
 </script>
 {% endblock %}

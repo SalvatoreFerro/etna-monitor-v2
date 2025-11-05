@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 
 from flask_login import UserMixin
+from sqlalchemy import func, or_
 from sqlalchemy.orm import validates
 
 from . import db
@@ -130,6 +131,18 @@ class User(UserMixin, db.Model):
         self.premium_lifetime = True
         self.premium_since = datetime.utcnow()
         self.mark_premium_plan()
+
+    @classmethod
+    def premium_status_clause(cls):
+        """Return a SQL expression selecting users with premium entitlements."""
+        normalized_status = func.lower(func.coalesce(cls.subscription_status, ''))
+        return or_(
+            cls.plan_type == 'premium',
+            cls.is_premium.is_(True),
+            cls.premium.is_(True),
+            cls.premium_lifetime.is_(True),
+            normalized_status.in_(['active', 'trialing']),
+        )
 
     @validates("email")
     def _normalize_email(self, key: str, value: str | None) -> str:

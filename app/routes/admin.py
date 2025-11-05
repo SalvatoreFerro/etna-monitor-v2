@@ -11,6 +11,7 @@ from ..models import (
     db,
     BlogPost,
     UserFeedback,
+    AdminActionLog,
 )
 from ..models.user import User
 from ..models.event import Event
@@ -87,12 +88,117 @@ def _serialize_partner(partner: Partner) -> dict:
     }
 
 
+ADMIN_USERS_PER_PAGE = 20
+
+
+def _get_admin_ip() -> str | None:
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return request.remote_addr
+
+
+def _log_admin_action(
+    action: str,
+    *,
+    target_user: User | None = None,
+    target_email: str | None = None,
+    status: str = "success",
+    message: str | None = None,
+    details: dict | None = None,
+) -> None:
+    """Persist an admin action log without interrupting the request flow."""
+
+    admin_id = current_user.id if current_user.is_authenticated else None
+    admin_email = current_user.email if current_user.is_authenticated else None
+    entry = AdminActionLog(
+        action=action,
+        status=status,
+        message=message,
+        admin_id=admin_id,
+        admin_email=admin_email,
+        target_user_id=target_user.id if target_user else None,
+        target_email=target_email or (target_user.email if target_user else None),
+        ip_address=_get_admin_ip(),
+        context=details,
+    )
+
+    try:
+        db.session.add(entry)
+        db.session.commit()
+    except Exception:  # pragma: no cover - defensive logging
+        db.session.rollback()
+        current_app.logger.exception("Failed to store admin action log")
+
+
+def _coerce_positive_int(raw_value, *, default: int = 1) -> int:
+    try:
+        value = int(raw_value)
+    except (TypeError, ValueError):
+        return default
+    return max(1, value)
+
+
+def _build_users_query(search_term: str | None, plan_filter: str | None):
+    query = User.query
+
+    if search_term:
+        normalized = f"%{search_term.strip().lower()}%"
+        query = query.filter(func.lower(User.email).like(normalized))
+
+    plan = (plan_filter or "all").lower()
+    premium_clause = User.premium_status_clause()
+
+    if plan == "premium":
+        query = query.filter(premium_clause)
+    elif plan == "free":
+        query = query.filter(~premium_clause)
+    elif plan == "admin":
+        query = query.filter(User.is_admin.is_(True))
+
+    return query.order_by(User.created_at.desc())
+
+
+def _serialize_user_for_admin(user: User) -> dict:
+    chat_id = user.telegram_chat_id or user.chat_id
+    return {
+        "id": user.id,
+        "email": user.email,
+        "plan": user.current_plan,
+        "has_premium": bool(user.has_premium_access),
+        "is_admin": bool(user.is_admin),
+        "threshold": user.threshold,
+        "chat_id": chat_id,
+        "telegram_chat_id": user.telegram_chat_id,
+        "telegram_opt_in": bool(user.telegram_opt_in),
+        "free_alert_consumed": int(user.free_alert_consumed or 0),
+    }
+
+
 @bp.route("/")
 @admin_required
 def admin_home():
     ensure_demo_profiles()
-    users = User.query.all()
-    return render_template("admin.html", users=users)
+    search_query = (request.args.get("q") or "").strip()
+    plan_filter = (request.args.get("plan") or "all").lower()
+    page = _coerce_positive_int(request.args.get("page"), default=1)
+
+    users_query = _build_users_query(search_query, plan_filter)
+    pagination = users_query.paginate(page=page, per_page=ADMIN_USERS_PER_PAGE, error_out=False)
+
+    initial_users = [_serialize_user_for_admin(user) for user in pagination.items]
+
+    return render_template(
+        "admin.html",
+        users=pagination.items,
+        initial_users=initial_users,
+        total_users=pagination.total,
+        page=page,
+        pages=pagination.pages,
+        plan_filter=plan_filter,
+        search_query=search_query,
+        per_page=ADMIN_USERS_PER_PAGE,
+    )
 
 
 @bp.route("/blog", methods=["GET", "POST"])
@@ -234,26 +340,50 @@ def toggle_premium(user_id):
 
     user = User.query.get_or_404(user_id)
     currently_premium = user.has_premium_access
+    action_label = "upgrade" if not currently_premium else "downgrade"
 
-    if currently_premium:
-        user.premium = False
-        user.is_premium = False
-        user.premium_lifetime = False
-        user.plan_type = 'free'
-        user.subscription_status = 'free'
-        user.premium_since = None
-        user.threshold = None
-    else:
-        user.premium = True
-        user.is_premium = True
-        user.mark_premium_plan()
-        user.subscription_status = 'active'
-        if not user.premium_since:
-            user.premium_since = datetime.utcnow()
+    try:
+        if currently_premium:
+            user.premium = False
+            user.is_premium = False
+            user.premium_lifetime = False
+            user.plan_type = 'free'
+            user.subscription_status = 'free'
+            user.premium_since = None
+            user.threshold = None
+        else:
+            user.premium = True
+            user.is_premium = True
+            user.mark_premium_plan()
+            user.subscription_status = 'active'
+            if not user.premium_since:
+                user.premium_since = datetime.utcnow()
 
-    db.session.commit()
+        db.session.commit()
+    except Exception as exc:  # pragma: no cover - database failure safeguard
+        db.session.rollback()
+        error_message = f"Impossibile aggiornare il piano premium: {exc}"
+        _log_admin_action(
+            action_label,
+            target_user=user,
+            status="error",
+            message=error_message,
+        )
+        if is_json:
+            return jsonify({"success": False, "message": error_message}), 500
+
+        flash("Si è verificato un errore durante l'aggiornamento del piano.", "error")
+        return redirect(url_for('admin.admin_home'))
 
     new_state = user.has_premium_access
+    log_message = f"{user.email} -> {'Premium' if new_state else 'Free'}"
+    _log_admin_action(
+        action_label,
+        target_user=user,
+        status="success",
+        message=log_message,
+        details={"premium": new_state},
+    )
 
     if is_json:
         return jsonify({
@@ -285,15 +415,45 @@ def delete_user(user_id):
     user = User.query.get_or_404(user_id)
 
     if user.is_admin:
+        _log_admin_action(
+            "delete",
+            target_user=user,
+            status="error",
+            message="Tentativo di eliminare un amministratore",
+        )
         if request.is_json:
             return jsonify({"success": False, "message": "Cannot delete admin users"})
         else:
             flash("Cannot delete admin users", "error")
             return redirect(url_for('admin.admin_home'))
 
-    Event.query.filter_by(user_id=user_id).delete()
-    db.session.delete(user)
-    db.session.commit()
+    target_email = user.email
+
+    try:
+        Event.query.filter_by(user_id=user_id).delete()
+        db.session.delete(user)
+        db.session.commit()
+    except Exception as exc:  # pragma: no cover - database safeguard
+        db.session.rollback()
+        error_message = f"Impossibile eliminare l'utente: {exc}"
+        _log_admin_action(
+            "delete",
+            target_user=user,
+            status="error",
+            message=error_message,
+        )
+        if request.is_json:
+            return jsonify({"success": False, "message": error_message}), 500
+
+        flash("Si è verificato un errore durante l'eliminazione dell'utente.", "error")
+        return redirect(url_for('admin.admin_home'))
+
+    _log_admin_action(
+        "delete",
+        target_email=target_email,
+        status="success",
+        message=f"Utente {target_email} eliminato",
+    )
 
     if is_json:
         return jsonify({"success": True, "message": f"User {user.email} deleted successfully"})
@@ -313,6 +473,11 @@ def test_alert():
     try:
         telegram_service = TelegramService()
         if not telegram_service.is_configured():
+            _log_admin_action(
+                "test_alert_all",
+                status="error",
+                message="Bot Telegram non configurato",
+            )
             return (
                 jsonify({
                     "success": False,
@@ -397,12 +562,27 @@ def test_alert():
             f"Alert totali nel sistema: {recent_alerts}",
         ]
 
+        _log_admin_action(
+            "test_alert_all",
+            status="success",
+            message=f"Test alert globale - inviati {sent_count}",
+            details={
+                "recipients": recipients_count,
+                "sent": sent_count,
+            },
+        )
+
         return jsonify({
             "success": True,
             "message": "\n".join(message_lines)
         })
 
     except Exception as e:
+        _log_admin_action(
+            "test_alert_all",
+            status="error",
+            message=str(e),
+        )
         return jsonify({
             "success": False,
             "message": f"Errore durante il controllo: {str(e)}"
@@ -412,19 +592,29 @@ def test_alert():
 @bp.route("/users")
 @admin_required
 def users_list():
-    users = User.query.all()
-    return jsonify([
-        {
-            "id": user.id,
-            "email": user.email,
-            "premium": user.has_premium_access,
-            "is_admin": user.is_admin,
-            "plan_type": user.current_plan,
-            "chat_id": user.telegram_chat_id or user.chat_id,
-            "telegram_opt_in": user.telegram_opt_in,
-            "free_alert_consumed": user.free_alert_consumed,
-            "threshold": user.threshold,
-        } for user in users])
+    search_query = (request.args.get("q") or "").strip()
+    plan_filter = (request.args.get("plan") or "all").lower()
+    page = _coerce_positive_int(request.args.get("page"), default=1)
+    per_page = _coerce_positive_int(request.args.get("per_page"), default=ADMIN_USERS_PER_PAGE)
+    per_page = min(per_page, 100)
+
+    pagination = (
+        _build_users_query(search_query, plan_filter)
+        .paginate(page=page, per_page=per_page, error_out=False)
+    )
+
+    payload = {
+        "ok": True,
+        "items": [_serialize_user_for_admin(user) for user in pagination.items],
+        "page": page,
+        "pages": pagination.pages,
+        "per_page": per_page,
+        "total": pagination.total,
+        "has_next": pagination.has_next,
+        "has_prev": pagination.has_prev,
+    }
+
+    return jsonify(payload)
 
 
 @bp.route("/reset_free_trial/<int:user_id>", methods=["POST"])
@@ -444,10 +634,32 @@ def reset_free_trial(user_id: int):
         return redirect(url_for('admin.admin_home'))
 
     user = User.query.get_or_404(user_id)
-    user.free_alert_consumed = 0
-    user.free_alert_event_id = None
-    user.last_alert_sent_at = None
-    db.session.commit()
+    try:
+        user.free_alert_consumed = 0
+        user.free_alert_event_id = None
+        user.last_alert_sent_at = None
+        db.session.commit()
+    except Exception as exc:  # pragma: no cover - database safeguard
+        db.session.rollback()
+        error_message = f"Impossibile ripristinare la prova gratuita: {exc}"
+        _log_admin_action(
+            "reset_trial",
+            target_user=user,
+            status="error",
+            message=error_message,
+        )
+        if is_json:
+            return jsonify({"success": False, "message": error_message}), 500
+
+        flash("Ripristino prova non riuscito.", "error")
+        return redirect(url_for('admin.admin_home'))
+
+    _log_admin_action(
+        "reset_trial",
+        target_user=user,
+        status="success",
+        message=f"Prova gratuita ripristinata per {user.email}",
+    )
 
     if is_json:
         return jsonify({
@@ -457,6 +669,80 @@ def reset_free_trial(user_id: int):
 
     flash(f"Prova gratuita ripristinata per {user.email}", "success")
     return redirect(url_for('admin.admin_home'))
+
+
+@bp.route("/users/<int:user_id>/test-alert", methods=["POST"])
+@admin_required
+def send_test_alert_to_user(user_id: int):
+    data = request.get_json(silent=True) or {}
+    if not _is_csrf_valid(data.get("csrf_token")):
+        return jsonify({"success": False, "message": "Token CSRF non valido."}), 400
+
+    user = User.query.get_or_404(user_id)
+    chat_id = user.telegram_chat_id or user.chat_id
+
+    if not chat_id:
+        message = "Questo utente non ha collegato un account Telegram."
+        _log_admin_action(
+            "test_alert",
+            target_user=user,
+            status="error",
+            message=message,
+        )
+        return jsonify({"success": False, "message": message}), 400
+
+    telegram_service = TelegramService()
+    if not telegram_service.is_configured():
+        message = "Bot Telegram non configurato."
+        _log_admin_action(
+            "test_alert",
+            target_user=user,
+            status="error",
+            message=message,
+        )
+        return jsonify({"success": False, "message": message}), 500
+
+    try:
+        sent = telegram_service.send_message(
+            chat_id,
+            (
+                "🔔 Test alert EtnaMonitor\n"
+                "Questo messaggio conferma il collegamento Telegram per gli alert."
+            ),
+        )
+    except Exception as exc:  # pragma: no cover - external service safeguard
+        current_app.logger.exception("Failed to send test alert to user %s", user.email)
+        message = f"Errore durante l'invio: {exc}"
+        _log_admin_action(
+            "test_alert",
+            target_user=user,
+            status="error",
+            message=message,
+            details={"chat_id": chat_id},
+        )
+        return jsonify({"success": False, "message": message}), 500
+
+    if not sent:
+        message = "Telegram ha rifiutato il messaggio di test."
+        _log_admin_action(
+            "test_alert",
+            target_user=user,
+            status="error",
+            message=message,
+            details={"chat_id": chat_id},
+        )
+        return jsonify({"success": False, "message": message}), 500
+
+    success_message = f"Alert di test inviato a {user.email}."
+    _log_admin_action(
+        "test_alert",
+        target_user=user,
+        status="success",
+        message=success_message,
+        details={"chat_id": chat_id},
+    )
+
+    return jsonify({"success": True, "message": success_message})
 
 
 @bp.route("/donations")
