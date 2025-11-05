@@ -416,7 +416,7 @@
       hovermode: 'x unified',
       plot_bgcolor: 'rgba(0,0,0,0)',
       paper_bgcolor: 'rgba(0,0,0,0)',
-      font: { color: isDarkTheme ? '#e2e8f0' : '#0f172a' },
+      font: { color: '#e2e8f0' },
       xaxis: {
         type: 'date',
         title: '',
@@ -447,9 +447,9 @@
       },
       shapes,
       hoverlabel: {
-        bgcolor: isDarkTheme ? HOVER_BG_DARK : HOVER_BG_LIGHT,
+        bgcolor: HOVER_BG_DARK,
         bordercolor: thresholdColor,
-        font: { color: isDarkTheme ? '#f8fafc' : '#0f172a' }
+        font: { color: '#f8fafc' }
       }
     };
 
