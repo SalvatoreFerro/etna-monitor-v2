@@ -30,6 +30,7 @@ BASE_CSP: CSPDirective = {
         "https://api.stripe.com",
         "https://plausible.io",
         "https://www.google-analytics.com",
+        "https://region1.google-analytics.com",
     ],
     "frame-src": [
         "'self'",
