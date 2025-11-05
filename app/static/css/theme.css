@@ -1,30 +1,30 @@
 :root {
-  color-scheme: light;
+  color-scheme: dark;
   --font-base: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-display: "Space Grotesk", "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
-  --color-background: #f8fafc;
-  --color-background-alt: #ffffff;
-  --color-surface: #ffffff;
-  --color-surface-strong: #f1f5f9;
-  --color-surface-soft: rgba(15, 23, 42, 0.06);
-  --color-border: rgba(148, 163, 184, 0.3);
-  --color-border-strong: rgba(100, 116, 139, 0.4);
-  --color-text: #1f2937;
-  --color-text-muted: rgba(30, 41, 59, 0.72);
-  --color-heading: #0f172a;
-  --color-primary: #0ea5e9;
-  --color-primary-strong: #0284c7;
-  --color-primary-soft: rgba(14, 165, 233, 0.18);
-  --color-accent: #6366f1;
-  --color-success: #16a34a;
-  --color-warning: #d97706;
-  --color-danger: #dc2626;
+  --color-background: #03060f;
+  --color-background-alt: #050b18;
+  --color-surface: rgba(12, 19, 35, 0.78);
+  --color-surface-strong: rgba(15, 25, 45, 0.92);
+  --color-surface-soft: rgba(148, 163, 184, 0.08);
+  --color-border: rgba(148, 163, 184, 0.18);
+  --color-border-strong: rgba(100, 116, 139, 0.45);
+  --color-text: #e2e8f0;
+  --color-text-muted: rgba(226, 232, 240, 0.72);
+  --color-heading: #f8fafc;
+  --color-primary: #64f4ff;
+  --color-primary-strong: #36d0ff;
+  --color-primary-soft: rgba(100, 244, 255, 0.18);
+  --color-accent: #a855f7;
+  --color-success: #22d3ee;
+  --color-warning: #facc15;
+  --color-danger: #fb7185;
 
-  --shadow-xs: 0 6px 18px -12px rgba(15, 23, 42, 0.16);
-  --shadow-sm: 0 16px 32px -18px rgba(15, 23, 42, 0.18);
-  --shadow-md: 0 32px 60px -32px rgba(15, 23, 42, 0.15);
-  --shadow-lg: 0 42px 90px -40px rgba(15, 23, 42, 0.18);
+  --shadow-xs: 0 8px 24px -20px rgba(15, 23, 42, 0.8);
+  --shadow-sm: 0 14px 32px -24px rgba(15, 23, 42, 0.85);
+  --shadow-md: 0 30px 90px -42px rgba(15, 23, 42, 0.86);
+  --shadow-lg: 0 45px 120px -55px rgba(15, 23, 42, 0.92);
 
   --radius-sm: 12px;
   --radius-md: 18px;
@@ -48,46 +48,12 @@
   --layout-gutter: clamp(1.25rem, 4vw, 3.5rem);
   --nav-height: 64px;
 
-  --gradient-sky: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%);
-  --gradient-card: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(241, 245, 249, 0.9));
-  --gradient-pill: linear-gradient(120deg, rgba(14, 165, 233, 0.58), rgba(99, 102, 241, 0.58));
+  --gradient-sky: radial-gradient(circle at 0% -20%, rgba(100, 244, 255, 0.38), transparent 55%),
+    radial-gradient(circle at 100% 0%, rgba(168, 85, 247, 0.28), transparent 55%),
+    linear-gradient(160deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.96));
+  --gradient-card: linear-gradient(145deg, rgba(100, 244, 255, 0.07), rgba(15, 23, 42, 0.78));
+  --gradient-pill: linear-gradient(120deg, rgba(100, 244, 255, 0.6), rgba(168, 85, 247, 0.6));
 
-  --backdrop-strong: saturate(140%) blur(18px);
-  --backdrop-soft: saturate(120%) blur(12px);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    color-scheme: dark;
-    --color-background: #03060f;
-    --color-background-alt: #050b18;
-    --color-surface: rgba(12, 19, 35, 0.78);
-    --color-surface-strong: rgba(15, 25, 45, 0.92);
-    --color-surface-soft: rgba(148, 163, 184, 0.08);
-    --color-border: rgba(148, 163, 184, 0.18);
-    --color-border-strong: rgba(100, 116, 139, 0.45);
-    --color-text: #e2e8f0;
-    --color-text-muted: rgba(226, 232, 240, 0.72);
-    --color-heading: #f8fafc;
-    --color-primary: #64f4ff;
-    --color-primary-strong: #36d0ff;
-    --color-primary-soft: rgba(100, 244, 255, 0.18);
-    --color-accent: #a855f7;
-    --color-success: #22d3ee;
-    --color-warning: #facc15;
-    --color-danger: #fb7185;
-
-    --shadow-xs: 0 8px 24px -20px rgba(15, 23, 42, 0.8);
-    --shadow-sm: 0 14px 32px -24px rgba(15, 23, 42, 0.85);
-    --shadow-md: 0 30px 90px -42px rgba(15, 23, 42, 0.86);
-    --shadow-lg: 0 45px 120px -55px rgba(15, 23, 42, 0.92);
-
-    --gradient-sky: radial-gradient(circle at 0% -20%, rgba(100, 244, 255, 0.38), transparent 55%),
-      radial-gradient(circle at 100% 0%, rgba(168, 85, 247, 0.28), transparent 55%),
-      linear-gradient(160deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.96));
-    --gradient-card: linear-gradient(145deg, rgba(100, 244, 255, 0.07), rgba(15, 23, 42, 0.78));
-    --gradient-pill: linear-gradient(120deg, rgba(100, 244, 255, 0.6), rgba(168, 85, 247, 0.6));
-    --backdrop-strong: saturate(160%) blur(24px);
-    --backdrop-soft: saturate(140%) blur(16px);
-  }
+  --backdrop-strong: saturate(160%) blur(24px);
+  --backdrop-soft: saturate(140%) blur(16px);
 }

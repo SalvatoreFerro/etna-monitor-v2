@@ -373,12 +373,11 @@
     const timestamps = filtered.map((row) => row.timestamp);
     const values = filtered.map((row) => row.value);
     const clampedValues = values.map((value) => (value >= LOG_SCALE_MIN ? value : LOG_SCALE_MIN));
-    const isDarkTheme = document.documentElement.getAttribute('data-theme') !== 'light';
-    const lineColor = isDarkTheme ? PRIMARY_LINE_COLOR_DARK : PRIMARY_LINE_COLOR_LIGHT;
-    const fillColor = isDarkTheme ? PRIMARY_FILL_COLOR_DARK : PRIMARY_FILL_COLOR_LIGHT;
-    const gridColor = isDarkTheme ? GRID_COLOR_DARK : GRID_COLOR_LIGHT;
-    const axisLineColor = isDarkTheme ? AXIS_LINE_COLOR_DARK : AXIS_LINE_COLOR_LIGHT;
-    const thresholdColor = isDarkTheme ? THRESHOLD_COLOR_DARK : THRESHOLD_COLOR_LIGHT;
+    const lineColor = PRIMARY_LINE_COLOR_DARK;
+    const fillColor = PRIMARY_FILL_COLOR_DARK;
+    const gridColor = GRID_COLOR_DARK;
+    const axisLineColor = AXIS_LINE_COLOR_DARK;
+    const thresholdColor = THRESHOLD_COLOR_DARK;
 
     const minExponent = Math.log10(Math.min(...clampedValues));
     const maxExponent = Math.log10(Math.max(...clampedValues));
