@@ -24,18 +24,26 @@ BASE_CSP: CSPDirective = {
         "https://cdnjs.cloudflare.com",
     ],
     "font-src": ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
-    "img-src": ["'self'", "data:", "https:"],
+    "img-src": [
+        "'self'",
+        "data:",
+        "https://www.google-analytics.com",
+        "https://region1.google-analytics.com",
+        "https:",
+    ],
     "connect-src": [
         "'self'",
         "https://api.stripe.com",
         "https://plausible.io",
         "https://www.google-analytics.com",
         "https://region1.google-analytics.com",
+        "https://www.googletagmanager.com",
     ],
     "frame-src": [
         "'self'",
         "https://js.stripe.com",
         "https://hooks.stripe.com",
+        "https://www.googletagmanager.com",
     ],
     "child-src": [
         "'self'",
