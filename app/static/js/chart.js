@@ -31,6 +31,7 @@
   const HOVER_BG_DARK = 'rgba(15, 23, 42, 0.92)';
   const HOVER_BG_LIGHT = '#f8fafc';
   const THRESHOLD_LEVEL = 4;
+  const isDarkTheme = true;
 
   const plotElement = document.getElementById('home-preview-plot');
   const loadingElement = document.getElementById('home-preview-loading');
