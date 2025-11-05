@@ -8,6 +8,7 @@ def init_db(app):
 
 from .user import User
 from .event import Event
+from .admin_action import AdminActionLog
 from .partner import Partner
 from .blog import BlogPost
 from .forum import ForumThread, ForumReply
@@ -30,6 +31,7 @@ __all__ = [
     'init_db',
     'User',
     'Event',
+    'AdminActionLog',
     'Partner',
     'BlogPost',
     'ForumThread',
