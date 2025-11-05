@@ -1,0 +1,119 @@
+{% extends "layout.html" %}
+{% set page_title = "Webcam Etna in diretta – Vista live dei crateri con meteo aggiornato" %}
+{% set page_description = "Guarda le webcam live dell'Etna e consulta meteo, vento, temperatura e umidità aggiornati per pianificare escursioni in sicurezza." %}
+{% set page_og_title = page_title %}
+{% set page_og_description = page_description %}
+{% set canonical_url = url_for('main.webcam_etna', _external=True) %}
+
+{% block content %}
+<section class="page page--webcam">
+  <div class="container stack">
+    <header class="page__header">
+      <span class="eyebrow">Live</span>
+      <h1>Webcam dell'Etna e meteo in tempo reale</h1>
+      <p class="page__lede">
+        Tre punti di osservazione privilegiati per seguire l'attività del vulcano 24/7 con un colpo d'occhio sulle condizioni
+        meteo aggiornate in quota.
+      </p>
+    </header>
+
+    <section class="webcam-weather" aria-labelledby="webcam-weather-title">
+      <div class="webcam-weather__card">
+        <div class="webcam-weather__header">
+          <div>
+            <h2 id="webcam-weather-title">Condizioni meteo live sull'Etna</h2>
+            <p class="muted">Dati in tempo reale dall'API Open-Meteo per l'area sommitale del vulcano.</p>
+          </div>
+          <i class="fa-solid fa-cloud-sun"></i>
+        </div>
+
+        {% if weather_preview %}
+          <div class="webcam-weather__summary">
+            {% if weather_preview.weather_description %}
+              <p class="webcam-weather__condition">{{ weather_preview.weather_description }}</p>
+            {% endif %}
+            <div class="webcam-weather__grid" role="list">
+              <div class="webcam-weather__item" role="listitem">
+                <span class="webcam-weather__label">Temperatura</span>
+                {% if weather_preview.temperature is not none %}
+                  <strong class="webcam-weather__value">{{ weather_preview.temperature | round(1) }} {{ weather_preview.temperature_unit }}</strong>
+                {% else %}
+                  <strong class="webcam-weather__value">—</strong>
+                {% endif %}
+                {% if weather_preview.apparent_temperature is not none %}
+                  <span class="webcam-weather__meta">Percepita {{ weather_preview.apparent_temperature | round(1) }} {{ weather_preview.apparent_temperature_unit }}</span>
+                {% endif %}
+              </div>
+              <div class="webcam-weather__item" role="listitem">
+                <span class="webcam-weather__label">Umidità</span>
+                {% if weather_preview.humidity is not none %}
+                  <strong class="webcam-weather__value">{{ weather_preview.humidity | round(0) }}{{ weather_preview.humidity_unit }}</strong>
+                {% else %}
+                  <strong class="webcam-weather__value">—</strong>
+                {% endif %}
+              </div>
+              <div class="webcam-weather__item" role="listitem">
+                <span class="webcam-weather__label">Vento</span>
+                {% if weather_preview.wind_speed is not none %}
+                  <strong class="webcam-weather__value">{{ weather_preview.wind_speed | round(1) }} {{ weather_preview.wind_speed_unit }}</strong>
+                {% else %}
+                  <strong class="webcam-weather__value">—</strong>
+                {% endif %}
+                {% if weather_preview.wind_direction_cardinal %}
+                  <span class="webcam-weather__meta">Direzione {{ weather_preview.wind_direction_cardinal }}</span>
+                {% endif %}
+              </div>
+              <div class="webcam-weather__item" role="listitem">
+                <span class="webcam-weather__label">Probabilità precipitazioni</span>
+                {% if weather_preview.precipitation_probability is not none %}
+                  <strong class="webcam-weather__value">{{ weather_preview.precipitation_probability | round(0) }}{{ weather_preview.precipitation_unit }}</strong>
+                {% else %}
+                  <strong class="webcam-weather__value">—</strong>
+                {% endif %}
+              </div>
+            </div>
+            {% if weather_preview.updated_at %}
+              <p class="webcam-weather__timestamp">Aggiornato alle {{ weather_preview.updated_at }} (ora locale).</p>
+            {% endif %}
+          </div>
+        {% elif weather_error %}
+          <p class="webcam-weather__error">{{ weather_error }}</p>
+        {% else %}
+          <p class="webcam-weather__loading">Caricamento delle condizioni meteo…</p>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="webcam-grid" aria-label="Elenco webcam live dell'Etna">
+      {% for camera in webcams %}
+        <article class="webcam-card">
+          <a class="webcam-card__link" href="{{ camera.url }}" target="_blank" rel="noopener" aria-label="Apri {{ camera.name }} in una nuova scheda">
+            <figure class="webcam-card__media">
+              <img src="{{ camera.thumbnail }}" alt="Anteprima live di {{ camera.name }}" loading="lazy" width="640" height="360" />
+              <figcaption class="webcam-card__overlay">
+                <span class="webcam-card__cta">Guarda la webcam</span>
+                <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+              </figcaption>
+            </figure>
+            <div class="webcam-card__body">
+              <h3>{{ camera.name }}</h3>
+              <p>{{ camera.description }}</p>
+            </div>
+          </a>
+        </article>
+      {% endfor %}
+    </section>
+
+    <aside class="webcam-notes" aria-label="Suggerimenti di utilizzo">
+      <div class="webcam-notes__content">
+        <h2>Consigli per leggere le immagini live</h2>
+        <ul>
+          <li>Durante la notte le camere potrebbero essere regolate su esposizione lunga: controlla anche il meteo per interpretare correttamente i bagliori.</li>
+          <li>In caso di manutenzione le webcam potrebbero risultare temporaneamente offline: aggiorna la pagina o apri il link diretto.</li>
+          <li>Per analisi storiche consulta la sezione <a class="link-arrow" href="{{ url_for('main.index') }}#grafico-etna">grafico tremore</a> con gli ultimi dati INGV.</li>
+        </ul>
+      </div>
+    </aside>
+  </div>
+</section>
+{% endblock %}

@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 
 import pandas as pd
+import requests
 from flask import (
     Blueprint,
     current_app,
@@ -27,6 +28,81 @@ from app.security import build_csp, talisman
 from backend.utils.time import to_iso_utc
 
 bp = Blueprint("main", __name__)
+
+
+WEATHER_CODE_DESCRIPTIONS: dict[int, str] = {
+    0: "Cielo sereno",
+    1: "Cielo prevalentemente sereno",
+    2: "Parzialmente nuvoloso",
+    3: "Coperto",
+    45: "Nebbia",
+    48: "Nebbia gelata",
+    51: "Pioviggine debole",
+    53: "Pioviggine moderata",
+    55: "Pioviggine intensa",
+    61: "Pioggia debole",
+    63: "Pioggia moderata",
+    65: "Pioggia forte",
+    66: "Pioggia gelata debole",
+    67: "Pioggia gelata intensa",
+    71: "Neve debole",
+    73: "Neve moderata",
+    75: "Neve intensa",
+    77: "Cristalli di ghiaccio",
+    80: "Rovesci deboli",
+    81: "Rovesci moderati",
+    82: "Rovesci violenti",
+    85: "Rovesci di neve deboli",
+    86: "Rovesci di neve intensi",
+    95: "Temporale",
+    96: "Temporale con grandine debole",
+    99: "Temporale con grandine intensa",
+}
+
+
+def _wind_direction_to_cardinal(degrees: float | None) -> str | None:
+    if degrees is None:
+        return None
+
+    directions = [
+        "N",
+        "NNE",
+        "NE",
+        "ENE",
+        "E",
+        "ESE",
+        "SE",
+        "SSE",
+        "S",
+        "SSO",
+        "SO",
+        "OSO",
+        "O",
+        "ONO",
+        "NO",
+        "NNO",
+    ]
+    index = int((degrees % 360) / 22.5 + 0.5) % len(directions)
+    return directions[index]
+
+
+def _format_weather_timestamp(value: str | None) -> tuple[str | None, str | None]:
+    if not value:
+        return None, None
+
+    try:
+        dt = datetime.fromisoformat(value)
+    except ValueError:
+        return None, value
+
+    return dt.strftime("%d/%m/%Y %H:%M"), dt.isoformat()
+
+
+def _describe_weather_code(code: int | None) -> str | None:
+    if code is None:
+        return None
+
+    return WEATHER_CODE_DESCRIPTIONS.get(code)
 
 
 def _index_cache_key() -> str:
@@ -301,6 +377,141 @@ def pricing():
         page_description="Scopri i piani Free e Premium di EtnaMonitor per accedere a grafici avanzati e avvisi sul tremore dell'Etna.",
         page_og_title="Prezzi e piani – EtnaMonitor",
         page_og_description="Scopri i piani Free e Premium di EtnaMonitor per accedere a grafici avanzati e avvisi sul tremore dell'Etna.",
+    )
+
+
+@bp.route("/webcam-etna")
+def webcam_etna():
+    og_image = "https://embed.skylinewebcams.com/img/741.jpg"
+    canonical = url_for("main.webcam_etna", _external=True)
+
+    webcams = [
+        {
+            "name": "Vulcano Etna – Crateri sommitali",
+            "url": "https://www.skylinewebcams.com/it/webcam/italia/sicilia/catania/vulcano-etna.html",
+            "thumbnail": "https://embed.skylinewebcams.com/img/741.jpg",
+            "description": "Vista panoramica sulle Bocchette e i crateri sommitali dell'Etna.",
+        },
+        {
+            "name": "Vulcano Etna – Versante Nord",
+            "url": "https://www.skylinewebcams.com/it/webcam/italia/sicilia/catania/vulcano-etna-versante-nord.html",
+            "thumbnail": "https://embed.skylinewebcams.com/img/1737.jpg",
+            "description": "Inquadratura dal versante nord con dettaglio sull'area di Piano Provenzana.",
+        },
+        {
+            "name": "Vulcano Etna – Versante Sud",
+            "url": "https://www.skylinewebcams.com/it/webcam/italia/sicilia/catania/vulcano-etna-crateri.html",
+            "thumbnail": "https://embed.skylinewebcams.com/img/1092.jpg",
+            "description": "Prospettiva sui crateri meridionali con il Rifugio Sapienza in primo piano.",
+        },
+    ]
+
+    weather_preview: dict[str, object] | None = None
+    weather_error: str | None = None
+
+    try:
+        weather_response = requests.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": 37.75,
+                "longitude": 14.99,
+                "current": "temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,weather_code",
+                "hourly": "precipitation_probability",
+                "forecast_days": 1,
+                "timezone": "Europe/Rome",
+            },
+            timeout=5,
+        )
+        weather_response.raise_for_status()
+        weather_data = weather_response.json()
+    except requests.RequestException:
+        weather_error = "Impossibile recuperare i dati meteo in tempo reale. Riprova più tardi."
+    else:
+        current = (weather_data or {}).get("current") or {}
+        units = (weather_data or {}).get("current_units") or {}
+        hourly = (weather_data or {}).get("hourly") or {}
+        precipitation_probability = None
+
+        hourly_probabilities = hourly.get("precipitation_probability") or []
+        hourly_times = hourly.get("time") or []
+        current_time = current.get("time")
+
+        if hourly_probabilities and hourly_times and current_time in hourly_times:
+            try:
+                precipitation_probability = hourly_probabilities[hourly_times.index(current_time)]
+            except (ValueError, IndexError):
+                precipitation_probability = hourly_probabilities[0]
+        elif hourly_probabilities:
+            precipitation_probability = hourly_probabilities[0]
+
+        wind_direction_deg = current.get("wind_direction_10m")
+        updated_at_display, updated_at_iso = _format_weather_timestamp(current.get("time"))
+
+        weather_preview = {
+            "temperature": current.get("temperature_2m"),
+            "temperature_unit": units.get("temperature_2m", "°C"),
+            "apparent_temperature": current.get("apparent_temperature"),
+            "apparent_temperature_unit": units.get("apparent_temperature", "°C"),
+            "humidity": current.get("relative_humidity_2m"),
+            "humidity_unit": units.get("relative_humidity_2m", "%"),
+            "wind_speed": current.get("wind_speed_10m"),
+            "wind_speed_unit": units.get("wind_speed_10m", "km/h"),
+            "wind_direction": wind_direction_deg,
+            "wind_direction_cardinal": _wind_direction_to_cardinal(wind_direction_deg),
+            "precipitation_probability": precipitation_probability,
+            "precipitation_unit": "%",
+            "updated_at": updated_at_display,
+            "updated_at_iso": updated_at_iso,
+            "weather_code": current.get("weather_code"),
+            "weather_description": _describe_weather_code(current.get("weather_code")),
+        }
+
+    page_structured_data: list[dict[str, object]] = [
+        {
+            "@context": "https://schema.org",
+            "@type": "ItemList",
+            "name": "Webcam Etna in diretta",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": index + 1,
+                    "name": camera["name"],
+                    "url": camera["url"],
+                    "image": camera["thumbnail"],
+                    "description": camera["description"],
+                }
+                for index, camera in enumerate(webcams)
+            ],
+        }
+    ]
+
+    if weather_preview and weather_preview.get("updated_at_iso"):
+        page_structured_data.append(
+            {
+                "@context": "https://schema.org",
+                "@type": "WeatherObservation",
+                "name": "Condizioni meteo live sull'Etna",
+                "observationDate": weather_preview["updated_at_iso"],
+                "weatherCondition": weather_preview.get("weather_description"),
+                "temperature": weather_preview.get("temperature"),
+                "windSpeed": weather_preview.get("wind_speed"),
+                "windDirection": weather_preview.get("wind_direction"),
+                "humidity": weather_preview.get("humidity"),
+            }
+        )
+
+    return render_template(
+        "webcam.html",
+        page_title="Webcam Etna in diretta – Vista live dei crateri con meteo aggiornato",
+        page_description="Guarda le webcam live dell'Etna e consulta meteo, vento, temperatura e umidità aggiornati per pianificare escursioni in sicurezza.",
+        page_og_title="Webcam Etna in diretta",
+        page_og_description="Tre webcam live dell'Etna con anteprima meteo aggiornata su vento, temperatura e umidità.",
+        page_og_image=og_image,
+        canonical_url=canonical,
+        webcams=webcams,
+        weather_preview=weather_preview,
+        weather_error=weather_error,
+        page_structured_data=page_structured_data,
     )
 
 

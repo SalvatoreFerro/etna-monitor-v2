@@ -2569,3 +2569,200 @@
   gap: var(--space-2);
   align-items: flex-start;
 }
+
+.page--webcam .container {
+  gap: clamp(var(--space-8), 6vw, var(--space-12));
+}
+
+.webcam-weather {
+  display: grid;
+}
+
+.webcam-weather__card {
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(100, 244, 255, 0.2);
+  background: linear-gradient(145deg, rgba(4, 12, 24, 0.95), rgba(14, 116, 201, 0.18));
+  padding: clamp(var(--space-6), 5vw, var(--space-8));
+  box-shadow: var(--shadow-md);
+  display: grid;
+  gap: var(--space-5);
+}
+
+.webcam-weather__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.webcam-weather__header i {
+  font-size: clamp(2.2rem, 4vw, 2.8rem);
+  color: var(--color-primary);
+}
+
+.webcam-weather__summary {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.webcam-weather__condition {
+  font-size: 1.05rem;
+  font-weight: 500;
+  color: var(--color-heading);
+}
+
+.webcam-weather__grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .webcam-weather__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.webcam-weather__item {
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(148, 163, 184, 0.06);
+  padding: var(--space-4);
+  display: grid;
+  gap: 0.45rem;
+}
+
+.webcam-weather__label {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--color-text-muted);
+}
+
+.webcam-weather__value {
+  font-size: 1.6rem;
+  color: var(--color-heading);
+}
+
+.webcam-weather__meta {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.webcam-weather__timestamp {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.webcam-weather__error,
+.webcam-weather__loading {
+  font-size: 0.95rem;
+  color: var(--color-text);
+}
+
+.webcam-grid {
+  display: grid;
+  gap: clamp(var(--space-5), 4vw, var(--space-7));
+}
+
+@media (min-width: 768px) {
+  .webcam-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.webcam-card {
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(4, 12, 24, 0.9);
+  overflow: hidden;
+  transition: transform 0.3s ease, border-color 0.3s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.webcam-card__link {
+  display: grid;
+  height: 100%;
+  color: inherit;
+}
+
+.webcam-card__media {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+}
+
+.webcam-card__media img {
+  width: 100%;
+  height: auto;
+  display: block;
+  transition: transform 0.45s ease;
+}
+
+.webcam-card__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 40%, rgba(4, 9, 20, 0.85));
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: var(--space-4);
+  color: var(--color-heading);
+  font-size: 0.95rem;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.webcam-card__cta {
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.webcam-card__body {
+  padding: clamp(var(--space-4), 3vw, var(--space-5));
+  display: grid;
+  gap: var(--space-2);
+}
+
+.webcam-card__body h3 {
+  font-size: 1.25rem;
+}
+
+.webcam-card__body p {
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.webcam-card:hover {
+  transform: translateY(-6px);
+  border-color: rgba(100, 244, 255, 0.4);
+}
+
+.webcam-card:hover .webcam-card__media img {
+  transform: scale(1.04);
+}
+
+.webcam-card:hover .webcam-card__overlay {
+  opacity: 1;
+}
+
+.webcam-notes {
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(14, 23, 42, 0.8);
+  padding: clamp(var(--space-6), 5vw, var(--space-8));
+}
+
+.webcam-notes__content {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.webcam-notes__content ul {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.6rem;
+  color: var(--color-text-muted);
+}
