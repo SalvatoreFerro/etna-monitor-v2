@@ -14,10 +14,14 @@ TOKEN_ENV: Final[str] = "TELEGRAM_BOT_TOKEN"
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handle the /start command."""
 
-    if update.effective_chat:
-        logging.info("Handling /start command chat_id=%s", update.effective_chat.id)
+    chat_id = update.effective_chat.id if update.effective_chat else None
+    if chat_id is not None:
+        logging.info("Handling /start command chat_id=%s", chat_id)
     if update.message:
-        await update.message.reply_text("Ciao, sono Etna Bot! 🔥")
+        greeting = "Ciao, sono Etna Bot! 🔥"
+        if chat_id is not None:
+            greeting = f"{greeting}\nIl tuo chat ID è: {chat_id}"
+        await update.message.reply_text(greeting)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
