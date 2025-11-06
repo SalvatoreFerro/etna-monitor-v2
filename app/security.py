@@ -13,9 +13,11 @@ BASE_CSP: CSPDirective = {
     "default-src": "'self'",
     "script-src": [
         "'self'",
+        "'nonce-%(nonce)s'",
         "https://js.stripe.com",
         "https://plausible.io",
         "https://www.googletagmanager.com",
+        "https://www.google-analytics.com",
     ],
     "style-src": [
         "'self'",
@@ -24,7 +26,13 @@ BASE_CSP: CSPDirective = {
         "https://cdnjs.cloudflare.com",
     ],
     "font-src": ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
-    "img-src": ["'self'", "data:", "https:"],
+    "img-src": [
+        "'self'",
+        "data:",
+        "https:",
+        "https://www.google-analytics.com",
+        "https://www.googletagmanager.com",
+    ],
     "connect-src": [
         "'self'",
         "https://api.stripe.com",
