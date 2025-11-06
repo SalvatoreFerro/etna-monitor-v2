@@ -9,20 +9,18 @@
     {% set computed_og_image = page_og_image or default_og_image %}
     {% set computed_canonical = canonical_url %}
     {% set STATIC_ASSET_VERSION = static_asset_version %}
-    <!-- Google tag (gtag.js) -->
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-STGBKHD2FQ"></script>
-<script nonce="{{ script_nonce }}">
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  // Attiva Google Analytics 4 (monitoraggio in tempo reale)
-  gtag('config', 'G-STGBKHD2FQ');
-
-  // (Facoltativo) Attiva anche Google Ads per conversioni
-  gtag('config', 'AW-17681413584');
-</script>
+    {% if analytics.ga_measurement_id %}
+      <!-- Google tag (gtag.js) -->
+      <script async src="https://www.googletagmanager.com/gtag/js?id={{ analytics.ga_measurement_id }}"></script>
+      <script nonce="{{ script_nonce }}">
+        window.dataLayer = window.dataLayer || [];
+        function gtag() {
+          dataLayer.push(arguments);
+        }
+        gtag('js', new Date());
+        gtag('config', '{{ analytics.ga_measurement_id }}');
+      </script>
+    {% endif %}
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content="{{ computed_description }}" />
@@ -66,10 +64,6 @@
 
     {% if analytics.plausible_domain %}
       <script defer data-domain="{{ analytics.plausible_domain }}" src="https://plausible.io/js/script.js" nonce="{{ script_nonce }}"></script>
-    {% elif analytics.ga_measurement_id %}
-      <script nonce="{{ script_nonce }}">
-        window.__EM_GA_MEASUREMENT_ID = "{{ analytics.ga_measurement_id }}";
-      </script>
     {% endif %}
 
     {% set structured_data_default = default_structured_data_base + [
@@ -211,18 +205,6 @@
       </div>
     </footer>
 
-    {% if analytics.ga_measurement_id %}
-      <div class="consent-banner" id="consent-banner" hidden>
-        <div class="consent-banner__content">
-          <p>Utilizziamo Google Analytics in forma anonimizzata per migliorare EtnaMonitor. Scegli se attivare la raccolta statistica.</p>
-          <div class="consent-banner__actions">
-            <button type="button" class="btn btn-ghost" id="consent-decline">Rifiuta</button>
-            <button type="button" class="btn btn-primary" id="consent-accept">Accetta</button>
-          </div>
-        </div>
-      </div>
-    {% endif %}
-
     <script src="{{ url_for('static', filename='js/nav.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ script_nonce }}" defer></script>
 
     <script nonce="{{ script_nonce }}">
@@ -269,74 +251,6 @@
         }
       });
     </script>
-
-    {% if analytics.ga_measurement_id %}
-      <script nonce="{{ script_nonce }}">
-        (function () {
-          const measurementId = window.__EM_GA_MEASUREMENT_ID;
-          if (!measurementId) {
-            return;
-          }
-          const storageKey = 'em_ga_consent';
-          const banner = document.getElementById('consent-banner');
-          const acceptBtn = document.getElementById('consent-accept');
-          const declineBtn = document.getElementById('consent-decline');
-
-          function ensureDataLayer(defaultStatus) {
-            window.dataLayer = window.dataLayer || [];
-            window.gtag = window.gtag || function () {
-              window.dataLayer.push(arguments);
-            };
-            window.gtag('consent', 'default', defaultStatus);
-          }
-
-          function loadGa() {
-            if (window.__emGaLoaded) {
-              window.gtag('consent', 'update', { analytics_storage: 'granted' });
-              return;
-            }
-
-            ensureDataLayer({ ad_storage: 'denied', analytics_storage: 'denied' });
-
-            const script = document.createElement('script');
-            script.async = true;
-            script.nonce = '{{ script_nonce }}';
-            script.src = `https://www.googletagmanager.com/gtag/js?id=${measurementId}`;
-            script.onload = function () {
-              window.gtag('js', new Date());
-              window.gtag('config', measurementId, { anonymize_ip: true });
-              window.gtag('consent', 'update', { analytics_storage: 'granted' });
-            };
-            document.head.appendChild(script);
-            window.__emGaLoaded = true;
-          }
-
-          function denyGa() {
-            ensureDataLayer({ ad_storage: 'denied', analytics_storage: 'denied' });
-          }
-
-          const storedConsent = localStorage.getItem(storageKey);
-          if (storedConsent === 'accepted') {
-            loadGa();
-          } else {
-            denyGa();
-            if (banner && acceptBtn && declineBtn) {
-              banner.hidden = false;
-              acceptBtn.addEventListener('click', () => {
-                localStorage.setItem(storageKey, 'accepted');
-                loadGa();
-                banner.hidden = true;
-              });
-              declineBtn.addEventListener('click', () => {
-                localStorage.setItem(storageKey, 'declined');
-                denyGa();
-                banner.hidden = true;
-              });
-            }
-          }
-        })();
-      </script>
-    {% endif %}
 
     {% include 'partials/onboarding.html' %}
 
