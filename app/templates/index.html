@@ -63,7 +63,7 @@
           </div>
           <div id="home-preview-plot" aria-hidden="true"></div>
           {% if preview_rows %}
-            <script id="home-bootstrap-data" type="application/json">
+            <script id="home-bootstrap-data" type="application/json" nonce="{{ script_nonce }}">
               {{ preview_rows | tojson(indent=0) | safe }}
             </script>
           {% endif %}

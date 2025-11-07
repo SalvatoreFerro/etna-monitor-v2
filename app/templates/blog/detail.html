@@ -12,7 +12,7 @@
   {{ super() }}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/article.css') }}?v={{ STATIC_ASSET_VERSION }}">
   {% if breadcrumb_schema %}
-    <script type="application/ld+json">
+    <script type="application/ld+json" nonce="{{ script_nonce }}">
       {{ breadcrumb_schema | tojson(indent=2) }}
     </script>
   {% endif %}
