@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    {% set script_nonce = csp_nonce() %}
+    <meta charset="utf-8" />
+    <title>GA4 Diagnostics</title>
+    {% if analytics.ga_measurement_id %}
+      <script async src="https://www.googletagmanager.com/gtag/js?id={{ analytics.ga_measurement_id }}"></script>
+      <script nonce="{{ script_nonce }}">
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', '{{ analytics.ga_measurement_id }}', { 'debug_mode': true });
+        {% if analytics.google_ads_id %}
+          gtag('config', '{{ analytics.google_ads_id }}');
+        {% endif %}
+      </script>
+    {% endif %}
+  </head>
+  <body>
+    <main>
+      <h1>GA4 Diagnostics</h1>
+      <p>GA Measurement ID: {{ measurement_id or analytics.ga_measurement_id or 'missing' }}</p>
+    </main>
+    <script nonce="{{ script_nonce }}">
+      console.log("GA ID:", "{{ analytics.ga_measurement_id }}");
+      (async () => {
+        try {
+          await fetch("https://www.google-analytics.com/g/collect", { mode: "no-cors" });
+          console.log("GA fetch: OK");
+        } catch (error) {
+          console.error("GA fetch error", error);
+        }
+      })();
+    </script>
+  </body>
+</html>

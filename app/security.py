@@ -31,6 +31,7 @@ BASE_CSP: CSPDirective = {
         "data:",
         "https:",
         "https://www.google-analytics.com",
+        "https://region1.google-analytics.com",
         "https://www.googletagmanager.com",
     ],
     "connect-src": [

@@ -10,9 +10,8 @@
     {% set computed_canonical = canonical_url %}
     {% set STATIC_ASSET_VERSION = static_asset_version %}
     {% if analytics.ga_measurement_id %}
-      <!-- Google tag (gtag.js) -->
       <script async src="https://www.googletagmanager.com/gtag/js?id={{ analytics.ga_measurement_id }}"></script>
-      <script nonce="{{ csp_nonce() }}">
+      <script nonce="{{ script_nonce }}">
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
