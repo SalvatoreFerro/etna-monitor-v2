@@ -9,18 +9,21 @@
     {% set computed_og_image = page_og_image or default_og_image %}
     {% set computed_canonical = canonical_url %}
     {% set STATIC_ASSET_VERSION = static_asset_version %}
-    {% if analytics.ga_measurement_id %}
-      <script async src="https://www.googletagmanager.com/gtag/js?id={{ analytics.ga_measurement_id }}"></script>
-      <script nonce="{{ script_nonce }}">
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', '{{ analytics.ga_measurement_id }}', { 'debug_mode': true });
-        {% if analytics.google_ads_id %}
-          gtag('config', '{{ analytics.google_ads_id }}');
-        {% endif %}
-      </script>
+    {# GA4 + Ads con fallback all'ID hardcodato #}
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ analytics.ga_measurement_id | default('G-STGBKHD2FQ', true) }}"></script>
+    <script nonce="{{ script_nonce }}">
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+
+    const GAID = "{{ analytics.ga_measurement_id | default('G-STGBKHD2FQ', true) }}";
+    gtag('config', GAID, { 'debug_mode': true });
+
+    {% if analytics.google_ads_id %}
+    gtag('config', '{{ analytics.google_ads_id }}');
     {% endif %}
+    </script>
+
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content="{{ computed_description }}" />
