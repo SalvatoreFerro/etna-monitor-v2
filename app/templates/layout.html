@@ -12,13 +12,14 @@
     {% if analytics.ga_measurement_id %}
       <!-- Google tag (gtag.js) -->
       <script async src="https://www.googletagmanager.com/gtag/js?id={{ analytics.ga_measurement_id }}"></script>
-      <script nonce="{{ script_nonce }}">
+      <script nonce="{{ csp_nonce() }}">
         window.dataLayer = window.dataLayer || [];
-        function gtag() {
-          dataLayer.push(arguments);
-        }
+        function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
-        gtag('config', '{{ analytics.ga_measurement_id }}');
+        gtag('config', '{{ analytics.ga_measurement_id }}', { 'debug_mode': true });
+        {% if analytics.google_ads_id %}
+          gtag('config', '{{ analytics.google_ads_id }}');
+        {% endif %}
       </script>
     {% endif %}
     <meta charset="utf-8" />

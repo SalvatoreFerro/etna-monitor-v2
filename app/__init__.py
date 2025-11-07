@@ -477,11 +477,17 @@ def create_app(config_overrides: dict | None = None):
             "canonical_url": canonical_url,
             "canonical_base_url": canonical_base,
             "default_structured_data_base": structured_base,
-            "analytics": {
-                "plausible_domain": app.config.get("PLAUSIBLE_DOMAIN"),
-                "ga_measurement_id": app.config.get("GA_MEASUREMENT_ID"),
-            },
             "ads_tracking_enabled": bool(app.config.get("ADS_ROUTES_ENABLED")),
+        }
+
+    @app.context_processor
+    def inject_analytics_settings():
+        return {
+            "analytics": {
+                "ga_measurement_id": os.getenv("GA_MEASUREMENT_ID", "").strip(),
+                "google_ads_id": os.getenv("GOOGLE_ADS_ID", "").strip(),
+                "plausible_domain": os.getenv("PLAUSIBLE_DOMAIN", "").strip(),
+            }
         }
 
     # Google OAuth redirect URI (deve combaciare con quello su Google Cloud Console)
