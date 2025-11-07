@@ -33,6 +33,7 @@ BASE_CSP: CSPDirective = {
         "https://www.google-analytics.com",
         "https://region1.google-analytics.com",
         "https://www.googletagmanager.com",
+        "https://stats.g.doubleclick.net",
     ],
     "connect-src": [
         "'self'",
@@ -41,6 +42,7 @@ BASE_CSP: CSPDirective = {
         "https://www.google-analytics.com",
         "https://region1.google-analytics.com",
         "https://www.googletagmanager.com",
+        "https://stats.g.doubleclick.net",
     ],
     "frame-src": [
         "'self'",
@@ -69,6 +71,18 @@ def build_csp() -> CSPDirective:
     """Return a deep copy of the base Content Security Policy."""
 
     return copy.deepcopy(BASE_CSP)
+
+
+def serialize_csp(policy: CSPDirective) -> str:
+    """Serialize a CSP policy dictionary into a header string."""
+
+    parts: List[str] = []
+    for directive, value in policy.items():
+        if isinstance(value, str):
+            parts.append(f"{directive} {value}")
+        else:
+            parts.append(f"{directive} {' '.join(value)}")
+    return "; ".join(parts)
 
 
 talisman = Talisman()

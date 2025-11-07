@@ -7,6 +7,7 @@ import time
 import hashlib
 
 from backend.utils.time import to_iso_utc
+from app.security import serialize_csp
 
 status_bp = Blueprint("status", __name__)
 
@@ -104,3 +105,17 @@ def readiness_check():
 def liveness_check():
     """Kubernetes-style liveness probe"""
     return jsonify({"alive": True}), 200
+
+
+@status_bp.route("/__csp")
+def show_csp_header():
+    """Expose the active Content Security Policy header for diagnostics."""
+
+    policy = current_app.config.get("BASE_CONTENT_SECURITY_POLICY")
+    if not policy:
+        body = "Content-Security-Policy header not configured."
+    else:
+        body = serialize_csp(policy)
+
+    response = current_app.response_class(f"{body}\n", mimetype="text/plain")
+    return response
