@@ -1,4 +1,5 @@
 from datetime import datetime
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -128,6 +129,15 @@ def _index_cache_key() -> str:
     full_path = request.full_path or request.path or "/"
     full_path = full_path.rstrip("?")
     return f"index::{user_id}::{full_path}"
+
+
+@bp.route("/__ga_diag")
+def ga_diag():
+    measurement_id = (
+        current_app.config.get("GA_MEASUREMENT_ID")
+        or os.getenv("GA_MEASUREMENT_ID", "")
+    ).strip()
+    return render_template("ga_diag.html", measurement_id=measurement_id)
 
 
 @bp.route("/")

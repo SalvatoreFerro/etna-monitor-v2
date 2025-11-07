@@ -261,6 +261,10 @@ def create_app(config_overrides: dict | None = None):
         "[BOOT] Logging configured. Writing to %s",
         Path(app.config.get("LOG_DIR", "logs")) / "app.log",
     )
+    app.logger.info(
+        "[GA4] GA_MEASUREMENT_ID present? %s",
+        bool(os.getenv("GA_MEASUREMENT_ID")),
+    )
 
     warnings.filterwarnings("ignore", message="Using the in-memory storage")
 
