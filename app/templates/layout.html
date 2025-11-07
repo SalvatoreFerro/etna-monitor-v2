@@ -16,6 +16,13 @@
     function gtag(){dataLayer.push(arguments);}
     gtag('js', new Date());
 
+    gtag('consent', 'default', {
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+    analytics_storage: 'granted'
+    });
+
     const GAID = "{{ analytics.ga_measurement_id | default('G-STGBKHD2FQ', true) }}";
     gtag('config', GAID, { 'debug_mode': true });
 
@@ -23,6 +30,7 @@
     gtag('config', '{{ analytics.google_ads_id }}');
     {% endif %}
     </script>
+
 
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
