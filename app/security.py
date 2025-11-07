@@ -46,6 +46,8 @@ BASE_CSP: CSPDirective = {
         "https://cdn.plot.ly",
         "https://fonts.googleapis.com",
         "https://fonts.gstatic.com",
+        "https://www.gstatic.com",
+        "https://ssl.google-analytics.com",
     ],
     "frame-src": [
         "'self'",
