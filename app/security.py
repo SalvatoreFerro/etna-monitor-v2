@@ -40,16 +40,19 @@ BASE_CSP: CSPDirective = {
         "https://plausible.io",
         "https://www.google-analytics.com",
         "https://region1.google-analytics.com",
+        "https://www.googletagmanager.com",
     ],
     "frame-src": [
         "'self'",
         "https://js.stripe.com",
         "https://hooks.stripe.com",
+        "https://www.googletagmanager.com",
     ],
     "child-src": [
         "'self'",
         "https://js.stripe.com",
         "https://hooks.stripe.com",
+        "https://www.googletagmanager.com",
     ],
     "frame-ancestors": [
         "'self'",
