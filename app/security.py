@@ -13,11 +13,11 @@ BASE_CSP: CSPDirective = {
     "default-src": "'self'",
     "script-src": [
         "'self'",
-        "'nonce-%(nonce)s'",
-        "https://js.stripe.com",
-        "https://plausible.io",
         "https://www.googletagmanager.com",
         "https://www.google-analytics.com",
+        "https://www.gstatic.com",
+        "https://js.stripe.com",
+        "https://plausible.io",
     ],
     "style-src": [
         "'self'",
@@ -43,6 +43,9 @@ BASE_CSP: CSPDirective = {
         "https://region1.google-analytics.com",
         "https://www.googletagmanager.com",
         "https://stats.g.doubleclick.net",
+        "https://cdn.plot.ly",
+        "https://fonts.googleapis.com",
+        "https://fonts.gstatic.com",
     ],
     "frame-src": [
         "'self'",

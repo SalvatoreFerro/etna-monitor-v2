@@ -658,12 +658,11 @@ def create_app(config_overrides: dict | None = None):
             except Exception:
                 app.logger.exception("[BOOT] Admin auto-promotion failed")
 
-    csp = build_csp()
     app.config["BASE_CONTENT_SECURITY_POLICY"] = build_csp()
 
     talisman.init_app(
         app,
-        content_security_policy=csp,
+        content_security_policy=build_csp(),
         content_security_policy_nonce_in=["script-src"],
         force_https=os.getenv("FLASK_ENV") == "production",
         frame_options="SAMEORIGIN",
