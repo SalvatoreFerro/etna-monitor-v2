@@ -4,7 +4,7 @@
   <section class="container ga-diagnostics" aria-labelledby="ga-diagnostics-title">
     <div class="content">
       <h1 id="ga-diagnostics-title">GA4 Diagnostics</h1>
-      <p>Measurement ID attivo: <code>{{ measurement_id or 'missing' }}</code></p>
+      <p>Measurement ID attivo: <code>{{ analytics.ga_measurement_id or 'missing' }}</code></p>
       <p>ID Google Ads configurato: <code>{{ analytics.google_ads_id or 'non configurato' }}</code></p>
       <p>Usa questa pagina per verificare che gli script GA4 siano caricati correttamente con la CSP attuale.</p>
     </div>
@@ -14,7 +14,7 @@
 {% block extra_scripts %}
   {{ super() }}
   <script nonce="{{ script_nonce }}">
-    console.log("GA ID:", "{{ measurement_id }}");
+    console.log("GA ID:", "{{ analytics.ga_measurement_id }}");
     (async () => {
       try {
         await fetch("https://www.google-analytics.com/g/collect", { mode: "no-cors" });
@@ -23,5 +23,12 @@
         console.error("GA fetch error", error);
       }
     })();
+    if (typeof gtag === "function" && {{ 'true' if analytics.ga_measurement_id else 'false' }}) {
+      gtag("event", "ga_diag_visit", {
+        event_category: "diagnostics",
+        event_label: window.location.href,
+        debug_mode: true,
+      });
+    }
   </script>
 {% endblock %}

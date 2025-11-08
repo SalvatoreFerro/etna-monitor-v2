@@ -134,13 +134,8 @@ def _index_cache_key() -> str:
 
 @bp.route("/__ga_diag")
 def ga_diag():
-    measurement_id = (
-        current_app.config.get("GA_MEASUREMENT_ID", "").strip()
-        or DEFAULT_GA_MEASUREMENT_ID
-    )
     return render_template(
         "ga_diag.html",
-        measurement_id=measurement_id,
         page_title="GA4 Diagnostics",
         page_description="Verifica la configurazione di Google Analytics 4 per EtnaMonitor.",
     )
