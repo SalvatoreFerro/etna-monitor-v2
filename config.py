@@ -7,6 +7,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+DEFAULT_GA_MEASUREMENT_ID = "G-Z3ESSERP7W"
+
+
 def _resolve_static_asset_version() -> str:
     explicit = os.getenv("STATIC_ASSET_VERSION")
     if explicit:
@@ -121,7 +124,10 @@ class Config:
     GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
     ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "")
     PLAUSIBLE_DOMAIN = os.getenv("PLAUSIBLE_DOMAIN", "")
-    GA_MEASUREMENT_ID = os.getenv("GA_MEASUREMENT_ID", "")
+    GA_MEASUREMENT_ID = (
+        os.getenv("GA_MEASUREMENT_ID", DEFAULT_GA_MEASUREMENT_ID).strip()
+        or DEFAULT_GA_MEASUREMENT_ID
+    )
     LOG_DIR = os.getenv("LOG_DIR", "logs")
     DATA_DIR = os.getenv("DATA_DIR", "/var/tmp")
     CSV_PATH = os.getenv("CSV_PATH") or os.path.join(DATA_DIR, "curva.csv")
