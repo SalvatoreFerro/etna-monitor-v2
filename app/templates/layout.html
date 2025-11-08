@@ -11,6 +11,7 @@
     {% set STATIC_ASSET_VERSION = static_asset_version %}
     {% set ga_measurement_id = analytics.ga_measurement_id %}
     {% set google_ads_id = analytics.google_ads_id %}
+    {% set ga_debug_enabled = request.args.get('ga_debug') is not none %}
     {% if ga_measurement_id %}
       <!-- Google tag (gtag.js) -->
       <script async src="https://www.googletagmanager.com/gtag/js?id={{ ga_measurement_id }}"></script>
@@ -23,6 +24,17 @@
           page_path: {{ request.path | tojson }},
           page_location: {{ request.url | tojson }},
           page_title: {{ computed_title | tojson }},
+          {% if ga_debug_enabled %}
+          debug_mode: true,
+          {% endif %}
+        });
+        gtag('event', 'page_view', {
+          page_path: {{ request.path | tojson }},
+          page_location: {{ request.url | tojson }},
+          page_title: {{ computed_title | tojson }},
+          {% if ga_debug_enabled %}
+          debug_mode: true,
+          {% endif %}
         });
         {% if google_ads_id %}
         gtag('config', '{{ google_ads_id }}'); // se usiamo anche Ads
