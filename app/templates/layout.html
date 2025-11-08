@@ -14,7 +14,7 @@
     {% set ga_debug_enabled = request.args.get('ga_debug') is not none %}
     {% if ga_measurement_id %}
       <!-- Google tag (gtag.js) -->
-      <script async src="https://www.googletagmanager.com/gtag/js?id={{ ga_measurement_id }}"></script>
+      <script async nonce="{{ script_nonce }}" src="https://www.googletagmanager.com/gtag/js?id={{ ga_measurement_id }}"></script>
       <script nonce="{{ script_nonce }}">
         window.dataLayer = window.dataLayer || [];
         function gtag(){dataLayer.push(arguments);}
