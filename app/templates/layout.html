@@ -19,16 +19,14 @@
         function gtag(){dataLayer.push(arguments);}
         window.gtag = gtag;
         gtag('js', new Date());
-        gtag('config', '{{ ga_measurement_id }}');
-        {% if google_ads_id %}
-        gtag('config', '{{ google_ads_id }}'); // se usiamo anche Ads
-        {% endif %}
-        gtag('event', 'page_view', {
-          send_to: '{{ ga_measurement_id }}',
+        gtag('config', '{{ ga_measurement_id }}', {
           page_path: {{ request.path | tojson }},
           page_location: {{ request.url | tojson }},
           page_title: {{ computed_title | tojson }},
         });
+        {% if google_ads_id %}
+        gtag('config', '{{ google_ads_id }}'); // se usiamo anche Ads
+        {% endif %}
       </script>
     {% endif %}
 
