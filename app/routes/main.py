@@ -27,6 +27,7 @@ from ..extensions import cache
 from ..utils.metrics import get_csv_metrics, record_csv_error, record_csv_read
 from app.security import build_csp, talisman
 from backend.utils.time import to_iso_utc
+from config import DEFAULT_GA_MEASUREMENT_ID
 
 bp = Blueprint("main", __name__)
 
