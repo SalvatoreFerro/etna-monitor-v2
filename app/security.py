@@ -13,6 +13,7 @@ BASE_CSP: CSPDirective = {
     "default-src": "'self'",
     "script-src": [
         "'self'",
+        "'unsafe-eval'",
         "https://www.googletagmanager.com",
         "https://www.google-analytics.com",
         "https://www.gstatic.com",
