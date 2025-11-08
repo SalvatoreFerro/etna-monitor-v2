@@ -27,6 +27,7 @@ from ..extensions import cache
 from ..utils.metrics import get_csv_metrics, record_csv_error, record_csv_read
 from app.security import build_csp, talisman
 from backend.utils.time import to_iso_utc
+from config import DEFAULT_GA_MEASUREMENT_ID
 
 bp = Blueprint("main", __name__)
 
@@ -134,10 +135,15 @@ def _index_cache_key() -> str:
 @bp.route("/__ga_diag")
 def ga_diag():
     measurement_id = (
-        current_app.config.get("GA_MEASUREMENT_ID")
-        or os.getenv("GA_MEASUREMENT_ID", "")
-    ).strip()
-    return render_template("ga_diag.html", measurement_id=measurement_id)
+        current_app.config.get("GA_MEASUREMENT_ID", "").strip()
+        or DEFAULT_GA_MEASUREMENT_ID
+    )
+    return render_template(
+        "ga_diag.html",
+        measurement_id=measurement_id,
+        page_title="GA4 Diagnostics",
+        page_description="Verifica la configurazione di Google Analytics 4 per EtnaMonitor.",
+    )
 
 
 @bp.route("/")

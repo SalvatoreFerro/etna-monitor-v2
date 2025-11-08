@@ -11,14 +11,14 @@
     {% set STATIC_ASSET_VERSION = static_asset_version %}
     {# GA4 + Ads con fallback all'ID hardcodato #}
     <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=AW-17681413584"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'AW-17681413584');
-</script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-Z3ESSERP7W"></script>
+    <script nonce="{{ script_nonce }}">
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+      gtag('config', 'G-Z3ESSERP7W');
+      gtag('config', 'AW-17681413584'); // se usiamo anche Ads
+    </script>
 
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
