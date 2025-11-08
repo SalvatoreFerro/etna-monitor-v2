@@ -10,6 +10,7 @@
     {% set computed_canonical = canonical_url %}
     {% set STATIC_ASSET_VERSION = static_asset_version %}
     {% set ga_measurement_id = analytics.ga_measurement_id %}
+    {% set google_ads_id = analytics.google_ads_id %}
     {% if ga_measurement_id %}
       <!-- Google tag (gtag.js) -->
       <script async src="https://www.googletagmanager.com/gtag/js?id={{ ga_measurement_id }}"></script>
@@ -19,7 +20,15 @@
         window.gtag = gtag;
         gtag('js', new Date());
         gtag('config', '{{ ga_measurement_id }}');
-        gtag('config', 'AW-17681413584'); // se usiamo anche Ads
+        {% if google_ads_id %}
+        gtag('config', '{{ google_ads_id }}'); // se usiamo anche Ads
+        {% endif %}
+        gtag('event', 'page_view', {
+          send_to: '{{ ga_measurement_id }}',
+          page_path: {{ request.path | tojson }},
+          page_location: {{ request.url | tojson }},
+          page_title: {{ computed_title | tojson }},
+        });
       </script>
     {% endif %}
 

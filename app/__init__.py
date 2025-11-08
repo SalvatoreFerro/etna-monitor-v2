@@ -49,7 +49,12 @@ from .models import db
 from .filters import md
 from .utils.csrf import generate_csrf_token
 from .utils.logger import configure_logging
-from config import Config, DEFAULT_GA_MEASUREMENT_ID, get_database_uri_from_env
+from config import (
+    Config,
+    DEFAULT_GA_MEASUREMENT_ID,
+    DEFAULT_GOOGLE_ADS_ID,
+    get_database_uri_from_env,
+)
 from .extensions import cache
 from .security import build_csp, talisman
 
@@ -495,10 +500,11 @@ def create_app(config_overrides: dict | None = None):
             current_app.config.get("GA_MEASUREMENT_ID", "").strip()
             or DEFAULT_GA_MEASUREMENT_ID
         )
+        google_ads_id = os.getenv("GOOGLE_ADS_ID", "").strip() or DEFAULT_GOOGLE_ADS_ID
         return {
             "analytics": {
                 "ga_measurement_id": ga_measurement_id,
-                "google_ads_id": os.getenv("GOOGLE_ADS_ID", "").strip(),
+                "google_ads_id": google_ads_id,
                 "plausible_domain": os.getenv("PLAUSIBLE_DOMAIN", "").strip(),
             }
         }
