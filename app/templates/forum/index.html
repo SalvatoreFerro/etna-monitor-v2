@@ -28,29 +28,37 @@
 
 <section class="forum-submit" aria-label="Apri nuova discussione">
   <div class="container">
-    <form method="post" class="card" novalidate>
-      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-      <h2><i class="fas fa-plus"></i> Avvia una nuova domanda</h2>
-      <label>
-        <span>Titolo</span>
-        <input type="text" name="title" minlength="10" maxlength="160" required placeholder="Es. Come interpretare un picco improvviso?" />
-      </label>
-      <label>
-        <span>Messaggio</span>
-        <textarea name="body" rows="5" minlength="20" required placeholder="Descrivi il contesto, allega link o schermate…"></textarea>
-      </label>
-      <div class="form-grid">
+    {% if current_user.is_authenticated %}
+      <form method="post" class="card" novalidate>
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <h2><i class="fas fa-plus"></i> Avvia una nuova domanda</h2>
         <label>
-          <span>Il tuo nome (opzionale)</span>
-          <input type="text" name="author_name" maxlength="120" />
+          <span>Titolo</span>
+          <input type="text" name="title" minlength="10" maxlength="160" required placeholder="Es. Come interpretare un picco improvviso?" />
         </label>
         <label>
-          <span>Email per follow-up (opzionale)</span>
-          <input type="email" name="author_email" maxlength="255" />
+          <span>Messaggio</span>
+          <textarea name="body" rows="5" minlength="20" required placeholder="Descrivi il contesto, allega link o schermate…"></textarea>
         </label>
+        <div class="form-grid">
+          <label>
+            <span>Il tuo nome (opzionale)</span>
+            <input type="text" name="author_name" maxlength="120" value="{{ current_user.name or '' }}" />
+          </label>
+          <label>
+            <span>Email per follow-up (opzionale)</span>
+            <input type="email" name="author_email" maxlength="255" value="{{ current_user.email or '' }}" />
+          </label>
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Pubblica</button>
+      </form>
+    {% else %}
+      <div class="card">
+        <h2><i class="fas fa-lock"></i> Accedi per aprire una discussione</h2>
+        <p>Per mantenere il forum libero dallo spam, solo gli utenti registrati possono pubblicare nuove domande.</p>
+        <a class="btn btn-primary" href="{{ url_for('auth.login', next=request.path) }}"><i class="fas fa-sign-in-alt"></i> Effettua l'accesso</a>
       </div>
-      <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Pubblica</button>
-    </form>
+    {% endif %}
   </div>
 </section>
 

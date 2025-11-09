@@ -23,6 +23,8 @@ from ..models import (
     UserFeedback,
     AdminActionLog,
     CommunityPost,
+    ForumThread,
+    ForumReply,
 )
 from ..models.user import User
 from ..models.event import Event
@@ -266,6 +268,12 @@ def admin_home():
             "url": url_for("admin.blog_manager"),
         },
         {
+            "label": "Forum Q&A",
+            "description": "Gestisci discussioni e risposte della community.",
+            "icon": "fa-people-group",
+            "url": url_for("admin.forum_manager"),
+        },
+        {
             "label": "Feedback utenti",
             "description": "Esamina e rispondi ai feedback ricevuti.",
             "icon": "fa-comment-dots",
@@ -426,6 +434,72 @@ def blog_manager():
 
     posts = BlogPost.query.order_by(BlogPost.updated_at.desc()).all()
     return render_template("admin/blog.html", posts=posts)
+
+
+@bp.route("/forum", methods=["GET", "POST"])
+@admin_required
+def forum_manager():
+    ensure_demo_profiles()
+    if request.method == "POST":
+        csrf_token = request.form.get("csrf_token")
+        if not _is_csrf_valid(csrf_token):
+            flash("Token CSRF non valido. Riprova.", "error")
+            return redirect(url_for("admin.forum_manager"))
+
+        action = (request.form.get("action") or "").strip()
+
+        if action == "delete_thread":
+            thread_id = request.form.get("thread_id")
+            thread = ForumThread.query.get(thread_id)
+            if thread is None:
+                flash("Discussione non trovata.", "error")
+            else:
+                archived_thread = {
+                    "id": thread.id,
+                    "slug": thread.slug,
+                    "title": thread.title,
+                }
+                db.session.delete(thread)
+                db.session.commit()
+                _log_admin_action(
+                    "forum_delete_thread",
+                    message=f"Thread '{archived_thread['title']}' eliminato",
+                    details=archived_thread,
+                )
+                flash("Discussione eliminata con successo.", "success")
+            return redirect(url_for("admin.forum_manager"))
+
+        if action == "delete_reply":
+            reply_id = request.form.get("reply_id")
+            reply = ForumReply.query.get(reply_id)
+            if reply is None:
+                flash("Risposta non trovata.", "error")
+            else:
+                reply_snapshot = {
+                    "id": reply.id,
+                    "thread_id": reply.thread_id,
+                    "thread_slug": reply.thread.slug if reply.thread else None,
+                }
+                db.session.delete(reply)
+                db.session.commit()
+                _log_admin_action(
+                    "forum_delete_reply",
+                    message=f"Risposta #{reply_snapshot['id']} eliminata",
+                    details=reply_snapshot,
+                )
+                flash("Risposta eliminata.", "success")
+            return redirect(url_for("admin.forum_manager"))
+
+        flash("Azione non valida.", "error")
+        return redirect(url_for("admin.forum_manager"))
+
+    threads = ForumThread.query.order_by(ForumThread.updated_at.desc()).all()
+    replies = (
+        ForumReply.query.order_by(ForumReply.created_at.desc())
+        .limit(50)
+        .all()
+    )
+    return render_template("admin/forum.html", threads=threads, replies=replies)
 
 
 @bp.route("/feedback", methods=["GET", "POST"])

@@ -133,6 +133,11 @@ def blog_detail(slug: str):
 def forum_home():
     service = GamificationService()
     if request.method == "POST":
+        if not current_user.is_authenticated:
+            flash("Devi effettuare l'accesso per aprire una discussione.", "error")
+            login_url = url_for("auth.login", next=request.url)
+            return redirect(login_url)
+
         csrf_token = request.form.get("csrf_token")
         if not validate_csrf_token(csrf_token):
             flash("Sessione scaduta, ricarica la pagina.", "error")
@@ -142,6 +147,11 @@ def forum_home():
         body = (request.form.get("body") or "").strip()
         author_name = (request.form.get("author_name") or "").strip() or None
         author_email = (request.form.get("author_email") or "").strip() or None
+
+        if not author_name:
+            author_name = getattr(current_user, "name", None) or (current_user.email.split("@")[0] if getattr(current_user, "email", None) else None)
+        if not author_email and getattr(current_user, "email", None):
+            author_email = current_user.email
 
         if len(title) < 10 or len(body) < 20:
             flash("Fornisci un titolo e un messaggio più dettagliato.", "error")
@@ -170,6 +180,11 @@ def thread_detail(slug: str):
     service = GamificationService()
 
     if request.method == "POST":
+        if not current_user.is_authenticated:
+            flash("Accedi per partecipare alla discussione.", "error")
+            login_url = url_for("auth.login", next=request.url)
+            return redirect(login_url)
+
         csrf_token = request.form.get("csrf_token")
         if not validate_csrf_token(csrf_token):
             flash("Sessione scaduta, riprova.", "error")
@@ -178,6 +193,11 @@ def thread_detail(slug: str):
         body = (request.form.get("body") or "").strip()
         author_name = (request.form.get("author_name") or "").strip() or None
         author_email = (request.form.get("author_email") or "").strip() or None
+
+        if not author_name:
+            author_name = getattr(current_user, "name", None) or (current_user.email.split("@")[0] if getattr(current_user, "email", None) else None)
+        if not author_email and getattr(current_user, "email", None):
+            author_email = current_user.email
 
         if len(body) < 5:
             flash("Scrivi una risposta più completa.", "error")
