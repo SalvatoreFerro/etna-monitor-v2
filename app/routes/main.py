@@ -767,7 +767,7 @@ def csp_probe():
   <body>
     <h1>Content Security Policy Probe</h1>
     <pre>{{ policy }}</pre>
-    <script async src=\"https://www.googletagmanager.com/gtag/js?id=AW-1768143584\"></script>
+    <script async src=\"https://www.googletagmanager.com/gtag/js?id=AW-17681413584\"></script>
   </body>
 </html>""",
         policy=policy_str,
