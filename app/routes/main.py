@@ -132,12 +132,12 @@ def _index_cache_key() -> str:
     return f"index::{user_id}::{full_path}"
 
 
-@bp.route("/__ga_diag")
-def ga_diag():
+@bp.route("/ga4/diagnostics")
+def ga4_diagnostics():
     return render_template(
-        "ga_diag.html",
+        "ga4_diagnostics.html",
         page_title="GA4 Diagnostics",
-        page_description="Verifica la configurazione di Google Analytics 4 per EtnaMonitor.",
+        page_description="Snapshot di window.dataLayer, user agent e stato di window.gtag.",
     )
 
 

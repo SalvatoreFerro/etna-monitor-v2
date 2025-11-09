@@ -5,72 +5,52 @@ from __future__ import annotations
 import copy
 from typing import Dict, List, Union
 
+from flask import request
 from flask_talisman import Talisman
 
 CSPDirective = Dict[str, Union[List[str], str]]
 
 BASE_CSP: CSPDirective = {
     "default-src": "'self'",
-    "script-src": [
-        "'self'",
-        "'unsafe-eval'",
-        "https://www.googletagmanager.com",
-        "https://www.google-analytics.com",
-        "https://www.gstatic.com",
-        "https://js.stripe.com",
-        "https://plausible.io",
-    ],
-    "style-src": [
-        "'self'",
-        "'unsafe-inline'",
-        "https://fonts.googleapis.com",
-        "https://cdnjs.cloudflare.com",
-    ],
-    "font-src": ["'self'", "https://fonts.gstatic.com", "https://cdnjs.cloudflare.com"],
-    "img-src": [
-        "'self'",
-        "data:",
-        "https:",
-        "https://www.google-analytics.com",
-        "https://region1.google-analytics.com",
-        "https://www.googletagmanager.com",
-        "https://stats.g.doubleclick.net",
-    ],
+    "script-src": ["'self'", "https://www.googletagmanager.com"],
     "connect-src": [
         "'self'",
-        "https://api.stripe.com",
-        "https://plausible.io",
         "https://www.google-analytics.com",
         "https://region1.google-analytics.com",
-        "https://www.googletagmanager.com",
-        "https://stats.g.doubleclick.net",
-        "https://cdn.plot.ly",
-        "https://fonts.googleapis.com",
-        "https://fonts.gstatic.com",
-        "https://www.gstatic.com",
-        "https://ssl.google-analytics.com",
     ],
-    "frame-src": [
-        "'self'",
-        "https://js.stripe.com",
-        "https://hooks.stripe.com",
-        "https://www.googletagmanager.com",
-    ],
-    "child-src": [
-        "'self'",
-        "https://js.stripe.com",
-        "https://hooks.stripe.com",
-        "https://www.googletagmanager.com",
-    ],
-    "frame-ancestors": [
-        "'self'",
-        "https://etnamonitor.it",
-        "https://*.etnamonitor.it",
-        "https://*.onrender.com",
-        "http://localhost:5000",
-        "http://127.0.0.1:5000",
-    ],
+    "img-src": ["'self'", "https://www.google-analytics.com", "data:"],
+    "style-src": ["'self'", "'unsafe-inline'"],
 }
+
+
+def apply_csp_headers(response) -> object:
+    """Attach the Content-Security-Policy header to a Flask response."""
+
+    policy_source = None
+    try:
+        policy_source = talisman._get_local_options().get("content_security_policy")
+    except Exception:
+        policy_source = None
+
+    if (
+        policy_source is not None
+        and policy_source is not talisman.content_security_policy
+        and "Content-Security-Policy" in response.headers
+    ):
+        return response
+
+    policy = build_csp()
+    nonce = getattr(request, "csp_nonce", None)
+    if nonce:
+        directive = policy.get("script-src")
+        if isinstance(directive, list):
+            directive = directive + [f"'nonce-{nonce}'"]
+        elif isinstance(directive, str):
+            directive = f"{directive} 'nonce-{nonce}'"
+        policy["script-src"] = directive
+
+    response.headers["Content-Security-Policy"] = serialize_csp(policy)
+    return response
 
 
 def build_csp() -> CSPDirective:

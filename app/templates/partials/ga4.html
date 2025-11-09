@@ -1,0 +1,24 @@
+{% set measurement_id = analytics.ga_measurement_id or 'G-Z3ESSERP7W' %}
+{% set nonce_value = script_nonce if script_nonce is defined else csp_nonce() %}
+{% set debug_env_enabled = analytics.ga_debug_enabled %}
+{% set debug_param_enabled = request.args.get('dbg') is not none %}
+{% if measurement_id %}
+  <script nonce="{{ nonce_value }}">
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){window.dataLayer.push(arguments);}
+    window.gtag = gtag;
+    gtag('consent', 'default', {
+      ad_storage: 'granted',
+      analytics_storage: 'granted'
+    });
+    {% if debug_env_enabled or debug_param_enabled %}
+    gtag('set', 'debug_mode', true);
+    console.info('GA4 debug_mode enabled');
+    {% endif %}
+  </script>
+  <script async nonce="{{ nonce_value }}" src="https://www.googletagmanager.com/gtag/js?id={{ measurement_id }}"></script>
+  <script nonce="{{ nonce_value }}">
+    gtag('js', new Date());
+    gtag('config', '{{ measurement_id }}', { transport_type: 'beacon', send_page_view: true });
+  </script>
+{% endif %}

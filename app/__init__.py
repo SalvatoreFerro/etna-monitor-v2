@@ -52,11 +52,10 @@ from .utils.logger import configure_logging
 from config import (
     Config,
     DEFAULT_GA_MEASUREMENT_ID,
-    DEFAULT_GOOGLE_ADS_ID,
     get_database_uri_from_env,
 )
 from .extensions import cache
-from .security import build_csp, talisman
+from .security import apply_csp_headers, build_csp, talisman
 
 login_manager = LoginManager()
 limiter = None
@@ -500,12 +499,11 @@ def create_app(config_overrides: dict | None = None):
             current_app.config.get("GA_MEASUREMENT_ID", "").strip()
             or DEFAULT_GA_MEASUREMENT_ID
         )
-        google_ads_id = os.getenv("GOOGLE_ADS_ID", "").strip() or DEFAULT_GOOGLE_ADS_ID
+        ga_debug_enabled = _is_truthy_env(os.getenv("GA_DEBUG"))
         return {
             "analytics": {
                 "ga_measurement_id": ga_measurement_id,
-                "google_ads_id": google_ads_id,
-                "plausible_domain": os.getenv("PLAUSIBLE_DOMAIN", "").strip(),
+                "ga_debug_enabled": ga_debug_enabled,
             }
         }
 
@@ -682,6 +680,10 @@ def create_app(config_overrides: dict | None = None):
         force_https=os.getenv("FLASK_ENV") == "production",
         frame_options="SAMEORIGIN",
     )
+
+    @app.after_request
+    def _apply_csp(response):
+        return apply_csp_headers(response)
 
     redis_url = os.getenv("REDIS_URL")
     cache_config = {"CACHE_DEFAULT_TIMEOUT": 90}

@@ -281,6 +281,13 @@ ALERT_THRESHOLD_DEFAULT=2.0
 - Eseguire backup regolari di `data/` e `logs/` su storage cifrato; testare procedure di restore.
 - Raccogliere solo dati minimi necessari; informare gli utenti sull'uso dei dati in modo conforme alle normative locali (es. GDPR).
 
+### Google Analytics 4
+- Lo snippet GA4 vive in [`app/templates/partials/ga4.html`](app/templates/partials/ga4.html) ed è incluso una sola volta nella `<head>` tramite [`layout.html`](app/templates/layout.html). Ogni modifica allo script deve passare dal partial per evitare inizializzazioni duplicate.
+- Per attivare la modalità consenso con opt-in esplicito imposta `gtag('consent', 'default', { ad_storage: 'denied', analytics_storage: 'denied' })` nel partial e, sul banner cookie, richiama `gtag('consent', 'update', { ad_storage: 'granted', analytics_storage: 'granted' })` quando l'utente accetta.
+- La CSP è centralizzata in [`app/security.py`](app/security.py) e consente solo i domini necessari: `https://www.googletagmanager.com` per gli script, `https://www.google-analytics.com` e `https://region1.google-analytics.com` per le chiamate di tracking, oltre alle immagini data URI richieste da GA.
+- Debug: esporta `GA_DEBUG=true` per forzare `debug_mode` oppure aggiungi `?dbg=1` alla URL. Verifica in DevTools → Network che `gtag/js?id=G-Z3ESSERP7W` risponda `200` e che siano presenti richieste `collect?p=...` verso `https://region1.google-analytics.com`.
+- La pagina `/ga4/diagnostics` mostra lo snapshot di `window.dataLayer`, il valore di `navigator.userAgent` e conferma che `window.gtag` sia definito in runtime per aiutare la validazione rapida.
+
 ## Troubleshooting (FAQ Tecnica)
 - **Il grafico è piatto o sballato**: controllare che l'asse Y sia in scala log, verificare che il PNG INGV sia aggiornato e che la soglia sia correttamente impostata.
 - **Non arrivano gli alert**: assicurarsi che il `chat_id` sia associato, il `TELEGRAM_BOT_TOKEN` sia valido, la finestra di analisi non sia troppo ampia e l'intervallo antispam non blocchi gli invii.

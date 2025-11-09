@@ -6,7 +6,7 @@ def test_ga_diag_reports_measurement_id(monkeypatch):
     app = create_app({"TESTING": True})
     client = app.test_client()
 
-    response = client.get("/__ga_diag")
+    response = client.get("/ga4/diagnostics")
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     assert "G-TEST123456" in html
