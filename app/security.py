@@ -14,17 +14,17 @@ SCRIPT_GOOGLE = [
     "https://www.google-analytics.com",
 ]
 
-CONNECT_GOOGLE = [
+CONNECT_ENDPOINTS = [
     "https://www.google-analytics.com",
     "https://region1.google-analytics.com",
     "https://stats.g.doubleclick.net",
+    "https://cdn.plot.ly",
 ]
 
-IMG_GOOGLE = [
+IMG_TRACKING_ENDPOINTS = [
     "https://www.google-analytics.com",
     "https://www.googletagmanager.com",
     "https://stats.g.doubleclick.net",
-    "data:",
 ]
 
 STYLE_CDNS = [
@@ -55,37 +55,56 @@ def _unique(values: Iterable[str]) -> List[str]:
 _SCRIPT_SOURCES = _unique(["'self'", *SCRIPT_GOOGLE])
 _STYLE_SOURCES = _unique(["'self'", "'unsafe-inline'", *STYLE_CDNS])
 _FONT_SOURCES = _unique(["'self'", *FONT_CDNS])
+_CONNECT_SOURCES = _unique(["'self'", *CONNECT_ENDPOINTS])
+_IMG_SOURCES = _unique(["'self'", "data:", *IMG_TRACKING_ENDPOINTS])
+_FRAME_SOURCES = _unique(["'self'", *FRAME_GOOGLE])
 
 
 BASE_CSP: CSPDirective = {
     "default-src": "'self'",
     "script-src": list(_SCRIPT_SOURCES),
     "script-src-elem": list(_SCRIPT_SOURCES),
-    "connect-src": [*CONNECT_GOOGLE, "'self'"],
-    "img-src": [*IMG_GOOGLE, "'self'"],
+    "connect-src": list(_CONNECT_SOURCES),
+    "img-src": list(_IMG_SOURCES),
     "style-src": list(_STYLE_SOURCES),
     "style-src-elem": list(_STYLE_SOURCES),
     "font-src": list(_FONT_SOURCES),
     "object-src": "'none'",
     "base-uri": "'self'",
-    "frame-src": [*FRAME_GOOGLE, "'self'"],
+    "frame-src": list(_FRAME_SOURCES),
 }
 
 
 def apply_csp_headers(response) -> object:
-    try:
-        policy_source = talisman._get_local_options().get("content_security_policy")
-    except Exception:
-        policy_source = None
-
-    if (
-        policy_source is not None
-        and policy_source is not talisman.content_security_policy
-        and "Content-Security-Policy" in response.headers
-    ):
+    if getattr(response, "_csp_header_applied", False):
         return response
 
-    policy = copy.deepcopy(BASE_CSP)
+    try:
+        local_options = talisman._get_local_options()
+    except Exception:
+        local_options = None
+
+    policy_source = None
+    if isinstance(local_options, dict):
+        policy_source = local_options.get("content_security_policy")
+
+    if policy_source is False:
+        setattr(response, "_csp_header_applied", True)
+        return response
+
+    if policy_source is None:
+        base_policy: CSPDirective = (
+            talisman.content_security_policy or copy.deepcopy(BASE_CSP)
+        )
+    else:
+        base_policy = policy_source
+
+    policy = copy.deepcopy(base_policy)
+
+    if not isinstance(policy, dict):
+        response.headers.set("Content-Security-Policy", str(policy))
+        setattr(response, "_csp_header_applied", True)
+        return response
 
     nonce = getattr(request, "csp_nonce", None)
     if nonce:
@@ -96,9 +115,12 @@ def apply_csp_headers(response) -> object:
                 if nonce_value not in directive:
                     directive.append(nonce_value)
             elif isinstance(directive, str):
-                policy[directive_name] = f"{directive} {nonce_value}"
+                sources = directive.split()
+                if nonce_value not in sources:
+                    policy[directive_name] = f"{directive} {nonce_value}"
 
-    response.headers["Content-Security-Policy"] = serialize_csp(policy)
+    response.headers.set("Content-Security-Policy", serialize_csp(policy))
+    setattr(response, "_csp_header_applied", True)
     return response
 
 
