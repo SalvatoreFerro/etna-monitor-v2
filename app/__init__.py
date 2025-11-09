@@ -681,7 +681,7 @@ def create_app(config_overrides: dict | None = None):
     talisman.init_app(
         app,
         content_security_policy=copy.deepcopy(BASE_CSP),
-        content_security_policy_nonce_in=["script-src"],
+        content_security_policy_nonce_in=["script-src", "script-src-elem"],
         force_https=os.getenv("FLASK_ENV") == "production",
         frame_options="SAMEORIGIN",
     )

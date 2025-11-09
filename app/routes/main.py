@@ -10,6 +10,7 @@ from flask import (
     current_app,
     jsonify,
     render_template,
+    render_template_string,
     request,
     send_from_directory,
     session,
@@ -26,7 +27,7 @@ from sqlalchemy import or_
 
 from ..extensions import cache
 from ..utils.metrics import get_csv_metrics, record_csv_error, record_csv_read
-from app.security import BASE_CSP, talisman
+from app.security import BASE_CSP, serialize_csp, talisman
 from backend.utils.time import to_iso_utc
 from config import DEFAULT_GA_MEASUREMENT_ID
 
@@ -722,3 +723,26 @@ def healthcheck():
 @bp.route("/ga4/test-csp")
 def ga4_test_csp():
     return jsonify(dict(csp=copy.deepcopy(talisman.content_security_policy)))
+
+
+@bp.route("/csp/probe")
+def csp_probe():
+    policy = copy.deepcopy(talisman.content_security_policy)
+    policy_str = serialize_csp(policy)
+    html = render_template_string(
+        """<!doctype html>
+<html lang=\"en\">
+  <head>
+    <meta charset=\"utf-8\">
+    <title>Content Security Policy Probe</title>
+    <link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css\">
+  </head>
+  <body>
+    <h1>Content Security Policy Probe</h1>
+    <pre>{{ policy }}</pre>
+    <script async src=\"https://www.googletagmanager.com/gtag/js?id=G-Z3ESSERP7W\"></script>
+  </body>
+</html>""",
+        policy=policy_str,
+    )
+    return html
