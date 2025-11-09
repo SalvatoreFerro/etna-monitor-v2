@@ -80,6 +80,39 @@
         </div>
       </div>
     </div>
+
+    <script type="application/ld+json" nonce="{{ csp_nonce() }}">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Quali formati accettate?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Consigliato 1200x400 px in PNG/WebP con sfondo trasparente. Ottimizziamo automaticamente i file."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Serve un contratto?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Per donazioni spot basta la ricevuta PayPal. Per partnership annuali inviamo accordo e fattura elettronica."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Durata visibilità?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Minimo 30 giorni con report mensile trasparente su impression e click."
+      }
+    }
+  ]
+}
+    </script>
   </div>
 </section>
 {% endblock %}
