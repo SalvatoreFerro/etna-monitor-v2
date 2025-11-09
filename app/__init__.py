@@ -328,6 +328,7 @@ def create_app(config_overrides: dict | None = None):
             )
 
     app.config.setdefault("SESSION_COOKIE_SECURE", True)
+    app.config.setdefault("SESSION_COOKIE_HTTPONLY", True)
     app.config.setdefault("SESSION_COOKIE_SAMESITE", "Lax")
     app.config.setdefault("COMPRESS_ALGORITHM", ["br", "gzip"])
 
@@ -690,7 +691,8 @@ def create_app(config_overrides: dict | None = None):
         content_security_policy=copy.deepcopy(BASE_CSP),
         content_security_policy_nonce_in=["script-src", "script-src-elem"],
         force_https=os.getenv("FLASK_ENV") == "production",
-        frame_options="SAMEORIGIN",
+        frame_options="DENY",
+        referrer_policy="no-referrer-when-downgrade",
     )
 
     @app.after_request

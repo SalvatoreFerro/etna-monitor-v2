@@ -112,7 +112,7 @@ def test_soft_delete_and_anonymize(app, user_data):
         assert user.is_active is False
 
 
-def test_create_post_defaults_pending(client, app, user_data):
+def test_create_post_with_suspicious_markup_auto_hides(client, app, user_data):
     login(client, user_data["email"], user_data["password"])
     response = client.post(
         "/community/new",
@@ -127,8 +127,15 @@ def test_create_post_defaults_pending(client, app, user_data):
     with app.app_context():
         post = CommunityPost.query.first()
         assert post is not None
-        assert post.status == "pending"
-        assert "<script" not in post.body
+        assert post.status == "hidden"
+        assert post.body_html_sanitized == "<p>Contenuto valido</p>"
+        action = (
+            ModerationAction.query.filter_by(post_id=post.id, action="auto_hide_xss")
+            .order_by(ModerationAction.created_at.desc())
+            .first()
+        )
+        assert action is not None
+        assert action.reason == "XSS sanitization"
 
 
 def test_role_required_blocks_non_moderator(client, user_data, app):
@@ -175,10 +182,43 @@ def test_moderation_flow(client, app, user_data, moderator_data):
         action = ModerationAction.query.filter_by(post_id=post.id).first()
         assert action is not None
         assert action.action == "approve"
+        assert "<p>" in post.body_html_sanitized
 
     response = client.get(f"/community/{slug}")
     assert response.status_code == 200
     assert b"Report dettagliato" in response.data
+
+
+def test_moderator_cannot_approve_suspicious_post(client, app, moderator_data):
+    with app.app_context():
+        post = CommunityPost(
+            title="Test XSS",
+            body="<img src=x onerror=alert(1)>",
+            author_id=moderator_data["id"],
+            status="pending",
+        )
+        post.body_html_sanitized = post.sanitize_body(post.body)
+        db.session.add(post)
+        db.session.commit()
+        post_id = post.id
+
+    login(client, moderator_data["email"], moderator_data["password"])
+    response = client.post(
+        f"/admin/moderation/approve/{post_id}",
+        data={"csrf_token": "csrf-token"},
+        follow_redirects=True,
+    )
+    assert response.status_code == 200
+    with app.app_context():
+        post = CommunityPost.query.get(post_id)
+        assert post.status == "hidden"
+        action = (
+            ModerationAction.query.filter_by(post_id=post_id)
+            .order_by(ModerationAction.created_at.desc())
+            .first()
+        )
+        assert action is not None
+        assert action.action == "auto_hide_xss"
 
 
 def test_export_data_includes_posts(client, app, user_data):

@@ -106,47 +106,28 @@ def apply_csp_headers(response) -> object:
     if getattr(response, "_csp_header_applied", False):
         return response
 
-    try:
-        local_options = talisman._get_local_options()
-    except Exception:
-        local_options = None
-
-    policy_source = None
-    if isinstance(local_options, dict):
-        policy_source = local_options.get("content_security_policy")
-
-    if policy_source is False:
-        setattr(response, "_csp_header_applied", True)
-        return response
-
-    if policy_source is None:
-        base_policy: CSPDirective = (
-            talisman.content_security_policy or copy.deepcopy(BASE_CSP)
-        )
-    else:
-        base_policy = policy_source
-
-    policy = copy.deepcopy(base_policy)
-
-    if not isinstance(policy, dict):
-        response.headers.set("Content-Security-Policy", str(policy))
-        setattr(response, "_csp_header_applied", True)
-        return response
-
     nonce = getattr(request, "csp_nonce", None)
-    if nonce:
-        nonce_value = f"'nonce-{nonce}'"
-        for directive_name in ("script-src", "script-src-elem"):
-            directive = policy.get(directive_name)
-            if isinstance(directive, list):
-                if nonce_value not in directive:
-                    directive.append(nonce_value)
-            elif isinstance(directive, str):
-                sources = directive.split()
-                if nonce_value not in sources:
-                    policy[directive_name] = f"{directive} {nonce_value}"
+    nonce_fragment = f" 'nonce-{nonce}'" if nonce else ""
 
-    response.headers.set("Content-Security-Policy", serialize_csp(policy))
+    script_sources = (
+        f"script-src 'self'{nonce_fragment} https://www.googletagmanager.com https://www.google-analytics.com"
+    )
+    policy_parts = [
+        "default-src 'self'",
+        script_sources,
+        "connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com",
+        "img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
+        "font-src 'self' https://fonts.gstatic.com",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "frame-ancestors 'none'",
+    ]
+
+    response.headers.set("Content-Security-Policy", "; ".join(policy_parts))
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
     setattr(response, "_csp_header_applied", True)
     return response
 

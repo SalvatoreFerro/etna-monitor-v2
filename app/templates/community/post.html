@@ -33,7 +33,7 @@
           {% endif %}
         {% endif %}
       </header>
-      <div class="community-post__body">{{ post.body|safe }}</div>
+      <div class="community-post__body">{{ post.body_html_sanitized | safe }}</div>
     </article>
 
     {% if actions and current_user.is_authenticated and current_user.is_moderator() %}

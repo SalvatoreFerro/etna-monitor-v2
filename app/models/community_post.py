@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-import bleach
 from slugify import slugify
 
 from . import db
+from ..utils.sanitize import find_suspicious_html, sanitize_html
 
 POST_STATUS_CHOICES = ("draft", "pending", "approved", "rejected", "hidden")
 
@@ -25,6 +25,12 @@ class CommunityPost(db.Model):
     )
     title = db.Column(db.String(200), nullable=False)
     body = db.Column(db.Text, nullable=False)
+    body_html_sanitized = db.Column(
+        db.Text,
+        nullable=False,
+        default="",
+        server_default="",
+    )
     status = db.Column(
         db.String(20),
         nullable=False,
@@ -102,23 +108,16 @@ class CommunityPost(db.Model):
             suffix += 1
 
     def sanitize_body(self, raw_body: str) -> str:
-        allowed_tags = bleach.sanitizer.ALLOWED_TAGS.union(
-            {"p", "pre", "code", "strong", "em", "ul", "ol", "li", "br", "blockquote"}
-        )
-        allowed_attributes = dict(bleach.sanitizer.ALLOWED_ATTRIBUTES)
-        link_attrs = set(allowed_attributes.get("a", set()))
-        link_attrs.update({"href", "title", "rel"})
-        allowed_attributes["a"] = link_attrs
-        return bleach.clean(
-            raw_body or "",
-            tags=allowed_tags,
-            attributes=allowed_attributes,
-            strip=True,
-            protocols=["http", "https", "mailto"],
-        )
+        return sanitize_html(raw_body)
 
-    def set_body(self, raw_body: str) -> None:
-        self.body = self.sanitize_body(raw_body)
+    def set_body(self, raw_body: str) -> list[str]:
+        content = raw_body or ""
+        self.body = content
+        self.body_html_sanitized = self.sanitize_body(content)
+        return find_suspicious_html(content)
+
+    def has_suspicious_html(self) -> bool:
+        return bool(find_suspicious_html(self.body))
 
     def publish(self, moderator_id: int | None, reason: str | None = None) -> None:
         self.status = "approved"
@@ -160,6 +159,7 @@ class CommunityPost(db.Model):
             "slug": self.slug,
             "title": self.title,
             "body": self.body,
+            "body_html_sanitized": self.body_html_sanitized,
             "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
@@ -204,7 +204,7 @@ class ModerationAction(db.Model):
 
     __table_args__ = (
         db.CheckConstraint(
-            "action IN ('approve','reject','hide','restore')",
+            "action IN ('approve','reject','hide','restore','auto_hide_xss')",
             name="ck_moderation_actions_action",
         ),
     )
@@ -220,5 +220,11 @@ def _assign_slug(mapper, connection, target: CommunityPost) -> None:  # pragma: 
     target.ensure_slug()
 
 
+def _apply_sanitization(mapper, connection, target: CommunityPost) -> None:  # pragma: no cover
+    target.body_html_sanitized = target.sanitize_body(target.body or "")
+
+
 db.event.listen(CommunityPost, "before_insert", _assign_slug)
 db.event.listen(CommunityPost, "before_update", _assign_slug)
+db.event.listen(CommunityPost, "before_insert", _apply_sanitization)
+db.event.listen(CommunityPost, "before_update", _apply_sanitization)

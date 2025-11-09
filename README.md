@@ -299,6 +299,13 @@ ALERT_THRESHOLD_DEFAULT=2.0
 - **Errori di permessi su `data/` o `logs/`**: verificare i permessi della directory, su Linux usare `chmod 755` e su Windows eseguire come amministratore o modificare le ACL.
 - **Timeout nel download PNG**: aumentare timeout richieste, abilitare retry con backoff e confermare che l'URL INGV sia raggiungibile dalla macchina.
 
+## 🔐 Security & XSS protection
+- Tutti i contributi della community vengono sanificati tramite `bleach` con whitelist di tag, attributi e protocolli sicuri.
+- Il campo `body_html_sanitized` viene utilizzato in produzione e nelle template per impedire l'esecuzione di script salvati.
+- La coda di moderazione mostra differenze rispetto al contenuto originale ed evidenzia markup rimosso.
+- Utilizza lo script `python scripts/remove_suspicious_posts.py` per oscurare rapidamente post contenenti payload sospetti.
+- I template front-end e le risposte Flask restituiscono header di sicurezza (CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy) e cookie di sessione `Secure`, `HttpOnly`, `SameSite=Lax`.
+
 ## Roadmap
 - Integrazione con mappa interattiva dei sensori regionali.
 - Supporto a sensori fisici tramite LoRa/IoT per arricchire il dataset.
