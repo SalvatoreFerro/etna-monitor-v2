@@ -284,10 +284,10 @@ ALERT_THRESHOLD_DEFAULT=2.0
 
 
 ## GA4 & CSP
-- L'head template con GA attivo carica **un solo** script loader di Google Ads (`AW-1768143584`) e, nello stesso blocco inline protetto da nonce, invoca `gtag('config', 'AW-1768143584')` e `gtag('config', 'G-Z3ESSERP7W')`. Il setup è centralizzato in [`app/templates/layout.html`](app/templates/layout.html) per evitare duplicazioni e mantenere l'allineamento con la CSP.
+- L'head template con GA attivo carica **un solo** script loader di Google Ads (`AW-17681413584`) e, nello stesso blocco inline protetto da nonce, invoca `gtag('config', 'AW-17681413584')` e `gtag('config', 'G-Z3ESSERP7W')`. Il setup è centralizzato in [`app/templates/layout.html`](app/templates/layout.html) per evitare duplicazioni e mantenere l'allineamento con la CSP.
 - Per attivare il debug imposta la variabile d'ambiente `GA_DEBUG=true` prima di avviare l'app **oppure** apri qualsiasi pagina con l'aggiunta del parametro `?dbg=1` alla query string.
 - La Content Security Policy è definita in [`app/security.py`](app/security.py) e include i domini di Google necessari a GA4/Ads (`https://*.googletagmanager.com`, `https://*.google-analytics.com`, `https://*.doubleclick.net`, `https://*.google.com`, `https://*.google.it`, `https://*.gstatic.com`) e le CDN per i font/stili (`https://fonts.googleapis.com`, `https://fonts.gstatic.com`, `https://cdnjs.cloudflare.com`, `https://cdn.plot.ly`). `https://www.google.it` è esplicitamente consentito (insieme al wildcard) per evitare blocchi CSP su pixel di remarketing regionalizzati.
-- Per verificare il tracciamento apri Chrome DevTools → Network dopo aver visitato la home con `?dbg=1` e controlla che la richiesta `https://www.googletagmanager.com/gtag/js?id=AW-1768143584` risponda con `200` e che compaiano chiamate `https://region1.google-analytics.com/g/collect` (stato `204`).
+- Per verificare il tracciamento apri Chrome DevTools → Network dopo aver visitato la home con `?dbg=1` e controlla che la richiesta `https://www.googletagmanager.com/gtag/js?id=AW-17681413584` risponda con `200` e che compaiano chiamate `https://region1.google-analytics.com/g/collect` (stato `204`).
 - La pagina di diagnostica `/ga4/diagnostics` mostra lo stato di `window.gtag`, la lunghezza della `dataLayer` e include un link rapido alla home con debug per accelerare i test. L'endpoint `/csp/test` restituisce l'header CSP applicato alla home per velocizzare i controlli.
 
 ## Troubleshooting (FAQ Tecnica)
