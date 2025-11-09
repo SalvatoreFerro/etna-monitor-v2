@@ -54,6 +54,14 @@
       {% include 'partials/ga4.html' %}
     {% endif %}
 
+    {% if ADSENSE_ENABLE %}
+      <script
+        async
+        src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6631006980966990"
+        crossorigin="anonymous"
+      ></script>
+    {% endif %}
+
     {% set structured_data_default = default_structured_data_base + [
       {
         "@context": "https://schema.org",

@@ -129,6 +129,9 @@ class Config:
         os.getenv("GA_MEASUREMENT_ID", DEFAULT_GA_MEASUREMENT_ID).strip()
         or DEFAULT_GA_MEASUREMENT_ID
     )
+    ADSENSE_ENABLE = (
+        os.getenv("ADSENSE_ENABLE", "").strip().lower() in {"1", "true", "yes"}
+    )
     LOG_DIR = os.getenv("LOG_DIR", "logs")
     DATA_DIR = os.getenv("DATA_DIR", "/var/tmp")
     CSV_PATH = os.getenv("CSV_PATH") or os.path.join(DATA_DIR, "curva.csv")
