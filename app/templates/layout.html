@@ -1,7 +1,6 @@
 <!doctype html>
 <html lang="it">
   <head>
-    {% set script_nonce = csp_nonce() %}
     {% set computed_title = page_title or default_page_title %}
     {% set computed_description = page_description or default_page_description %}
     {% set computed_og_title = page_og_title or computed_title %}
@@ -52,14 +51,7 @@
     <meta name="twitter:image" content="{{ computed_og_image }}" />
 
     {% if os.getenv('GA_ENABLE') == 'true' %}
-      <script async nonce="{{ csp_nonce() }}" src="https://www.googletagmanager.com/gtag/js?id=G-Z3ESSERP7W"></script>
-      <script nonce="{{ csp_nonce() }}">
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-Z3ESSERP7W');
-        gtag('config', 'AW-17681413584');
-      </script>
+      {% include 'partials/ga4.html' %}
     {% endif %}
 
     {% set structured_data_default = default_structured_data_base + [
@@ -83,13 +75,13 @@
     {% endif %}
     {% block page_structured_data %}
       {% if structured_data_payload %}
-        <script type="application/ld+json" nonce="{{ script_nonce }}">
+        <script type="application/ld+json" nonce="{{ csp_nonce() }}">
 {{ structured_data_payload | tojson(indent=2) | safe }}
         </script>
       {% endif %}
     {% endblock %}
 
-    <script type="application/ld+json" nonce="{{ script_nonce }}">
+    <script type="application/ld+json" nonce="{{ csp_nonce() }}">
 {
   "@context": "https://schema.org",
   "@type": "Organization",
@@ -201,9 +193,9 @@
       </div>
     </footer>
 
-    <script src="{{ url_for('static', filename='js/nav.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ script_nonce }}" defer></script>
+    <script src="{{ url_for('static', filename='js/nav.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ csp_nonce() }}" defer></script>
 
-    <script nonce="{{ script_nonce }}">
+    <script nonce="{{ csp_nonce() }}">
       const assetVersion = "{{ STATIC_ASSET_VERSION }}";
       window.__STATIC_ASSET_VERSION__ = assetVersion;
       if ('serviceWorker' in navigator) {
@@ -250,7 +242,7 @@
 
     {% include 'partials/onboarding.html' %}
 
-    <script src="{{ url_for('static', filename='js/onboarding.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ script_nonce }}" defer></script>
+    <script src="{{ url_for('static', filename='js/onboarding.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ csp_nonce() }}" defer></script>
 
     {% block extra_scripts %}{% endblock %}
   </body>

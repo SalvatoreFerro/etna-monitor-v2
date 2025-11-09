@@ -455,10 +455,10 @@
 </section>
 
 {% if structured_data %}
-  <script type="application/ld+json" nonce="{{ script_nonce }}">{{ structured_data | safe }}</script>
+  <script type="application/ld+json" nonce="{{ csp_nonce() }}">{{ structured_data | safe }}</script>
 {% endif %}
 
-<script nonce="{{ script_nonce }}">
+<script nonce="{{ csp_nonce() }}">
   document.addEventListener('DOMContentLoaded', () => {
     const filterButtons = Array.from(document.querySelectorAll('[data-filter]'));
     if (filterButtons.length) {

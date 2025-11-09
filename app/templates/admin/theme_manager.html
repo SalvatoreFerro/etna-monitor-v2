@@ -3,7 +3,7 @@
 {% block head %}
   {{ super() }}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
-  <style nonce="{{ script_nonce }}">
+  <style nonce="{{ csp_nonce() }}">
     .theme-manager {
       max-width: 1400px;
       margin: 0 auto;
@@ -454,7 +454,7 @@
   </div>
 </section>
 
-<script nonce="{{ script_nonce }}">
+<script nonce="{{ csp_nonce() }}">
   function selectTheme(themeName) {
     if (!confirm(`Sei sicuro di voler cambiare il template in "${themeName}"? Questo cambierà l'aspetto del sito per il tuo account.`)) {
       return;

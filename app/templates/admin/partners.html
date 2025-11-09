@@ -183,7 +183,7 @@
   </div>
 </section>
 
-<script nonce="{{ script_nonce }}">
+<script nonce="{{ csp_nonce() }}">
 document.addEventListener('DOMContentLoaded', () => {
   const csrfToken = '{{ csrf_token() }}';
   const toggleFormBtn = document.getElementById('toggle-partner-form');

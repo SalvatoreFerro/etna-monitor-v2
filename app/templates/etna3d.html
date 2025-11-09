@@ -52,7 +52,7 @@
 
 {% block extra_scripts %}
 {{ super() }}
-<script nonce="{{ script_nonce }}">
+<script nonce="{{ csp_nonce() }}">
 document.addEventListener('DOMContentLoaded', () => {
   const iframe = document.querySelector('.etna3d-iframe');
   const loader = document.getElementById('etna3d-loader');
