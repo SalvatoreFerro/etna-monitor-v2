@@ -1,6 +1,11 @@
+{% set google_tag_nonce = csp_nonce() %}
 <!-- Google tag (Ads + GA4) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=AW-17681413584" nonce="{{ csp_nonce() }}"></script>
-<script nonce="{{ csp_nonce() }}">
+<script
+  async
+  src="https://www.googletagmanager.com/gtag/js?id=AW-17681413584"
+  nonce="{{ google_tag_nonce }}"
+></script>
+<script nonce="{{ google_tag_nonce }}">
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());

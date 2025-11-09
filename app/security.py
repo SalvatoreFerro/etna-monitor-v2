@@ -9,58 +9,42 @@ from flask_talisman import Talisman
 
 CSPDirective = Dict[str, Union[List[str], str]]
 
-GOOGLE_SCRIPT_SOURCES = [
+GOOGLE_REQUIRED_DOMAINS = [
     "https://www.googletagmanager.com",
-    "https://*.googletagmanager.com",
     "https://www.google-analytics.com",
-    "https://*.google-analytics.com",
     "https://www.doubleclick.net",
     "https://*.doubleclick.net",
-    "https://googleads.g.doubleclick.net",
     "https://www.google.com",
     "https://*.google.com",
     "https://www.gstatic.com",
     "https://*.gstatic.com",
     "https://pagead2.googlesyndication.com",
+    "https://googleads.g.doubleclick.net",
+]
+
+GOOGLE_SCRIPT_SOURCES = [
+    *GOOGLE_REQUIRED_DOMAINS,
+    "https://*.googletagmanager.com",
+    "https://*.google-analytics.com",
+    "https://region1.google-analytics.com",
+    "https://stats.g.doubleclick.net",
     "https://cdn.plot.ly",
 ]
 
 CONNECT_ENDPOINTS = [
-    "https://www.google-analytics.com",
-    "https://*.google-analytics.com",
-    "https://region1.google-analytics.com",
-    "https://stats.g.doubleclick.net",
-    "https://www.doubleclick.net",
-    "https://*.doubleclick.net",
-    "https://www.googletagmanager.com",
-    "https://*.googletagmanager.com",
-    "https://www.google.com",
-    "https://*.google.com",
+    *GOOGLE_SCRIPT_SOURCES,
     "https://www.google.it",
     "https://*.google.it",
-    "https://www.gstatic.com",
-    "https://*.gstatic.com",
-    "https://googleads.g.doubleclick.net",
-    "https://pagead2.googlesyndication.com",
-    "https://cdn.plot.ly",
 ]
 
 IMG_TRACKING_ENDPOINTS = [
-    "https://www.google-analytics.com",
-    "https://*.google-analytics.com",
-    "https://www.googletagmanager.com",
+    *GOOGLE_REQUIRED_DOMAINS,
     "https://*.googletagmanager.com",
+    "https://*.google-analytics.com",
+    "https://region1.google-analytics.com",
     "https://stats.g.doubleclick.net",
-    "https://www.doubleclick.net",
-    "https://*.doubleclick.net",
-    "https://www.google.com",
-    "https://*.google.com",
     "https://www.google.it",
     "https://*.google.it",
-    "https://www.gstatic.com",
-    "https://*.gstatic.com",
-    "https://googleads.g.doubleclick.net",
-    "https://pagead2.googlesyndication.com",
     "https://tpc.googlesyndication.com",
 ]
 
@@ -74,20 +58,12 @@ FONT_CDNS = [
 ]
 
 FRAME_GOOGLE = [
-    "https://www.googletagmanager.com",
+    *GOOGLE_REQUIRED_DOMAINS,
     "https://*.googletagmanager.com",
-    "https://region1.google-analytics.com",
-    "https://www.google-analytics.com",
     "https://*.google-analytics.com",
-    "https://*.doubleclick.net",
-    "https://www.doubleclick.net",
-    "https://*.google.com",
-    "https://www.google.com",
+    "https://region1.google-analytics.com",
     "https://www.google.it",
     "https://*.google.it",
-    "https://www.gstatic.com",
-    "https://*.gstatic.com",
-    "https://googleads.g.doubleclick.net",
     "https://tpc.googlesyndication.com",
     "https://cdn.plot.ly",
 ]
