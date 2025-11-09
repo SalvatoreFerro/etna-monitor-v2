@@ -717,3 +717,8 @@ def healthcheck():
     current_app.logger.info("[HEALTH] ok=%s premium_users=%s", payload["ok"], premium_count)
     status_code = 200 if ok else 503
     return jsonify(payload), status_code
+
+
+@bp.route("/ga4/test-csp")
+def ga4_test_csp():
+    return jsonify(dict(csp=copy.deepcopy(talisman.content_security_policy)))

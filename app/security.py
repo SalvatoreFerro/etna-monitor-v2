@@ -13,9 +13,9 @@ BASE_CSP: CSPDirective = {
     "default-src": "'self'",
     "script-src": [
         "'self'",
-        "'unsafe-inline'",  # TODO: rimuovere quando tutto ha nonce
         "https://www.googletagmanager.com",
         "https://www.google-analytics.com",
+        "https://www.googletagmanager.com/gtag/js",
     ],
     "connect-src": [
         "'self'",
@@ -23,11 +23,22 @@ BASE_CSP: CSPDirective = {
         "https://region1.google-analytics.com",
         "https://stats.g.doubleclick.net",
     ],
-    "img-src": ["'self'", "https://www.google-analytics.com", "data:"],
+    "img-src": [
+        "'self'",
+        "https://www.google-analytics.com",
+        "https://www.googletagmanager.com",
+        "https://stats.g.doubleclick.net",
+        "data:",
+    ],
     "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
     "font-src": ["'self'", "https://fonts.gstatic.com"],
     "object-src": "'none'",
     "base-uri": "'self'",
+    "frame-src": [
+        "'self'",
+        "https://www.googletagmanager.com",
+        "https://region1.google-analytics.com",
+    ],
 }
 
 

@@ -26,4 +26,21 @@ def test_home_includes_ga4_and_csp_allows_google(monkeypatch):
 
     csp = response.headers.get("Content-Security-Policy", "")
     assert "https://www.googletagmanager.com" in csp
+    assert "https://www.googletagmanager.com/gtag/js" in csp
     assert "https://region1.google-analytics.com" in csp
+    assert "https://stats.g.doubleclick.net" in csp
+
+
+def test_ga4_test_csp_endpoint(monkeypatch):
+    monkeypatch.setenv("GA_ENABLE", "true")
+    app = create_app({"TESTING": True})
+    client = app.test_client()
+
+    response = client.get("/ga4/test-csp")
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert "csp" in payload
+    script_sources = payload["csp"].get("script-src", [])
+    assert "https://www.googletagmanager.com" in script_sources
+    assert "https://www.googletagmanager.com/gtag/js" in script_sources
+    assert "https://www.google-analytics.com" in script_sources
