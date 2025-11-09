@@ -1,14 +1,12 @@
 <!-- Google tag loader (use Ads ID, works 200) -->
 <script async crossorigin="anonymous"
-        src="https://www.googletagmanager.com/gtag/js?id=AW-17681413584"></script>
+        src="https://www.googletagmanager.com/gtag/js?id=AW-1768143584"></script>
 
 <!-- Inline config with CSP nonce -->
 <script nonce="{{ csp_nonce() }}">
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-
-  // Configure BOTH: GA4 + Ads
-  gtag('config', 'G-Z3ESSERP7W', { transport_type:'beacon', send_page_view:true });
-  gtag('config', 'AW-17681413584');
+  gtag('config', 'AW-1768143584');
+  gtag('config', 'G-Z3ESSERP7W');
 </script>

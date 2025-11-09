@@ -8,7 +8,7 @@ load_dotenv()
 
 
 DEFAULT_GA_MEASUREMENT_ID = "G-Z3ESSERP7W"
-DEFAULT_GOOGLE_ADS_ID = "AW-17681413584"
+DEFAULT_GOOGLE_ADS_ID = "AW-1768143584"
 
 
 def _resolve_static_asset_version() -> str:
