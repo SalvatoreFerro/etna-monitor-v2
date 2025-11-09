@@ -1,5 +1,4 @@
 """Security helpers for HTTP response headers."""
-
 from __future__ import annotations
 
 import copy
@@ -12,21 +11,27 @@ CSPDirective = Dict[str, Union[List[str], str]]
 
 BASE_CSP: CSPDirective = {
     "default-src": "'self'",
-    "script-src": ["'self'", "https://www.googletagmanager.com"],
+    "script-src": [
+        "'self'",
+        "'unsafe-inline'",  # TODO: rimuovere quando tutto ha nonce
+        "https://www.googletagmanager.com",
+        "https://www.google-analytics.com",
+    ],
     "connect-src": [
         "'self'",
         "https://www.google-analytics.com",
         "https://region1.google-analytics.com",
+        "https://stats.g.doubleclick.net",
     ],
     "img-src": ["'self'", "https://www.google-analytics.com", "data:"],
-    "style-src": ["'self'", "'unsafe-inline'"],
+    "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+    "font-src": ["'self'", "https://fonts.gstatic.com"],
+    "object-src": "'none'",
+    "base-uri": "'self'",
 }
 
 
 def apply_csp_headers(response) -> object:
-    """Attach the Content-Security-Policy header to a Flask response."""
-
-    policy_source = None
     try:
         policy_source = talisman._get_local_options().get("content_security_policy")
     except Exception:
@@ -39,7 +44,8 @@ def apply_csp_headers(response) -> object:
     ):
         return response
 
-    policy = build_csp()
+    policy = copy.deepcopy(BASE_CSP)
+
     nonce = getattr(request, "csp_nonce", None)
     if nonce:
         directive = policy.get("script-src")
@@ -53,15 +59,7 @@ def apply_csp_headers(response) -> object:
     return response
 
 
-def build_csp() -> CSPDirective:
-    """Return a deep copy of the base Content Security Policy."""
-
-    return copy.deepcopy(BASE_CSP)
-
-
 def serialize_csp(policy: CSPDirective) -> str:
-    """Serialize a CSP policy dictionary into a header string."""
-
     parts: List[str] = []
     for directive, value in policy.items():
         if isinstance(value, str):

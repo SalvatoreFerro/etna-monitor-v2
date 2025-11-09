@@ -7,6 +7,7 @@ import os
 import sys
 import redis
 import warnings
+import copy
 from datetime import datetime, timedelta
 from time import perf_counter
 from urllib.parse import urlparse, urlunparse
@@ -55,7 +56,7 @@ from config import (
     get_database_uri_from_env,
 )
 from .extensions import cache
-from .security import apply_csp_headers, build_csp, talisman
+from .security import BASE_CSP, apply_csp_headers, talisman
 
 login_manager = LoginManager()
 limiter = None
@@ -264,6 +265,7 @@ def create_app(config_overrides: dict | None = None):
     app.jinja_env.globals["csrf_token"] = generate_csrf_token
     app.jinja_env.globals["static_asset_version"] = app.config["STATIC_ASSET_VERSION"]
     app.jinja_env.globals["STATIC_ASSET_VERSION"] = app.config["STATIC_ASSET_VERSION"]
+    app.jinja_env.globals["os"] = os
 
     configure_logging(app.config.get("LOG_DIR"))
     app.logger.info(
@@ -671,11 +673,11 @@ def create_app(config_overrides: dict | None = None):
             except Exception:
                 app.logger.exception("[BOOT] Admin auto-promotion failed")
 
-    app.config["BASE_CONTENT_SECURITY_POLICY"] = build_csp()
+    app.config["BASE_CONTENT_SECURITY_POLICY"] = copy.deepcopy(BASE_CSP)
 
     talisman.init_app(
         app,
-        content_security_policy=build_csp(),
+        content_security_policy=copy.deepcopy(BASE_CSP),
         content_security_policy_nonce_in=["script-src"],
         force_https=os.getenv("FLASK_ENV") == "production",
         frame_options="SAMEORIGIN",

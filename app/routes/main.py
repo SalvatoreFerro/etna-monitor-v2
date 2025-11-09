@@ -1,4 +1,5 @@
 from datetime import datetime
+import copy
 import os
 from pathlib import Path
 
@@ -25,7 +26,7 @@ from sqlalchemy import or_
 
 from ..extensions import cache
 from ..utils.metrics import get_csv_metrics, record_csv_error, record_csv_read
-from app.security import build_csp, talisman
+from app.security import BASE_CSP, talisman
 from backend.utils.time import to_iso_utc
 from config import DEFAULT_GA_MEASUREMENT_ID
 
@@ -582,7 +583,7 @@ def news():
     )
 
 
-_ETNA3D_CSP = build_csp()
+_ETNA3D_CSP = copy.deepcopy(BASE_CSP)
 _SKETCHFAB_SOURCES = [
     "https://sketchfab.com",
     "https://*.sketchfab.com",

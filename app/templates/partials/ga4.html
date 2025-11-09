@@ -1,24 +1,31 @@
-{% set measurement_id = analytics.ga_measurement_id or 'G-Z3ESSERP7W' %}
-{% set nonce_value = script_nonce if script_nonce is defined else csp_nonce() %}
-{% set debug_env_enabled = analytics.ga_debug_enabled %}
-{% set debug_param_enabled = request.args.get('dbg') is not none %}
-{% if measurement_id %}
-  <script nonce="{{ nonce_value }}">
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){window.dataLayer.push(arguments);}
-    window.gtag = gtag;
-    gtag('consent', 'default', {
-      ad_storage: 'granted',
-      analytics_storage: 'granted'
-    });
-    {% if debug_env_enabled or debug_param_enabled %}
-    gtag('set', 'debug_mode', true);
-    console.info('GA4 debug_mode enabled');
-    {% endif %}
-  </script>
-  <script async nonce="{{ nonce_value }}" src="https://www.googletagmanager.com/gtag/js?id={{ measurement_id }}"></script>
-  <script nonce="{{ nonce_value }}">
-    gtag('js', new Date());
-    gtag('config', '{{ measurement_id }}', { transport_type: 'beacon', send_page_view: true });
-  </script>
+{# GA4 single init with nonce + optional debug #}
+{% if csp_nonce is defined and (csp_nonce is not callable) %}
+  {% set _ga4_nonce = csp_nonce %}
+{% else %}
+  {% set _ga4_nonce = csp_nonce() %}
 {% endif %}
+<script nonce="{{ _ga4_nonce }}">
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){ dataLayer.push(arguments); }
+
+  // Consent Mode v2 - default granted (provvisorio per test)
+  gtag('consent', 'default', {
+    ad_storage: 'granted',
+    analytics_storage: 'granted',
+    ad_user_data: 'granted',
+    ad_personalization: 'granted',
+    functionality_storage: 'granted',
+    security_storage: 'granted'
+  });
+
+  // Debug attivabile con env GA_DEBUG=true o query ?dbg=1
+  (function(){
+    const enabled = "{{ (os.getenv('GA_DEBUG') or '') }}" === "true"
+                    || new URLSearchParams(window.location.search).has('dbg');
+    if (enabled) gtag('set', 'debug_mode', true);
+  })();
+
+  gtag('js', new Date());
+  gtag('config', 'G-Z3ESSERP7W', { transport_type: 'beacon', send_page_view: true });
+</script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-Z3ESSERP7W"></script>
