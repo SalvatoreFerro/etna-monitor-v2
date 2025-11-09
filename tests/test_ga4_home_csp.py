@@ -26,11 +26,13 @@ def test_home_includes_ga4_and_csp_allows_google(monkeypatch):
     assert response.status_code == 200
     html = response.get_data(as_text=True)
     external_match = re.search(
-        r"<script[^>]+src=\"https://www\.googletagmanager\.com/gtag/js\?id=AW-17681413584\"[^>]*></script>",
+        r"<script[^>]+src=\"https://www\.googletagmanager\.com/gtag/js\?id=AW-1768143584\"[^>]*></script>",
         html,
     )
     assert external_match is not None
     assert "async" in external_match.group(0)
+    assert "G-Z3ESSERP7W" not in external_match.group(0)
+    assert "gtag/js?id=G-Z3ESSERP7W" not in html
 
     inline_match = re.search(
         r"<script[^>]+nonce=\"[^\"]+\"[^>]*>[\s\S]*?gtag\('config',\s*'G-Z3ESSERP7W'",
@@ -40,7 +42,7 @@ def test_home_includes_ga4_and_csp_allows_google(monkeypatch):
     assert 'nonce="' in inline_match.group(0)
 
     assert html.index(external_match.group(0)) < html.index(inline_match.group(0))
-    assert re.search(r"gtag\('config',\s*'AW-17681413584'\)", html)
+    assert re.search(r"gtag\('config',\s*'AW-1768143584'\)", html)
 
     csp_header = response.headers.get("Content-Security-Policy", "")
     assert "'nonce-" in csp_header
@@ -57,6 +59,7 @@ def test_home_includes_ga4_and_csp_allows_google(monkeypatch):
         "https://*.google-analytics.com",
         "https://*.doubleclick.net",
         "https://*.google.com",
+        "https://*.google.it",
         "https://*.gstatic.com",
         "https://fonts.googleapis.com",
         "https://fonts.gstatic.com",
@@ -64,6 +67,7 @@ def test_home_includes_ga4_and_csp_allows_google(monkeypatch):
         "https://cdn.plot.ly",
         "https://region1.google-analytics.com",
         "https://stats.g.doubleclick.net",
+        "https://www.google.it",
     ):
         assert expected in csp_header
 
@@ -99,7 +103,17 @@ def test_home_includes_ga4_and_csp_allows_google(monkeypatch):
     assert "https://*.doubleclick.net" in connect_sources
     assert "https://*.googletagmanager.com" in connect_sources
     assert "https://*.google.com" in connect_sources
+    assert "https://*.google.it" in connect_sources
+    assert "https://www.google.it" in connect_sources
     assert "https://*.gstatic.com" in connect_sources
+
+    img_sources = directives.get("img-src", [])
+    assert "https://*.google.it" in img_sources
+    assert "https://www.google.it" in img_sources
+
+    frame_sources = directives.get("frame-src", [])
+    assert "https://*.google.it" in frame_sources
+    assert "https://www.google.it" in frame_sources
 
 
 def _strip_nonces(values: List[str]) -> List[str]:
@@ -142,7 +156,17 @@ def test_ga4_test_csp_endpoint(monkeypatch):
     assert "https://*.doubleclick.net" in connect_sources
     assert "https://*.googletagmanager.com" in connect_sources
     assert "https://*.google.com" in connect_sources
+    assert "https://www.google.it" in connect_sources
+    assert "https://*.google.it" in connect_sources
     assert "https://*.gstatic.com" in connect_sources
+
+    img_sources = policy.get("img-src", [])
+    assert "https://www.google.it" in img_sources
+    assert "https://*.google.it" in img_sources
+
+    frame_sources = policy.get("frame-src", [])
+    assert "https://www.google.it" in frame_sources
+    assert "https://*.google.it" in frame_sources
 
 
 def test_csp_test_endpoint_returns_home_header(monkeypatch):
