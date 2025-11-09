@@ -1,0 +1,8 @@
+Ciao {{ user.name or user.email }},
+
+per completare la cancellazione del tuo account EtnaMonitor visita questo link:
+{{ confirm_url }}
+
+Il link resta valido per 48 ore. Dopo la conferma l'account verrà disattivato, anonimizzato e cancellato definitivamente entro 30 giorni salvo obblighi legali.
+
+Se non hai richiesto tu questa operazione puoi ignorare questo messaggio.

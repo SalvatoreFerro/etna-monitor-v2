@@ -1,0 +1,11 @@
+<!DOCTYPE html>
+<html lang="it">
+  <body style="font-family:Arial,sans-serif;background:#0f172a;color:#e2e8f0;padding:24px;">
+    <h1 style="color:#f87171;">Aggiornamento moderazione</h1>
+    <p>Ciao {{ post.author.name or post.author.email if post.author else 'utente' }},</p>
+    <p>il tuo contributo <strong>{{ post.title }}</strong> non è stato approvato in questa fase.</p>
+    {% if reason %}<p><strong>Motivo:</strong> {{ reason }}</p>{% endif %}
+    <p>Puoi modificarlo e inviarlo di nuovo dalla sezione "I miei post".</p>
+    <p style="font-size:12px;color:#94a3b8;">Per dubbi o chiarimenti rispondi a questa email.</p>
+  </body>
+</html>

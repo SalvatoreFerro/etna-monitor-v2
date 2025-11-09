@@ -236,6 +236,9 @@ ALERT_THRESHOLD_DEFAULT=2.0
 - **Dashboard**: badge che indica stato Free o Premium e riepilogo delle impostazioni personali.
 - **Attivazione Premium**: pagamento manuale tramite link placeholder `<PAYPAL_DONATION_LINK>`; l'admin abilita lo stato Premium dal pannello dedicato.
 - **Soglie personalizzate**: interfaccia per modificare il livello di allerta; validazione su range plausibili (es. 0.5–10 mV) con persistenza su database.
+- **Privacy self-service**: l'utente autenticato può esportare i propri dati in JSON (`/account/export-data`) e richiedere in autonomia la cancellazione con conferma via email (`/account/delete-request`). Il purge definitivo avviene entro 30 giorni (configurabile tramite `ACCOUNT_SOFT_DELETE_TTL_DAYS`).
+- **Ruoli avanzati**: oltre agli admin è disponibile il ruolo `moderator`, abilitato alla sola approvazione/rifiuto dei post community.
+- **Community hub**: ogni utente può creare post (default `pending`) dall'area community, con moderazione e audit trail disponibili nel pannello `/admin/moderation/queue`.
 
 ## Logging & Monitoraggio
 - **Storage log**: file testuali in `./logs`, rotazione giornaliera e livelli (INFO, WARNING, ERROR). Possibile integrazione con `logging.handlers.RotatingFileHandler`.

@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+
+{% set page_title = post.title %}
+
+{% block content %}
+<section class="page-hero" aria-labelledby="community-post-title">
+  <div class="container">
+    <span class="pill pill--glow">Community</span>
+    <h1 id="community-post-title">{{ post.title }}</h1>
+    <p class="muted">Pubblicato il {{ post.published_at.strftime('%d/%m/%Y %H:%M') if post.published_at else post.created_at.strftime('%d/%m/%Y %H:%M') }}</p>
+  </div>
+</section>
+
+<section class="content-section" aria-label="Dettagli post">
+  <div class="container community-post">
+    <article class="card">
+      <header class="community-post__meta">
+        {% if post.anonymous %}
+          <strong>Autore anonimo</strong>
+        {% else %}
+          {% set author = post.author %}
+          {% if author %}
+            <strong>{{ author.name or author.email }}</strong>
+            {% if author.is_admin %}
+              <span class="badge badge--admin">Admin</span>
+            {% elif author.role == 'moderator' %}
+              <span class="badge badge--moderator">Moderatore</span>
+            {% elif author.role == 'premium' %}
+              <span class="badge badge--premium">Premium</span>
+            {% endif %}
+          {% else %}
+            <strong>Utente non disponibile</strong>
+          {% endif %}
+        {% endif %}
+      </header>
+      <div class="community-post__body">{{ post.body|safe }}</div>
+    </article>
+
+    {% if actions and current_user.is_authenticated and current_user.is_moderator() %}
+      <aside class="card moderation-log" aria-label="Storico moderazione">
+        <h2>Azioni moderazione</h2>
+        <ul>
+          {% for action in actions %}
+            <li>
+              <strong>{{ action.action|capitalize }}</strong>
+              <span class="muted">{{ action.created_at.strftime('%d/%m/%Y %H:%M') if action.created_at else '' }}</span>
+              {% if action.reason %}
+                <p>{{ action.reason }}</p>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </aside>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

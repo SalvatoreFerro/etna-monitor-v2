@@ -1,0 +1,57 @@
+{% extends "layout.html" %}
+
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
+{% endblock %}
+
+{% block content %}
+<section class="admin-page admin-container" aria-labelledby="moderation-queue-title">
+  <header class="admin-card admin-card--hero card-premium animate-premium-fade admin-header" id="moderation-queue-title">
+    <div>
+      <h1><i class="fas fa-shield-alt"></i> Moderazione community</h1>
+      <p>Approva o rifiuta i contenuti generati dagli utenti mantenendo uno spazio sicuro e informativo.</p>
+    </div>
+    <nav class="admin-actions" aria-label="Azioni amministrative">
+      <a href="{{ url_for('admin.admin_home') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-arrow-left"></i> Dashboard admin</a>
+      <a href="{{ url_for('community.my_posts') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-user"></i> I miei post</a>
+    </nav>
+  </header>
+
+  <article class="admin-card card-premium animate-premium-fade">
+    <header class="admin-section-header">
+      <div>
+        <h2><i class="fas fa-inbox"></i> Coda in attesa</h2>
+        <p>{{ posts|length }} post in revisione.</p>
+      </div>
+    </header>
+    {% if posts %}
+      <ul class="moderation-list">
+        {% for post in posts %}
+          <li class="moderation-card">
+            <header>
+              <h3>{{ post.title }}</h3>
+              <p class="muted">Inviato da {{ post.author.name or post.author.email if post.author else 'Utente anonimo' }} il {{ post.created_at.strftime('%d/%m/%Y %H:%M') if post.created_at else 'N/D' }}</p>
+            </header>
+            <div class="moderation-body">{{ post.body|safe }}</div>
+            <footer class="moderation-actions">
+              <form method="post" action="{{ url_for('moderation.approve_post', post_id=post.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="reason" placeholder="Nota (opzionale)" class="input-note">
+                <button type="submit" class="btn btn-success btn-sm"><i class="fas fa-check"></i> Approva</button>
+              </form>
+              <form method="post" action="{{ url_for('moderation.reject_post', post_id=post.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="text" name="reason" placeholder="Motivo del rifiuto" class="input-note">
+                <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-times"></i> Rifiuta</button>
+              </form>
+            </footer>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="admin-caption">Non ci sono post in attesa. Resta pronto a supportare la community!</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

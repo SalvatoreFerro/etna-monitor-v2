@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+
+{% set page_title = "Nuovo post community" %}
+
+{% block content %}
+<section class="page-hero" aria-labelledby="community-new-title">
+  <div class="container">
+    <span class="pill pill--glow">Community</span>
+    <h1 id="community-new-title">Condividi un aggiornamento</h1>
+    <p class="lead">Racconta esperienze, analisi o consigli. Il team moderazione approverà i contenuti per mantenere alta la qualità.</p>
+  </div>
+</section>
+
+<section class="content-section" aria-label="Modulo nuovo post">
+  <div class="container">
+    <form method="post" class="card" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="form-group">
+        <label for="post-title">Titolo</label>
+        <input id="post-title" type="text" name="title" maxlength="200" required placeholder="Es. Analisi tremore del 12/05">
+      </div>
+      <div class="form-group">
+        <label for="post-body">Contenuto</label>
+        <textarea id="post-body" name="body" rows="10" minlength="30" required placeholder="Scrivi qui il tuo contributo (HTML di base consentito)."></textarea>
+        <p class="muted">Il testo viene sanificato automaticamente con supporto a paragrafi, liste, link e codice inline.</p>
+      </div>
+      <div class="form-group">
+        <label class="checkbox">
+          <input type="checkbox" name="anonymous" value="1">
+          <span>Pubblica come anonimo (il tuo nome non comparirà ma il team potrà vederti per moderazione)</span>
+        </label>
+        <p class="muted">Pubblicherai come: <strong>{{ current_user.name or current_user.email }}</strong></p>
+      </div>
+      {% if require_captcha and recaptcha_site_key %}
+        <div class="form-group">
+          <div class="g-recaptcha" data-sitekey="{{ recaptcha_site_key }}"></div>
+        </div>
+      {% endif %}
+      <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Invia per revisione</button>
+    </form>
+  </div>
+</section>
+{% endblock %}
+
+{% block scripts %}
+  {{ super() }}
+  {% if require_captcha and recaptcha_site_key %}
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  {% endif %}
+{% endblock %}
