@@ -31,16 +31,23 @@ def test_home_includes_ga4_and_csp_allows_google(monkeypatch):
     )
     assert external_match is not None
     assert "async" in external_match.group(0)
-    assert "nonce=" in external_match.group(0)
 
     inline_match = re.search(
-        r"<script nonce=\"[^\"]+\">[\s\S]*?gtag\('config', 'G-Z3ESSERP7W'",
+        r"<script nonce=\"[^\"]+\">[\s\S]*?gtag\('config','G-Z3ESSERP7W'",
         html,
     )
     assert inline_match is not None
-    assert "gtag('config', 'AW-17681413584')" in html
+    assert 'nonce="' in inline_match.group(0)
+
+    assert html.index(external_match.group(0)) < html.index(inline_match.group(0))
+    assert "gtag('config','AW-17681413584')" in html
 
     csp_header = response.headers.get("Content-Security-Policy", "")
+    assert "'nonce-" in csp_header
+    assert "googletagmanager.com" in csp_header
+    assert "google-analytics.com" in csp_header
+    assert "region1.google-analytics.com" in csp_header
+    assert "doubleclick.net" in csp_header
     for expected in (
         "script-src-elem",
         "style-src-elem",

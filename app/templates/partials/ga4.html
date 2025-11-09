@@ -1,16 +1,8 @@
 {# GA4 tag load order and configuration #}
-{% if ga4_nonce is defined %}
-  {% set csp_nonce = ga4_nonce %}
-{% elif csp_nonce is callable %}
-  {% set csp_nonce = csp_nonce() %}
-{% endif %}
-{% set _ga_debug_enabled = 'true' if os.getenv('GA_DEBUG') == 'true' else 'false' %}
 <script async crossorigin="anonymous" src="https://www.googletagmanager.com/gtag/js?id=G-Z3ESSERP7W"></script>
-<script nonce="{{ csp_nonce }}">
+<script nonce="{{ csp_nonce() }}">
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
-
-  // Consent default granted for testing
   gtag('consent','default',{
     ad_storage:'granted',
     analytics_storage:'granted',
@@ -19,14 +11,11 @@
     functionality_storage:'granted',
     security_storage:'granted'
   });
-
-  // Debug toggle via env or ?dbg=1
   (function(){
-    const enabled = ({{ _ga_debug_enabled }}) ||
-                    new URLSearchParams(window.location.search).has('dbg');
-    if (enabled) gtag('set','debug_mode', true);
+    const dbg = new URLSearchParams(location.search).has('dbg') || ({{ 'true' if os.getenv('GA_DEBUG') == 'true' else 'false' }});
+    if (dbg) gtag('set','debug_mode',true);
   })();
-
   gtag('js', new Date());
   gtag('config','G-Z3ESSERP7W',{transport_type:'beacon', send_page_view:true});
+  gtag('config','AW-17681413584');
 </script>
