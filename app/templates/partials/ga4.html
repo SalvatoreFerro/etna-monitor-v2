@@ -1,21 +1,14 @@
-{# GA4 tag load order and configuration #}
-<script async crossorigin="anonymous" src="https://www.googletagmanager.com/gtag/js?id=G-Z3ESSERP7W"></script>
+<!-- Google tag loader (use Ads ID, works 200) -->
+<script async crossorigin="anonymous"
+        src="https://www.googletagmanager.com/gtag/js?id=AW-17681413584"></script>
+
+<!-- Inline config with CSP nonce -->
 <script nonce="{{ csp_nonce() }}">
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
-  gtag('consent','default',{
-    ad_storage:'granted',
-    analytics_storage:'granted',
-    ad_user_data:'granted',
-    ad_personalization:'granted',
-    functionality_storage:'granted',
-    security_storage:'granted'
-  });
-  (function(){
-    const dbg = new URLSearchParams(location.search).has('dbg') || ({{ 'true' if os.getenv('GA_DEBUG') == 'true' else 'false' }});
-    if (dbg) gtag('set','debug_mode',true);
-  })();
   gtag('js', new Date());
-  gtag('config','G-Z3ESSERP7W',{transport_type:'beacon', send_page_view:true});
-  gtag('config','AW-17681413584');
+
+  // Configure BOTH: GA4 + Ads
+  gtag('config', 'G-Z3ESSERP7W', { transport_type:'beacon', send_page_view:true });
+  gtag('config', 'AW-17681413584');
 </script>
