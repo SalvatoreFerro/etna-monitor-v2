@@ -9,22 +9,48 @@ from flask_talisman import Talisman
 
 CSPDirective = Dict[str, Union[List[str], str]]
 
-SCRIPT_GOOGLE = [
+GOOGLE_SCRIPT_SOURCES = [
     "https://www.googletagmanager.com",
+    "https://*.googletagmanager.com",
     "https://www.google-analytics.com",
+    "https://*.google-analytics.com",
+    "https://www.doubleclick.net",
+    "https://*.doubleclick.net",
+    "https://www.google.com",
+    "https://*.google.com",
+    "https://www.gstatic.com",
+    "https://*.gstatic.com",
+    "https://cdn.plot.ly",
 ]
 
 CONNECT_ENDPOINTS = [
     "https://www.google-analytics.com",
+    "https://*.google-analytics.com",
     "https://region1.google-analytics.com",
     "https://stats.g.doubleclick.net",
+    "https://www.doubleclick.net",
+    "https://*.doubleclick.net",
+    "https://www.googletagmanager.com",
+    "https://*.googletagmanager.com",
+    "https://www.google.com",
+    "https://*.google.com",
+    "https://www.gstatic.com",
+    "https://*.gstatic.com",
     "https://cdn.plot.ly",
 ]
 
 IMG_TRACKING_ENDPOINTS = [
     "https://www.google-analytics.com",
+    "https://*.google-analytics.com",
     "https://www.googletagmanager.com",
+    "https://*.googletagmanager.com",
     "https://stats.g.doubleclick.net",
+    "https://www.doubleclick.net",
+    "https://*.doubleclick.net",
+    "https://www.google.com",
+    "https://*.google.com",
+    "https://www.gstatic.com",
+    "https://*.gstatic.com",
 ]
 
 STYLE_CDNS = [
@@ -38,7 +64,17 @@ FONT_CDNS = [
 
 FRAME_GOOGLE = [
     "https://www.googletagmanager.com",
+    "https://*.googletagmanager.com",
     "https://region1.google-analytics.com",
+    "https://www.google-analytics.com",
+    "https://*.google-analytics.com",
+    "https://*.doubleclick.net",
+    "https://www.doubleclick.net",
+    "https://*.google.com",
+    "https://www.google.com",
+    "https://www.gstatic.com",
+    "https://*.gstatic.com",
+    "https://cdn.plot.ly",
 ]
 
 
@@ -52,7 +88,7 @@ def _unique(values: Iterable[str]) -> List[str]:
     return unique_values
 
 
-_SCRIPT_SOURCES = _unique(["'self'", *SCRIPT_GOOGLE])
+_SCRIPT_SOURCES = _unique(["'self'", *GOOGLE_SCRIPT_SOURCES])
 _STYLE_SOURCES = _unique(["'self'", "'unsafe-inline'", *STYLE_CDNS])
 _FONT_SOURCES = _unique(["'self'", *FONT_CDNS])
 _CONNECT_SOURCES = _unique(["'self'", *CONNECT_ENDPOINTS])

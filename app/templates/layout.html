@@ -52,8 +52,14 @@
     <meta name="twitter:image" content="{{ computed_og_image }}" />
 
     {% if os.getenv('GA_ENABLE') == 'true' %}
-      {% set ga4_nonce = csp_nonce() %}
-      {% include 'partials/ga4.html' %}
+      <script async nonce="{{ csp_nonce() }}" src="https://www.googletagmanager.com/gtag/js?id=G-Z3ESSERP7W"></script>
+      <script nonce="{{ csp_nonce() }}">
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-Z3ESSERP7W');
+        gtag('config', 'AW-17681413584');
+      </script>
     {% endif %}
 
     {% set structured_data_default = default_structured_data_base + [

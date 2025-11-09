@@ -144,6 +144,22 @@ def ga4_diagnostics():
     )
 
 
+@bp.route("/csp/test")
+def csp_test():
+    """Return the CSP header applied to the home page response."""
+
+    with current_app.test_client() as client:
+        home_response = client.get(url_for("main.index"))
+
+    policy_header = home_response.headers.get("Content-Security-Policy", "")
+    return jsonify(
+        {
+            "status_code": home_response.status_code,
+            "content_security_policy": policy_header,
+        }
+    )
+
+
 @bp.route("/")
 @cache.cached(timeout=90, key_prefix=_index_cache_key)
 def index():
