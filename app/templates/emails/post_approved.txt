@@ -1,0 +1,8 @@
+Ciao {{ post.author.name or post.author.email if post.author else 'utente' }},
+
+il tuo post "{{ post.title }}" è stato approvato dalla moderazione e ora è pubblico.
+Puoi leggerlo qui: {{ post_url }}
+{% if reason %}
+Nota della moderazione: {{ reason }}
+{% endif %}
+Grazie per aver contribuito alla community di EtnaMonitor!

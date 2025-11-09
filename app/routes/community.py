@@ -4,25 +4,31 @@ from __future__ import annotations
 
 from datetime import datetime
 
+import requests
 from flask import (
     Blueprint,
+    abort,
+    current_app,
+    flash,
+    redirect,
     render_template,
     request,
-    redirect,
     url_for,
-    flash,
 )
-from flask_login import current_user
+from flask_login import current_user, login_required
 
 from ..models import (
     db,
     BlogPost,
+    CommunityPost,
     ForumThread,
     ForumReply,
+    ModerationAction,
     UserFeedback,
 )
 from ..services.gamification_service import GamificationService
 from ..utils.csrf import validate_csrf_token
+from ..utils.acl import role_required
 
 
 bp = Blueprint("community", __name__, url_prefix="/community")
@@ -41,7 +47,9 @@ def blog_index():
 @bp.route("/blog/<slug>/")
 def blog_detail(slug: str):
     post = BlogPost.query.filter_by(slug=slug).first_or_404()
-    if not post.published and not (current_user.is_authenticated and current_user.is_admin):
+    if not post.published and not (
+        current_user.is_authenticated and current_user.is_admin
+    ):
         flash("L'articolo richiesto non è disponibile.", "error")
         return redirect(url_for("community.blog_index"))
 
@@ -152,9 +160,7 @@ def forum_home():
         flash("Discussione pubblicata con successo!", "success")
         return redirect(url_for("community.thread_detail", slug=thread.slug))
 
-    threads = (
-        ForumThread.query.order_by(ForumThread.updated_at.desc()).limit(30).all()
-    )
+    threads = ForumThread.query.order_by(ForumThread.updated_at.desc()).limit(30).all()
     return render_template("forum/index.html", threads=threads)
 
 
@@ -184,7 +190,9 @@ def thread_detail(slug: str):
             author_email=author_email,
         )
         db.session.add(reply)
-        thread.status = "resolved" if request.form.get("mark_resolved") == "1" else thread.status
+        thread.status = (
+            "resolved" if request.form.get("mark_resolved") == "1" else thread.status
+        )
         thread.updated_at = datetime.utcnow()
         service.award("forum:reply")
         db.session.commit()
@@ -238,3 +246,119 @@ def feedback_portal():
         .all()
     )
     return render_template("feedback/index.html", latest_feedback=latest_feedback)
+
+
+def _require_captcha(user) -> bool:
+    if not current_app.config.get("COMMUNITY_RECAPTCHA_ENABLED"):
+        return False
+    if getattr(user, "is_authenticated", False):
+        if user.is_moderator() or user.has_premium_access:
+            return False
+        optional = current_app.config.get("OPTIONAL_CAPTCHA_FOR_UNVERIFIED", True)
+        if optional:
+            return not bool(user.telegram_opt_in or user.google_id)
+    return True
+
+
+def _verify_recaptcha(response_token: str) -> bool:
+    if not current_app.config.get("COMMUNITY_RECAPTCHA_ENABLED"):
+        return True
+    secret = current_app.config.get("COMMUNITY_RECAPTCHA_SECRET_KEY")
+    if not secret or not response_token:
+        return False
+    try:
+        verification = requests.post(
+            "https://www.google.com/recaptcha/api/siteverify",
+            data={"secret": secret, "response": response_token},
+            timeout=5,
+        )
+    except Exception:
+        current_app.logger.warning("reCAPTCHA verification failed", exc_info=True)
+        return False
+    if verification.status_code != 200:
+        return False
+    payload = verification.json()
+    return bool(payload.get("success"))
+
+
+@bp.route("/new", methods=["GET", "POST"])
+@login_required
+def create_post():
+    if request.method == "POST":
+        csrf_token = request.form.get("csrf_token")
+        if not validate_csrf_token(csrf_token):
+            flash("Sessione scaduta, riprova.", "error")
+            return redirect(url_for("community.create_post"))
+
+        if _require_captcha(current_user):
+            captcha_token = request.form.get("g-recaptcha-response", "")
+            if not _verify_recaptcha(captcha_token):
+                flash("Verifica captcha non riuscita.", "error")
+                return redirect(url_for("community.create_post"))
+
+        title = (request.form.get("title") or "").strip()
+        body = request.form.get("body") or ""
+        anonymous = request.form.get("anonymous") == "1"
+
+        if len(title) < 10 or len(body) < 30:
+            flash("Completa titolo e contenuto (minimo 30 caratteri).", "error")
+            return redirect(url_for("community.create_post"))
+
+        post = CommunityPost(
+            author_id=current_user.id, title=title, anonymous=anonymous
+        )
+        post.set_body(body)
+        post.status = "pending"
+        db.session.add(post)
+        db.session.commit()
+
+        flash("Post inviato, sarà pubblicato dopo la moderazione.", "success")
+        return redirect(url_for("community.my_posts"))
+
+    return render_template(
+        "community/new.html",
+        require_captcha=_require_captcha(current_user),
+        recaptcha_site_key=current_app.config.get("COMMUNITY_RECAPTCHA_SITE_KEY"),
+    )
+
+
+def _get_post_by_identifier(identifier: str) -> CommunityPost:
+    post: CommunityPost | None = None
+    if identifier.isdigit():
+        post = CommunityPost.query.get(int(identifier))
+    if not post:
+        post = CommunityPost.query.filter_by(slug=identifier).first()
+    if not post:
+        abort(404)
+    return post
+
+
+@bp.route("/my-posts", methods=["GET"])
+@login_required
+def my_posts():
+    posts = (
+        CommunityPost.query.filter_by(author_id=current_user.id)
+        .order_by(CommunityPost.created_at.desc())
+        .all()
+    )
+    return render_template("community/my_posts.html", posts=posts)
+
+
+@bp.route("/<identifier>", methods=["GET"])
+def community_post(identifier: str):
+    post = _get_post_by_identifier(identifier)
+    viewer = current_user if current_user.is_authenticated else None
+    if not post.is_visible_to(viewer):
+        abort(404)
+
+    actions = (
+        ModerationAction.query.filter_by(post_id=post.id)
+        .order_by(ModerationAction.created_at.desc())
+        .all()
+    )
+
+    return render_template(
+        "community/post.html",
+        post=post,
+        actions=actions,
+    )

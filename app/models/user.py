@@ -1,4 +1,5 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
+from uuid import uuid4
 
 from flask_login import UserMixin
 from sqlalchemy import func, or_
@@ -6,9 +7,11 @@ from sqlalchemy.orm import validates
 
 from . import db
 
+ROLE_CHOICES = ("free", "premium", "moderator", "admin")
+
 
 class User(UserMixin, db.Model):
-    __tablename__ = 'users'
+    __tablename__ = "users"
     __table_args__ = (
         db.CheckConstraint("email = lower(email)", name="ck_users_email_lowercase"),
         db.CheckConstraint(
@@ -42,12 +45,15 @@ class User(UserMixin, db.Model):
         server_default="free",
         default="free",
     )
+    role = db.Column(
+        db.String(20),
+        nullable=False,
+        default="free",
+        server_default="free",
+    )
     telegram_chat_id = db.Column(db.BigInteger, unique=True, nullable=True)
     telegram_opt_in = db.Column(
-        db.Boolean,
-        nullable=False,
-        default=False,
-        server_default=db.text('false')
+        db.Boolean, nullable=False, default=False, server_default=db.text("false")
     )
     free_alert_consumed = db.Column(
         db.Integer,
@@ -91,8 +97,17 @@ class User(UserMixin, db.Model):
     theme_preference = db.Column(
         db.String(16),
         nullable=True,
-        default='system',
-        server_default='system',
+        default="system",
+        server_default="system",
+    )
+    deleted_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    erased_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    _is_active = db.Column(
+        "is_active",
+        db.Boolean,
+        nullable=False,
+        default=True,
+        server_default=db.text("true"),
     )
     created_at = db.Column(
         db.DateTime(timezone=True),
@@ -101,28 +116,49 @@ class User(UserMixin, db.Model):
         default=lambda: datetime.now(timezone.utc),
     )
 
+    posts = db.relationship(
+        "CommunityPost",
+        back_populates="author",
+        lazy="dynamic",
+        foreign_keys="CommunityPost.author_id",
+    )
+    moderated_posts = db.relationship(
+        "CommunityPost",
+        back_populates="moderator",
+        lazy="dynamic",
+        foreign_keys="CommunityPost.moderated_by",
+    )
+
     def __repr__(self):
-        return f'<User {self.email}>'
+        return f"<User {self.email}>"
+
+    @property
+    def is_active(self) -> bool:  # type: ignore[override]
+        return bool(self._is_active)
+
+    @is_active.setter
+    def is_active(self, value: bool) -> None:
+        self._is_active = bool(value)
 
     @property
     def has_premium_access(self) -> bool:
         """Return True when the user has any form of premium entitlement."""
         return bool(
-            self.plan_type == 'premium'
+            self.plan_type == "premium"
             or self.is_premium
             or self.premium
             or self.premium_lifetime
-            or (self.subscription_status or '').lower() in {'active', 'trialing'}
+            or (self.subscription_status or "").lower() in {"active", "trialing"}
         )
 
     @property
     def current_plan(self) -> str:
         """Return the normalized plan label."""
-        return 'premium' if self.has_premium_access else 'free'
+        return "premium" if self.has_premium_access else "free"
 
     def mark_premium_plan(self) -> None:
         """Ensure the plan_type flag mirrors the premium status."""
-        self.plan_type = 'premium'
+        self.plan_type = "premium"
 
     def activate_premium_lifetime(self) -> None:
         """Mark the user as lifetime premium while keeping legacy flags in sync."""
@@ -135,13 +171,13 @@ class User(UserMixin, db.Model):
     @classmethod
     def premium_status_clause(cls):
         """Return a SQL expression selecting users with premium entitlements."""
-        normalized_status = func.lower(func.coalesce(cls.subscription_status, ''))
+        normalized_status = func.lower(func.coalesce(cls.subscription_status, ""))
         return or_(
-            cls.plan_type == 'premium',
+            cls.plan_type == "premium",
             cls.is_premium.is_(True),
             cls.premium.is_(True),
             cls.premium_lifetime.is_(True),
-            normalized_status.in_(['active', 'trialing']),
+            normalized_status.in_(["active", "trialing"]),
         )
 
     @validates("email")
@@ -152,3 +188,47 @@ class User(UserMixin, db.Model):
         if not normalized:
             raise ValueError("Email cannot be empty")
         return normalized
+
+    # --- Role helpers -------------------------------------------------
+    def is_moderator(self) -> bool:
+        return bool(self.is_admin or self.role == "moderator")
+
+    def has_role(self, *roles: str) -> bool:
+        if self.is_admin:
+            return True
+        normalized = {role for role in roles if role}
+        if not normalized:
+            return False
+        return self.role in normalized
+
+    # --- Account lifecycle helpers ------------------------------------
+    def soft_delete(self) -> None:
+        now = datetime.now(timezone.utc)
+        self.deleted_at = now
+        self.is_active = False
+
+    def anonymize(self) -> None:
+        token = uuid4().hex
+        anonymized_email = f"deleted-user-{self.id}-{token}@example.invalid"
+        self.email = anonymized_email
+        self.name = None
+        self.picture_url = None
+        self.billing_email = None
+        self.chat_id = None
+        self.telegram_chat_id = None
+        self.telegram_opt_in = False
+        self.threshold = None
+        self.password_hash = ""
+        self.free_alert_event_id = None
+        self.alert_count_30d = 0
+        self.last_alert_sent_at = None
+        self.plan_type = "free"
+        self.subscription_status = "canceled"
+        self.role = "free"
+        self.is_premium = False
+        self.premium = False
+        self.premium_lifetime = False
+
+    def purge_deadline(self, ttl_days: int) -> datetime:
+        reference = self.deleted_at or datetime.now(timezone.utc)
+        return reference + timedelta(days=ttl_days)

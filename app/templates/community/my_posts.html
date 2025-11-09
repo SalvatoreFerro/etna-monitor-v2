@@ -1,0 +1,49 @@
+{% extends "layout.html" %}
+
+{% set page_title = "I miei post" %}
+
+{% block content %}
+<section class="page-hero" aria-labelledby="my-posts-title">
+  <div class="container">
+    <span class="pill pill--glow">Community</span>
+    <h1 id="my-posts-title">I tuoi contributi</h1>
+    <p class="lead">Monitora lo stato dei post inviati. Riceverai una mail quando verranno approvati o rifiutati.</p>
+    <div class="hero__actions">
+      <a class="btn btn-secondary" href="{{ url_for('community.create_post') }}"><i class="fas fa-plus"></i> Nuovo post</a>
+    </div>
+  </div>
+</section>
+
+<section class="content-section" aria-label="Elenco post">
+  <div class="container">
+    {% set status_labels = {
+      'pending': 'In attesa',
+      'approved': 'Pubblicato',
+      'rejected': 'Rifiutato',
+      'draft': 'Bozza',
+      'hidden': 'Nascosto'
+    } %}
+    {% if posts %}
+      <ul class="card-list">
+        {% for post in posts %}
+          <li class="card">
+            <header class="card__header">
+              <h2><a href="{{ url_for('community.community_post', identifier=post.slug) }}">{{ post.title }}</a></h2>
+              <span class="badge badge--{{ post.status }}">{{ status_labels.get(post.status, post.status|capitalize) }}</span>
+            </header>
+            <p class="muted">Creato il {{ post.created_at.strftime('%d/%m/%Y %H:%M') if post.created_at else 'N/D' }}{% if post.moderated_at %} • Ultima moderazione {{ post.moderated_at.strftime('%d/%m/%Y %H:%M') }}{% endif %}</p>
+            {% if post.moderator_reason %}
+              <p class="muted"><strong>Note moderazione:</strong> {{ post.moderator_reason }}</p>
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <div class="card empty-state">
+        <p>Non hai ancora pubblicato nulla. Condividi il tuo primo contributo!</p>
+        <a class="btn btn-primary" href="{{ url_for('community.create_post') }}">Crea post</a>
+      </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

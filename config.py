@@ -140,3 +140,21 @@ class Config:
     # Archive settings
     ARCHIVE_BASE_PATH = os.getenv("ARCHIVE_BASE_PATH", "data/archives")
     ARCHIVE_RETENTION_DAYS = int(os.getenv("ARCHIVE_RETENTION_DAYS", "90"))
+
+    ACCOUNT_SOFT_DELETE_TTL_DAYS = int(
+        os.getenv("ACCOUNT_SOFT_DELETE_TTL_DAYS", "30")
+    )
+    ACCOUNT_DELETE_TOKEN_MAX_AGE = int(
+        os.getenv("ACCOUNT_DELETE_TOKEN_MAX_AGE", "172800")
+    )  # 48 hours by default
+
+    COMMUNITY_RECAPTCHA_SITE_KEY = os.getenv("RECAPTCHA_SITE_KEY", "")
+    COMMUNITY_RECAPTCHA_SECRET_KEY = os.getenv("RECAPTCHA_SECRET_KEY", "")
+    COMMUNITY_RECAPTCHA_ENABLED = bool(
+        COMMUNITY_RECAPTCHA_SITE_KEY and COMMUNITY_RECAPTCHA_SECRET_KEY
+    )
+
+    OPTIONAL_CAPTCHA_FOR_UNVERIFIED = (
+        os.getenv("COMMUNITY_CAPTCHA_OPTIONAL", "true").strip().lower()
+        not in {"0", "false", "no"}
+    )

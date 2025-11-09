@@ -12,6 +12,7 @@ from .admin_action import AdminActionLog
 from .partner import Partner
 from .blog import BlogPost
 from .forum import ForumThread, ForumReply
+from .community_post import CommunityPost, ModerationAction
 from .feedback import UserFeedback, FeedbackVote
 from .gamification import UserGamificationProfile, UserBadge
 
@@ -40,6 +41,8 @@ __all__ = [
     'FeedbackVote',
     'UserGamificationProfile',
     'UserBadge',
+    'CommunityPost',
+    'ModerationAction',
 ]
 
 if SponsorBanner is not None:

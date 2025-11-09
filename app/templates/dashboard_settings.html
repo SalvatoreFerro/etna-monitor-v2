@@ -287,6 +287,40 @@
       <p class="muted-text">Hai già accesso a tutte le funzionalità Premium: personalizzale dalla dashboard in qualsiasi momento.</p>
       {% endif %}
     </section>
+
+    <section class="settings-card secondary-card animate-premium-slide">
+      <header>
+        <h2>Privacy &amp; dati personali</h2>
+        <p class="muted-text">Scarica una copia delle tue informazioni o avvia la procedura di eliminazione account in autonomia.</p>
+      </header>
+      <ul class="feature-list">
+        <li>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 10.5L7.5 14L16 6" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div>
+            <h3>Export dati</h3>
+            <p class="muted-text">Ricevi un file JSON con post, impostazioni e storico moderazione associati al tuo profilo.</p>
+          </div>
+        </li>
+        <li>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 10.5L7.5 14L16 6" stroke="#4ade80" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <div>
+            <h3>Eliminazione self-service</h3>
+            <p class="muted-text">Annulla gli avvisi, anonimizza i dati e pianifica il purge automatico entro i tempi GDPR (30 giorni).</p>
+          </div>
+        </li>
+      </ul>
+      <div class="actions-group">
+        <a href="{{ url_for('account.export_data') }}" class="btn btn-secondary glass">Esporta dati (JSON)</a>
+        <form method="post" action="{{ url_for('account.delete_request') }}" onsubmit="return confirm('Confermi di voler ricevere il link per eliminare il tuo account?');">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="submit" class="btn btn-danger">Richiedi eliminazione</button>
+        </form>
+      </div>
+    </section>
   </div>
 
   <section class="settings-card animate-premium-fade">

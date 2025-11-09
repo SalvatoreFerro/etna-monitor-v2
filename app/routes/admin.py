@@ -2,7 +2,17 @@ import csv
 import io
 from datetime import datetime, timedelta
 
-from flask import Blueprint, render_template, request, jsonify, flash, redirect, url_for, make_response, current_app
+from flask import (
+    Blueprint,
+    render_template,
+    request,
+    jsonify,
+    flash,
+    redirect,
+    url_for,
+    make_response,
+    current_app,
+)
 from flask_login import current_user
 from sqlalchemy import and_, cast, func, or_
 
@@ -12,11 +22,13 @@ from ..models import (
     BlogPost,
     UserFeedback,
     AdminActionLog,
+    CommunityPost,
 )
 from ..models.user import User
 from ..models.event import Event
 from ..models.partner import Partner
 from ..services.gamification_service import ensure_demo_profiles
+
 try:
     from ..models.sponsor_banner import (
         SponsorBanner,
@@ -184,9 +196,135 @@ def admin_home():
     page = _coerce_positive_int(request.args.get("page"), default=1)
 
     users_query = _build_users_query(search_query, plan_filter)
-    pagination = users_query.paginate(page=page, per_page=ADMIN_USERS_PER_PAGE, error_out=False)
+    pagination = users_query.paginate(
+        page=page, per_page=ADMIN_USERS_PER_PAGE, error_out=False
+    )
 
     initial_users = [_serialize_user_for_admin(user) for user in pagination.items]
+
+    post_status_counts = {
+        status: count
+        for status, count in db.session.query(
+            CommunityPost.status, func.count(CommunityPost.id)
+        )
+        .group_by(CommunityPost.status)
+        .all()
+    }
+    pending_post_count = post_status_counts.get("pending", 0)
+    draft_post_count = post_status_counts.get("draft", 0)
+
+    feedback_new_count = (
+        db.session.query(func.count(UserFeedback.id))
+        .filter(UserFeedback.status == "new")
+        .scalar()
+        or 0
+    )
+
+    pending_donations_count = (
+        db.session.query(func.count(User.id))
+        .filter(
+            User.donation_tx.isnot(None),
+            User.donation_tx != "",
+            User.is_premium.is_(False),
+            User.premium.is_(False),
+        )
+        .scalar()
+        or 0
+    )
+
+    soft_deleted_count = (
+        db.session.query(func.count(User.id))
+        .filter(User.deleted_at.isnot(None), User.erased_at.is_(None))
+        .scalar()
+        or 0
+    )
+
+    moderators_count = (
+        db.session.query(func.count(User.id)).filter(User.role == "moderator").scalar()
+        or 0
+    )
+
+    admin_shortcuts = [
+        {
+            "label": "Gestione utenti",
+            "description": "Aggiorna piani, resetta prove e controlla gli alert.",
+            "icon": "fa-users-cog",
+            "url": url_for("admin.admin_home"),
+        },
+        {
+            "label": "Moderazione community",
+            "description": "Approva o rifiuta i contributi degli utenti.",
+            "icon": "fa-comments",
+            "url": url_for("moderation.moderation_queue"),
+            "badge": pending_post_count + draft_post_count,
+            "badge_label": "Post in coda",
+        },
+        {
+            "label": "Gestione blog",
+            "description": "Pubblica articoli ufficiali e comunicazioni.",
+            "icon": "fa-newspaper",
+            "url": url_for("admin.blog_manager"),
+        },
+        {
+            "label": "Feedback utenti",
+            "description": "Esamina e rispondi ai feedback ricevuti.",
+            "icon": "fa-comment-dots",
+            "url": url_for("admin.feedback_center"),
+            "badge": feedback_new_count,
+            "badge_label": "Feedback nuovi",
+        },
+        {
+            "label": "Donazioni",
+            "description": "Verifica ricevute e sblocca gli account premium.",
+            "icon": "fa-donate",
+            "url": url_for("admin.donations"),
+            "badge": pending_donations_count,
+            "badge_label": "Da validare",
+        },
+        {
+            "label": "Partner Experience",
+            "description": "Gestisci partner, offerte e visibilità.",
+            "icon": "fa-handshake",
+            "url": url_for("admin.partners_dashboard"),
+        },
+    ]
+
+    if SponsorBanner is not None:
+        admin_shortcuts.append(
+            {
+                "label": "Banner sponsor",
+                "description": "Configura campagne e creatività attive.",
+                "icon": "fa-image",
+                "url": url_for("admin.banner_list"),
+            }
+        )
+        admin_shortcuts.append(
+            {
+                "label": "Sponsor analytics",
+                "description": "Analizza impression e click delle campagne.",
+                "icon": "fa-chart-line",
+                "url": url_for("admin.sponsor_analytics"),
+            }
+        )
+
+    admin_shortcuts.append(
+        {
+            "label": "Theme manager",
+            "description": "Personalizza l'aspetto pubblico del sito.",
+            "icon": "fa-palette",
+            "url": url_for("admin.theme_manager"),
+        }
+    )
+    admin_shortcuts.append(
+        {
+            "label": "Lifecycle account",
+            "description": "Monitora richieste GDPR e account in eliminazione.",
+            "icon": "fa-user-slash",
+            "url": url_for("admin.admin_home", _anchor="account-lifecycle"),
+            "badge": soft_deleted_count,
+            "badge_label": "In coda purge",
+        }
+    )
 
     return render_template(
         "admin.html",
@@ -198,6 +336,13 @@ def admin_home():
         plan_filter=plan_filter,
         search_query=search_query,
         per_page=ADMIN_USERS_PER_PAGE,
+        pending_post_count=pending_post_count,
+        draft_post_count=draft_post_count,
+        feedback_new_count=feedback_new_count,
+        pending_donations_count=pending_donations_count,
+        soft_deleted_count=soft_deleted_count,
+        moderators_count=moderators_count,
+        admin_shortcuts=admin_shortcuts,
     )
 
 
@@ -279,9 +424,7 @@ def blog_manager():
         flash("Azione non riconosciuta.", "error")
         return redirect(url_for("admin.blog_manager"))
 
-    posts = (
-        BlogPost.query.order_by(BlogPost.updated_at.desc()).all()
-    )
+    posts = BlogPost.query.order_by(BlogPost.updated_at.desc()).all()
     return render_template("admin/blog.html", posts=posts)
 
 
@@ -316,9 +459,7 @@ def feedback_center():
 
         return redirect(url_for("admin.feedback_center"))
 
-    feedback_list = (
-        UserFeedback.query.order_by(UserFeedback.created_at.desc()).all()
-    )
+    feedback_list = UserFeedback.query.order_by(UserFeedback.created_at.desc()).all()
     return render_template("admin/feedback.html", feedback_list=feedback_list)
 
 
@@ -336,7 +477,7 @@ def toggle_premium(user_id):
             return jsonify({"success": False, "message": "Token CSRF non valido."}), 400
 
         flash("Token CSRF non valido. Riprova.", "error")
-        return redirect(url_for('admin.admin_home'))
+        return redirect(url_for("admin.admin_home"))
 
     user = User.query.get_or_404(user_id)
     currently_premium = user.has_premium_access
@@ -347,15 +488,15 @@ def toggle_premium(user_id):
             user.premium = False
             user.is_premium = False
             user.premium_lifetime = False
-            user.plan_type = 'free'
-            user.subscription_status = 'free'
+            user.plan_type = "free"
+            user.subscription_status = "free"
             user.premium_since = None
             user.threshold = None
         else:
             user.premium = True
             user.is_premium = True
             user.mark_premium_plan()
-            user.subscription_status = 'active'
+            user.subscription_status = "active"
             if not user.premium_since:
                 user.premium_since = datetime.utcnow()
 
@@ -373,7 +514,7 @@ def toggle_premium(user_id):
             return jsonify({"success": False, "message": error_message}), 500
 
         flash("Si è verificato un errore durante l'aggiornamento del piano.", "error")
-        return redirect(url_for('admin.admin_home'))
+        return redirect(url_for("admin.admin_home"))
 
     new_state = user.has_premium_access
     log_message = f"{user.email} -> {'Premium' if new_state else 'Free'}"
@@ -386,14 +527,19 @@ def toggle_premium(user_id):
     )
 
     if is_json:
-        return jsonify({
-            "success": True,
-            "premium": new_state,
-            "message": f"User {user.email} {'upgraded to' if new_state else 'downgraded from'} Premium"
-        })
+        return jsonify(
+            {
+                "success": True,
+                "premium": new_state,
+                "message": f"User {user.email} {'upgraded to' if new_state else 'downgraded from'} Premium",
+            }
+        )
     else:
-        flash(f"User {user.email} {'upgraded to' if new_state else 'downgraded from'} Premium", "success")
-        return redirect(url_for('admin.admin_home'))
+        flash(
+            f"User {user.email} {'upgraded to' if new_state else 'downgraded from'} Premium",
+            "success",
+        )
+        return redirect(url_for("admin.admin_home"))
 
 
 @bp.route("/delete_user/<int:user_id>", methods=["POST"])
@@ -410,7 +556,7 @@ def delete_user(user_id):
             return jsonify({"success": False, "message": "Token CSRF non valido."}), 400
 
         flash("Token CSRF non valido. Riprova.", "error")
-        return redirect(url_for('admin.admin_home'))
+        return redirect(url_for("admin.admin_home"))
 
     user = User.query.get_or_404(user_id)
 
@@ -425,7 +571,7 @@ def delete_user(user_id):
             return jsonify({"success": False, "message": "Cannot delete admin users"})
         else:
             flash("Cannot delete admin users", "error")
-            return redirect(url_for('admin.admin_home'))
+            return redirect(url_for("admin.admin_home"))
 
     target_email = user.email
 
@@ -446,7 +592,7 @@ def delete_user(user_id):
             return jsonify({"success": False, "message": error_message}), 500
 
         flash("Si è verificato un errore durante l'eliminazione dell'utente.", "error")
-        return redirect(url_for('admin.admin_home'))
+        return redirect(url_for("admin.admin_home"))
 
     _log_admin_action(
         "delete",
@@ -456,10 +602,12 @@ def delete_user(user_id):
     )
 
     if is_json:
-        return jsonify({"success": True, "message": f"User {user.email} deleted successfully"})
+        return jsonify(
+            {"success": True, "message": f"User {user.email} deleted successfully"}
+        )
     else:
         flash(f"User {user.email} deleted successfully", "success")
-        return redirect(url_for('admin.admin_home'))
+        return redirect(url_for("admin.admin_home"))
 
 
 @bp.route("/test-alert", methods=["POST"])
@@ -479,10 +627,12 @@ def test_alert():
                 message="Bot Telegram non configurato",
             )
             return (
-                jsonify({
-                    "success": False,
-                    "message": "Bot Telegram non configurato. Imposta il token prima di eseguire il test.",
-                }),
+                jsonify(
+                    {
+                        "success": False,
+                        "message": "Bot Telegram non configurato. Imposta il token prima di eseguire il test.",
+                    }
+                ),
                 400,
             )
 
@@ -498,11 +648,13 @@ def test_alert():
         )
 
         premium_status_filter = or_(
-            User.plan_type == 'premium',
+            User.plan_type == "premium",
             User.is_premium.is_(True),
             User.premium.is_(True),
             User.premium_lifetime.is_(True),
-            func.lower(func.coalesce(User.subscription_status, '')).in_(['active', 'trialing']),
+            func.lower(func.coalesce(User.subscription_status, "")).in_(
+                ["active", "trialing"]
+            ),
         )
 
         chat_filter = or_(
@@ -545,7 +697,7 @@ def test_alert():
                 db.session.add(
                     Event(
                         user_id=user.id,
-                        event_type='test_alert',
+                        event_type="test_alert",
                         message="Alert di test inviato dall'area admin",
                     )
                 )
@@ -553,7 +705,7 @@ def test_alert():
         if sent_count:
             db.session.commit()
 
-        recent_alerts = Event.query.filter_by(event_type='alert').count()
+        recent_alerts = Event.query.filter_by(event_type="alert").count()
 
         message_lines = [
             "Controllo completato.",
@@ -572,10 +724,7 @@ def test_alert():
             },
         )
 
-        return jsonify({
-            "success": True,
-            "message": "\n".join(message_lines)
-        })
+        return jsonify({"success": True, "message": "\n".join(message_lines)})
 
     except Exception as e:
         _log_admin_action(
@@ -583,10 +732,12 @@ def test_alert():
             status="error",
             message=str(e),
         )
-        return jsonify({
-            "success": False,
-            "message": f"Errore durante il controllo: {str(e)}"
-        }), 500
+        return (
+            jsonify(
+                {"success": False, "message": f"Errore durante il controllo: {str(e)}"}
+            ),
+            500,
+        )
 
 
 @bp.route("/users")
@@ -595,12 +746,13 @@ def users_list():
     search_query = (request.args.get("q") or "").strip()
     plan_filter = (request.args.get("plan") or "all").lower()
     page = _coerce_positive_int(request.args.get("page"), default=1)
-    per_page = _coerce_positive_int(request.args.get("per_page"), default=ADMIN_USERS_PER_PAGE)
+    per_page = _coerce_positive_int(
+        request.args.get("per_page"), default=ADMIN_USERS_PER_PAGE
+    )
     per_page = min(per_page, 100)
 
-    pagination = (
-        _build_users_query(search_query, plan_filter)
-        .paginate(page=page, per_page=per_page, error_out=False)
+    pagination = _build_users_query(search_query, plan_filter).paginate(
+        page=page, per_page=per_page, error_out=False
     )
 
     payload = {
@@ -631,7 +783,7 @@ def reset_free_trial(user_id: int):
             return jsonify({"success": False, "message": "Token CSRF non valido."}), 400
 
         flash("Token CSRF non valido. Riprova.", "error")
-        return redirect(url_for('admin.admin_home'))
+        return redirect(url_for("admin.admin_home"))
 
     user = User.query.get_or_404(user_id)
     try:
@@ -652,7 +804,7 @@ def reset_free_trial(user_id: int):
             return jsonify({"success": False, "message": error_message}), 500
 
         flash("Ripristino prova non riuscito.", "error")
-        return redirect(url_for('admin.admin_home'))
+        return redirect(url_for("admin.admin_home"))
 
     _log_admin_action(
         "reset_trial",
@@ -662,13 +814,15 @@ def reset_free_trial(user_id: int):
     )
 
     if is_json:
-        return jsonify({
-            "success": True,
-            "message": f"Alert di prova ripristinato per {user.email}",
-        })
+        return jsonify(
+            {
+                "success": True,
+                "message": f"Alert di prova ripristinato per {user.email}",
+            }
+        )
 
     flash(f"Prova gratuita ripristinata per {user.email}", "success")
-    return redirect(url_for('admin.admin_home'))
+    return redirect(url_for("admin.admin_home"))
 
 
 @bp.route("/users/<int:user_id>/test-alert", methods=["POST"])
@@ -748,12 +902,16 @@ def send_test_alert_to_user(user_id: int):
 @bp.route("/donations")
 @admin_required
 def donations():
-    pending_users = User.query.filter(
-        User.donation_tx.isnot(None),
-        User.donation_tx != '',
-        User.is_premium.is_(False),
-        User.premium.is_(False)
-    ).order_by(User.created_at.desc()).all()
+    pending_users = (
+        User.query.filter(
+            User.donation_tx.isnot(None),
+            User.donation_tx != "",
+            User.is_premium.is_(False),
+            User.premium.is_(False),
+        )
+        .order_by(User.created_at.desc())
+        .all()
+    )
     return render_template("admin/donations.html", users=pending_users)
 
 
@@ -835,7 +993,10 @@ def partners_toggle(partner_id: int):
         current_app.logger.exception(
             "Failed to toggle %s for partner %s", field, partner_id
         )
-        return jsonify({"success": False, "message": "Errore durante l'aggiornamento."}), 500
+        return (
+            jsonify({"success": False, "message": "Errore durante l'aggiornamento."}),
+            500,
+        )
 
     return jsonify({"success": True, "partner": _serialize_partner(partner)})
 
@@ -855,7 +1016,10 @@ def partners_delete(partner_id: int):
     except Exception:
         db.session.rollback()
         current_app.logger.exception("Failed to delete partner %s", partner_id)
-        return jsonify({"success": False, "message": "Errore durante l'eliminazione."}), 500
+        return (
+            jsonify({"success": False, "message": "Errore durante l'eliminazione."}),
+            500,
+        )
 
     return jsonify({"success": True})
 
@@ -863,16 +1027,16 @@ def partners_delete(partner_id: int):
 @bp.route("/activate_premium/<int:user_id>", methods=["POST"])
 @admin_required
 def activate_premium(user_id: int):
-    if not validate_csrf_token(request.form.get('csrf_token')):
-        flash('Token di sicurezza non valido.', 'error')
-        return redirect(url_for('admin.donations'))
+    if not validate_csrf_token(request.form.get("csrf_token")):
+        flash("Token di sicurezza non valido.", "error")
+        return redirect(url_for("admin.donations"))
 
     user = User.query.get_or_404(user_id)
     user.activate_premium_lifetime()
     db.session.commit()
 
-    flash('Attivato premium lifetime.', 'success')
-    return redirect(url_for('admin.donations'))
+    flash("Attivato premium lifetime.", "success")
+    return redirect(url_for("admin.donations"))
 
 
 @bp.route("/sponsor-analytics")
@@ -883,8 +1047,8 @@ def sponsor_analytics():
         or SponsorBannerImpression is None
         or SponsorBannerClick is None
     ):
-        flash('Funzionalità sponsor non disponibile.', 'error')
-        return redirect(url_for('admin.admin_home'))
+        flash("Funzionalità sponsor non disponibile.", "error")
+        return redirect(url_for("admin.admin_home"))
 
     today = datetime.utcnow().date()
     end_date = _parse_date_param(request.args.get("end_date"), today)
@@ -1041,9 +1205,15 @@ def sponsor_analytics():
         stats["clicks"] = int(row.clicks or 0)
 
     for stats in page_stats_map.values():
-        stats["ctr"] = (stats["clicks"] / stats["impressions"] * 100) if stats["impressions"] else 0
+        stats["ctr"] = (
+            (stats["clicks"] / stats["impressions"] * 100)
+            if stats["impressions"]
+            else 0
+        )
 
-    page_stats = sorted(page_stats_map.values(), key=lambda item: item["impressions"], reverse=True)
+    page_stats = sorted(
+        page_stats_map.values(), key=lambda item: item["impressions"], reverse=True
+    )
 
     banner_impressions_rows = (
         _apply_tracking_filters(
@@ -1108,12 +1278,20 @@ def sponsor_analytics():
         stats["clicks"] = int(row.clicks or 0)
 
     for stats in banner_stats_map.values():
-        stats["ctr"] = (stats["clicks"] / stats["impressions"] * 100) if stats["impressions"] else 0
+        stats["ctr"] = (
+            (stats["clicks"] / stats["impressions"] * 100)
+            if stats["impressions"]
+            else 0
+        )
 
-    banner_stats = sorted(banner_stats_map.values(), key=lambda item: item["impressions"], reverse=True)
+    banner_stats = sorted(
+        banner_stats_map.values(), key=lambda item: item["impressions"], reverse=True
+    )
 
     daily_rows = []
-    for label, impressions, clicks in zip(chart_labels, chart_impressions, chart_clicks):
+    for label, impressions, clicks in zip(
+        chart_labels, chart_impressions, chart_clicks
+    ):
         ctr_value = (clicks / impressions * 100) if impressions else 0
         daily_rows.append(
             {
@@ -1135,13 +1313,15 @@ def sponsor_analytics():
         writer = csv.writer(output)
         writer.writerow(["data", "impression", "click", "ctr_%"])
         for row in daily_rows:
-            writer.writerow([row["date"], row["impressions"], row["clicks"], f"{row['ctr']:.2f}"])
+            writer.writerow(
+                [row["date"], row["impressions"], row["clicks"], f"{row['ctr']:.2f}"]
+            )
 
         response = make_response(output.getvalue())
         response.headers["Content-Type"] = "text/csv"
-        response.headers[
-            "Content-Disposition"
-        ] = f"attachment; filename=sponsor-analytics-{start_date.isoformat()}-{end_date.isoformat()}.csv"
+        response.headers["Content-Disposition"] = (
+            f"attachment; filename=sponsor-analytics-{start_date.isoformat()}-{end_date.isoformat()}.csv"
+        )
         return response
 
     banners = SponsorBanner.query.order_by(SponsorBanner.title.asc()).all()
@@ -1176,8 +1356,8 @@ def sponsor_analytics():
 @admin_required
 def banner_list():
     if SponsorBanner is None:
-        flash('Gestione sponsor non disponibile.', 'error')
-        return redirect(url_for('admin.admin_home'))
+        flash("Gestione sponsor non disponibile.", "error")
+        return redirect(url_for("admin.admin_home"))
 
     banners = SponsorBanner.query.order_by(SponsorBanner.created_at.desc()).all()
     return render_template("admin/banners.html", banners=banners)
@@ -1187,22 +1367,22 @@ def banner_list():
 @admin_required
 def banner_create():
     if SponsorBanner is None:
-        flash('Gestione sponsor non disponibile.', 'error')
-        return redirect(url_for('admin.banner_list'))
+        flash("Gestione sponsor non disponibile.", "error")
+        return redirect(url_for("admin.banner_list"))
 
-    if not validate_csrf_token(request.form.get('csrf_token')):
-        flash('Token di sicurezza non valido.', 'error')
-        return redirect(url_for('admin.banner_list'))
+    if not validate_csrf_token(request.form.get("csrf_token")):
+        flash("Token di sicurezza non valido.", "error")
+        return redirect(url_for("admin.banner_list"))
 
-    title = (request.form.get('title') or '').strip()
-    image_url = (request.form.get('image_url') or '').strip()
-    target_url = (request.form.get('target_url') or '').strip()
-    description = (request.form.get('description') or '').strip() or None
-    active = bool(request.form.get('active'))
+    title = (request.form.get("title") or "").strip()
+    image_url = (request.form.get("image_url") or "").strip()
+    target_url = (request.form.get("target_url") or "").strip()
+    description = (request.form.get("description") or "").strip() or None
+    active = bool(request.form.get("active"))
 
     if not title or not image_url or not target_url:
-        flash('Compila titolo, immagine e link destinazione.', 'error')
-        return redirect(url_for('admin.banner_list'))
+        flash("Compila titolo, immagine e link destinazione.", "error")
+        return redirect(url_for("admin.banner_list"))
 
     banner = SponsorBanner(
         title=title,
@@ -1214,70 +1394,70 @@ def banner_create():
     db.session.add(banner)
     db.session.commit()
 
-    flash('Banner creato con successo.', 'success')
-    return redirect(url_for('admin.banner_list'))
+    flash("Banner creato con successo.", "success")
+    return redirect(url_for("admin.banner_list"))
 
 
 @bp.route("/banners/<int:banner_id>/toggle", methods=["POST"])
 @admin_required
 def banner_toggle(banner_id: int):
     if SponsorBanner is None:
-        flash('Gestione sponsor non disponibile.', 'error')
-        return redirect(url_for('admin.banner_list'))
+        flash("Gestione sponsor non disponibile.", "error")
+        return redirect(url_for("admin.banner_list"))
 
-    if not validate_csrf_token(request.form.get('csrf_token')):
-        flash('Token di sicurezza non valido.', 'error')
-        return redirect(url_for('admin.banner_list'))
+    if not validate_csrf_token(request.form.get("csrf_token")):
+        flash("Token di sicurezza non valido.", "error")
+        return redirect(url_for("admin.banner_list"))
 
     banner = SponsorBanner.query.get_or_404(banner_id)
     banner.active = not banner.active
     db.session.commit()
 
-    flash('Stato banner aggiornato.', 'success')
-    return redirect(url_for('admin.banner_list'))
+    flash("Stato banner aggiornato.", "success")
+    return redirect(url_for("admin.banner_list"))
 
 
 @bp.route("/banners/<int:banner_id>/delete", methods=["POST"])
 @admin_required
 def banner_delete(banner_id: int):
     if SponsorBanner is None:
-        flash('Gestione sponsor non disponibile.', 'error')
-        return redirect(url_for('admin.banner_list'))
+        flash("Gestione sponsor non disponibile.", "error")
+        return redirect(url_for("admin.banner_list"))
 
-    if not validate_csrf_token(request.form.get('csrf_token')):
-        flash('Token di sicurezza non valido.', 'error')
-        return redirect(url_for('admin.banner_list'))
+    if not validate_csrf_token(request.form.get("csrf_token")):
+        flash("Token di sicurezza non valido.", "error")
+        return redirect(url_for("admin.banner_list"))
 
     banner = SponsorBanner.query.get_or_404(banner_id)
     db.session.delete(banner)
     db.session.commit()
 
-    flash('Banner eliminato.', 'success')
-    return redirect(url_for('admin.banner_list'))
+    flash("Banner eliminato.", "success")
+    return redirect(url_for("admin.banner_list"))
 
 
 @bp.route("/banners/<int:banner_id>/update", methods=["POST"])
 @admin_required
 def banner_update(banner_id: int):
     if SponsorBanner is None:
-        flash('Gestione sponsor non disponibile.', 'error')
-        return redirect(url_for('admin.banner_list'))
+        flash("Gestione sponsor non disponibile.", "error")
+        return redirect(url_for("admin.banner_list"))
 
-    if not validate_csrf_token(request.form.get('csrf_token')):
-        flash('Token di sicurezza non valido.', 'error')
-        return redirect(url_for('admin.banner_list'))
+    if not validate_csrf_token(request.form.get("csrf_token")):
+        flash("Token di sicurezza non valido.", "error")
+        return redirect(url_for("admin.banner_list"))
 
     banner = SponsorBanner.query.get_or_404(banner_id)
 
-    title = (request.form.get('title') or '').strip()
-    image_url = (request.form.get('image_url') or '').strip()
-    target_url = (request.form.get('target_url') or '').strip()
-    description = (request.form.get('description') or '').strip() or None
-    active = bool(request.form.get('active'))
+    title = (request.form.get("title") or "").strip()
+    image_url = (request.form.get("image_url") or "").strip()
+    target_url = (request.form.get("target_url") or "").strip()
+    description = (request.form.get("description") or "").strip() or None
+    active = bool(request.form.get("active"))
 
     if not title or not image_url or not target_url:
-        flash('Titolo, immagine e link sono obbligatori.', 'error')
-        return redirect(url_for('admin.banner_list'))
+        flash("Titolo, immagine e link sono obbligatori.", "error")
+        return redirect(url_for("admin.banner_list"))
 
     banner.title = title
     banner.image_url = image_url
@@ -1286,8 +1466,8 @@ def banner_update(banner_id: int):
     banner.active = active
     db.session.commit()
 
-    flash('Banner aggiornato.', 'success')
-    return redirect(url_for('admin.banner_list'))
+    flash("Banner aggiornato.", "success")
+    return redirect(url_for("admin.banner_list"))
 
 
 @bp.route("/theme_manager")
@@ -1295,17 +1475,21 @@ def banner_update(banner_id: int):
 def theme_manager():
     """Theme manager page for admins to select site templates"""
     from sqlalchemy import func
-    
-    current_theme = current_user.theme_preference if current_user else 'volcano_tech'
-    
+
+    current_theme = current_user.theme_preference if current_user else "volcano_tech"
+
     stats = {
-        'total_users': User.query.count(),
-        'maintenance_users': User.query.filter_by(theme_preference='maintenance').count(),
-        'volcano_users': User.query.filter_by(theme_preference='volcano_tech').count(),
-        'apple_users': User.query.filter_by(theme_preference='apple_minimal').count(),
+        "total_users": User.query.count(),
+        "maintenance_users": User.query.filter_by(
+            theme_preference="maintenance"
+        ).count(),
+        "volcano_users": User.query.filter_by(theme_preference="volcano_tech").count(),
+        "apple_users": User.query.filter_by(theme_preference="apple_minimal").count(),
     }
-    
-    return render_template('admin/theme_manager.html', current_theme=current_theme, stats=stats)
+
+    return render_template(
+        "admin/theme_manager.html", current_theme=current_theme, stats=stats
+    )
 
 
 @bp.route("/set_theme", methods=["POST"])
@@ -1313,20 +1497,23 @@ def theme_manager():
 def set_theme():
     """Set the theme preference for the current admin user"""
     data = request.get_json()
-    theme = data.get('theme')
-    
-    valid_themes = ['maintenance', 'volcano_tech', 'apple_minimal']
+    theme = data.get("theme")
+
+    valid_themes = ["maintenance", "volcano_tech", "apple_minimal"]
     if theme not in valid_themes:
-        return jsonify({
-            'success': False,
-            'message': f'Invalid theme. Must be one of: {", ".join(valid_themes)}'
-        }), 400
-    
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": f'Invalid theme. Must be one of: {", ".join(valid_themes)}',
+                }
+            ),
+            400,
+        )
+
     current_user.theme_preference = theme
     db.session.commit()
-    
-    return jsonify({
-        'success': True,
-        'message': f'Theme changed to {theme}',
-        'theme': theme
-    })
+
+    return jsonify(
+        {"success": True, "message": f"Theme changed to {theme}", "theme": theme}
+    )

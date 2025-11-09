@@ -1,0 +1,5 @@
+Ciao {{ post.author.name or post.author.email if post.author else 'utente' }},
+
+il tuo post "{{ post.title }}" non è stato approvato.
+{% if reason %}Motivo: {{ reason }}{% endif %}
+Puoi modificarlo e riproporlo dalla sezione "I miei post" della dashboard.

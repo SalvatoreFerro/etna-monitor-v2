@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html lang="it">
+  <body style="font-family:Arial,sans-serif;background:#0f172a;color:#e2e8f0;padding:24px;">
+    <h1 style="color:#f97316;">Conferma eliminazione account</h1>
+    <p>Ciao {{ user.name or user.email }},</p>
+    <p>hai richiesto la cancellazione del tuo account EtnaMonitor. Per completare l'operazione clicca sul pulsante seguente:</p>
+    <p style="margin:24px 0;">
+      <a href="{{ confirm_url }}" style="background:#f97316;color:#0f172a;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">Conferma eliminazione</a>
+    </p>
+    <p>Il link resterà valido per 48 ore. Dopo la conferma il tuo profilo verrà disattivato, anonimizzato e il purge definitivo avverrà entro 30 giorni.</p>
+    <p style="font-size:12px;color:#94a3b8;">Se non hai richiesto tu questa operazione puoi ignorare questa email.</p>
+  </body>
+</html>

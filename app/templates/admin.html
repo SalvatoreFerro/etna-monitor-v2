@@ -21,6 +21,32 @@
     </nav>
   </header>
 
+  {% if admin_shortcuts %}
+  <section class="admin-card admin-card--shortcuts card-premium animate-premium-slide" aria-labelledby="admin-shortcuts-title">
+    <header class="admin-section-header">
+      <div>
+        <h2 id="admin-shortcuts-title"><i class="fas fa-toolbox"></i> Strumenti rapidi</h2>
+        <p>Trova in un solo posto tutte le funzionalità riservate agli amministratori.</p>
+      </div>
+    </header>
+    <div class="admin-shortcuts-grid">
+      {% for shortcut in admin_shortcuts %}
+        <a class="admin-shortcut" href="{{ shortcut.url }}">
+          <span class="admin-shortcut__icon" aria-hidden="true"><i class="fas {{ shortcut.icon }}"></i></span>
+          <span class="admin-shortcut__content">
+            <span class="admin-shortcut__label">{{ shortcut.label }}</span>
+            <span class="admin-shortcut__description">{{ shortcut.description }}</span>
+          </span>
+          {% set badge_value = shortcut.get('badge') %}
+          {% if badge_value is not none %}
+            <span class="admin-shortcut__badge" aria-label="{{ shortcut.get('badge_label', 'Totale elementi') }}">{{ badge_value }}</span>
+          {% endif %}
+        </a>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
   <section class="admin-card admin-card--metrics card-premium animate-premium-slide" aria-labelledby="admin-analytics-title">
     <header class="admin-section-header">
       <div>
@@ -169,6 +195,30 @@
   </div>
 
   <section class="admin-grid admin-grid--columns admin-grid--activity" aria-label="Monitoraggio amministratore">
+    <article class="admin-card card-premium animate-premium-fade" id="account-lifecycle">
+      <header class="admin-section-header">
+        <div>
+          <h2><i class="fas fa-user-shield"></i> Lifecycle account &amp; GDPR</h2>
+          <p>Monitoraggio delle richieste di eliminazione e delle attività di moderazione.</p>
+        </div>
+      </header>
+      <dl class="admin-stats-list">
+        <div class="admin-stats-list__item">
+          <dt>Account in eliminazione</dt>
+          <dd>{{ soft_deleted_count }}</dd>
+        </div>
+        <div class="admin-stats-list__item">
+          <dt>Post da moderare</dt>
+          <dd>{{ pending_post_count + draft_post_count }}</dd>
+        </div>
+        <div class="admin-stats-list__item">
+          <dt>Moderatori attivi</dt>
+          <dd>{{ moderators_count }}</dd>
+        </div>
+      </dl>
+      <p class="admin-caption">Esegui <code>python scripts/purge_erased_accounts.py</code> per completare le cancellazioni dopo il periodo di retention.</p>
+    </article>
+
     <article class="admin-card card-premium animate-premium-fade" id="admin-actions-card">
       <header class="admin-section-header">
         <div>

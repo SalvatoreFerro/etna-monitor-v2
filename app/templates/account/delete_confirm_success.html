@@ -1,0 +1,27 @@
+{% extends "layout.html" %}
+
+{% set page_title = "Account in eliminazione" %}
+
+{% block content %}
+<section class="page-hero" aria-labelledby="delete-confirm-title">
+  <div class="container">
+    <span class="pill pill--warning">GDPR</span>
+    <h1 id="delete-confirm-title">Account in fase di eliminazione</h1>
+    <p class="lead">Abbiamo ricevuto la tua conferma. I dati verranno anonimizzati immediatamente e rimossi in modo definitivo dopo il periodo di conservazione previsto.</p>
+  </div>
+</section>
+
+<section class="content-section" aria-label="Dettagli eliminazione">
+  <div class="container">
+    <div class="card">
+      <h2>Cosa succede ora?</h2>
+      <ul>
+        <li>Il tuo profilo è stato disattivato e anonimizzato.</li>
+        <li>Gli avvisi email e Telegram sono stati disabilitati.</li>
+        <li>Il purge definitivo avverrà entro il {{ purge_at.strftime('%d/%m/%Y') }} salvo obblighi legali.</li>
+      </ul>
+      <p class="muted">Se hai domande puoi scrivere a <a href="mailto:privacy@etnamonitor.it">privacy@etnamonitor.it</a>.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,22 @@
+{% extends "layout.html" %}
+
+{% set page_title = "Link di eliminazione non valido" %}
+
+{% block content %}
+<section class="page-hero" aria-labelledby="delete-failed-title">
+  <div class="container">
+    <span class="pill pill--warning">Attenzione</span>
+    <h1 id="delete-failed-title">Link scaduto o non valido</h1>
+    <p class="lead">Non siamo riusciti a verificare la tua richiesta. Potrebbe essere già stata completata oppure il link è scaduto.</p>
+  </div>
+</section>
+
+<section class="content-section" aria-label="Richiedi un nuovo link">
+  <div class="container">
+    <div class="card">
+      <p>Se desideri riprovare, accedi al tuo account e richiedi una nuova eliminazione dalle impostazioni.</p>
+      <a class="btn btn-primary" href="{{ url_for('dashboard.settings') }}">Torna alle impostazioni</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

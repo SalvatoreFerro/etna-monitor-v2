@@ -33,8 +33,13 @@ from sqlalchemy.pool import QueuePool, StaticPool
 from .routes.main import bp as main_bp
 from .routes.experience import bp as experience_bp
 from .routes.community import bp as community_bp
+from .routes.account import bp as account_bp, register_rate_limits as account_rate_limits
 from .routes.dashboard import bp as dashboard_bp
 from .routes.admin import bp as admin_bp
+from .routes.admin_moderation import (
+    bp as moderation_bp,
+    register_rate_limits as moderation_rate_limits,
+)
 from .routes.auth import bp as auth_bp, legacy_bp as legacy_auth_bp
 from .routes.api import api_bp
 from .routes.status import status_bp
@@ -611,6 +616,7 @@ def create_app(config_overrides: dict | None = None):
                         User.picture_url,
                         User.is_admin,
                         User.is_premium,
+                        User._is_active,
                     )
                 )
                 .filter(User.id == int(user_id))
@@ -763,8 +769,10 @@ def create_app(config_overrides: dict | None = None):
     app.register_blueprint(legacy_auth_bp)
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
     app.register_blueprint(admin_bp, url_prefix="/admin")
+    app.register_blueprint(moderation_bp)
     app.register_blueprint(billing_bp)
     app.register_blueprint(community_bp)
+    app.register_blueprint(account_bp)
     app.register_blueprint(admin_stats_bp, url_prefix="/admin/api")
     app.register_blueprint(api_bp)
     app.register_blueprint(status_bp)
@@ -781,6 +789,9 @@ def create_app(config_overrides: dict | None = None):
         app.config["ADS_ROUTES_ENABLED"] = True
     else:
         app.config["ADS_ROUTES_ENABLED"] = False
+
+    account_rate_limits(app)
+    moderation_rate_limits(app)
 
     @app.after_request
     def finalize_response(response):  # pragma: no cover - thin instrumentation
