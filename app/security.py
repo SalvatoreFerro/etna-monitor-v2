@@ -16,6 +16,7 @@ GOOGLE_SCRIPT_SOURCES = [
     "https://*.google-analytics.com",
     "https://www.doubleclick.net",
     "https://*.doubleclick.net",
+    "https://googleads.g.doubleclick.net",
     "https://www.google.com",
     "https://*.google.com",
     "https://www.gstatic.com",
