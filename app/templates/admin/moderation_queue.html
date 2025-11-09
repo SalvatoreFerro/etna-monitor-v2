@@ -33,7 +33,28 @@
               <h3>{{ post.title }}</h3>
               <p class="muted">Inviato da {{ post.author.name or post.author.email if post.author else 'Utente anonimo' }} il {{ post.created_at.strftime('%d/%m/%Y %H:%M') if post.created_at else 'N/D' }}</p>
             </header>
-            <div class="moderation-body">{{ post.body|safe }}</div>
+            <div class="moderation-body">{{ post.body_html_sanitized | safe }}</div>
+            {% if post.sanitization_warnings %}
+              <div class="alert alert-warning" role="status">
+                <strong>Sanitizzazione applicata</strong>
+                <p class="muted">Sono stati rimossi elementi potenzialmente pericolosi prima della pubblicazione.</p>
+                <ul>
+                  {% for warning in post.sanitization_warnings %}
+                    <li>
+                      {% if warning == 'sanitized-difference' %}
+                        Differenze rilevate tra contenuto originale e versione sanificata.
+                      {% else %}
+                        {{ warning.replace('_', ' ').capitalize() }}
+                      {% endif %}
+                    </li>
+                  {% endfor %}
+                </ul>
+                <details>
+                  <summary>Mostra HTML originale (sanificato in anteprima)</summary>
+                  <pre class="code-block">{{ post.body }}</pre>
+                </details>
+              </div>
+            {% endif %}
             <footer class="moderation-actions">
               <form method="post" action="{{ url_for('moderation.approve_post', post_id=post.id) }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

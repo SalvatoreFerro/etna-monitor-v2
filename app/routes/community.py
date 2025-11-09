@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 import requests
 from flask import (
@@ -307,12 +307,30 @@ def create_post():
         post = CommunityPost(
             author_id=current_user.id, title=title, anonymous=anonymous
         )
-        post.set_body(body)
+        suspicious_matches = post.set_body(body)
         post.status = "pending"
         db.session.add(post)
-        db.session.commit()
 
-        flash("Post inviato, sarà pubblicato dopo la moderazione.", "success")
+        if suspicious_matches:
+            post.status = "hidden"
+            post.moderator_reason = "XSS sanitization"
+            post.moderated_at = datetime.now(timezone.utc)
+            moderation_entry = ModerationAction(
+                post=post,
+                moderator_id=None,
+                action="auto_hide_xss",
+                reason="XSS sanitization",
+                created_at=datetime.now(timezone.utc),
+            )
+            db.session.add(moderation_entry)
+            flash(
+                "Il contenuto include markup non consentito ed è stato inviato alla revisione manuale.",
+                "warning",
+            )
+        else:
+            flash("Post inviato, sarà pubblicato dopo la moderazione.", "success")
+
+        db.session.commit()
         return redirect(url_for("community.my_posts"))
 
     return render_template(
