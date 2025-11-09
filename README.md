@@ -26,10 +26,11 @@ Obiettivi principali:
 11. [Logging & Monitoraggio](#logging--monitoraggio)
 12. [Deploy (Ambiente di Produzione)](#deploy-ambiente-di-produzione)
 13. [Sicurezza & Privacy](#sicurezza--privacy)
-14. [Troubleshooting (FAQ Tecnica)](#troubleshooting-faq-tecnica)
-15. [Roadmap](#roadmap)
-16. [Licenza & Note Legali](#licenza--note-legali)
-17. [Contatti](#contatti)
+14. [GA4 & CSP](#ga4--csp)
+15. [Troubleshooting (FAQ Tecnica)](#troubleshooting-faq-tecnica)
+16. [Roadmap](#roadmap)
+17. [Licenza & Note Legali](#licenza--note-legali)
+18. [Contatti](#contatti)
 
 ---
 
@@ -281,12 +282,13 @@ ALERT_THRESHOLD_DEFAULT=2.0
 - Eseguire backup regolari di `data/` e `logs/` su storage cifrato; testare procedure di restore.
 - Raccogliere solo dati minimi necessari; informare gli utenti sull'uso dei dati in modo conforme alle normative locali (es. GDPR).
 
-### Google Analytics 4
-- Lo snippet GA4 vive in [`app/templates/partials/ga4.html`](app/templates/partials/ga4.html) ed è incluso una sola volta nella `<head>` tramite [`layout.html`](app/templates/layout.html). Ogni modifica allo script deve passare dal partial per evitare inizializzazioni duplicate.
-- Per attivare la modalità consenso con opt-in esplicito imposta `gtag('consent', 'default', { ad_storage: 'denied', analytics_storage: 'denied' })` nel partial e, sul banner cookie, richiama `gtag('consent', 'update', { ad_storage: 'granted', analytics_storage: 'granted' })` quando l'utente accetta.
-- La CSP è centralizzata in [`app/security.py`](app/security.py) e consente solo i domini necessari: `https://www.googletagmanager.com` per gli script, `https://www.google-analytics.com` e `https://region1.google-analytics.com` per le chiamate di tracking, oltre alle immagini data URI richieste da GA.
-- Debug: esporta `GA_DEBUG=true` per forzare `debug_mode` oppure aggiungi `?dbg=1` alla URL. Verifica in DevTools → Network che `gtag/js?id=G-Z3ESSERP7W` risponda `200` e che siano presenti richieste `collect?p=...` verso `https://region1.google-analytics.com`.
-- La pagina `/ga4/diagnostics` mostra lo snapshot di `window.dataLayer`, il valore di `navigator.userAgent` e conferma che `window.gtag` sia definito in runtime per aiutare la validazione rapida.
+
+## GA4 & CSP
+- Il partial GA4 risiede in [`app/templates/partials/ga4.html`](app/templates/partials/ga4.html) ed è incluso una sola volta nella `<head>` dal layout principale [`app/templates/layout.html`](app/templates/layout.html). Ogni modifica allo snippet deve passare da quel file per evitare inizializzazioni duplicate.
+- Per attivare il debug imposta la variabile d'ambiente `GA_DEBUG=true` prima di avviare l'app **oppure** apri qualsiasi pagina con l'aggiunta del parametro `?dbg=1` alla query string.
+- La Content Security Policy è definita in [`app/security.py`](app/security.py) e abilita esclusivamente i domini necessari a GA4: `https://www.googletagmanager.com` per il caricamento dello script, `https://www.google-analytics.com`, `https://region1.google-analytics.com` e `https://stats.g.doubleclick.net` per le chiamate di tracking, oltre ai font di Google richiesti dal tema.
+- Per verificare il tracciamento apri Chrome DevTools → Network dopo aver visitato la home con `?dbg=1` e controlla che la richiesta `https://www.googletagmanager.com/gtag/js?id=G-Z3ESSERP7W` risponda con `200` e che compaiano chiamate `https://region1.google-analytics.com/g/collect` (stato `204`).
+- La pagina di diagnostica `/ga4/diagnostics` mostra lo stato di `window.gtag`, la lunghezza della `dataLayer` e include un link rapido alla home con debug per accelerare i test.
 
 ## Troubleshooting (FAQ Tecnica)
 - **Il grafico è piatto o sballato**: controllare che l'asse Y sia in scala log, verificare che il PNG INGV sia aggiornato e che la soglia sia correttamente impostata.

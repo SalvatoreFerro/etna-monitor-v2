@@ -4,13 +4,11 @@
   <section class="container ga4-diagnostics" aria-labelledby="ga4-diagnostics-title">
     <div class="content">
       <h1 id="ga4-diagnostics-title">GA4 Diagnostics</h1>
-      <p>Measurement ID attivo: <code>{{ analytics.ga_measurement_id or 'missing' }}</code></p>
-      <p>navigator.userAgent: <code id="ga4-user-agent">(caricamento…)</code></p>
-      <div class="ga4-diagnostics__panel">
-        <h2>Snapshot window.dataLayer</h2>
-        <pre id="ga4-data-layer" class="ga4-diagnostics__dump">(analisi in corso…)</pre>
-      </div>
-      <p id="ga4-gtag-status">Verifica window.gtag…</p>
+      <p id="ga4-gtag-status" role="status">Verifica stato gtag…</p>
+      <p id="ga4-datalayer-length">DataLayer length: (in caricamento…)</p>
+      <p>
+        <a href="{{ url_for('main.index') }}?dbg=1" class="btn btn-primary">Apri home con debug</a>
+      </p>
     </div>
   </section>
 {% endblock %}
@@ -19,31 +17,21 @@
   {{ super() }}
   <script nonce="{{ csp_nonce() }}">
     (function () {
-      const userAgentTarget = document.getElementById('ga4-user-agent');
-      if (userAgentTarget) {
-        userAgentTarget.textContent = navigator.userAgent;
-      }
+      const statusEl = document.getElementById('ga4-gtag-status');
+      const dlLengthEl = document.getElementById('ga4-datalayer-length');
 
-      const dumpTarget = document.getElementById('ga4-data-layer');
-      if (dumpTarget) {
-        const snapshot = Array.isArray(window.dataLayer)
-          ? window.dataLayer.slice()
-          : '(window.dataLayer non è definito)';
-        try {
-          dumpTarget.textContent = typeof snapshot === 'string'
-            ? snapshot
-            : JSON.stringify(snapshot, null, 2);
-        } catch (error) {
-          console.warn('Impossibile serializzare dataLayer', error);
-          dumpTarget.textContent = '(errore durante la serializzazione di window.dataLayer)';
-        }
-      }
-
-      const gtagStatus = document.getElementById('ga4-gtag-status');
-      if (gtagStatus) {
-        gtagStatus.textContent = typeof window.gtag === 'function'
+      const gtagAvailable = typeof window.gtag === 'function';
+      if (statusEl) {
+        statusEl.textContent = gtagAvailable
           ? '✅ window.gtag è definito'
           : '⚠️ window.gtag non è definito';
+      }
+
+      const dataLayerLength = Array.isArray(window.dataLayer)
+        ? window.dataLayer.length
+        : 'n/a';
+      if (dlLengthEl) {
+        dlLengthEl.textContent = `DataLayer length: ${dataLayerLength}`;
       }
     })();
   </script>

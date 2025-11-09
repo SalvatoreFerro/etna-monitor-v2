@@ -9,8 +9,6 @@
     {% set computed_og_image = page_og_image or default_og_image %}
     {% set computed_canonical = canonical_url %}
     {% set STATIC_ASSET_VERSION = static_asset_version %}
-    {% include 'partials/ga4.html' %}
-
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="description" content="{{ computed_description }}" />
@@ -51,6 +49,8 @@
     <meta name="twitter:title" content="{{ computed_og_title }}" />
     <meta name="twitter:description" content="{{ computed_og_description }}" />
     <meta name="twitter:image" content="{{ computed_og_image }}" />
+
+    {% include 'partials/ga4.html' %}
 
     {% set structured_data_default = default_structured_data_base + [
       {
