@@ -51,7 +51,10 @@
     <meta name="twitter:description" content="{{ computed_og_description }}" />
     <meta name="twitter:image" content="{{ computed_og_image }}" />
 
-    {% include 'partials/ga4.html' %}
+    {% if os.getenv('GA_ENABLE') == 'true' %}
+      {% set ga4_nonce = csp_nonce() %}
+      {% include 'partials/ga4.html' %}
+    {% endif %}
 
     {% set structured_data_default = default_structured_data_base + [
       {
