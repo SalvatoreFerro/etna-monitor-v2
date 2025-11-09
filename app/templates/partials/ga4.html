@@ -1,31 +1,32 @@
-{# GA4 single init with nonce + optional debug #}
-{% if csp_nonce is defined and (csp_nonce is not callable) %}
-  {% set _ga4_nonce = csp_nonce %}
-{% else %}
-  {% set _ga4_nonce = csp_nonce() %}
+{# GA4 tag load order and configuration #}
+{% if ga4_nonce is defined %}
+  {% set csp_nonce = ga4_nonce %}
+{% elif csp_nonce is callable %}
+  {% set csp_nonce = csp_nonce() %}
 {% endif %}
-<script nonce="{{ _ga4_nonce }}">
+{% set _ga_debug_enabled = 'true' if os.getenv('GA_DEBUG') == 'true' else 'false' %}
+<script async crossorigin="anonymous" src="https://www.googletagmanager.com/gtag/js?id=G-Z3ESSERP7W"></script>
+<script nonce="{{ csp_nonce }}">
   window.dataLayer = window.dataLayer || [];
-  function gtag(){ dataLayer.push(arguments); }
+  function gtag(){dataLayer.push(arguments);}
 
-  // Consent Mode v2 - default granted (provvisorio per test)
-  gtag('consent', 'default', {
-    ad_storage: 'granted',
-    analytics_storage: 'granted',
-    ad_user_data: 'granted',
-    ad_personalization: 'granted',
-    functionality_storage: 'granted',
-    security_storage: 'granted'
+  // Consent default granted for testing
+  gtag('consent','default',{
+    ad_storage:'granted',
+    analytics_storage:'granted',
+    ad_user_data:'granted',
+    ad_personalization:'granted',
+    functionality_storage:'granted',
+    security_storage:'granted'
   });
 
-  // Debug attivabile con env GA_DEBUG=true o query ?dbg=1
+  // Debug toggle via env or ?dbg=1
   (function(){
-    const enabled = "{{ (os.getenv('GA_DEBUG') or '') }}" === "true"
-                    || new URLSearchParams(window.location.search).has('dbg');
-    if (enabled) gtag('set', 'debug_mode', true);
+    const enabled = ({{ _ga_debug_enabled }}) ||
+                    new URLSearchParams(window.location.search).has('dbg');
+    if (enabled) gtag('set','debug_mode', true);
   })();
 
   gtag('js', new Date());
-  gtag('config', 'G-Z3ESSERP7W', { transport_type: 'beacon', send_page_view: true });
+  gtag('config','G-Z3ESSERP7W',{transport_type:'beacon', send_page_view:true});
 </script>
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-Z3ESSERP7W"></script>
