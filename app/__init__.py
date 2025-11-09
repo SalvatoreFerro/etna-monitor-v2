@@ -451,10 +451,13 @@ def create_app(config_overrides: dict | None = None):
             "Monitoraggio in tempo reale del tremore vulcanico dell'Etna con dati INGV, "
             "grafici interattivi e avvisi per gli appassionati."
         )
-        default_og_image = url_for("static", filename="icons/icon-512.png", _external=True)
-        logo_url = url_for(
-            "static", filename="icons/apple-touch-icon.png", _external=True
+        computed_og_image = url_for(
+            "static",
+            filename="images/appstaticiconsapple-touch-icon.png",
+            _external=True,
         )
+        default_og_image = computed_og_image
+        logo_url = computed_og_image
         structured_base = [
             {
                 "@context": "https://schema.org",

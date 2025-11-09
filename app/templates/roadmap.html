@@ -62,6 +62,39 @@
         <a class="btn btn-secondary" href="{{ url_for('main.sponsor') }}">Scopri le sponsorship</a>
       </div>
     </div>
+
+    <script type="application/ld+json" nonce="{{ csp_nonce() }}">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Quali funzionalità sono in sviluppo?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Sistema freemium, EtnaView, Avvisi locali, Statistiche storiche, AI Prediction Lab e Hub webcam sono in sviluppo."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Cosa state valutando per il futuro?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Stiamo raccogliendo feedback su nuove integrazioni: app mobile, layer topografici avanzati, modelli predittivi per cenere vulcanica."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Come posso accelerare la roadmap?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Donazioni e partnership finanziano infrastruttura, AI e nuove visualizzazioni."
+      }
+    }
+  ]
+}
+    </script>
   </div>
 </section>
 {% endblock %}
