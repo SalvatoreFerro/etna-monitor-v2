@@ -762,7 +762,7 @@ def csp_probe():
   <head>
     <meta charset=\"utf-8\">
     <title>Content Security Policy Probe</title>
-    <link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css\">
+    <link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css\">
   </head>
   <body>
     <h1>Content Security Policy Probe</h1>
