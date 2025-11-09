@@ -39,6 +39,20 @@ def test_home_includes_ga4_and_csp_allows_google(monkeypatch):
     assert html.find(external_tag) < inline_match.start()
 
     csp_header = response.headers.get("Content-Security-Policy", "")
+    for expected in (
+        "script-src-elem",
+        "style-src-elem",
+        "https://www.googletagmanager.com",
+        "https://www.google-analytics.com",
+        "https://fonts.googleapis.com",
+        "https://fonts.gstatic.com",
+        "https://cdnjs.cloudflare.com",
+        "https://cdn.plot.ly",
+        "https://region1.google-analytics.com",
+        "https://stats.g.doubleclick.net",
+    ):
+        assert expected in csp_header
+
     directives = _parse_csp_header(csp_header)
 
     script_sources = directives.get("script-src", [])
@@ -61,6 +75,10 @@ def test_home_includes_ga4_and_csp_allows_google(monkeypatch):
     connect_sources = directives.get("connect-src", [])
     assert "https://region1.google-analytics.com" in connect_sources
     assert "https://stats.g.doubleclick.net" in connect_sources
+
+
+def _strip_nonces(values: List[str]) -> List[str]:
+    return [value for value in values if not value.startswith("'nonce-")]
 
 
 def test_ga4_test_csp_endpoint(monkeypatch):
@@ -86,3 +104,30 @@ def test_ga4_test_csp_endpoint(monkeypatch):
     connect_sources = policy.get("connect-src", [])
     assert "https://region1.google-analytics.com" in connect_sources
     assert "https://stats.g.doubleclick.net" in connect_sources
+
+
+def test_csp_echo_returns_applied_header(monkeypatch):
+    monkeypatch.setenv("GA_ENABLE", "true")
+    app = create_app({"TESTING": True})
+    client = app.test_client()
+
+    echo_response = client.get("/csp/echo")
+    assert echo_response.status_code == 200
+    payload = echo_response.get_json()
+    header_value = echo_response.headers.get("Content-Security-Policy", "")
+    assert payload == {"header": header_value}
+    assert "'nonce-" in header_value
+    assert "https://cdn.plot.ly" in header_value
+
+    home_response = client.get("/")
+    home_header = home_response.headers.get("Content-Security-Policy", "")
+    directives_home = _parse_csp_header(home_header)
+    directives_echo = _parse_csp_header(header_value)
+
+    for directive_name, source_list in directives_echo.items():
+        if directive_name in {"script-src", "script-src-elem"}:
+            assert set(_strip_nonces(source_list)) == set(
+                _strip_nonces(directives_home.get(directive_name, []))
+            )
+        else:
+            assert directives_home.get(directive_name, []) == source_list

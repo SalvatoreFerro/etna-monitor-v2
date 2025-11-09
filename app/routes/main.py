@@ -1,5 +1,6 @@
 from datetime import datetime
 import copy
+import json
 import os
 from pathlib import Path
 
@@ -27,7 +28,7 @@ from sqlalchemy import or_
 
 from ..extensions import cache
 from ..utils.metrics import get_csv_metrics, record_csv_error, record_csv_read
-from app.security import BASE_CSP, serialize_csp, talisman
+from app.security import BASE_CSP, apply_csp_headers, serialize_csp, talisman
 from backend.utils.time import to_iso_utc
 from config import DEFAULT_GA_MEASUREMENT_ID
 
@@ -723,6 +724,16 @@ def healthcheck():
 @bp.route("/ga4/test-csp")
 def ga4_test_csp():
     return jsonify(dict(csp=copy.deepcopy(talisman.content_security_policy)))
+
+
+@bp.route("/csp/echo")
+def csp_echo():
+    response = jsonify({"header": ""})
+    response = apply_csp_headers(response)
+    header_value = response.headers.get("Content-Security-Policy", "")
+    response.set_data(json.dumps({"header": header_value}))
+    response.mimetype = "application/json"
+    return response
 
 
 @bp.route("/csp/probe")
