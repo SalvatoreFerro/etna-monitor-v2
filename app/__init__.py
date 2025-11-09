@@ -496,6 +496,7 @@ def create_app(config_overrides: dict | None = None):
             "canonical_base_url": canonical_base,
             "default_structured_data_base": structured_base,
             "ads_tracking_enabled": bool(app.config.get("ADS_ROUTES_ENABLED")),
+            "ADSENSE_ENABLE": bool(app.config.get("ADSENSE_ENABLE")),
         }
 
     @app.context_processor

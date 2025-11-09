@@ -20,6 +20,7 @@ GOOGLE_SCRIPT_SOURCES = [
     "https://*.google.com",
     "https://www.gstatic.com",
     "https://*.gstatic.com",
+    "https://pagead2.googlesyndication.com",
     "https://cdn.plot.ly",
 ]
 
@@ -36,6 +37,8 @@ CONNECT_ENDPOINTS = [
     "https://*.google.com",
     "https://www.gstatic.com",
     "https://*.gstatic.com",
+    "https://googleads.g.doubleclick.net",
+    "https://pagead2.googlesyndication.com",
     "https://cdn.plot.ly",
 ]
 
@@ -51,6 +54,9 @@ IMG_TRACKING_ENDPOINTS = [
     "https://*.google.com",
     "https://www.gstatic.com",
     "https://*.gstatic.com",
+    "https://googleads.g.doubleclick.net",
+    "https://pagead2.googlesyndication.com",
+    "https://tpc.googlesyndication.com",
 ]
 
 STYLE_CDNS = [
@@ -74,6 +80,8 @@ FRAME_GOOGLE = [
     "https://www.google.com",
     "https://www.gstatic.com",
     "https://*.gstatic.com",
+    "https://googleads.g.doubleclick.net",
+    "https://tpc.googlesyndication.com",
     "https://cdn.plot.ly",
 ]
 
