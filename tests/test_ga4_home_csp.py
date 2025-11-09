@@ -25,18 +25,20 @@ def test_home_includes_ga4_and_csp_allows_google(monkeypatch):
     response = client.get("/")
     assert response.status_code == 200
     html = response.get_data(as_text=True)
-    external_tag = (
-        '<script async crossorigin="anonymous" '
-        'src="https://www.googletagmanager.com/gtag/js?id=G-Z3ESSERP7W"></script>'
+    external_match = re.search(
+        r"<script[^>]+src=\"https://www\.googletagmanager\.com/gtag/js\?id=G-Z3ESSERP7W\"[^>]*></script>",
+        html,
     )
-    assert external_tag in html
+    assert external_match is not None
+    assert "async" in external_match.group(0)
+    assert "nonce=" in external_match.group(0)
 
     inline_match = re.search(
-        r"<script nonce=\"[^\"]+\">[\s\S]*?gtag\('config','G-Z3ESSERP7W'",
+        r"<script nonce=\"[^\"]+\">[\s\S]*?gtag\('config', 'G-Z3ESSERP7W'",
         html,
     )
     assert inline_match is not None
-    assert html.find(external_tag) < inline_match.start()
+    assert "gtag('config', 'AW-17681413584')" in html
 
     csp_header = response.headers.get("Content-Security-Policy", "")
     for expected in (
@@ -44,6 +46,11 @@ def test_home_includes_ga4_and_csp_allows_google(monkeypatch):
         "style-src-elem",
         "https://www.googletagmanager.com",
         "https://www.google-analytics.com",
+        "https://*.googletagmanager.com",
+        "https://*.google-analytics.com",
+        "https://*.doubleclick.net",
+        "https://*.google.com",
+        "https://*.gstatic.com",
         "https://fonts.googleapis.com",
         "https://fonts.gstatic.com",
         "https://cdnjs.cloudflare.com",
@@ -60,7 +67,13 @@ def test_home_includes_ga4_and_csp_allows_google(monkeypatch):
     assert "script-src-elem" in directives
     for domain in (
         "https://www.googletagmanager.com",
+        "https://*.googletagmanager.com",
         "https://www.google-analytics.com",
+        "https://*.google-analytics.com",
+        "https://*.doubleclick.net",
+        "https://*.google.com",
+        "https://*.gstatic.com",
+        "https://cdn.plot.ly",
     ):
         assert domain in script_sources
         assert domain in script_elem_sources
@@ -71,10 +84,15 @@ def test_home_includes_ga4_and_csp_allows_google(monkeypatch):
     assert "https://cdnjs.cloudflare.com" in style_sources
     assert "https://fonts.googleapis.com" in style_sources
     assert style_elem_sources == style_sources
+    assert "'unsafe-inline'" in style_sources
 
     connect_sources = directives.get("connect-src", [])
     assert "https://region1.google-analytics.com" in connect_sources
     assert "https://stats.g.doubleclick.net" in connect_sources
+    assert "https://*.doubleclick.net" in connect_sources
+    assert "https://*.googletagmanager.com" in connect_sources
+    assert "https://*.google.com" in connect_sources
+    assert "https://*.gstatic.com" in connect_sources
 
 
 def _strip_nonces(values: List[str]) -> List[str]:
@@ -93,17 +111,47 @@ def test_ga4_test_csp_endpoint(monkeypatch):
     policy = payload["csp"]
     script_sources = policy.get("script-src", [])
     script_elem_sources = policy.get("script-src-elem", [])
-    assert "https://www.googletagmanager.com" in script_sources
-    assert "https://www.google-analytics.com" in script_sources
+    for domain in (
+        "https://www.googletagmanager.com",
+        "https://*.googletagmanager.com",
+        "https://www.google-analytics.com",
+        "https://*.google-analytics.com",
+        "https://*.doubleclick.net",
+        "https://*.google.com",
+        "https://*.gstatic.com",
+        "https://cdn.plot.ly",
+    ):
+        assert domain in script_sources
     assert script_elem_sources == script_sources
 
     style_sources = policy.get("style-src", [])
     assert "https://cdnjs.cloudflare.com" in style_sources
     assert "https://fonts.googleapis.com" in style_sources
+    assert "'unsafe-inline'" in style_sources
 
     connect_sources = policy.get("connect-src", [])
     assert "https://region1.google-analytics.com" in connect_sources
     assert "https://stats.g.doubleclick.net" in connect_sources
+    assert "https://*.doubleclick.net" in connect_sources
+    assert "https://*.googletagmanager.com" in connect_sources
+    assert "https://*.google.com" in connect_sources
+    assert "https://*.gstatic.com" in connect_sources
+
+
+def test_csp_test_endpoint_returns_home_header(monkeypatch):
+    monkeypatch.setenv("GA_ENABLE", "true")
+    app = create_app({"TESTING": True})
+    client = app.test_client()
+
+    response = client.get("/csp/test")
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["status_code"] == 200
+    header_value = payload["content_security_policy"]
+    assert isinstance(header_value, str)
+    assert "https://www.googletagmanager.com" in header_value
+    assert "https://*.googletagmanager.com" in header_value
+    assert "https://*.google-analytics.com" in header_value
 
 
 def test_csp_echo_returns_applied_header(monkeypatch):
