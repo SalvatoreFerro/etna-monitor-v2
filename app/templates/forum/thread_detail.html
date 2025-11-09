@@ -49,29 +49,37 @@
 
   <section class="forum-reply-form" aria-label="Lascia una risposta">
     <div class="container">
-      <form method="post" class="card" novalidate>
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-        <h2><i class="fas fa-reply"></i> Rispondi alla discussione</h2>
-        <label>
-          <span>Messaggio</span>
-          <textarea name="body" rows="4" minlength="5" required placeholder="Condividi suggerimenti pratici, link e risorse"></textarea>
-        </label>
-        <div class="form-grid">
+      {% if current_user.is_authenticated %}
+        <form method="post" class="card" novalidate>
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <h2><i class="fas fa-reply"></i> Rispondi alla discussione</h2>
           <label>
-            <span>Nome (opzionale)</span>
-            <input type="text" name="author_name" maxlength="120" />
+            <span>Messaggio</span>
+            <textarea name="body" rows="4" minlength="5" required placeholder="Condividi suggerimenti pratici, link e risorse"></textarea>
           </label>
-          <label>
-            <span>Email (opzionale)</span>
-            <input type="email" name="author_email" maxlength="255" />
+          <div class="form-grid">
+            <label>
+              <span>Nome (opzionale)</span>
+              <input type="text" name="author_name" maxlength="120" value="{{ current_user.name or '' }}" />
+            </label>
+            <label>
+              <span>Email (opzionale)</span>
+              <input type="email" name="author_email" maxlength="255" value="{{ current_user.email or '' }}" />
+            </label>
+          </div>
+          <label class="checkbox">
+            <input type="checkbox" name="mark_resolved" value="1" />
+            <span>Segna la discussione come risolta</span>
           </label>
+          <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Invia risposta</button>
+        </form>
+      {% else %}
+        <div class="card">
+          <h2><i class="fas fa-lock"></i> Accedi per rispondere</h2>
+          <p>Solo gli utenti autenticati possono contribuire con nuove risposte per proteggere il forum dallo spam.</p>
+          <a class="btn btn-primary" href="{{ url_for('auth.login', next=request.path) }}"><i class="fas fa-sign-in-alt"></i> Effettua l'accesso</a>
         </div>
-        <label class="checkbox">
-          <input type="checkbox" name="mark_resolved" value="1" />
-          <span>Segna la discussione come risolta</span>
-        </label>
-        <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Invia risposta</button>
-      </form>
+      {% endif %}
     </div>
   </section>
 </article>

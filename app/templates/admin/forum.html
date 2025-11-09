@@ -1,0 +1,123 @@
+{% extends "layout.html" %}
+
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
+{% endblock %}
+
+{% block content %}
+<section class="admin-page admin-container" aria-labelledby="admin-forum-title">
+  <header class="admin-card admin-card--hero card-premium animate-premium-fade admin-header" id="admin-forum-title">
+    <div>
+      <h1><i class="fas fa-people-group"></i> Gestione Forum Q&amp;A</h1>
+      <p>Supervisiona le domande della community ed elimina rapidamente contenuti non conformi.</p>
+    </div>
+    <nav class="admin-actions" aria-label="Navigazione amministratore">
+      <a href="{{ url_for('admin.admin_home') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-arrow-left"></i> Torna alla dashboard</a>
+      <a href="{{ url_for('community.forum_home') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-external-link-alt"></i> Apri il forum pubblico</a>
+    </nav>
+  </header>
+
+  <article class="admin-card card-premium animate-premium-slide">
+    <header class="admin-section-header">
+      <div>
+        <h2><i class="fas fa-comments"></i> Discussioni attive</h2>
+        <p>Rimuovi domande inappropriate o spam direttamente dal pannello di controllo.</p>
+      </div>
+      <p class="admin-caption">Totale discussioni: {{ threads|length }}</p>
+    </header>
+    {% if threads %}
+      <div class="admin-table-wrapper">
+        <table class="table table-premium admin-table">
+          <thead>
+            <tr>
+              <th scope="col">Titolo</th>
+              <th scope="col">Autore</th>
+              <th scope="col">Stato</th>
+              <th scope="col">Aggiornata</th>
+              <th scope="col">Risposte</th>
+              <th scope="col">Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for thread in threads %}
+              <tr>
+                <td data-label="Titolo">
+                  <a href="{{ url_for('community.thread_detail', slug=thread.slug) }}" target="_blank" rel="noopener">{{ thread.title }}</a>
+                </td>
+                <td data-label="Autore">{{ thread.author_name or 'Anonimo' }}</td>
+                <td data-label="Stato">
+                  <span class="badge {{ 'success' if thread.status == 'resolved' else 'info' if thread.status == 'open' else 'muted' }}">{{ thread.status.title() }}</span>
+                </td>
+                <td data-label="Aggiornata">{{ thread.updated_at.strftime('%d/%m/%Y %H:%M') if thread.updated_at else '—' }}</td>
+                <td data-label="Risposte">{{ thread.replies.count() }}</td>
+                <td data-label="Azioni">
+                  <form method="post" class="admin-inline-actions" onsubmit="return confirm('Eliminare definitivamente la discussione selezionata?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                    <input type="hidden" name="action" value="delete_thread" />
+                    <input type="hidden" name="thread_id" value="{{ thread.id }}" />
+                    <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i> Elimina</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="admin-caption">Non sono presenti discussioni aperte al momento.</p>
+    {% endif %}
+  </article>
+
+  <article class="admin-card card-premium animate-premium-fade">
+    <header class="admin-section-header">
+      <div>
+        <h2><i class="fas fa-reply"></i> Risposte recenti</h2>
+        <p>Visualizza le ultime risposte inviate dagli utenti e intervieni se necessario.</p>
+      </div>
+      <p class="admin-caption">Mostra ultime {{ replies|length }} risposte</p>
+    </header>
+    {% if replies %}
+      <div class="admin-table-wrapper">
+        <table class="table table-premium admin-table">
+          <thead>
+            <tr>
+              <th scope="col">Discussione</th>
+              <th scope="col">Autore</th>
+              <th scope="col">Inviata</th>
+              <th scope="col">Estratto</th>
+              <th scope="col">Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for reply in replies %}
+              <tr>
+                <td data-label="Discussione">
+                  {% if reply.thread %}
+                    <a href="{{ url_for('community.thread_detail', slug=reply.thread.slug) }}#replies" target="_blank" rel="noopener">{{ reply.thread.title }}</a>
+                  {% else %}
+                    <span class="badge danger">Discussione rimossa</span>
+                  {% endif %}
+                </td>
+                <td data-label="Autore">{{ reply.author_name or 'Community' }}</td>
+                <td data-label="Inviata">{{ reply.created_at.strftime('%d/%m/%Y %H:%M') if reply.created_at else '—' }}</td>
+                <td data-label="Estratto">{{ reply.body[:120] }}{% if reply.body|length > 120 %}…{% endif %}</td>
+                <td data-label="Azioni">
+                  <form method="post" class="admin-inline-actions" onsubmit="return confirm('Eliminare definitivamente questa risposta?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                    <input type="hidden" name="action" value="delete_reply" />
+                    <input type="hidden" name="reply_id" value="{{ reply.id }}" />
+                    <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i> Elimina</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="admin-caption">Non sono ancora presenti risposte da moderare.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}
