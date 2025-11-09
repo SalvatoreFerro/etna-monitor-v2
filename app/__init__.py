@@ -453,7 +453,7 @@ def create_app(config_overrides: dict | None = None):
         )
         computed_og_image = url_for(
             "static",
-            filename="images/appstaticiconsapple-touch-icon.png",
+            filename="images/og-image.png",
             _external=True,
         )
         default_og_image = computed_og_image
