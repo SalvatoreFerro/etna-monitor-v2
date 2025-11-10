@@ -11,7 +11,7 @@ from functools import wraps
 import bcrypt
 from flask import flash, redirect, request, session, url_for
 from flask_login import current_user
-from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy.exc import OperationalError, ProgrammingError, SQLAlchemyError
 from sqlalchemy.orm import load_only
 
 from ..models import db
@@ -76,7 +76,7 @@ def get_current_user():
 
     try:
         user = db.session.get(User, user_id)
-    except (ProgrammingError, OperationalError):
+    except (ProgrammingError, OperationalError, SQLAlchemyError):
         db.session.rollback()
         safe_columns = get_login_safe_user_columns()
         query = db.session.query(User)
