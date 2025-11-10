@@ -151,6 +151,32 @@ def test_category_view_handles_missing_subscription_table(client, app, category,
         db.session.commit()
 
 
+def test_category_view_handles_missing_category_table(client, app):
+    with app.app_context():
+        db.session.execute(db.text("DROP TABLE partner_categories"))
+        db.session.commit()
+
+    response = client.get("/categoria/guide")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "Guide autorizzate" in body
+    assert "Nessun partner disponibile" in body
+
+    with app.app_context():
+        from app.models.partner import PartnerCategory
+
+        PartnerCategory.__table__.create(db.engine)
+        db.session.add(
+            PartnerCategory(
+                slug="guide",
+                name="Guide autorizzate",
+                max_slots=10,
+                is_active=True,
+            )
+        )
+        db.session.commit()
+
+
 def test_price_first_vs_renewal(app, category, partner_factory):
     with app.app_context():
         partner = partner_factory("Nuovo Partner")
