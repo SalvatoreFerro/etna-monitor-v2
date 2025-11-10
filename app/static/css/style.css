@@ -636,6 +636,14 @@
     display: none;
   }
 
+  .site-nav__dropdown > summary::marker {
+    content: '';
+  }
+
+  .site-nav__dropdown > summary::-moz-list-bullet {
+    list-style-type: none;
+  }
+
   .site-nav__dropdown[open] > .site-nav__submenu {
     opacity: 1;
     transform: translateY(0);
@@ -2174,6 +2182,14 @@
 
   .experience-faq summary::-webkit-details-marker {
     display: none;
+  }
+
+  .experience-faq summary::marker {
+    content: '';
+  }
+
+  .experience-faq summary::-moz-list-bullet {
+    list-style-type: none;
   }
 
   .experience-faq details[open] {
