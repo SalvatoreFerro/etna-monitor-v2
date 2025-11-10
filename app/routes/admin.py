@@ -36,7 +36,9 @@ from ..services.gamification_service import ensure_demo_profiles
 from ..services.partner_categories import (
     CATEGORY_FORM_FIELDS,
     ensure_partner_categories,
+    ensure_partner_extra_data_column,
     missing_table_error,
+    missing_column_error,
     serialize_category_fields,
 )
 from ..services.partner_directory import (
@@ -1009,6 +1011,13 @@ def donations():
 @admin_required
 def partners_dashboard():
     try:
+        ensure_partner_extra_data_column()
+    except SQLAlchemyError as exc:  # pragma: no cover - defensive safeguard
+        current_app.logger.exception(
+            "Unable to ensure partners.extra_data column", exc_info=exc
+        )
+
+    try:
         categories = (
             PartnerCategory.query.order_by(PartnerCategory.sort_order, PartnerCategory.name).all()
         )
@@ -1034,7 +1043,20 @@ def partners_dashboard():
         )
     except SQLAlchemyError as exc:
         db.session.rollback()
-        if missing_table_error(exc, "partner_subscriptions"):
+        if missing_column_error(exc, "partners", "extra_data"):
+            current_app.logger.warning(
+                "partners.extra_data column missing. Attempting automatic migration."
+            )
+            ensure_partner_extra_data_column()
+            partners = (
+                Partner.query.options(
+                    joinedload(Partner.category),
+                    joinedload(Partner.subscriptions),
+                )
+                .order_by(Partner.created_at.desc())
+                .all()
+            )
+        elif missing_table_error(exc, "partner_subscriptions"):
             current_app.logger.warning(
                 "Partner subscriptions table unavailable. Showing partner list without subscriptions."
             )
@@ -1067,6 +1089,13 @@ def partners_create():
     if not validate_csrf_token(request.form.get("csrf_token")):
         flash("Token CSRF non valido.", "error")
         return redirect(url_for("admin.partners_dashboard"))
+
+    try:
+        ensure_partner_extra_data_column()
+    except SQLAlchemyError as exc:  # pragma: no cover - defensive safeguard
+        current_app.logger.exception(
+            "Unable to ensure partners.extra_data column before create", exc_info=exc
+        )
 
     name = (request.form.get("name") or "").strip()
     category_id = request.form.get("category_id")

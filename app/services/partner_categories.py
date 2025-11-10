@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Iterable
 
 from flask import current_app
+from sqlalchemy import inspect, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.models import db
@@ -129,6 +130,55 @@ def missing_table_error(err: SQLAlchemyError, table_name: str) -> bool:
             "unknown table",
         )
     )
+
+
+def missing_column_error(err: SQLAlchemyError, table_name: str, column_name: str) -> bool:
+    """Return True when the error indicates a missing column."""
+
+    message = str(getattr(err, "orig", err)).lower()
+    if table_name not in message or column_name not in message:
+        return False
+    return any(
+        hint in message
+        for hint in (
+            "column",
+            "unknown column",
+            "does not exist",
+            "no such column",
+            "undefined column",
+        )
+    )
+
+
+def ensure_partner_extra_data_column() -> bool:
+    """Add the partners.extra_data column when missing.
+
+    Returns True when the column has been created, False if it already exists.
+    """
+
+    engine = db.engine
+    inspector = inspect(engine)
+    columns = {column["name"] for column in inspector.get_columns("partners")}
+    if "extra_data" in columns:
+        return False
+
+    dialect = engine.dialect.name
+    if dialect == "postgresql":
+        column_type = "JSONB"
+        default_clause = "DEFAULT '{}'::jsonb"
+    else:
+        column_type = "JSON"
+        default_clause = "DEFAULT '{}'"
+
+    alter_sql = text(
+        f"ALTER TABLE partners ADD COLUMN extra_data {column_type} NOT NULL {default_clause}"
+    )
+
+    with engine.begin() as connection:
+        connection.execute(alter_sql)
+
+    current_app.logger.info("Added partners.extra_data column via ensure helper")
+    return True
 
 
 def ensure_partner_categories(seed_defaults: bool = True) -> list[PartnerCategory]:

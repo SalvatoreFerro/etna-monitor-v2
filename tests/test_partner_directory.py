@@ -16,9 +16,12 @@ from app.models.partner import (
     PartnerSubscription,
     generate_invoice_number,
 )
+from sqlalchemy import inspect
+
 from app.services.partner_categories import (
     DEFAULT_CATEGORY_FALLBACKS,
     ensure_partner_categories,
+    ensure_partner_extra_data_column,
 )
 from app.services.partner_directory import (
     can_approve_partner,
@@ -193,6 +196,19 @@ def test_ensure_partner_categories_bootstraps_defaults(app):
         # ensure idempotency
         categories_again = ensure_partner_categories()
         assert len(categories_again) == len(categories)
+
+
+def test_ensure_partner_extra_data_column_adds_missing_column(app):
+    with app.app_context():
+        db.session.execute(db.text("ALTER TABLE partners DROP COLUMN extra_data"))
+        db.session.commit()
+
+        created = ensure_partner_extra_data_column()
+        assert created is True
+
+        inspector = inspect(db.engine)
+        columns = {column["name"] for column in inspector.get_columns("partners")}
+        assert "extra_data" in columns
 
 
 def test_price_first_vs_renewal(app, category, partner_factory):
