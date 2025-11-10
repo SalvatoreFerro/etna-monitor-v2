@@ -39,6 +39,20 @@ def category_view(slug: str):
     if category is None:
         abort(404)
 
+    def _missing_subscription_table_error(err: SQLAlchemyError) -> bool:
+        message = str(getattr(err, "orig", err)).lower()
+        if "partner_subscriptions" not in message:
+            return False
+        return any(
+            hint in message
+            for hint in (
+                "no such table",
+                "does not exist",
+                "undefined table",
+                "unknown table",
+            )
+        )
+
     try:
         partners = (
             Partner.query.filter(
@@ -64,9 +78,18 @@ def category_view(slug: str):
             .all()
         )
     except SQLAlchemyError as exc:  # pragma: no cover - defensive logging
-        current_app.logger.error("Unable to load partners for %s: %s", slug, exc, exc_info=exc)
         db.session.rollback()
-        abort(500)
+        if _missing_subscription_table_error(exc):
+            current_app.logger.warning(
+                "Partner subscriptions table unavailable; falling back to empty listing for category %s",
+                slug,
+            )
+            partners = []
+        else:
+            current_app.logger.error(
+                "Unable to load partners for %s: %s", slug, exc, exc_info=exc
+            )
+            abort(500)
 
     occupied = len(partners)
     max_slots = category.max_slots

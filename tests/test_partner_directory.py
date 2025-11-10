@@ -131,6 +131,26 @@ def test_category_view_handles_empty_partner_list(client):
     assert "Nessun partner disponibile" in body
 
 
+def test_category_view_handles_missing_subscription_table(client, app, category, partner_factory):
+    with app.app_context():
+        partner = partner_factory("Legacy Partner", status="approved")
+        partner.approved_at = datetime.now(timezone.utc)
+        db.session.commit()
+        db.session.execute(db.text("DROP TABLE partner_subscriptions"))
+        db.session.commit()
+
+    response = client.get("/categoria/guide")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "Nessun partner disponibile" in body
+
+    with app.app_context():
+        from app.models.partner import PartnerSubscription
+
+        PartnerSubscription.__table__.create(db.engine)
+        db.session.commit()
+
+
 def test_price_first_vs_renewal(app, category, partner_factory):
     with app.app_context():
         partner = partner_factory("Nuovo Partner")
