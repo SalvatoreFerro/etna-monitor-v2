@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from math import ceil
 from typing import Iterable, Tuple
 
@@ -58,8 +57,6 @@ def experience_home():
     stats = {"total": 0, "guides": 0, "verified": 0, "categories": 0}
     base_query = Partner.query.filter(Partner.visible.is_(True))
     partners: list[Partner] = []
-    recommended_partners: list[Partner] = []
-    community_quotes: list[Partner] = []
     total_results = 0
 
     try:
@@ -117,23 +114,7 @@ def experience_home():
         {"label": "Categorie coperte", "value": stats["categories"]},
     ]
 
-    if not recommended_partners:
-        recommended_partners = (
-            base_query.order_by(Partner.verified.desc(), Partner.created_at.desc())
-            .limit(3)
-            .all()
-        )
-
-    if not community_quotes:
-        community_quotes = (
-            base_query.filter(Partner.description.isnot(None))
-            .filter(Partner.description != "")
-            .order_by(Partner.verified.desc(), Partner.created_at.desc())
-            .limit(4)
-            .all()
-        )
-
-    structured_data = {
+    item_list_structured_data = {
         "@context": "https://schema.org",
         "@type": "ItemList",
         "name": "Etna Experience",
@@ -148,21 +129,57 @@ def experience_home():
     }
 
     if selected_category:
-        structured_data["about"] = selected_category
+        item_list_structured_data["about"] = selected_category
+
+    faq_entries = [
+        {
+            "question": "Come funziona la prenotazione?",
+            "answer": (
+                "Scegli la proposta che preferisci e contatta le guide: riceverai una risposta entro 24 ore con disponibilità e suggerimenti personalizzati."
+            ),
+        },
+        {
+            "question": "Le esperienze sono per tutti i livelli?",
+            "answer": (
+                "Ogni partner indica difficoltà e attrezzatura: dai trekking family friendly alle ascese tecniche, trovi sempre briefing dedicati."
+            ),
+        },
+        {
+            "question": "Posso combinare più attività nello stesso giorno?",
+            "answer": (
+                "Sì, le guide EtnaMonitor coordinano logistica e trasferimenti per creare itinerari fluidi tra natura, gusto e relax."
+            ),
+        },
+        {
+            "question": "Quali garanzie ho sulla sicurezza?",
+            "answer": (
+                "Collaboriamo con operatori certificati, coperture assicurative aggiornate e monitoraggio costante dei bollettini vulcanologici."
+            ),
+        },
+    ]
+
+    faq_structured_data = {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": entry["question"],
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": entry["answer"],
+                },
+            }
+            for entry in faq_entries
+        ],
+    }
 
     category_label = "Tutte le categorie"
     if selected_category:
         category_label = _FILTER_LABELS.get(selected_category, selected_category)
 
-    meta_suffix = (
-        f" – {category_label}" if selected_category and category_label else ""
-    )
-
-    if pagination["page"] > 1:
-        meta_suffix += f" – Pagina {pagination['page']}"
-
-    page_title = f"Etna Experience{meta_suffix}"
-    page_description = "Strutture, escursioni e tour selezionati collegati all'attività vulcanica."
+    page_title = "Etna Experience – escursioni, tour e attività Etna"
+    page_description = "Catalogo curato di esperienze sull'Etna tra trekking, jeep tour, fotografia e momenti relax."
     if selected_category:
         page_description = (
             f"Scopri le migliori esperienze {category_label.lower()} curate dal team Etna Experience."
@@ -176,15 +193,18 @@ def experience_home():
         selected_category=selected_category,
         experience_stats=experience_stats,
         contact_actions={partner.id: build_contact_actions(partner) for partner in partners},
-        recommended_partners=recommended_partners,
-        community_quotes=community_quotes,
-        structured_data=json.dumps(structured_data, ensure_ascii=False),
+        faq_entries=faq_entries,
         category_label=category_label,
         user=get_current_user(),
-        page_title=f"{page_title} – Scopri le attività e le guide dell'Etna",
+        page_title=page_title,
         page_description=page_description,
-        page_og_title=f"{page_title} – Scopri le attività e le guide dell'Etna",
+        page_og_title=page_title,
         page_og_description=page_description,
+        page_og_image=url_for(
+            "static", filename="images/experience-og-banner.svg", _external=True
+        ),
+        page_structured_data=[item_list_structured_data, faq_structured_data],
+        concierge_email="concierge@etnamonitor.it",
     )
 
 
