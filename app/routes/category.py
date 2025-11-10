@@ -98,6 +98,20 @@ def category_view(slug: str):
     if category is None:
         abort(404)
 
+    def _missing_subscription_table_error(err: SQLAlchemyError) -> bool:
+        message = str(getattr(err, "orig", err)).lower()
+        if "partner_subscriptions" not in message:
+            return False
+        return any(
+            hint in message
+            for hint in (
+                "no such table",
+                "does not exist",
+                "undefined table",
+                "unknown table",
+            )
+        )
+
     try:
         if getattr(category, "id", None) is None:
             partners = []
