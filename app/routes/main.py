@@ -161,7 +161,7 @@ def csp_test():
 
 
 @bp.route("/")
-@cache.cached(timeout=90, key_prefix=_index_cache_key)
+@cache.cached(timeout=180, key_prefix=_index_cache_key)
 def index():
     csv_path_setting = current_app.config.get("CURVA_CSV_PATH") or current_app.config.get("CSV_PATH")
     csv_path = Path(csv_path_setting or "/var/tmp/curva.csv")
@@ -245,7 +245,7 @@ def index():
     canonical_home = url_for("main.index", _external=True)
     chart_url = f"{canonical_home}#grafico-etna"
     og_image = url_for("static", filename="icons/icon-512.png", _external=True)
-    page_title = "Monitoraggio Etna in tempo reale – Grafico tremore vulcanico INGV"
+    page_title = "Monitoraggio Etna in tempo reale – Grafico INGV"
     page_description = (
         "Grafico aggiornato del tremore vulcanico dell'Etna con dati ufficiali INGV, "
         "indicazioni sulle soglie operative e descrizione del monitoraggio in tempo reale."

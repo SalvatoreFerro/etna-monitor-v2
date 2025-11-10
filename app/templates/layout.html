@@ -47,6 +47,16 @@
     <link rel="preconnect" href="https://cdn.plot.ly" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet" />
 
+    <link
+      rel="preload"
+      as="style"
+      href="{{ url_for('static', filename='css/theme.css') }}?v={{ STATIC_ASSET_VERSION }}"
+    />
+    <link
+      rel="preload"
+      as="style"
+      href="{{ url_for('static', filename='css/style.css') }}?v={{ STATIC_ASSET_VERSION }}"
+    />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}?v={{ STATIC_ASSET_VERSION }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v={{ STATIC_ASSET_VERSION }}" />
     <link rel="stylesheet" href="{{ url_for('static', filename='css/accessibility.css') }}?v={{ STATIC_ASSET_VERSION }}" />
