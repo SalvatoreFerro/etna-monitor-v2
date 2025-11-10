@@ -1,11 +1,13 @@
 {% extends "layout.html" %}
 
 {% block content %}
+{% set share_url = request.url_root %}
+{% set share_text = "Monitora il tremore vulcanico dell'Etna in tempo reale su EtnaMonitor" %}
 <section class="hero">
   <div class="container container--wide hero__layout">
     <div class="hero__copy">
       <span class="eyebrow">Monitoraggio in tempo reale</span>
-      <h1>Il tremore dell'Etna torna chiaro e familiare</h1>
+      <h1>Monitoraggio in tempo reale del tremore vulcanico dell’Etna (grafico INGV)</h1>
       <p class="lead">
         Abbiamo riportato il grafico storico in primo piano, con colori sobri, lettura immediata e pulsanti rapidi per avere
         sotto controllo l'attività vulcanica senza fronzoli.
@@ -13,6 +15,27 @@
       <div class="hero__actions">
         <button id="quick-update-btn" class="btn btn-primary" type="button">Aggiorna dati live</button>
         <a class="btn btn-secondary" href="{{ url_for('main.tecnologia') }}">Approfondisci la raccolta dati</a>
+      </div>
+      <div class="hero__share" aria-label="Condividi EtnaMonitor">
+        <span class="muted">Condividi:</span>
+        <a
+          class="hero__share-link"
+          href="https://twitter.com/intent/tweet?text={{ share_text | urlencode }}&url={{ share_url | urlencode }}"
+          target="_blank"
+          rel="noopener"
+        >X</a>
+        <a
+          class="hero__share-link"
+          href="https://t.me/share/url?url={{ share_url | urlencode }}&text={{ share_text | urlencode }}"
+          target="_blank"
+          rel="noopener"
+        >Telegram</a>
+        <a
+          class="hero__share-link"
+          href="https://www.facebook.com/sharer/sharer.php?u={{ share_url | urlencode }}"
+          target="_blank"
+          rel="noopener"
+        >Facebook</a>
       </div>
       <div class="hero__meta">
         <div class="chart-card__status">
@@ -77,6 +100,81 @@
           </div>
         {% endif %}
       </div>
+    </div>
+  </div>
+</section>
+
+<section class="home-section home-section--guide">
+  <div class="container">
+    <div class="home-section__header">
+      <span class="eyebrow">Metodologia</span>
+      <h2>Come leggere il grafico INGV del tremore</h2>
+    </div>
+    <div class="home-section__body">
+      <p>
+        Il grafico del tremore vulcanico mostra l’energia registrata dai sensori INGV nel tempo e mette in relazione ampiezza,
+        frequenza e variazioni improvvise. Le bande colorate corrispondono ai diversi livelli di attività e permettono di
+        capire a colpo d’occhio quando il vulcano passa da uno stato di quiete a fasi più vivaci. La scala logaritmica rende
+        confrontabili episodi distanti nel tempo, mentre i pulsanti 24h, 3 giorni e 7 giorni consentono di analizzare sia le
+        oscillazioni minute sia le tendenze più lente.
+      </p>
+      <p>
+        Quando la curva supera le soglie gialla e arancione è opportuno confrontare il dato con le note ufficiali INGV e con
+        gli aggiornamenti visuali delle webcam. I tooltip interattivi svelano valore, timestamp UTC e eventuali annotazioni
+        della community. In questo modo ogni appassionato o tecnico può validare rapidamente l’intensità di un episodio,
+        compararlo con eventi passati e avviare comunicazioni puntuali verso i team di protezione civile o i gruppi di
+        ricerca collegati.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="home-section home-section--data">
+  <div class="container">
+    <div class="home-section__header">
+      <span class="eyebrow">Aggiornamenti</span>
+      <h2>Frequenza di aggiornamento &amp; fonti dati</h2>
+    </div>
+    <div class="home-section__body">
+      <p>
+        La pipeline di EtnaMonitor scarica il file CSV del tremore pubblicato dal Centro Nazionale Terremoti e lo elabora
+        ogni cinque minuti, verificando checksum e completezza prima di inserirlo nella serie storica. Quando il documento
+        dell’INGV presenta ritardi o colonne incoerenti, il sistema esegue retry automatici, segnala l’anomalia nel log pubblico
+        e attiva un alert interno affinché i gestori possano intervenire. Tutti i campioni vengono salvati in UTC per evitare
+        ambiguità durante il cambio di ora legale e sono successivamente arricchiti con statistiche giornaliere.
+      </p>
+      <p>
+        Oltre al tremore, la piattaforma integra un archivio di immagini webcam, dataset sismici e note ufficiali raccolte da
+        INGV Catania e Protezione Civile Regionale. Queste fonti sono collegate tra loro tramite identificatori temporali
+        univoci, così da confrontare eventi anche a distanza di anni. La roadmap prevede l’inclusione di bollettini meteo,
+        dati satellitari e flussi IoT sperimentali che potranno migliorare ulteriormente la capacità di forecasting del
+        sistema, mantenendo sempre tracciabile la provenienza di ogni singolo valore.
+      </p>
+    </div>
+  </div>
+</section>
+
+<section class="home-section home-section--alerts">
+  <div class="container">
+    <div class="home-section__header">
+      <span class="eyebrow">Notifiche</span>
+      <h2>Avvisi Telegram e soglie operative</h2>
+    </div>
+    <div class="home-section__body">
+      <p>
+        Il bot Telegram <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">@etna_turi_bot</a> invia in modo
+        proattivo le notifiche sugli scarti di tremore rispetto alla media mobile, classificando gli eventi in quattro livelli:
+        informativo, attenzione, preallarme e operativo. Le soglie sono calibrate sulle bande INGV e possono essere
+        personalizzate da guide alpine, operatori turistici e protezione civile locale tramite pannello dedicato. Quando il
+        livello supera l’arancione, il messaggio include anche snapshot del grafico e link alle webcam più rilevanti.
+      </p>
+      <p>
+        Ogni avviso è accompagnato da suggerimenti pratici, come la revisione dei piani di evacuazione o il controllo dei
+        canali radio di emergenza. Gli utenti autenticati possono rispondere ai messaggi del bot per allegare foto e note sul
+        campo: il sistema archivia i contributi e li rende disponibili nel forum con tag geolocalizzati. Questo canale diretto
+        riduce la latenza di comunicazione, mantiene alta la consapevolezza situazionale e favorisce decisioni coordinate anche
+        durante fasi di attività intensa dell’Etna.
+      </p>
     </div>
   </div>
 </section>

@@ -51,6 +51,7 @@ from .bootstrap import (
     ensure_schema_current,
     ensure_user_schema_guard,
 )
+from .assets.social_preview import ensure_social_preview_image
 from .models import db
 from .filters import md
 from .utils.csrf import generate_csrf_token
@@ -282,6 +283,12 @@ def create_app(config_overrides: dict | None = None):
         bool(os.getenv("GA_MEASUREMENT_ID")),
     )
 
+    try:
+        ensure_social_preview_image(app.static_folder, logger=app.logger)
+    except Exception as exc:  # pragma: no cover - should only happen on IO failures
+        app.logger.error("[SEO] Failed to ensure og-image.png: %s", exc, exc_info=True)
+        raise
+
     warnings.filterwarnings("ignore", message="Using the in-memory storage")
 
     app_env = (
@@ -452,10 +459,10 @@ def create_app(config_overrides: dict | None = None):
     def inject_meta_defaults():
         canonical_base = _canonical_base()
         canonical_url = f"{canonical_base}{request.path}"
-        default_title = "EtnaMonitor – Monitoraggio Etna in tempo reale"
+        default_title = "Monitoraggio Etna in tempo reale – Grafico tremore INGV"
         default_description = (
-            "Monitoraggio in tempo reale del tremore vulcanico dell'Etna con dati INGV, "
-            "grafici interattivi e avvisi per gli appassionati."
+            "Consulta il grafico del tremore vulcanico dell'Etna in tempo reale con serie storiche INGV, "
+            "analisi contestuali e avvisi per appassionati, tecnici e operatori sul territorio."
         )
         computed_og_image = url_for(
             "static",
@@ -472,8 +479,9 @@ def create_app(config_overrides: dict | None = None):
                 "url": canonical_base,
                 "logo": logo_url,
                 "sameAs": [
-                    "https://www.linkedin.com/in/ferrosalvatore",
-                    "https://www.ct.ingv.it",
+                    "https://www.instagram.com/etna_monitor_official?igsh=Mm9oeXlmOWZsNHNm",
+                    "https://www.facebook.com/share/17jhakJdrv/?mibextid=wwXIfr",
+                    "https://t.me/etna_turi_bot",
                 ],
                 "contactPoint": [
                     {
@@ -491,6 +499,11 @@ def create_app(config_overrides: dict | None = None):
                 "url": canonical_base,
                 "inLanguage": "it-IT",
                 "isAccessibleForFree": True,
+                "potentialAction": {
+                    "@type": "SearchAction",
+                    "target": f"{canonical_base}/search?q={{search_term_string}}",
+                    "query-input": "required name=search_term_string",
+                },
             },
         ]
 
@@ -808,6 +821,19 @@ def create_app(config_overrides: dict | None = None):
             response.headers.setdefault(
                 "Cache-Control", "public, max-age=604800, immutable"
             )
+        else:
+            cache_exempt_prefixes = ("/auth", "/dashboard", "/api")
+            if any(request.path.startswith(prefix) for prefix in cache_exempt_prefixes):
+                response.headers.pop("Cache-Control", None)
+                response.headers.setdefault(
+                    "Cache-Control", "no-store, private, max-age=0"
+                )
+            elif (
+                request.method == "GET"
+                and response.status_code == 200
+                and request.blueprint not in {"auth", "dashboard", "api"}
+            ):
+                response.headers.setdefault("Cache-Control", "public, max-age=300")
         return response
 
     @app.errorhandler(500)
