@@ -5,7 +5,7 @@ from __future__ import annotations
 
 revision = "20251207_merge_post_sanitized_html_branch"
 down_revision = (
-    "202502140001_add_post_sanitized_html",
+    "202503010001",
     "20251206_account_community_moderation",
 )
 branch_labels = None
