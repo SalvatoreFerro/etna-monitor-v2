@@ -55,6 +55,7 @@ STYLE_CDNS = [
 
 FONT_CDNS = [
     "https://fonts.gstatic.com",
+    "https://cdnjs.cloudflare.com",
 ]
 
 FRAME_GOOGLE = [
@@ -106,25 +107,16 @@ def apply_csp_headers(response) -> object:
     if getattr(response, "_csp_header_applied", False):
         return response
 
+    policy = copy.deepcopy(BASE_CSP)
     nonce = getattr(request, "csp_nonce", None)
-    nonce_fragment = f" 'nonce-{nonce}'" if nonce else ""
+    if nonce:
+        nonce_fragment = f"'nonce-{nonce}'"
+        for directive in ("script-src", "script-src-elem"):
+            sources = policy.get(directive)
+            if isinstance(sources, list) and nonce_fragment not in sources:
+                sources.append(nonce_fragment)
 
-    script_sources = (
-        f"script-src 'self'{nonce_fragment} https://www.googletagmanager.com https://www.google-analytics.com"
-    )
-    policy_parts = [
-        "default-src 'self'",
-        script_sources,
-        "connect-src 'self' https://www.google-analytics.com https://www.googletagmanager.com",
-        "img-src 'self' data: https://www.google-analytics.com https://www.googletagmanager.com",
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdnjs.cloudflare.com",
-        "font-src 'self' https://fonts.gstatic.com",
-        "object-src 'none'",
-        "base-uri 'self'",
-        "frame-ancestors 'none'",
-    ]
-
-    response.headers.set("Content-Security-Policy", "; ".join(policy_parts))
+    response.headers.set("Content-Security-Policy", serialize_csp(policy))
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
