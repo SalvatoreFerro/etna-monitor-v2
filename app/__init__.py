@@ -459,7 +459,7 @@ def create_app(config_overrides: dict | None = None):
     def inject_meta_defaults():
         canonical_base = _canonical_base()
         canonical_url = f"{canonical_base}{request.path}"
-        default_title = "Monitoraggio Etna in tempo reale – Grafico tremore INGV"
+        default_title = "Monitoraggio Etna in tempo reale – Grafico INGV"
         default_description = (
             "Consulta il grafico del tremore vulcanico dell'Etna in tempo reale con serie storiche INGV, "
             "analisi contestuali e avvisi per appassionati, tecnici e operatori sul territorio."

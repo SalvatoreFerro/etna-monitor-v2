@@ -3,102 +3,104 @@
 {% block content %}
 {% set share_url = request.url_root %}
 {% set share_text = "Monitora il tremore vulcanico dell'Etna in tempo reale su EtnaMonitor" %}
-<section class="hero">
+<section class="hero hero--compact">
   <div class="container container--wide hero__layout">
-    <div class="hero__copy">
-      <span class="eyebrow">Monitoraggio in tempo reale</span>
+    <div class="hero__content">
+      <span class="eyebrow hero__eyebrow">Monitoraggio in tempo reale</span>
       <h1>Monitoraggio in tempo reale del tremore vulcanico dell’Etna (grafico INGV)</h1>
-      <p class="lead">
+      <div class="hero__chart-wrapper">
+        <div class="chart-card" id="grafico-etna" aria-labelledby="grafico-title">
+          <div class="chart-card__status">
+            <div>
+              <span class="pill">Grafico tremore</span>
+            </div>
+            <span class="muted">Scala logaritmica 10<sup>-1</sup>–10<sup>1</sup> · aggiornamento 5'</span>
+          </div>
+          <h2 id="grafico-title">Curva del tremore vulcanico</h2>
+          <div class="chart-range-selector" role="group" aria-label="Intervallo temporale">
+            <button type="button" class="chart-range-btn" data-limit="288">24h</button>
+            <button type="button" class="chart-range-btn" data-limit="864">3 giorni</button>
+            <button type="button" class="chart-range-btn is-active" data-limit="2016">7 giorni</button>
+          </div>
+          {% if csv_snapshot.has_data %}
+            <div id="home-preview-loading" class="chart-loading" aria-live="polite">
+              <div class="chart-spinner" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <p>Caricamento dati INGV…</p>
+            </div>
+            <div id="home-preview-plot" aria-hidden="true"></div>
+            {% if preview_rows %}
+              <script id="home-bootstrap-data" type="application/json" nonce="{{ csp_nonce() }}">
+                {{ preview_rows | tojson(indent=0) | safe }}
+              </script>
+            {% endif %}
+          {% else %}
+            <div class="chart-loading" aria-live="polite">
+              <p><strong>Dati in preparazione</strong></p>
+              <p>
+                Il file <code>{{ csv_snapshot.path }}</code> risulta temporaneamente vuoto (motivo: {{ csv_snapshot.placeholder_reason }}).
+                Riprova più tardi: il grafico si popolerà automaticamente.
+              </p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+      <p class="lead hero__lead">
         Abbiamo riportato il grafico storico in primo piano, con colori sobri, lettura immediata e pulsanti rapidi per avere
         sotto controllo l'attività vulcanica senza fronzoli.
       </p>
       <div class="hero__actions">
         <button id="quick-update-btn" class="btn btn-primary" type="button">Aggiorna dati live</button>
+        <button class="btn btn-ghost" type="button" data-scroll-target="#grafico-etna">Vai al grafico</button>
         <a class="btn btn-secondary" href="{{ url_for('main.tecnologia') }}">Approfondisci la raccolta dati</a>
       </div>
-      <div class="hero__share" aria-label="Condividi EtnaMonitor">
-        <span class="muted">Condividi:</span>
-        <a
-          class="hero__share-link"
-          href="https://twitter.com/intent/tweet?text={{ share_text | urlencode }}&url={{ share_url | urlencode }}"
-          target="_blank"
-          rel="noopener"
-        >X</a>
-        <a
-          class="hero__share-link"
-          href="https://t.me/share/url?url={{ share_url | urlencode }}&text={{ share_text | urlencode }}"
-          target="_blank"
-          rel="noopener"
-        >Telegram</a>
-        <a
-          class="hero__share-link"
-          href="https://www.facebook.com/sharer/sharer.php?u={{ share_url | urlencode }}"
-          target="_blank"
-          rel="noopener"
-        >Facebook</a>
-      </div>
-      <div class="hero__meta">
-        <div class="chart-card__status">
-          <span>
-            <span class="status-dot" id="live-status-indicator" aria-hidden="true"></span>
-            <span id="live-status-text">Connessione in corso…</span>
-          </span>
-        </div>
-        <dl class="metric-list">
-          <div class="metric">
-            <dt>Ultimo aggiornamento</dt>
-            <dd id="live-last-update">{% if latest_timestamp_display %}{{ latest_timestamp_display }}{% else %}--{% endif %}</dd>
+      <div class="hero__quick-info">
+        <div class="hero__meta">
+          <div class="chart-card__status">
+            <span>
+              <span class="status-dot" id="live-status-indicator" aria-hidden="true"></span>
+              <span id="live-status-text">Connessione in corso…</span>
+            </span>
           </div>
-          <div class="metric">
-            <dt>Campioni elaborati</dt>
-            <dd id="live-data-points">{% if data_points_count %}{{ data_points_count }}{% else %}--{% endif %}</dd>
-          </div>
-          <div class="metric">
-            <dt>Attività</dt>
-            <dd><span id="live-activity-badge" class="activity-badge">In caricamento…</span></dd>
-          </div>
-        </dl>
-      </div>
-    </div>
-
-    <div class="hero__visual">
-      <div class="chart-card" id="grafico-etna" aria-labelledby="grafico-title">
-        <div class="chart-card__status">
-          <div>
-            <span class="pill">Grafico tremore</span>
-          </div>
-          <span class="muted">Scala logaritmica 10<sup>-1</sup>–10<sup>1</sup> · aggiornamento 5'</span>
-        </div>
-        <h2 id="grafico-title">Curva del tremore vulcanico</h2>
-        <div class="chart-range-selector" role="group" aria-label="Intervallo temporale">
-          <button type="button" class="chart-range-btn" data-limit="288">24h</button>
-          <button type="button" class="chart-range-btn" data-limit="864">3 giorni</button>
-          <button type="button" class="chart-range-btn is-active" data-limit="2016">7 giorni</button>
-        </div>
-        {% if csv_snapshot.has_data %}
-          <div id="home-preview-loading" class="chart-loading" aria-live="polite">
-            <div class="chart-spinner" aria-hidden="true">
-              <span></span>
-              <span></span>
-              <span></span>
+          <dl class="metric-list">
+            <div class="metric">
+              <dt>Ultimo aggiornamento</dt>
+              <dd id="live-last-update">{% if latest_timestamp_display %}{{ latest_timestamp_display }}{% else %}--{% endif %}</dd>
             </div>
-            <p>Caricamento dati INGV…</p>
-          </div>
-          <div id="home-preview-plot" aria-hidden="true"></div>
-          {% if preview_rows %}
-            <script id="home-bootstrap-data" type="application/json" nonce="{{ csp_nonce() }}">
-              {{ preview_rows | tojson(indent=0) | safe }}
-            </script>
-          {% endif %}
-        {% else %}
-          <div class="chart-loading" aria-live="polite">
-            <p><strong>Dati in preparazione</strong></p>
-            <p>
-              Il file <code>{{ csv_snapshot.path }}</code> risulta temporaneamente vuoto (motivo: {{ csv_snapshot.placeholder_reason }}).
-              Riprova più tardi: il grafico si popolerà automaticamente.
-            </p>
-          </div>
-        {% endif %}
+            <div class="metric">
+              <dt>Campioni elaborati</dt>
+              <dd id="live-data-points">{% if data_points_count %}{{ data_points_count }}{% else %}--{% endif %}</dd>
+            </div>
+            <div class="metric">
+              <dt>Attività</dt>
+              <dd><span id="live-activity-badge" class="activity-badge">In caricamento…</span></dd>
+            </div>
+          </dl>
+        </div>
+        <div class="hero__share" aria-label="Condividi EtnaMonitor">
+          <span class="muted">Condividi:</span>
+          <a
+            class="hero__share-link"
+            href="https://twitter.com/intent/tweet?text={{ share_text | urlencode }}&url={{ share_url | urlencode }}"
+            target="_blank"
+            rel="noopener"
+          >X</a>
+          <a
+            class="hero__share-link"
+            href="https://t.me/share/url?url={{ share_url | urlencode }}&text={{ share_text | urlencode }}"
+            target="_blank"
+            rel="noopener"
+          >Telegram</a>
+          <a
+            class="hero__share-link"
+            href="https://www.facebook.com/sharer/sharer.php?u={{ share_url | urlencode }}"
+            target="_blank"
+            rel="noopener"
+          >Facebook</a>
+        </div>
       </div>
     </div>
   </div>
@@ -106,11 +108,25 @@
 
 <section class="home-section home-section--guide">
   <div class="container">
-    <div class="home-section__header">
-      <span class="eyebrow">Metodologia</span>
-      <h2>Come leggere il grafico INGV del tremore</h2>
+    <div class="home-section__header home-section__header--collapsible">
+      <div class="home-section__heading">
+        <span class="eyebrow">Metodologia</span>
+        <h2>Come leggere il grafico INGV del tremore</h2>
+      </div>
+      <button
+        class="home-section__toggle"
+        type="button"
+        aria-expanded="true"
+        aria-controls="section-guide"
+        data-collapse-target="#section-guide"
+        data-label-open="Nascondi"
+        data-label-closed="Espandi"
+      >
+        <span class="home-section__toggle-label">Nascondi</span>
+        <span class="home-section__toggle-icon" aria-hidden="true"></span>
+      </button>
     </div>
-    <div class="home-section__body">
+    <div class="home-section__body" id="section-guide">
       <p>
         Il grafico del tremore vulcanico mostra l’energia registrata dai sensori INGV nel tempo e mette in relazione ampiezza,
         frequenza e variazioni improvvise. Le bande colorate corrispondono ai diversi livelli di attività e permettono di
@@ -131,11 +147,25 @@
 
 <section class="home-section home-section--data">
   <div class="container">
-    <div class="home-section__header">
-      <span class="eyebrow">Aggiornamenti</span>
-      <h2>Frequenza di aggiornamento &amp; fonti dati</h2>
+    <div class="home-section__header home-section__header--collapsible">
+      <div class="home-section__heading">
+        <span class="eyebrow">Aggiornamenti</span>
+        <h2>Frequenza di aggiornamento &amp; fonti dati</h2>
+      </div>
+      <button
+        class="home-section__toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="section-data"
+        data-collapse-target="#section-data"
+        data-label-open="Nascondi"
+        data-label-closed="Espandi"
+      >
+        <span class="home-section__toggle-label">Espandi</span>
+        <span class="home-section__toggle-icon" aria-hidden="true"></span>
+      </button>
     </div>
-    <div class="home-section__body">
+    <div class="home-section__body" id="section-data" hidden>
       <p>
         La pipeline di EtnaMonitor scarica il file CSV del tremore pubblicato dal Centro Nazionale Terremoti e lo elabora
         ogni cinque minuti, verificando checksum e completezza prima di inserirlo nella serie storica. Quando il documento
@@ -156,11 +186,25 @@
 
 <section class="home-section home-section--alerts">
   <div class="container">
-    <div class="home-section__header">
-      <span class="eyebrow">Notifiche</span>
-      <h2>Avvisi Telegram e soglie operative</h2>
+    <div class="home-section__header home-section__header--collapsible">
+      <div class="home-section__heading">
+        <span class="eyebrow">Notifiche</span>
+        <h2>Avvisi Telegram e soglie operative</h2>
+      </div>
+      <button
+        class="home-section__toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="section-alerts"
+        data-collapse-target="#section-alerts"
+        data-label-open="Nascondi"
+        data-label-closed="Espandi"
+      >
+        <span class="home-section__toggle-label">Espandi</span>
+        <span class="home-section__toggle-icon" aria-hidden="true"></span>
+      </button>
     </div>
-    <div class="home-section__body">
+    <div class="home-section__body" id="section-alerts" hidden>
       <p>
         Il bot Telegram <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">@etna_turi_bot</a> invia in modo
         proattivo le notifiche sugli scarti di tremore rispetto alla media mobile, classificando gli eventi in quattro livelli:
@@ -179,41 +223,57 @@
   </div>
 </section>
 
-<section class="home-section">
+<section class="home-section home-section--experience">
   <div class="container">
-    <div class="home-section__header">
-      <span class="eyebrow">Experience</span>
-      <h2>Un cruscotto che parla il linguaggio dei dati</h2>
-      <p class="lead">Nuovi componenti, nuove gerarchie visive e una palette pensata per consultazioni rapide su mobile e desktop.</p>
+    <div class="home-section__header home-section__header--collapsible">
+      <div class="home-section__heading">
+        <span class="eyebrow">Experience</span>
+        <h2>Un cruscotto che parla il linguaggio dei dati</h2>
+      </div>
+      <button
+        class="home-section__toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="section-experience"
+        data-collapse-target="#section-experience"
+        data-label-open="Nascondi"
+        data-label-closed="Espandi"
+      >
+        <span class="home-section__toggle-label">Espandi</span>
+        <span class="home-section__toggle-icon" aria-hidden="true"></span>
+      </button>
     </div>
-    <div class="feature-grid">
-      <article class="feature-card">
-        <h3>Pipeline INGV → insight</h3>
-        <p>Download, normalizzazione e storicizzazione automatica di ogni campione pubblicato dall'INGV.</p>
-        <ul>
-          <li>Controlli checksum e fallback automatici</li>
-          <li>Serie storica uniforme e arricchita di metadati</li>
-          <li>API pubblica per integrazioni esterne</li>
-        </ul>
-      </article>
-      <article class="feature-card">
-        <h3>AI Early Warning</h3>
-        <p>Modelli proprietari individuano pattern e anomalie, suggerendo scenari e livelli di rischio dinamici.</p>
-        <ul>
-          <li>Feature engineering adattivo</li>
-          <li>Notifiche Telegram contestuali</li>
-          <li>Storico eventi con annotazioni</li>
-        </ul>
-      </article>
-      <article class="feature-card">
-        <h3>UX multiscreen</h3>
-        <p>Layout fluidi, tipografia leggibile e interazioni curate per dispositivi mobile, tablet e desktop.</p>
-        <ul>
-          <li>Mobile-first con breakpoints dedicati</li>
-          <li>Componenti glassmorphism ottimizzati</li>
-          <li>Focus state e accessibilità a contrasto elevato</li>
-        </ul>
-      </article>
+    <div class="home-section__body" id="section-experience" hidden>
+      <p class="lead">Nuovi componenti, nuove gerarchie visive e una palette pensata per consultazioni rapide su mobile e desktop.</p>
+      <div class="feature-grid">
+        <article class="feature-card">
+          <h3>Pipeline INGV → insight</h3>
+          <p>Download, normalizzazione e storicizzazione automatica di ogni campione pubblicato dall'INGV.</p>
+          <ul>
+            <li>Controlli checksum e fallback automatici</li>
+            <li>Serie storica uniforme e arricchita di metadati</li>
+            <li>API pubblica per integrazioni esterne</li>
+          </ul>
+        </article>
+        <article class="feature-card">
+          <h3>AI Early Warning</h3>
+          <p>Modelli proprietari individuano pattern e anomalie, suggerendo scenari e livelli di rischio dinamici.</p>
+          <ul>
+            <li>Feature engineering adattivo</li>
+            <li>Notifiche Telegram contestuali</li>
+            <li>Storico eventi con annotazioni</li>
+          </ul>
+        </article>
+        <article class="feature-card">
+          <h3>UX multiscreen</h3>
+          <p>Layout fluidi, tipografia leggibile e interazioni curate per dispositivi mobile, tablet e desktop.</p>
+          <ul>
+            <li>Mobile-first con breakpoints dedicati</li>
+            <li>Componenti glassmorphism ottimizzati</li>
+            <li>Focus state e accessibilità a contrasto elevato</li>
+          </ul>
+        </article>
+      </div>
     </div>
   </div>
 </section>
@@ -340,5 +400,6 @@
 {{ super() }}
 {% set STATIC_ASSET_VERSION = static_asset_version %}
 <script defer src="{{ url_for('static', filename='js/plotly.min.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
+<script defer src="{{ url_for('static', filename='js/home.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
 <script defer src="{{ url_for('static', filename='js/chart.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
 {% endblock %}
