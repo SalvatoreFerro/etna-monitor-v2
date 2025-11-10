@@ -11,6 +11,11 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.models import db
 from app.models.partner import Partner, PartnerCategory, PartnerSubscription
+from app.services.partner_categories import (
+    DEFAULT_CATEGORY_FALLBACKS,
+    StaticCategory,
+    missing_table_error,
+)
 
 
 bp = Blueprint("category", __name__, url_prefix="/categoria")
@@ -76,8 +81,8 @@ def category_view(slug: str):
         )
     except SQLAlchemyError as exc:  # pragma: no cover - defensive logging
         db.session.rollback()
-        if _missing_table_error(exc, "partner_categories"):
-            static_category = _DEFAULT_CATEGORY_FALLBACKS.get(slug)
+        if missing_table_error(exc, "partner_categories"):
+            static_category: StaticCategory | None = DEFAULT_CATEGORY_FALLBACKS.get(slug)
             if static_category is None:
                 current_app.logger.warning(
                     "Category %s requested but partner_categories table missing and no fallback available",
@@ -97,20 +102,6 @@ def category_view(slug: str):
 
     if category is None:
         abort(404)
-
-    def _missing_subscription_table_error(err: SQLAlchemyError) -> bool:
-        message = str(getattr(err, "orig", err)).lower()
-        if "partner_subscriptions" not in message:
-            return False
-        return any(
-            hint in message
-            for hint in (
-                "no such table",
-                "does not exist",
-                "undefined table",
-                "unknown table",
-            )
-        )
 
     try:
         if getattr(category, "id", None) is None:
@@ -141,7 +132,7 @@ def category_view(slug: str):
             )
     except SQLAlchemyError as exc:  # pragma: no cover - defensive logging
         db.session.rollback()
-        if _missing_table_error(exc, "partner_subscriptions"):
+        if missing_table_error(exc, "partner_subscriptions"):
             current_app.logger.warning(
                 "Partner subscriptions table unavailable; falling back to empty listing for category %s",
                 slug,

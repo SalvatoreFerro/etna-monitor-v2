@@ -16,6 +16,10 @@ from app.models.partner import (
     PartnerSubscription,
     generate_invoice_number,
 )
+from app.services.partner_categories import (
+    DEFAULT_CATEGORY_FALLBACKS,
+    ensure_partner_categories,
+)
 from app.services.partner_directory import (
     can_approve_partner,
     create_subscription,
@@ -175,6 +179,20 @@ def test_category_view_handles_missing_category_table(client, app):
             )
         )
         db.session.commit()
+
+
+def test_ensure_partner_categories_bootstraps_defaults(app):
+    with app.app_context():
+        db.session.execute(db.text("DROP TABLE partner_categories"))
+        db.session.commit()
+
+        categories = ensure_partner_categories()
+        slugs = {category.slug for category in categories}
+        assert slugs == set(DEFAULT_CATEGORY_FALLBACKS.keys())
+
+        # ensure idempotency
+        categories_again = ensure_partner_categories()
+        assert len(categories_again) == len(categories)
 
 
 def test_price_first_vs_renewal(app, category, partner_factory):

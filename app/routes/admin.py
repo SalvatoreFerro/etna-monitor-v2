@@ -16,6 +16,7 @@ from flask import (
 )
 from flask_login import current_user
 from sqlalchemy import and_, cast, func, or_
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
 
 from ..utils.auth import admin_required
@@ -32,6 +33,12 @@ from ..models.user import User
 from ..models.event import Event
 from ..models.partner import Partner, PartnerCategory, PartnerSubscription
 from ..services.gamification_service import ensure_demo_profiles
+from ..services.partner_categories import (
+    CATEGORY_FORM_FIELDS,
+    ensure_partner_categories,
+    missing_table_error,
+    serialize_category_fields,
+)
 from ..services.partner_directory import (
     can_approve_partner,
     create_subscription,
@@ -1001,25 +1008,54 @@ def donations():
 @bp.route("/partners", methods=["GET"])
 @admin_required
 def partners_dashboard():
-    categories = (
-        PartnerCategory.query.order_by(PartnerCategory.sort_order, PartnerCategory.name).all()
-    )
-    partners = (
-        Partner.query.options(
-            joinedload(Partner.category),
-            joinedload(Partner.subscriptions),
+    try:
+        categories = (
+            PartnerCategory.query.order_by(PartnerCategory.sort_order, PartnerCategory.name).all()
         )
-        .order_by(Partner.created_at.desc())
-        .all()
-    )
+    except SQLAlchemyError as exc:
+        db.session.rollback()
+        if missing_table_error(exc, "partner_categories"):
+            current_app.logger.warning(
+                "Partner categories table missing. Bootstrapping defaults for admin dashboard."
+            )
+            categories = ensure_partner_categories()
+        else:  # pragma: no cover - unexpected failure propagated for visibility
+            current_app.logger.exception("Unable to load partner categories", exc_info=exc)
+            raise
+
+    try:
+        partners = (
+            Partner.query.options(
+                joinedload(Partner.category),
+                joinedload(Partner.subscriptions),
+            )
+            .order_by(Partner.created_at.desc())
+            .all()
+        )
+    except SQLAlchemyError as exc:
+        db.session.rollback()
+        if missing_table_error(exc, "partner_subscriptions"):
+            current_app.logger.warning(
+                "Partner subscriptions table unavailable. Showing partner list without subscriptions."
+            )
+            partners = (
+                Partner.query.options(joinedload(Partner.category))
+                .order_by(Partner.created_at.desc())
+                .all()
+            )
+        else:  # pragma: no cover
+            current_app.logger.exception("Unable to load partners", exc_info=exc)
+            partners = []
 
     usage = {category.id: slots_usage(category) for category in categories}
+    category_fields = serialize_category_fields(categories)
 
     return render_template(
         "admin/partners_directory.html",
         categories=categories,
         partners=partners,
         usage=usage,
+        category_fields=category_fields,
         payment_methods=current_app.config.get("PARTNER_PAYMENT_METHODS", ("paypal_manual", "cash")),
         current_year=datetime.utcnow().year,
     )
@@ -1043,6 +1079,35 @@ def partners_create():
         flash("Categoria non trovata.", "error")
         return redirect(url_for("admin.partners_dashboard"))
 
+    extra_fields: dict[str, object] = {}
+    definitions = CATEGORY_FORM_FIELDS.get(category.slug, [])
+    for field in definitions:
+        field_name = field["name"]
+        raw_value = (request.form.get(field_name) or "").strip()
+        if not raw_value:
+            if field.get("required"):
+                flash(f"{field['label']} è obbligatorio.", "error")
+                return redirect(url_for("admin.partners_dashboard"))
+            continue
+
+        field_type = field.get("type", "text")
+        if field_type == "number":
+            try:
+                value = int(raw_value)
+            except ValueError:
+                flash(f"{field['label']} deve essere un numero valido.", "error")
+                return redirect(url_for("admin.partners_dashboard"))
+            min_value = field.get("min")
+            if isinstance(min_value, int) and value < min_value:
+                flash(
+                    f"{field['label']} deve essere maggiore o uguale a {min_value}.",
+                    "error",
+                )
+                return redirect(url_for("admin.partners_dashboard"))
+            extra_fields[field_name] = value
+        else:
+            extra_fields[field_name] = raw_value
+
     partner = Partner(
         category=category,
         name=name,
@@ -1059,6 +1124,7 @@ def partners_create():
         city=(request.form.get("city") or "").strip() or None,
         featured=bool(request.form.get("featured")),
         status="draft",
+        extra_data=extra_fields,
     )
     partner.slug = next_partner_slug(partner.name)
 
