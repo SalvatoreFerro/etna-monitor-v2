@@ -1,0 +1,8 @@
+Nuova richiesta lista d'attesa per {{ category.name }}
+
+Nome: {{ waitlist.name }}
+Email: {{ waitlist.email }}
+Telefono: {{ waitlist.phone or '—' }}
+Note: {{ waitlist.notes or '—' }}
+
+Gestisci la richiesta in admin → Partner.

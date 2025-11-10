@@ -1,230 +1,227 @@
-"""Utilities shared between public and admin partner flows."""
+"""Helpers for the partner directory flows."""
 
 from __future__ import annotations
 
+from collections import deque
+from datetime import datetime, timedelta
 import re
-from typing import Any, Iterable, Mapping, Tuple
-from urllib.parse import quote
+from typing import Iterable, Mapping
 
-from app.models.partner import PARTNER_CATEGORIES, Partner
+from flask import current_app, session
+from slugify import slugify
+from sqlalchemy.orm import joinedload
 
-
-_BOOL_TRUE = {"1", "true", "on", "yes", "y", "si", "sì"}
-_MAX_DESCRIPTION_LENGTH = 800
-_MAX_URL_LENGTH = 512
-_MAX_CONTACT_LENGTH = 255
-
-_PHONE_RE = re.compile(r"^(?:\+|00)?[\d\s().-]{6,}$")
-_URL_RE = re.compile(r"https?://", re.IGNORECASE)
+from app.models.partner import Partner, PartnerCategory
 
 
-def normalize_category(raw: str | None) -> str | None:
-    """Return a sanitized category or ``None`` if invalid."""
-
-    if not raw:
-        return None
-    value = raw.strip()
-    if value.lower() == "ristoranti":
-        value = "Ristorante"
-    if value in PARTNER_CATEGORIES:
-        return value
-    return None
+_CONTACT_ACTIONS_PRIORITY = {"call": 0, "whatsapp": 1, "email": 2, "website": 3, "social": 4}
+_ALLOWED_SOCIALS = {
+    "instagram": "Instagram",
+    "facebook": "Facebook",
+    "tiktok": "TikTok",
+}
+_RATE_LIMIT_SECONDS = 60
+_RATE_LIMIT_BUCKET = 3
 
 
-def _parse_bool(value: str | None, *, default: bool = False) -> bool:
-    if value is None:
-        return default
-    return value.strip().lower() in _BOOL_TRUE
+def partner_directory_enabled() -> bool:
+    return bool(current_app.config.get("PARTNER_DIRECTORY_ENABLED"))
 
 
-def _parse_float(value: str | None) -> float | None:
-    if value is None or value.strip() == "":
-        return None
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
+def require_partner_directory_enabled() -> None:
+    if not partner_directory_enabled():
+        from flask import abort
+
+        abort(404)
 
 
-def extract_partner_payload(
-    form: Mapping[str, Any], *, is_admin: bool = False
-) -> Tuple[dict[str, Any], list[str]]:
-    """Validate incoming partner fields and normalize the payload."""
+def slugify_partner_name(name: str) -> str:
+    base = slugify(name or "partner")[:110]
+    return base or "partner"
 
-    errors: list[str] = []
-    payload: dict[str, Any] = {}
 
-    name = (form.get("name") or "").strip()
-    if not name:
-        errors.append("Il nome dell'attività è obbligatorio.")
-    payload["name"] = name
+def next_partner_slug(name: str) -> str:
+    base = slugify_partner_name(name)
+    candidate = base
+    suffix = 1
+    while Partner.query.filter_by(slug=candidate).first():
+        suffix += 1
+        candidate = f"{base}-{suffix}"
+    return candidate
 
-    category = normalize_category(form.get("category"))
-    if category is None:
-        errors.append("Seleziona una categoria valida.")
-        category = "Altro"
-    payload["category"] = category
 
-    description = (form.get("description") or "").strip()
-    if len(description) > _MAX_DESCRIPTION_LENGTH:
-        errors.append("La descrizione deve contenere al massimo 800 caratteri.")
-    payload["description"] = description
+def load_category_with_partners(slug: str) -> PartnerCategory | None:
+    return (
+        PartnerCategory.query.options(
+            joinedload(PartnerCategory.partners).joinedload(Partner.subscriptions)
+        )
+        .filter_by(slug=slug, is_active=True)
+        .first()
+    )
 
-    website = (form.get("website") or "").strip()
-    if website and len(website) > _MAX_URL_LENGTH:
-        errors.append("Il link fornito è troppo lungo.")
-    payload["website"] = website
 
-    contact = (form.get("contact") or "").strip()
-    if contact and len(contact) > _MAX_CONTACT_LENGTH:
-        errors.append("Il contatto fornito è troppo lungo.")
-    payload["contact"] = contact
-
-    image_url = (form.get("image_url") or "").strip()
-    if image_url and len(image_url) > _MAX_URL_LENGTH:
-        errors.append("Il link dell'immagine è troppo lungo.")
-    payload["image_url"] = image_url
-
-    if is_admin:
-        payload["lat"] = _parse_float(form.get("lat"))
-        payload["lon"] = _parse_float(form.get("lon"))
-        payload["verified"] = _parse_bool(form.get("verified"))
-        payload["visible"] = _parse_bool(form.get("visible"), default=True)
-    else:
-        payload["lat"] = None
-        payload["lon"] = None
-        payload["verified"] = False
-        payload["visible"] = False
-
-    return payload, errors
+def filter_visible_partners(partners: Iterable[Partner], *, reference_date=None) -> list[Partner]:
+    visible = [partner for partner in partners if partner.is_publicly_visible(reference_date)]
+    visible.sort(
+        key=lambda partner: (
+            -int(partner.featured),
+            partner.sort_order,
+            partner.approved_at.timestamp() if partner.approved_at else float("inf"),
+        )
+    )
+    return visible
 
 
 def build_contact_actions(partner: Partner) -> list[dict[str, str]]:
-    """Return actionable contact buttons for a partner.
-
-    The legacy ``contact`` field is free text, so we try to detect common
-    patterns (emails, phone numbers, WhatsApp links, social URLs) and expose
-    them as structured actions that the template can render as CTA buttons.
-    """
-
-    if not partner.contact:
-        return []
-
     actions: list[dict[str, str]] = []
-    raw_tokens: Iterable[str] = re.split(r"[,;/\n]+", partner.contact)
 
-    for token in raw_tokens:
-        value = token.strip()
-        if not value:
-            continue
-
-        lower = value.lower()
-        if lower.startswith("tel:"):
-            number = value[4:]
-            actions.append(
-                {
-                    "href": f"tel:{number.strip()}",
-                    "label": "Chiama",
-                    "display": number.strip(),
-                }
-            )
-            continue
-
-        if "@" in value and " " not in value:
-            actions.append(
-                {
-                    "href": f"mailto:{value}",
-                    "label": "Scrivi via email",
-                    "display": value,
-                }
-            )
-            continue
-
-        if "wa.me" in lower or "whatsapp" in lower:
-            href = value if _URL_RE.search(value) else f"https://wa.me/{value}"
-            actions.append(
-                {
-                    "href": href,
-                    "label": "Chatta su WhatsApp",
-                    "display": value,
-                }
-            )
-            continue
-
-        if _URL_RE.search(value):
-            label = "Apri link"
-            if "instagram" in lower:
-                label = "Apri Instagram"
-            elif "facebook" in lower:
-                label = "Apri Facebook"
-            elif "tripadvisor" in lower:
-                label = "Leggi su TripAdvisor"
-            actions.append(
-                {
-                    "href": value,
-                    "label": label,
-                    "display": value,
-                }
-            )
-            continue
-
-        if _PHONE_RE.match(value):
-            normalized = re.sub(r"[^\d+]", "", value)
-            actions.append(
-                {
-                    "href": f"tel:{normalized}",
-                    "label": "Chiama",
-                    "display": value,
-                }
-            )
-            continue
-
+    if partner.phone:
+        sanitized = re.sub(r"[^\d+]", "", partner.phone)
         actions.append(
             {
-                "href": f"mailto:{quote(value)}",
-                "label": "Contatta",
-                "display": value,
+                "type": "call",
+                "label": "Chiama",
+                "href": f"tel:{sanitized}",
+                "display": partner.phone,
             }
         )
 
-    # Ensure deterministic order (emails first, then phones, then others)
-    priority = {"Scrivi via email": 0, "Chiama": 1, "Chatta su WhatsApp": 2}
-    actions.sort(key=lambda item: priority.get(item["label"], 3))
+    if partner.whatsapp:
+        sanitized = re.sub(r"[^\d+]", "", partner.whatsapp)
+        href = f"https://wa.me/{sanitized}"
+        actions.append(
+            {
+                "type": "whatsapp",
+                "label": "Chatta su WhatsApp",
+                "href": href,
+                "display": partner.whatsapp,
+            }
+        )
+
+    if partner.email:
+        actions.append(
+            {
+                "type": "email",
+                "label": "Scrivi via email",
+                "href": f"mailto:{partner.email}",
+                "display": partner.email,
+            }
+        )
+
+    if partner.website_url:
+        actions.append(
+            {
+                "type": "website",
+                "label": "Visita il sito",
+                "href": partner.website_url,
+                "display": partner.website_url,
+            }
+        )
+
+    for attr, label in _ALLOWED_SOCIALS.items():
+        value = getattr(partner, attr)
+        if value:
+            actions.append(
+                {
+                    "type": "social",
+                    "label": f"Apri {label}",
+                    "href": value,
+                    "display": value,
+                }
+            )
+
+    actions.sort(key=lambda item: (_CONTACT_ACTIONS_PRIORITY.get(item["type"], 99)))
     return actions
 
 
-def serialize_partner_for_ldjson(partner: Partner) -> dict[str, Any]:
-    """Convert partner data into a schema.org compatible dictionary."""
-
-    category = partner.category_label()
-    partner_type = "LocalBusiness"
-    if category == "Guide" or category == "Tour":
-        partner_type = "TouristAttraction"
-
-    data: dict[str, Any] = {
-        "@type": partner_type,
+def serialize_partner_for_ldjson(partner: Partner) -> dict[str, object]:
+    data: dict[str, object] = {
+        "@context": "https://schema.org",
+        "@type": "LocalBusiness",
         "name": partner.name,
-        "url": partner.website or "",
-        "description": partner.description or "",
-        "areaServed": "Etna, Sicilia",
-        "category": category,
-        "identifier": partner.id,
+        "url": current_app.config.get("SITE_URL", "https://www.etnamonitor.it")
+        + f"/categoria/{partner.category.slug}/{partner.slug}",
+        "description": partner.short_desc or partner.long_desc or "",
+        "address": {
+            "@type": "PostalAddress",
+            "streetAddress": partner.address or "",
+            "addressLocality": partner.city or "",
+            "addressRegion": "CT",
+            "addressCountry": "IT",
+        },
     }
-
-    if partner.image_url:
-        data["image"] = partner.image_url
-    if partner.contact:
-        data["contactPoint"] = {
-            "@type": "ContactPoint",
-            "contactType": "customer support",
-            "telephone": partner.contact,
-        }
-    if partner.lat and partner.lon:
-        data["geo"] = {
-            "@type": "GeoCoordinates",
-            "latitude": partner.lat,
-            "longitude": partner.lon,
-        }
-
+    if partner.phone:
+        data["telephone"] = partner.phone
+    if partner.email:
+        data["email"] = partner.email
+    if partner.website_url:
+        data["sameAs"] = [partner.website_url]
+    socials = [getattr(partner, key) for key in _ALLOWED_SOCIALS.keys() if getattr(partner, key)]
+    if socials:
+        data.setdefault("sameAs", []).extend(socials)
     return data
 
+
+def rate_limit(key: str) -> bool:
+    bucket_key = f"partner_rl::{key}"
+    now = datetime.utcnow()
+    window_start = now - timedelta(seconds=_RATE_LIMIT_SECONDS)
+
+    entries = deque(session.get(bucket_key, []))
+    while entries and datetime.fromisoformat(entries[0]) < window_start:
+        entries.popleft()
+
+    if len(entries) >= _RATE_LIMIT_BUCKET:
+        session[bucket_key] = list(entries)
+        session.modified = True
+        return False
+
+    entries.append(now.isoformat())
+    session[bucket_key] = list(entries)
+    session.modified = True
+    return True
+
+
+def build_waitlist_payload(form: Mapping[str, str]) -> tuple[dict[str, str], list[str]]:
+    name = (form.get("name") or "").strip()
+    email = (form.get("email") or "").strip()
+    phone = (form.get("phone") or "").strip()
+    notes = (form.get("notes") or "").strip()
+
+    errors: list[str] = []
+    if not name:
+        errors.append("Il nome è obbligatorio.")
+    if not email or "@" not in email:
+        errors.append("Inserisci un'email valida.")
+
+    payload = {
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "notes": notes,
+    }
+    return payload, errors
+
+
+def build_lead_payload(form: Mapping[str, str]) -> tuple[dict[str, str], list[str]]:
+    name = (form.get("name") or "").strip()
+    email = (form.get("email") or "").strip()
+    phone = (form.get("phone") or "").strip()
+    message = (form.get("message") or "").strip()
+
+    errors: list[str] = []
+    if not name:
+        errors.append("Il nome è obbligatorio.")
+    if not email or "@" not in email:
+        errors.append("Inserisci un'email valida.")
+
+    payload = {
+        "name": name,
+        "email": email,
+        "phone": phone,
+        "message": message,
+        "source": {
+            "utm": {key: form.get(key) for key in ("utm_source", "utm_medium", "utm_campaign") if form.get(key)},
+        },
+    }
+    return payload, errors

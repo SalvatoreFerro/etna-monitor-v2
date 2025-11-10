@@ -1,0 +1,14 @@
+Nuovo lead per {{ partner.name }}
+
+Nome: {{ lead.name }}
+Email: {{ lead.email }}
+Telefono: {{ lead.phone or '—' }}
+Messaggio:
+{{ (lead.message or '—') | indent(2) }}
+
+Origine:
+{% for key, value in (lead.source.get('utm', {}) or {}).items() -%}
+  {{ key }}: {{ value }}
+{% endfor %}
+
+Rispondi entro 24h per confermare la disponibilità.
