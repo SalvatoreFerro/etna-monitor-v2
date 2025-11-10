@@ -2,58 +2,48 @@
 
 {% block content %}
 <section class="page page--experience" aria-label="Etna Experience">
-  <div class="experience-hero" data-animate>
+  <div class="experience-hero experience-hero--compact" data-animate>
     <div class="container experience-hero__inner">
       <div class="experience-hero__copy">
         <span class="experience-hero__eyebrow">Etna Experience</span>
-        <h1>Etna Experience – vivi il vulcano in modo autentico</h1>
+        <h1>Vivi l'Etna con itinerari selezionati</h1>
         <p class="experience-hero__subtitle">
-          Le migliori uscite EtnaMonitor tra crateri, vigneti e borghi etnei.
+          Tour curati da guide locali, tra crateri, vigneti e borghi autentici. Seleziona la categoria che preferisci e prenota
+          in pochi clic.
         </p>
-        <div class="experience-hero__actions">
+        <div class="experience-hero__actions experience-hero__actions--wrap">
           <a class="btn btn-primary" href="#experience-grid">Scopri le esperienze</a>
           <a
             class="btn btn-ghost"
             href="mailto:{{ concierge_email }}?subject={{ 'Richiesta Etna Experience' |urlencode }}"
             data-lead-trigger
           >
-            Scrivici ora
+            Parla con il concierge
           </a>
         </div>
-        <ul class="experience-hero__stats" role="list">
-          {% for stat in experience_stats %}
-            <li>
-              <span class="experience-hero__stat-value">{{ stat.value }}</span>
-              <span class="experience-hero__stat-label">{{ stat.label }}</span>
-            </li>
-          {% endfor %}
+        <ul class="experience-hero__highlights" role="list">
+          <li class="experience-hero__highlight-item">
+            <i class="fas fa-hiking" aria-hidden="true"></i>
+            <span>Guide certificate e briefing personalizzati</span>
+          </li>
+          <li class="experience-hero__highlight-item">
+            <i class="fas fa-compass" aria-hidden="true"></i>
+            <span>Itinerari aggiornati ogni settimana</span>
+          </li>
+          <li class="experience-hero__highlight-item">
+            <i class="fas fa-wine-glass-alt" aria-hidden="true"></i>
+            <span>Esperienze gourmet tra cantine e borghi</span>
+          </li>
         </ul>
       </div>
-      <div class="experience-hero__panel">
-        <div class="experience-hero__panel-inner">
-          <span class="experience-badge">Curato da guide locali</span>
-          <figure class="experience-hero__media" aria-hidden="true">
-            <picture>
-              <source srcset="{{ url_for('static', filename='images/etna-experience-hero.svg') }}" type="image/svg+xml" />
-              <img
-                src="{{ url_for('static', filename='images/etna-experience-hero.svg') }}"
-                loading="lazy"
-                decoding="async"
-                alt="Illustrazione stilizzata dell'Etna"
-              />
-            </picture>
-          </figure>
-          <p class="muted">
-            Concierge dedicato, itinerari aggiornati ogni settimana e briefing di sicurezza
-            personalizzati prima della partenza.
-          </p>
-          <div class="experience-hero__badges" role="list" aria-label="Categorie più richieste">
-            <span class="experience-badge" role="listitem">Trekking vulcanico</span>
-            <span class="experience-badge" role="listitem">Tour in jeep</span>
-            <span class="experience-badge" role="listitem">Wine tasting</span>
-          </div>
-        </div>
-      </div>
+      <figure class="experience-hero__art" aria-hidden="true">
+        <img
+          src="{{ url_for('static', filename='images/etna-experience-hero.svg') }}"
+          loading="lazy"
+          decoding="async"
+          alt=""
+        />
+      </figure>
     </div>
   </div>
 

@@ -5,16 +5,18 @@
 
 {% block content %}
 <article class="forum-thread" aria-labelledby="thread-title">
-  <header class="page-hero">
-    <div class="container">
-      <a class="pill" href="{{ url_for('community.forum_home') }}">← Torna al forum</a>
-      <h1 id="thread-title">{{ thread.title }}</h1>
-      <div class="forum-thread__meta">
-        <span><i class="fas fa-user"></i> {{ thread.author_name or 'Anonimo' }}</span>
-        <span><i class="fas fa-clock"></i> {{ thread.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
-        <span class="badge {{ 'success' if thread.status == 'resolved' else 'info' }}">{{ 'Risolta' if thread.status == 'resolved' else 'In corso' }}</span>
+  <header class="forum-thread__hero">
+    <div class="container forum-thread__hero-inner">
+      <div class="forum-thread__heading">
+        <a class="pill" href="{{ url_for('community.forum_home') }}">← Torna al forum</a>
+        <h1 id="thread-title">{{ thread.title }}</h1>
+        <div class="forum-thread__meta">
+          <span><i class="fas fa-user"></i> {{ thread.author_name or 'Anonimo' }}</span>
+          <span><i class="fas fa-clock"></i> {{ thread.created_at.strftime('%d/%m/%Y %H:%M') }}</span>
+          <span class="badge {{ 'success' if thread.status == 'resolved' else 'info' }}">{{ 'Risolta' if thread.status == 'resolved' else 'In corso' }}</span>
+        </div>
       </div>
-      <div class="forum-thread__body">
+      <div class="forum-thread__summary">
         {% set blocks = (thread.body or '').split('\n\n') %}
         {% for block in blocks if block.strip() %}
           <p>{{ block | e | replace('\n', '<br>') | safe }}</p>
@@ -53,20 +55,17 @@
         <form method="post" class="card" novalidate>
           <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
           <h2><i class="fas fa-reply"></i> Rispondi alla discussione</h2>
+          <div class="forum-identity" role="status">
+            <i class="fas fa-user-circle" aria-hidden="true"></i>
+            <div>
+              <span class="forum-identity__label">Risponderai come</span>
+              <strong>{{ display_name }}</strong>
+            </div>
+          </div>
           <label>
             <span>Messaggio</span>
             <textarea name="body" rows="4" minlength="5" required placeholder="Condividi suggerimenti pratici, link e risorse"></textarea>
           </label>
-          <div class="form-grid">
-            <label>
-              <span>Nome (opzionale)</span>
-              <input type="text" name="author_name" maxlength="120" value="{{ current_user.name or '' }}" />
-            </label>
-            <label>
-              <span>Email (opzionale)</span>
-              <input type="email" name="author_email" maxlength="255" value="{{ current_user.email or '' }}" />
-            </label>
-          </div>
           <label class="checkbox">
             <input type="checkbox" name="mark_resolved" value="1" />
             <span>Segna la discussione come risolta</span>
