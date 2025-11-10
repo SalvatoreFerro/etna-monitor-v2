@@ -200,6 +200,23 @@
             {% endif %}
           </div>
         </article>
+
+        <article class="card-premium account-card animate-premium-slide" id="account-privacy">
+          <header class="card-header">
+            <h3>Gestione account</h3>
+            <p>Esporta i tuoi dati o richiedi l'eliminazione dell'account in autonomia.</p>
+          </header>
+
+          <div class="account-actions">
+            <a class="btn btn-secondary glass btn-sm" href="{{ url_for('dashboard.settings') }}">Impostazioni account</a>
+            <form method="post" action="{{ url_for('account.delete_request') }}" class="account-delete-form" onsubmit="return confirm('Confermi di voler ricevere il link per eliminare il tuo account?');">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-danger btn-sm">Richiedi eliminazione</button>
+            </form>
+          </div>
+
+          <p class="account-hint">Riceverai un'email con il link di conferma. Dopo la conferma i dati verranno anonimizzati e cancellati entro 30 giorni.</p>
+        </article>
       </div>
     </div>
     <div class="premium-grid">
