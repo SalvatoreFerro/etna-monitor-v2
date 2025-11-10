@@ -7,7 +7,6 @@ from typing import Optional
 
 from slugify import slugify
 from sqlalchemy import event, func
-from functools import lru_cache
 
 from sqlalchemy.ext.mutable import MutableDict, MutableList
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -15,7 +14,6 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from . import db
 
 
-@lru_cache(maxsize=1)
 def _json_type():
     """Return a JSON column type compatible with SQLite and PostgreSQL."""
 
@@ -99,6 +97,11 @@ class Partner(db.Model):
     geo_lng: Mapped[float | None] = mapped_column(db.Numeric(9, 6), nullable=True)
     logo_path: Mapped[str | None] = mapped_column(db.String(255), nullable=True)
     hero_image_path: Mapped[str | None] = mapped_column(db.String(255), nullable=True)
+    extra_data: Mapped[dict[str, object]] = mapped_column(
+        MutableDict.as_mutable(_json_type()),
+        nullable=False,
+        default=dict,
+    )
     images_json: Mapped[list[str]] = mapped_column(
         MutableList.as_mutable(_json_type()), nullable=False, default=list
     )

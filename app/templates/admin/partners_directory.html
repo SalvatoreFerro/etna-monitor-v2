@@ -47,7 +47,7 @@
             Categoria *
             <select name="category_id" required>
               {% for category in categories %}
-                <option value="{{ category.id }}">{{ category.name }}</option>
+                <option value="{{ category.id }}" data-slug="{{ category.slug }}">{{ category.name }}</option>
               {% endfor %}
             </select>
           </label>
@@ -69,6 +69,33 @@
           <label>Indirizzo<input type="text" name="address" /></label>
           <label>Città<input type="text" name="city" /></label>
         </div>
+        {% for category in categories %}
+          {% set fields = category_fields.get(category.slug, []) %}
+          {% if fields %}
+            <fieldset class="category-extra" data-category-fields="{{ category.slug }}" hidden>
+              <legend>Dati specifici per {{ category.name }}</legend>
+              {% for field in fields %}
+                {% set field_type = field.get('type', 'text') %}
+                <label>
+                  {{ field.get('label') }}{% if field.get('required') %} *{% endif %}
+                  {% if field_type == 'textarea' %}
+                    <textarea name="{{ field.get('name') }}" rows="{{ field.get('rows', 3) }}" {% if field.get('required') %}required{% endif %} placeholder="{{ field.get('placeholder', '') }}"></textarea>
+                  {% elif field_type == 'select' %}
+                    <select name="{{ field.get('name') }}" {% if field.get('required') %}required{% endif %}>
+                      <option value="">Seleziona...</option>
+                      {% for option in field.get('options', []) %}
+                        <option value="{{ option.get('value') }}">{{ option.get('label') }}</option>
+                      {% endfor %}
+                    </select>
+                  {% else %}
+                    <input type="{{ field_type }}" name="{{ field.get('name') }}" {% if field_type == 'number' and field.get('min') is not none %}min="{{ field.get('min') }}"{% endif %} {% if field.get('required') %}required{% endif %} placeholder="{{ field.get('placeholder', '') }}" />
+                  {% endif %}
+                  {% if field.get('help') %}<small class="muted">{{ field.get('help') }}</small>{% endif %}
+                </label>
+              {% endfor %}
+            </fieldset>
+          {% endif %}
+        {% endfor %}
         <label class="form-switch">
           <input type="checkbox" name="featured" />
           <span>Featured</span>
@@ -149,4 +176,25 @@
     </table>
   </section>
 </section>
+{% endblock %}
+
+{% block extra_scripts %}
+  {{ super() }}
+  <script>
+    (function() {
+      const select = document.querySelector('select[name="category_id"]');
+      if (!select) {
+        return;
+      }
+      const groups = document.querySelectorAll('[data-category-fields]');
+      const toggleGroups = () => {
+        const slug = select.options[select.selectedIndex]?.dataset.slug;
+        groups.forEach(group => {
+          group.hidden = group.dataset.categoryFields !== slug;
+        });
+      };
+      select.addEventListener('change', toggleGroups);
+      toggleGroups();
+    })();
+  </script>
 {% endblock %}
