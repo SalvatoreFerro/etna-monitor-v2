@@ -99,6 +99,10 @@ def test_home_includes_ga4_and_csp_allows_google(monkeypatch):
     assert style_elem_sources == style_sources
     assert "'unsafe-inline'" in style_sources
 
+    font_sources = directives.get("font-src", [])
+    assert "https://fonts.gstatic.com" in font_sources
+    assert "https://cdnjs.cloudflare.com" in font_sources
+
     connect_sources = directives.get("connect-src", [])
     assert "https://region1.google-analytics.com" in connect_sources
     assert "https://stats.g.doubleclick.net" in connect_sources
@@ -152,6 +156,10 @@ def test_ga4_test_csp_endpoint(monkeypatch):
     assert "https://cdnjs.cloudflare.com" in style_sources
     assert "https://fonts.googleapis.com" in style_sources
     assert "'unsafe-inline'" in style_sources
+
+    font_sources = policy.get("font-src", [])
+    assert "https://fonts.gstatic.com" in font_sources
+    assert "https://cdnjs.cloudflare.com" in font_sources
 
     connect_sources = policy.get("connect-src", [])
     assert "https://region1.google-analytics.com" in connect_sources
