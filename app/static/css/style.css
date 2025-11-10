@@ -549,6 +549,13 @@
     color: var(--color-primary);
   }
 
+  .site-nav__link-icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+
   .site-nav__link-label {
     display: inline-flex;
     align-items: center;
@@ -592,6 +599,15 @@
 
   .site-nav__link--mobile-only {
     padding-block: 0.75rem;
+  }
+
+  .site-nav__link--danger {
+    color: var(--color-danger);
+  }
+
+  .site-nav__link--danger:hover,
+  .site-nav__link--danger:focus-visible {
+    color: #fecdd3;
   }
 
   .site-nav__actions {

@@ -18,7 +18,7 @@
       'url': url_for('auth.auth_google', next=current_destination),
       'endpoint': 'auth.auth_google',
       'extra_class': 'site-nav__link--mobile-only site-nav__link--cta',
-      'icon': 'fa-brands fa-google'
+      'icon_src': url_for('static', filename='images/google-g.svg')
     }
   ] %}
 {% else %}
@@ -27,6 +27,13 @@
       'label': 'Dashboard',
       'url': url_for('dashboard.dashboard_home'),
       'endpoint': 'dashboard.dashboard_home'
+    },
+    {
+      'label': 'Esci',
+      'url': url_for('auth.logout'),
+      'endpoint': 'auth.logout',
+      'extra_class': 'site-nav__link--mobile-only site-nav__link--danger',
+      'icon': 'fa-solid fa-right-from-bracket'
     }
   ] %}
 {% endif %}
@@ -69,7 +76,9 @@
               </details>
             {% else %}
               <a class="site-nav__link {{ link.extra_class or '' }} {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">
-                {% if link.icon %}
+                {% if link.icon_src %}
+                  <span class="site-nav__link-icon" aria-hidden="true"><img src="{{ link.icon_src }}" alt="" loading="lazy" decoding="async" /></span>
+                {% elif link.icon %}
                   <span class="site-nav__link-icon" aria-hidden="true"><i class="{{ link.icon }}"></i></span>
                 {% endif %}
                 <span class="site-nav__link-label">{{ link.label }}</span>
