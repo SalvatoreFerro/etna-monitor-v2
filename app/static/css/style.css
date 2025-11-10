@@ -792,6 +792,25 @@
     gap: var(--space-3);
   }
 
+  .hero__share {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    margin-top: var(--space-4);
+  }
+
+  .hero__share-link {
+    font-weight: 600;
+    color: var(--color-primary);
+    text-decoration: none;
+  }
+
+  .hero__share-link:hover,
+  .hero__share-link:focus {
+    text-decoration: underline;
+  }
+
   .hero__visual {
     position: relative;
   }

@@ -5,8 +5,10 @@
     {% set computed_description = page_description or default_page_description %}
     {% set computed_og_title = page_og_title or computed_title %}
     {% set computed_og_description = page_og_description or computed_description %}
-    {% set computed_og_image = page_og_image or default_og_image %}
+    {% set social_image_url = url_for('static', filename='images/og-image.png', _external=True) %}
+    {% set computed_og_image = page_og_image or social_image_url %}
     {% set computed_canonical = canonical_url %}
+    {% set canonical_home = request.url_root %}
     {% set STATIC_ASSET_VERSION = static_asset_version %}
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -36,10 +38,13 @@
       rel="apple-touch-icon"
       href="{{ url_for('static', filename='images/og-image.png') }}?v={{ STATIC_ASSET_VERSION }}"
     />
-    <link rel="canonical" href="{{ computed_canonical }}" />
+    <link rel="canonical" href="{{ canonical_home if request.path == '/' else computed_canonical }}" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin />
+    <link rel="preconnect" href="https://www.google-analytics.com" crossorigin />
+    <link rel="preconnect" href="https://cdn.plot.ly" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600&display=swap" rel="stylesheet" />
 
     <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}?v={{ STATIC_ASSET_VERSION }}" />
@@ -52,6 +57,9 @@
     <meta property="og:type" content="website" />
     <meta property="og:url" content="{{ computed_canonical }}" />
     <meta property="og:image" content="{{ computed_og_image }}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Grafico del tremore vulcanico dell'Etna con dati INGV" />
     <meta property="og:site_name" content="EtnaMonitor" />
     <meta property="og:locale" content="it_IT" />
 
@@ -59,6 +67,10 @@
     <meta name="twitter:title" content="{{ computed_og_title }}" />
     <meta name="twitter:description" content="{{ computed_og_description }}" />
     <meta name="twitter:image" content="{{ computed_og_image }}" />
+
+    <link rel="me" href="https://www.instagram.com/etna_monitor_official?igsh=Mm9oeXlmOWZsNHNm" />
+    <link rel="me" href="https://www.facebook.com/share/17jhakJdrv/?mibextid=wwXIfr" />
+    <link rel="me" href="https://t.me/etna_turi_bot" />
 
     {% if os.getenv('GA_ENABLE') == 'true' %}
       {% include 'partials/ga4.html' %}
@@ -76,9 +88,10 @@
       {
         "@context": "https://schema.org",
         "@type": "WebPage",
-        "name": computed_og_title,
-        "url": computed_canonical,
-        "description": computed_og_description,
+        "name": computed_title,
+        "url": canonical_home if request.path == '/' else computed_canonical,
+        "description": computed_description,
+        "inLanguage": "it-IT"
       }
     ] %}
     {% if page_structured_data is defined and page_structured_data %}
@@ -87,32 +100,17 @@
       {% else %}
         {% set extra_structured = page_structured_data | list %}
       {% endif %}
-      {% set structured_data_payload = default_structured_data_base + extra_structured %}
+      {% set structured_data_payload = structured_data_default + extra_structured %}
     {% else %}
       {% set structured_data_payload = structured_data_default %}
     {% endif %}
     {% block page_structured_data %}
-      {% if structured_data_payload %}
+      {% for entry in structured_data_payload %}
         <script type="application/ld+json" nonce="{{ csp_nonce() }}">
-{{ structured_data_payload | tojson(indent=2) | safe }}
+{{ entry | tojson(indent=2) | safe }}
         </script>
-      {% endif %}
+      {% endfor %}
     {% endblock %}
-
-    <script type="application/ld+json" nonce="{{ csp_nonce() }}">
-{
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  "name": "EtnaMonitor",
-  "url": "https://etnamonitor.it",
-  "logo": "https://etnamonitor.it/static/images/og-image.png",
-  "sameAs": [
-    "https://x.com/etnamonitor",
-    "https://facebook.com/etnamonitor",
-    "https://instagram.com/etnamonitor"
-  ]
-}
-    </script>
 
     {% block head %}{% endblock %}
   </head>
@@ -162,6 +160,11 @@
           <p class="muted">
             Dati INGV rielaborati automaticamente. Per comunicazioni ufficiali consulta <a href="https://www.ct.ingv.it" target="_blank" rel="noopener">INGV Catania</a>.
           </p>
+          <ul class="site-footer__list">
+            <li><a href="https://www.instagram.com/etna_monitor_official?igsh=Mm9oeXlmOWZsNHNm" target="_blank" rel="me noopener">Instagram</a></li>
+            <li><a href="https://www.facebook.com/share/17jhakJdrv/?mibextid=wwXIfr" target="_blank" rel="me noopener">Facebook</a></li>
+            <li><a href="https://t.me/etna_turi_bot" target="_blank" rel="me noopener">Telegram</a></li>
+          </ul>
         </div>
 
         <div class="site-footer__column">
