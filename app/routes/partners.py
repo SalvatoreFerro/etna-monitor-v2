@@ -46,65 +46,25 @@ def legacy_experience_redirect():
     """Redirect the old experience landing to the partners directory."""
 
     _directory_or_404()
-    return redirect(url_for("partners.category_listing", slug="guide"))
+    return redirect(url_for("category.category_view", slug="guide"))
 
 
 @bp.route("/guide")
 def direct_guide_listing():
     _directory_or_404()
-    return category_listing("guide")
+    return redirect(url_for("category.category_view", slug="guide"))
 
 
 @bp.route("/hotel")
 def direct_hotel_listing():
     _directory_or_404()
-    return category_listing("hotel")
+    return redirect(url_for("category.category_view", slug="hotel"))
 
 
 @bp.route("/ristoranti")
 def direct_restaurant_listing():
     _directory_or_404()
-    return category_listing("ristoranti")
-
-
-@bp.route("/categoria/<slug>")
-def category_listing(slug: str):
-    require_partner_directory_enabled()
-
-    category = load_category_with_partners(slug)
-    if not category:
-        abort(404)
-
-    visible_partners = filter_visible_partners(category.partners)
-    visible_partners = visible_partners[: category.max_slots]
-
-    is_full = len(visible_partners) >= category.max_slots
-    available_slots = max(category.max_slots - len(visible_partners), 0)
-
-    structured_items = {
-        "@context": "https://schema.org",
-        "@type": "ItemList",
-        "name": f"Partner {category.name}",
-        "itemListElement": [
-            {
-                "@type": "ListItem",
-                "position": index + 1,
-                "item": serialize_partner_for_ldjson(partner),
-            }
-            for index, partner in enumerate(visible_partners)
-        ],
-    }
-
-    return render_template(
-        "partners/category.html",
-        category=category,
-        partners=visible_partners,
-        contact_actions={partner.id: build_contact_actions(partner) for partner in visible_partners},
-        is_full=is_full,
-        available_slots=available_slots,
-        waitlist_enabled=is_full,
-        structured_data=structured_items,
-    )
+    return redirect(url_for("category.category_view", slug="ristoranti"))
 
 
 @bp.route("/categoria/<slug>/waitlist", methods=["POST"])
@@ -113,11 +73,11 @@ def join_waitlist(slug: str):
 
     if not validate_csrf_token(request.form.get("csrf_token")):
         flash("Token CSRF non valido.", "error")
-        return redirect(url_for("partners.category_listing", slug=slug))
+        return redirect(url_for("category.category_view", slug=slug))
 
     if not rate_limit(f"waitlist::{slug}"):
         flash("Stai inviando troppe richieste. Riprova tra qualche minuto.", "warning")
-        return redirect(url_for("partners.category_listing", slug=slug))
+        return redirect(url_for("category.category_view", slug=slug))
 
     category = load_category_with_partners(slug)
     if not category:
@@ -127,7 +87,7 @@ def join_waitlist(slug: str):
     if errors:
         for message in errors:
             flash(message, "error")
-        return redirect(url_for("partners.category_listing", slug=slug))
+        return redirect(url_for("category.category_view", slug=slug))
 
     waitlist = PartnerWaitlist(category_id=category.id, **payload)
     db.session.add(waitlist)
@@ -150,7 +110,7 @@ def join_waitlist(slug: str):
             ),
         )
 
-    return redirect(url_for("partners.category_listing", slug=slug))
+    return redirect(url_for("category.category_view", slug=slug))
 
 
 @bp.route("/categoria/<slug>/<partner_slug>")
