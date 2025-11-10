@@ -1,0 +1,7 @@
+Ciao {{ partner.name }},
+
+mancano {{ days_left }} giorno{{ 'i' if days_left != 1 else '' }} alla scadenza della tua sottoscrizione EtnaMonitor (validità {{ subscription.valid_to }}).
+
+Rispondi a questa email per confermare il rinnovo manuale (PayPal o contanti). Una volta ricevuto il pagamento riattiveremo la scheda e invieremo la nuova fattura entro 24 ore.
+
+Grazie per far parte della directory partner EtnaMonitor.

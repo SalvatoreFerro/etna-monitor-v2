@@ -1,0 +1,13 @@
+Ciao {{ partner.name }},
+
+abbiamo attivato la tua scheda partner su EtnaMonitor.
+
+Dettagli sottoscrizione:
+- Anno: {{ subscription.year }}
+- Prezzo: € {{ '%.2f'|format(float(subscription.price_eur)) }}
+- Metodo: {{ subscription.payment_method }}
+- Valido fino al {{ subscription.valid_to }}
+
+Trovi la fattura allegata a questa email. Per aggiornare i contenuti o programmare il rinnovo scrivici a {{ current_app.config.get('ADMIN_EMAIL') or 'info@etnamonitor.it' }}.
+
+Grazie per supportare la rete indipendente EtnaMonitor.

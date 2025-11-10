@@ -9,7 +9,13 @@ def init_db(app):
 from .user import User
 from .event import Event
 from .admin_action import AdminActionLog
-from .partner import Partner
+from .partner import (
+    Partner,
+    PartnerCategory,
+    PartnerLead,
+    PartnerSubscription,
+    PartnerWaitlist,
+)
 from .blog import BlogPost
 from .forum import ForumThread, ForumReply
 from .community_post import CommunityPost, ModerationAction
@@ -34,6 +40,10 @@ __all__ = [
     'Event',
     'AdminActionLog',
     'Partner',
+    'PartnerCategory',
+    'PartnerSubscription',
+    'PartnerWaitlist',
+    'PartnerLead',
     'BlogPost',
     'ForumThread',
     'ForumReply',

@@ -1,6 +1,7 @@
 import csv
 import io
 from datetime import datetime, timedelta
+from decimal import Decimal
 
 from flask import (
     Blueprint,
@@ -15,6 +16,7 @@ from flask import (
 )
 from flask_login import current_user
 from sqlalchemy import and_, cast, func, or_
+from sqlalchemy.orm import joinedload
 
 from ..utils.auth import admin_required
 from ..models import (
@@ -28,8 +30,15 @@ from ..models import (
 )
 from ..models.user import User
 from ..models.event import Event
-from ..models.partner import Partner
+from ..models.partner import Partner, PartnerCategory, PartnerSubscription
 from ..services.gamification_service import ensure_demo_profiles
+from ..services.partner_directory import (
+    can_approve_partner,
+    create_subscription,
+    generate_invoice_pdf,
+    slots_usage,
+)
+from ..utils.partners import next_partner_slug
 
 try:
     from ..models.sponsor_banner import (
@@ -43,8 +52,8 @@ except Exception:  # pragma: no cover - optional dependency guard
     SponsorBannerImpression = None  # type: ignore
 from ..services.telegram_service import TelegramService
 from ..utils.csrf import validate_csrf_token
-from ..utils.partners import extract_partner_payload
 from ..filters import strip_literal_breaks
+from ..services.email_service import send_email
 
 bp = Blueprint("admin", __name__)
 
@@ -992,18 +1001,27 @@ def donations():
 @bp.route("/partners", methods=["GET"])
 @admin_required
 def partners_dashboard():
-    partners = Partner.query.order_by(Partner.created_at.desc()).all()
-    category_labels = [
-        ("Guide", "Guide"),
-        ("Hotel", "Hotel"),
-        ("Ristorante", "Ristoranti"),
-        ("Tour", "Tour"),
-        ("Altro", "Altro"),
-    ]
+    categories = (
+        PartnerCategory.query.order_by(PartnerCategory.sort_order, PartnerCategory.name).all()
+    )
+    partners = (
+        Partner.query.options(
+            joinedload(Partner.category),
+            joinedload(Partner.subscriptions),
+        )
+        .order_by(Partner.created_at.desc())
+        .all()
+    )
+
+    usage = {category.id: slots_usage(category) for category in categories}
+
     return render_template(
-        "admin/partners.html",
+        "admin/partners_directory.html",
+        categories=categories,
         partners=partners,
-        categories=category_labels,
+        usage=usage,
+        payment_methods=current_app.config.get("PARTNER_PAYMENT_METHODS", ("paypal_manual", "cash")),
+        current_year=datetime.utcnow().year,
     )
 
 
@@ -1011,91 +1029,163 @@ def partners_dashboard():
 @admin_required
 def partners_create():
     if not validate_csrf_token(request.form.get("csrf_token")):
-        flash("Token CSRF non valido. Riprova.", "error")
+        flash("Token CSRF non valido.", "error")
         return redirect(url_for("admin.partners_dashboard"))
 
-    payload, errors = extract_partner_payload(request.form, is_admin=True)
-
-    if errors:
-        for message in errors:
-            flash(message, "error")
+    name = (request.form.get("name") or "").strip()
+    category_id = request.form.get("category_id")
+    if not name or not category_id:
+        flash("Nome e categoria sono obbligatori.", "error")
         return redirect(url_for("admin.partners_dashboard"))
 
-    partner = Partner(**payload)
+    category = PartnerCategory.query.get(category_id)
+    if not category:
+        flash("Categoria non trovata.", "error")
+        return redirect(url_for("admin.partners_dashboard"))
+
+    partner = Partner(
+        category=category,
+        name=name,
+        short_desc=(request.form.get("short_desc") or "").strip(),
+        long_desc=(request.form.get("long_desc") or "").strip(),
+        website_url=(request.form.get("website_url") or "").strip() or None,
+        phone=(request.form.get("phone") or "").strip() or None,
+        whatsapp=(request.form.get("whatsapp") or "").strip() or None,
+        email=(request.form.get("email") or "").strip() or None,
+        instagram=(request.form.get("instagram") or "").strip() or None,
+        facebook=(request.form.get("facebook") or "").strip() or None,
+        tiktok=(request.form.get("tiktok") or "").strip() or None,
+        address=(request.form.get("address") or "").strip() or None,
+        city=(request.form.get("city") or "").strip() or None,
+        featured=bool(request.form.get("featured")),
+        status="draft",
+    )
+    partner.slug = next_partner_slug(partner.name)
+
     db.session.add(partner)
+    db.session.commit()
+    flash("Partner creato in bozza.", "success")
+    return redirect(url_for("admin.partners_dashboard"))
 
-    try:
+
+@bp.route("/partners/<int:partner_id>/status", methods=["POST"])
+@admin_required
+def partners_update_status(partner_id: int):
+    if not validate_csrf_token(request.form.get("csrf_token")):
+        flash("Token CSRF non valido.", "error")
+        return redirect(url_for("admin.partners_dashboard"))
+
+    partner = Partner.query.options(joinedload(Partner.category), joinedload(Partner.subscriptions)).get_or_404(partner_id)
+    action = request.form.get("action")
+
+    if action == "approve":
+        if not can_approve_partner(partner):
+            flash("Categoria completa. Impossibile approvare.", "error")
+            return redirect(url_for("admin.partners_dashboard"))
+        partner.mark_approved()
         db.session.commit()
-    except Exception:  # pragma: no cover - defensive
-        current_app.logger.exception("Failed to create partner from admin")
-        db.session.rollback()
-        flash(
-            "Errore durante la creazione del partner. Verifica i dati inseriti e riprova.",
-            "error",
-        )
+        flash(f"Partner {partner.name} approvato.", "success")
+    elif action == "reject":
+        partner.status = "rejected"
+        db.session.commit()
+        flash(f"Partner {partner.name} rifiutato.", "info")
+    elif action == "disable":
+        partner.status = "disabled"
+        db.session.commit()
+        flash(f"Partner {partner.name} disabilitato.", "info")
+    elif action == "expire":
+        partner.mark_expired()
+        db.session.commit()
+        flash(f"Partner {partner.name} segnato come scaduto.", "warning")
     else:
-        flash(f"Partner '{partner.name}' aggiunto con successo.", "success")
+        flash("Azione non riconosciuta.", "error")
 
     return redirect(url_for("admin.partners_dashboard"))
 
 
-@bp.route("/partners/<int:partner_id>/toggle", methods=["POST"])
+@bp.route("/partners/<int:partner_id>/subscription", methods=["POST"])
 @admin_required
-def partners_toggle(partner_id: int):
-    data = request.get_json(silent=True) or {}
-    if not validate_csrf_token(data.get("csrf_token")):
-        return jsonify({"success": False, "message": "Token CSRF non valido."}), 400
+def partners_create_subscription(partner_id: int):
+    if not validate_csrf_token(request.form.get("csrf_token")):
+        flash("Token CSRF non valido.", "error")
+        return redirect(url_for("admin.partners_dashboard"))
 
-    field = data.get("field")
-    if field not in {"visible", "verified"}:
-        return jsonify({"success": False, "message": "Campo non gestito."}), 400
-
-    partner = Partner.query.get_or_404(partner_id)
-    current_value = bool(getattr(partner, field))
-    new_value = data.get("value")
-    if new_value is None:
-        new_value = not current_value
-    else:
-        new_value = bool(new_value)
-
-    setattr(partner, field, new_value)
+    partner = Partner.query.options(joinedload(Partner.category), joinedload(Partner.subscriptions)).get_or_404(partner_id)
+    if not can_approve_partner(partner):
+        flash("Categoria completa. Impossibile creare sottoscrizione.", "error")
+        return redirect(url_for("admin.partners_dashboard"))
 
     try:
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        current_app.logger.exception(
-            "Failed to toggle %s for partner %s", field, partner_id
-        )
-        return (
-            jsonify({"success": False, "message": "Errore durante l'aggiornamento."}),
-            500,
-        )
+        year = int(request.form.get("year") or datetime.utcnow().year)
+    except ValueError:
+        flash("Anno non valido.", "error")
+        return redirect(url_for("admin.partners_dashboard"))
 
-    return jsonify({"success": True, "partner": _serialize_partner(partner)})
-
-
-@bp.route("/partners/<int:partner_id>", methods=["DELETE"])
-@admin_required
-def partners_delete(partner_id: int):
-    data = request.get_json(silent=True) or {}
-    if not validate_csrf_token(data.get("csrf_token")):
-        return jsonify({"success": False, "message": "Token CSRF non valido."}), 400
-
-    partner = Partner.query.get_or_404(partner_id)
-    db.session.delete(partner)
-
+    price_raw = request.form.get("price_eur") or "0"
     try:
-        db.session.commit()
+        price_value = Decimal(price_raw)
     except Exception:
-        db.session.rollback()
-        current_app.logger.exception("Failed to delete partner %s", partner_id)
-        return (
-            jsonify({"success": False, "message": "Errore durante l'eliminazione."}),
-            500,
+        flash("Prezzo non valido.", "error")
+        return redirect(url_for("admin.partners_dashboard"))
+
+    payment_method = request.form.get("payment_method") or "paypal_manual"
+    if payment_method not in current_app.config.get("PARTNER_PAYMENT_METHODS", ("paypal_manual", "cash")):
+        flash("Metodo di pagamento non valido.", "error")
+        return redirect(url_for("admin.partners_dashboard"))
+
+    payment_ref = (request.form.get("payment_ref") or "").strip() or None
+    paid_at = datetime.utcnow()
+
+    subscription = create_subscription(
+        partner,
+        year=year,
+        price_eur=price_value,
+        payment_method=payment_method,
+        payment_ref=payment_ref,
+        paid_at=paid_at,
+    )
+
+    partner.mark_approved()
+    db.session.commit()
+
+    pdf_path = generate_invoice_pdf(subscription)
+
+    flash(
+        f"Sottoscrizione registrata e partner approvato. Fattura: {pdf_path.name}",
+        "success",
+    )
+
+    admin_email = current_app.config.get("ADMIN_EMAIL")
+    recipients = [partner.email] if partner.email else []
+    if recipients or admin_email:
+        send_email(
+            subject=f"Conferma attivazione partner {partner.name}",
+            recipients=recipients or [admin_email],
+            bcc=[admin_email] if admin_email and recipients else None,
+            body=render_template(
+                "email/partners/subscription_confirmation.txt",
+                partner=partner,
+                subscription=subscription,
+            ),
+            attachments=[(pdf_path.name, pdf_path.read_bytes(), "application/pdf")],
         )
 
-    return jsonify({"success": True})
+    return redirect(url_for("admin.partners_dashboard"))
+
+
+@bp.route("/subscriptions/<int:subscription_id>/expire", methods=["POST"])
+@admin_required
+def subscriptions_expire(subscription_id: int):
+    if not validate_csrf_token(request.form.get("csrf_token")):
+        flash("Token CSRF non valido.", "error")
+        return redirect(url_for("admin.partners_dashboard"))
+
+    subscription = PartnerSubscription.query.options(joinedload(PartnerSubscription.partner)).get_or_404(subscription_id)
+    subscription.mark_expired()
+    subscription.partner.mark_expired()
+    db.session.commit()
+    flash("Sottoscrizione segnata come scaduta.", "warning")
+    return redirect(url_for("admin.partners_dashboard"))
 
 
 @bp.route("/activate_premium/<int:user_id>", methods=["POST"])

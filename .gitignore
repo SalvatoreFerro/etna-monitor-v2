@@ -18,3 +18,6 @@ node_modules/
 
 # Generated social preview asset (created at runtime from base64 payload)
 app/static/images/og-image.png
+
+# Generated partner invoices
+app/static/invoices/

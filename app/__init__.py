@@ -31,7 +31,7 @@ from sqlalchemy.orm import load_only
 from sqlalchemy.pool import QueuePool, StaticPool
 
 from .routes.main import bp as main_bp
-from .routes.experience import bp as experience_bp
+from .routes.partners import bp as partners_bp
 from .routes.community import bp as community_bp
 from .routes.account import bp as account_bp, register_rate_limits as account_rate_limits
 from .routes.dashboard import bp as dashboard_bp
@@ -779,7 +779,7 @@ def create_app(config_overrides: dict | None = None):
             app.logger.info("Ads routes enabled")
 
     app.register_blueprint(main_bp)
-    app.register_blueprint(experience_bp)
+    app.register_blueprint(partners_bp)
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(legacy_auth_bp)
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")

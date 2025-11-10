@@ -1,0 +1,152 @@
+{% extends 'admin/base.html' %}
+
+{% block title %}Directory partner{% endblock %}
+
+{% block admin_content %}
+<section class="admin-section">
+  <header class="admin-section__header">
+    <h1><i class="fas fa-handshake"></i> Directory Partner</h1>
+    <p class="muted">Gestisci candidature, approvazioni e rinnovi del network EtnaMonitor.</p>
+  </header>
+
+  <div class="admin-grid">
+    <section class="admin-card">
+      <h2>Stato categorie</h2>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Categoria</th>
+            <th>Slot</th>
+            <th>Attivi</th>
+            <th>Disponibili</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for category in categories %}
+            {% set used, max_slots = usage.get(category.id, (0, category.max_slots)) %}
+            <tr>
+              <td>{{ category.name }}</td>
+              <td>{{ max_slots }}</td>
+              <td>
+                <span class="badge {{ 'badge-danger' if used >= max_slots else 'badge-success' }}">{{ used }}</span>
+              </td>
+              <td>{{ max_slots - used }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="admin-card">
+      <h2>Nuovo partner</h2>
+      <form method="post" action="{{ url_for('admin.partners_create') }}" class="admin-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <div class="form-grid">
+          <label>Nome *<input type="text" name="name" required maxlength="180" /></label>
+          <label>
+            Categoria *
+            <select name="category_id" required>
+              {% for category in categories %}
+                <option value="{{ category.id }}">{{ category.name }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+        <label>Descrizione breve<input type="text" name="short_desc" maxlength="280" /></label>
+        <label>Descrizione completa<textarea name="long_desc" rows="4"></textarea></label>
+        <div class="form-grid">
+          <label>Sito<input type="url" name="website_url" /></label>
+          <label>Email<input type="email" name="email" /></label>
+          <label>Telefono<input type="text" name="phone" /></label>
+          <label>WhatsApp<input type="text" name="whatsapp" /></label>
+        </div>
+        <div class="form-grid">
+          <label>Instagram<input type="url" name="instagram" /></label>
+          <label>Facebook<input type="url" name="facebook" /></label>
+          <label>TikTok<input type="url" name="tiktok" /></label>
+        </div>
+        <div class="form-grid">
+          <label>Indirizzo<input type="text" name="address" /></label>
+          <label>Città<input type="text" name="city" /></label>
+        </div>
+        <label class="form-switch">
+          <input type="checkbox" name="featured" />
+          <span>Featured</span>
+        </label>
+        <button type="submit" class="btn btn-primary">Salva bozza</button>
+      </form>
+    </section>
+  </div>
+
+  <section class="admin-card admin-card--wide">
+    <h2>Partner registrati</h2>
+    <table class="admin-table admin-table--responsive">
+      <thead>
+        <tr>
+          <th>Partner</th>
+          <th>Categoria</th>
+          <th>Stato</th>
+          <th>Ultima sottoscrizione</th>
+          <th>Azioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for partner in partners %}
+          {% set latest = partner.subscriptions[0] if partner.subscriptions else None %}
+          <tr>
+            <td>
+              <strong>{{ partner.name }}</strong>
+              <div class="muted">{{ partner.short_desc or '—' }}</div>
+            </td>
+            <td>{{ partner.category.name }}</td>
+            <td>
+              <span class="badge badge-status badge-status--{{ partner.status }}">{{ partner.status }}</span>
+              {% if partner.featured %}<span class="badge badge-info">Featured</span>{% endif %}
+            </td>
+            <td>
+              {% if latest %}
+                <div>Anno {{ latest.year }} – {{ latest.status }}</div>
+                <div class="muted">Scade: {{ latest.valid_to }}</div>
+              {% else %}
+                <span class="muted">Nessuna sottoscrizione</span>
+              {% endif %}
+            </td>
+            <td>
+              <form method="post" action="{{ url_for('admin.partners_update_status', partner_id=partner.id) }}" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <select name="action" class="admin-select">
+                  <option value="approve">Approva</option>
+                  <option value="reject">Rifiuta</option>
+                  <option value="disable">Disabilita</option>
+                  <option value="expire">Segna scaduto</option>
+                </select>
+                <button type="submit" class="btn btn-secondary btn-sm">Aggiorna</button>
+              </form>
+
+              <form method="post" action="{{ url_for('admin.partners_create_subscription', partner_id=partner.id) }}" class="inline-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <input type="number" name="year" value="{{ current_year }}" min="2024" class="admin-input admin-input--sm" />
+                <input type="number" step="0.01" name="price_eur" class="admin-input admin-input--sm" placeholder="Prezzo" />
+                <select name="payment_method" class="admin-select admin-select--sm">
+                  {% for method in payment_methods %}
+                    <option value="{{ method }}">{{ method }}</option>
+                  {% endfor %}
+                </select>
+                <input type="text" name="payment_ref" placeholder="Rif. pagamento" class="admin-input admin-input--sm" />
+                <button type="submit" class="btn btn-primary btn-sm">Attiva &amp; fattura</button>
+              </form>
+
+              {% if latest %}
+                <form method="post" action="{{ url_for('admin.subscriptions_expire', subscription_id=latest.id) }}" class="inline-form">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                  <button type="submit" class="btn btn-danger btn-sm">Segna sottoscrizione scaduta</button>
+                </form>
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+</section>
+{% endblock %}

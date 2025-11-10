@@ -158,3 +158,19 @@ class Config:
         os.getenv("COMMUNITY_CAPTCHA_OPTIONAL", "true").strip().lower()
         not in {"0", "false", "no"}
     )
+
+    PARTNER_DIRECTORY_ENABLED = (
+        os.getenv("PARTNER_DIRECTORY_ENABLED", "1").strip().lower()
+        not in {"0", "false", "no"}
+    )
+    PARTNER_DEFAULT_MAX_SLOTS = int(
+        os.getenv("PARTNER_DEFAULT_MAX_SLOTS", "10")
+    )
+    PARTNER_FIRST_YEAR_PRICE = int(os.getenv("PARTNER_FIRST_YEAR_PRICE", "30"))
+    PARTNER_RENEWAL_PRICE = int(os.getenv("PARTNER_RENEWAL_PRICE", "50"))
+    PARTNER_PAYMENT_METHODS = tuple(
+        filter(
+            None,
+            [item.strip() for item in os.getenv("PARTNER_PAYMENT_METHODS", "paypal_manual,cash").split(",")],
+        )
+    )
