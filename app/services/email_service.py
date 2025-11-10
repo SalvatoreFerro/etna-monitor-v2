@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Iterable, Mapping
+from typing import Iterable, Mapping, Sequence
 
 from flask import current_app, render_template
 
@@ -25,6 +25,8 @@ class EmailMessage:
     recipients: tuple[str, ...]
     html: str
     text: str
+    bcc: tuple[str, ...] = ()
+    attachments: tuple[tuple[str, bytes, str], ...] = ()
     extra: Mapping[str, object] | None = None
 
 
@@ -38,20 +40,33 @@ def _get_outbox() -> list[EmailMessage]:
 def send_email(
     subject: str,
     recipients: Iterable[str],
-    template_prefix: str,
+    template_prefix: str | None = None,
     context: Mapping[str, object] | None = None,
+    *,
+    body: str | None = None,
+    html: str | None = None,
+    text: str | None = None,
+    bcc: Sequence[str] | None = None,
+    attachments: Sequence[tuple[str, bytes, str]] | None = None,
 ) -> EmailMessage:
     """Render and store an email message."""
 
     context = dict(context or {})
-    html = render_template(f"emails/{template_prefix}.html", **context)
-    text = render_template(f"emails/{template_prefix}.txt", **context)
+
+    if template_prefix:
+        html_content = render_template(f"emails/{template_prefix}.html", **context)
+        text_content = render_template(f"emails/{template_prefix}.txt", **context)
+    else:
+        html_content = html or body or ""
+        text_content = text or body or html_content
 
     message = EmailMessage(
         subject=subject,
         recipients=tuple(str(r) for r in recipients if r),
-        html=html,
-        text=text,
+        html=html_content,
+        text=text_content,
+        bcc=tuple(str(r) for r in (bcc or []) if r),
+        attachments=tuple(attachments or ()),
         extra=context,
     )
 

@@ -15,7 +15,7 @@ Obiettivi principali:
 ## Indice
 1. [Architettura del Sistema](#architettura-del-sistema)
 2. [Funzionalità Chiave](#funzionalità-chiave)
-3. [Etna Experience](#etna-experience)
+3. [Directory partner](#directory-partner)
 4. [Design system & UX tokens](#design-system--ux-tokens)
 5. [Dipendenze & Requisiti](#dipendenze--requisiti)
 6. [Setup Locale (Step-by-step)](#setup-locale-step-by-step)
@@ -74,23 +74,18 @@ flowchart LR
 - **Log eventi recenti**: elenco con timestamp, valore misurato, soglia applicata, esito alert visibile dalla dashboard.
 - **Admin**: pannello opzionale per consultare utenti, promuovere/demozionare Premium e monitorare stato notifiche.
 
-## Etna Experience
-EtnaMonitor diventa anche una vetrina territoriale grazie alla nuova sezione **Etna Experience**, pensata per mettere in contatto turisti, guide e strutture partner.
+## Directory partner
+La directory EtnaMonitor è organizzata in categorie a numero chiuso (es. Guide, Hotel, Ristoranti) con massimo 10 slot attivi per ognuna.
 
-### Pagina pubblica `/experience`
-- Accessibile a tutti, presenta un layout a card con immagini, categoria, descrizione e link esterni in tema dark.
-- Filtri rapidi per categoria (Guide, Hotel, Ristoranti, Tour, Altro) con badge “Partner Verified” per gli inserzionisti approvati.
-- Call-to-action per proporre nuove attività e pulsante teaser dedicato ai futuri consigli automatici basati sull'attività del vulcano.
-
-### Candidature `/become-partner`
-- Modulo pubblico con validazione server-side per raccogliere richieste da nuovi partner.
-- Le candidature vengono salvate nel database con visibilità disattivata finché un amministratore non le approva.
-- Supporto a link sito, contatti diretti e immagine promozionale tramite URL.
+### Rotte pubbliche
+- `GET /guide`, `GET /hotel`, `GET /ristoranti`, `GET /categoria/<slug>`: elenco ordinato con badge “Featured”, contatti rapidi e banner lista d'attesa quando la categoria è piena.
+- `GET /categoria/<slug>/<partner>`: scheda dettagliata con CTA telefonica/WhatsApp, galleria immagini, JSON-LD LocalBusiness e modulo contatto che salva un `PartnerLead` e notifica admin/partner via email.
+- Quando gli slot sono esauriti i visitatori possono registrarsi nella waitlist (`POST /categoria/<slug>/waitlist`).
 
 ### Gestione amministrativa `/admin/partners`
-- Vista riservata agli admin per consultare, approvare o eliminare i partner.
-- Toggle istantaneo per stato “verified” e visibilità, oltre alla possibilità di aggiungere rapidamente nuove schede.
-- Tutte le operazioni avvengono tramite le nuove API amministrative e si appoggiano alla tabella `partners` gestita via Alembic.
+- Dashboard con stato slot per categoria, inserimento manuale dei partner e azioni di workflow (bozza → pending → approved/expired/disabled).
+- “Approva & Crea sottoscrizione” genera un record `PartnerSubscription` con pagamento manuale (PayPal o contanti), calcolo prezzi dinamici (30 € primo anno, 50 € rinnovo) e fattura PDF salvata in `static/invoices/<anno>/` tramite ReportLab.
+- Reminder e rinnovi sono gestiti interamente dall'admin (possibilità di segnare una sottoscrizione come scaduta o crearne una nuova). I pagamenti avvengono fuori dal sito e non è previsto alcun checkout.
 
 ## Design system & UX tokens
 L'intera interfaccia adotta un sistema di token centralizzato definito in [`app/static/css/theme.css`](app/static/css/theme.css). I componenti devono riferirsi a queste variabili per garantire coerenza cromatica, tipografica e di spaziature.
@@ -216,6 +211,10 @@ ALERT_THRESHOLD_DEFAULT=2.0
 | `LOG_DIR`, `DATA_DIR` | Directory persistenti per log e dati. |
 | `DISABLE_SCHEDULER` | Imposta `true`/`1` per evitare l'avvio dello scheduler (utile nei test). |
 | `ALERT_THRESHOLD_DEFAULT` | Soglia tremore predefinita (mV). |
+| `PARTNER_DIRECTORY_ENABLED` | Imposta `0` per nascondere completamente la directory partner. |
+| `PARTNER_DEFAULT_MAX_SLOTS` | Numero massimo di partner approvati per categoria (default 10). |
+| `PARTNER_FIRST_YEAR_PRICE` / `PARTNER_RENEWAL_PRICE` | Prezzi in euro per sottoscrizioni manuali (30 € primo anno, 50 € rinnovo). |
+| `PARTNER_PAYMENT_METHODS` | Metodi ammessi per pagamenti manuali (es. `paypal_manual,cash`). |
 
 ## Pipeline Dati (PNG INGV → CSV → Grafico)
 1. **Download**: uno scheduler scarica periodicamente il grafico PNG pubblico fornito da INGV.

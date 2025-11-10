@@ -1,0 +1,109 @@
+{% extends 'layout.html' %}
+
+{% block title %}{{ partner.name }} – {{ category.name }}{% endblock %}
+
+{% block content %}
+<section class="page page--partner-detail" aria-labelledby="partner-detail-title">
+  <header class="partner-detail__hero">
+    <div class="container">
+      <p class="partner-detail__eyebrow">Partner ufficiale EtnaMonitor</p>
+      <h1 id="partner-detail-title">{{ partner.name }}</h1>
+      <p class="partner-detail__subtitle">{{ partner.short_desc or partner.long_desc|truncate(180) }}</p>
+      <div class="partner-detail__cta">
+        {% for action in contact_actions %}
+          <a class="btn btn-primary" href="{{ action.href }}">{{ action.label }}</a>
+        {% endfor %}
+      </div>
+    </div>
+    {% if partner.hero_image_path %}
+      <figure class="partner-detail__hero-media" aria-hidden="true">
+        <img src="{{ url_for('static', filename=partner.hero_image_path) }}" alt="" loading="lazy" decoding="async" />
+      </figure>
+    {% endif %}
+  </header>
+
+  <div class="container partner-detail__body">
+    <div class="partner-detail__content">
+      <section aria-labelledby="partner-overview">
+        <h2 id="partner-overview">Chi siamo</h2>
+        <div class="partner-detail__description">
+          {% if partner.long_desc %}
+            {{ partner.long_desc | md }}
+          {% else %}
+            Descrizione in aggiornamento.
+          {% endif %}
+        </div>
+      </section>
+
+      {% if partner.images_json %}
+        <section aria-labelledby="partner-gallery">
+          <h2 id="partner-gallery">Galleria</h2>
+          <div class="partner-detail__gallery">
+            {% for image in partner.images_json %}
+              <figure>
+                <img src="{{ url_for('static', filename=image) if not image.startswith('http') else image }}" alt="Foto {{ partner.name }}" loading="lazy" decoding="async" />
+              </figure>
+            {% endfor %}
+          </div>
+        </section>
+      {% endif %}
+
+      <section aria-labelledby="partner-contact">
+        <h2 id="partner-contact">Contatta {{ partner.name }}</h2>
+        <form method="post" action="{{ url_for('partners.create_partner_lead', partner_id=partner.id) }}" class="partner-lead-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <div class="form-grid">
+            <label>
+              <span>Nome *</span>
+              <input type="text" name="name" required maxlength="180" />
+            </label>
+            <label>
+              <span>Email *</span>
+              <input type="email" name="email" required maxlength="255" />
+            </label>
+            <label>
+              <span>Telefono</span>
+              <input type="text" name="phone" maxlength="64" />
+            </label>
+          </div>
+          <label>
+            <span>Messaggio</span>
+            <textarea name="message" rows="4" placeholder="Raccontaci cosa stai cercando"></textarea>
+          </label>
+          <button type="submit" class="btn btn-primary">Invia richiesta</button>
+        </form>
+      </section>
+    </div>
+
+    <aside class="partner-detail__sidebar">
+      <section aria-labelledby="partner-info">
+        <h2 id="partner-info">Informazioni rapide</h2>
+        <ul class="partner-detail__info-list">
+          {% if partner.address %}<li><strong>Indirizzo</strong><span>{{ partner.address }}</span></li>{% endif %}
+          {% if partner.city %}<li><strong>Città</strong><span>{{ partner.city }}</span></li>{% endif %}
+          {% if partner.phone %}<li><strong>Telefono</strong><span>{{ partner.phone }}</span></li>{% endif %}
+          {% if partner.email %}<li><strong>Email</strong><span>{{ partner.email }}</span></li>{% endif %}
+          {% if partner.website_url %}<li><strong>Sito</strong><a href="{{ partner.website_url }}">Visita</a></li>{% endif %}
+        </ul>
+      </section>
+
+      {% if related_partners %}
+        <section aria-labelledby="partner-related">
+          <h2 id="partner-related">Altri partner</h2>
+          <ul class="partner-related">
+            {% for other in related_partners %}
+              <li>
+                <a href="{{ url_for('partners.partner_detail', slug=other.category.slug, partner_slug=other.slug) }}">{{ other.name }}</a>
+              </li>
+            {% endfor %}
+          </ul>
+        </section>
+      {% endif %}
+    </aside>
+  </div>
+</section>
+
+{% if structured_data %}
+  <script type="application/ld+json">{{ structured_data|tojson }}</script>
+{% endif %}
+{% endblock %}
