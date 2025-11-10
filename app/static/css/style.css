@@ -2087,6 +2087,8 @@
   }
 
   .experience-hero__actions {
+    display: flex;
+    align-items: center;
     flex-wrap: wrap;
     gap: var(--space-3);
   }
@@ -2104,6 +2106,20 @@
     background: rgba(15, 23, 42, 0.65);
     border: 1px solid rgba(148, 163, 184, 0.28);
     box-shadow: var(--shadow-lg);
+    text-align: left;
+  }
+
+  .experience-hero__panel-inner p {
+    margin: 0;
+    color: rgba(226, 232, 240, 0.78);
+  }
+
+  .experience-hero__panel-inner .experience-badge + .experience-hero__media {
+    margin-top: var(--space-3);
+  }
+
+  .experience-hero__panel-inner .experience-hero__badges {
+    justify-content: flex-start;
   }
 
   .experience-badge {
