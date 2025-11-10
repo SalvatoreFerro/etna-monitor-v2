@@ -28,6 +28,7 @@ except ModuleNotFoundError:  # pragma: no cover - fallback for restricted enviro
                 "[BOOT] Flask-Migrate not available. Database migrations commands are disabled."
             )
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import load_only
 from sqlalchemy.pool import QueuePool, StaticPool
 
@@ -58,6 +59,7 @@ from .models import db
 from .models.partner import PartnerCategory
 from .filters import md
 from .utils.csrf import generate_csrf_token
+from .utils.user_columns import get_login_safe_user_columns
 from .utils.logger import configure_logging
 from config import (
     Config,
@@ -621,26 +623,63 @@ def create_app(config_overrides: dict | None = None):
 
     @login_manager.user_loader
     def load_user(user_id: str):  # pragma: no cover - thin integration wrapper
+        if not user_id:
+            return None
+
         try:
-            return (
-                db.session.query(User)
-                .options(
-                    load_only(
-                        User.id,
-                        User.email,
-                        User.google_id,
-                        User.name,
-                        User.picture_url,
-                        User.is_admin,
-                        User.is_premium,
-                        User._is_active,
-                    )
-                )
-                .filter(User.id == int(user_id))
-                .first()
+            user_pk = int(user_id)
+        except (TypeError, ValueError):
+            current_app.logger.warning(
+                "[LOGIN] user_loader received invalid user id %r", user_id
             )
-        except Exception as e:  # pragma: no cover - defensive guard
-            current_app.logger.error("[LOGIN] user_loader failed: %s", e, exc_info=True)
+            return None
+
+        def _query_with_columns(columns: tuple) -> User | None:
+            query = db.session.query(User)
+            if columns:
+                query = query.options(load_only(*columns))
+            return query.filter(User.id == user_pk).first()
+
+        try:
+            return _query_with_columns(
+                (
+                    User.id,
+                    User.email,
+                    User.google_id,
+                    User.name,
+                    User.picture_url,
+                    User.is_admin,
+                    User.is_premium,
+                    User._is_active,
+                )
+            )
+        except SQLAlchemyError as exc:
+            db.session.rollback()
+            current_app.logger.warning(
+                "[LOGIN] user_loader primary query failed for user_id=%s: %s",
+                user_pk,
+                exc,
+            )
+            try:
+                safe_columns = get_login_safe_user_columns()
+                return _query_with_columns(safe_columns)
+            except SQLAlchemyError as fallback_exc:
+                db.session.rollback()
+                current_app.logger.error(
+                    "[LOGIN] user_loader fallback failed for user_id=%s: %s",
+                    user_pk,
+                    fallback_exc,
+                    exc_info=fallback_exc,
+                )
+                return None
+        except Exception as exc:  # pragma: no cover - defensive guard
+            db.session.rollback()
+            current_app.logger.error(
+                "[LOGIN] user_loader unexpected failure for user_id=%s: %s",
+                user_pk,
+                exc,
+                exc_info=True,
+            )
             return None
 
     app.config["MIGRATIONS_AVAILABLE"] = _migrate_available
