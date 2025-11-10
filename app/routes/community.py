@@ -132,6 +132,8 @@ def blog_detail(slug: str):
 @bp.route("/forum/", methods=["GET", "POST"])
 def forum_home():
     service = GamificationService()
+    display_name, author_email = _resolve_forum_identity(current_user) if current_user.is_authenticated else (None, None)
+
     if request.method == "POST":
         if not current_user.is_authenticated:
             flash("Devi effettuare l'accesso per aprire una discussione.", "error")
@@ -145,13 +147,7 @@ def forum_home():
 
         title = (request.form.get("title") or "").strip()
         body = (request.form.get("body") or "").strip()
-        author_name = (request.form.get("author_name") or "").strip() or None
-        author_email = (request.form.get("author_email") or "").strip() or None
-
-        if not author_name:
-            author_name = getattr(current_user, "name", None) or (current_user.email.split("@")[0] if getattr(current_user, "email", None) else None)
-        if not author_email and getattr(current_user, "email", None):
-            author_email = current_user.email
+        author_name = display_name
 
         if len(title) < 10 or len(body) < 20:
             flash("Fornisci un titolo e un messaggio più dettagliato.", "error")
@@ -171,13 +167,15 @@ def forum_home():
         return redirect(url_for("community.thread_detail", slug=thread.slug))
 
     threads = ForumThread.query.order_by(ForumThread.updated_at.desc()).limit(30).all()
-    return render_template("forum/index.html", threads=threads)
+    return render_template("forum/index.html", threads=threads, display_name=display_name)
 
 
 @bp.route("/forum/<slug>/", methods=["GET", "POST"])
 def thread_detail(slug: str):
     thread = ForumThread.query.filter_by(slug=slug).first_or_404()
     service = GamificationService()
+
+    display_name, author_email = _resolve_forum_identity(current_user) if current_user.is_authenticated else (None, None)
 
     if request.method == "POST":
         if not current_user.is_authenticated:
@@ -191,13 +189,7 @@ def thread_detail(slug: str):
             return redirect(url_for("community.thread_detail", slug=slug))
 
         body = (request.form.get("body") or "").strip()
-        author_name = (request.form.get("author_name") or "").strip() or None
-        author_email = (request.form.get("author_email") or "").strip() or None
-
-        if not author_name:
-            author_name = getattr(current_user, "name", None) or (current_user.email.split("@")[0] if getattr(current_user, "email", None) else None)
-        if not author_email and getattr(current_user, "email", None):
-            author_email = current_user.email
+        author_name = display_name
 
         if len(body) < 5:
             flash("Scrivi una risposta più completa.", "error")
@@ -224,7 +216,31 @@ def thread_detail(slug: str):
         .order_by(ForumReply.created_at.asc())
         .all()
     )
-    return render_template("forum/thread_detail.html", thread=thread, replies=replies)
+    return render_template(
+        "forum/thread_detail.html",
+        thread=thread,
+        replies=replies,
+        display_name=display_name,
+    )
+
+
+def _resolve_forum_identity(user) -> tuple[str, str | None]:
+    """Return the immutable identity used for forum contributions."""
+
+    if not getattr(user, "is_authenticated", False):
+        return ("", None)
+
+    raw_name = (getattr(user, "name", None) or "").strip()
+    email = (getattr(user, "email", None) or "").strip() or None
+
+    if raw_name:
+        display_name = raw_name
+    elif email:
+        display_name = email.split("@")[0]
+    else:
+        display_name = "Membro EtnaMonitor"
+
+    return display_name, email
 
 
 @bp.route("/feedback/", methods=["GET", "POST"])
