@@ -16,6 +16,13 @@ from app.models.partner import (
     PartnerSubscription,
     generate_invoice_number,
 )
+from sqlalchemy import inspect
+
+from app.services.partner_categories import (
+    DEFAULT_CATEGORY_FALLBACKS,
+    ensure_partner_categories,
+    ensure_partner_extra_data_column,
+)
 from app.services.partner_directory import (
     can_approve_partner,
     create_subscription,
@@ -129,6 +136,79 @@ def test_category_view_handles_empty_partner_list(client):
     assert response.status_code == 200
     body = response.get_data(as_text=True)
     assert "Nessun partner disponibile" in body
+
+
+def test_category_view_handles_missing_subscription_table(client, app, category, partner_factory):
+    with app.app_context():
+        partner = partner_factory("Legacy Partner", status="approved")
+        partner.approved_at = datetime.now(timezone.utc)
+        db.session.commit()
+        db.session.execute(db.text("DROP TABLE partner_subscriptions"))
+        db.session.commit()
+
+    response = client.get("/categoria/guide")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "Nessun partner disponibile" in body
+
+    with app.app_context():
+        from app.models.partner import PartnerSubscription
+
+        PartnerSubscription.__table__.create(db.engine)
+        db.session.commit()
+
+
+def test_category_view_handles_missing_category_table(client, app):
+    with app.app_context():
+        db.session.execute(db.text("DROP TABLE partner_categories"))
+        db.session.commit()
+
+    response = client.get("/categoria/guide")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "Guide autorizzate" in body
+    assert "Nessun partner disponibile" in body
+
+    with app.app_context():
+        from app.models.partner import PartnerCategory
+
+        PartnerCategory.__table__.create(db.engine)
+        db.session.add(
+            PartnerCategory(
+                slug="guide",
+                name="Guide autorizzate",
+                max_slots=10,
+                is_active=True,
+            )
+        )
+        db.session.commit()
+
+
+def test_ensure_partner_categories_bootstraps_defaults(app):
+    with app.app_context():
+        db.session.execute(db.text("DROP TABLE partner_categories"))
+        db.session.commit()
+
+        categories = ensure_partner_categories()
+        slugs = {category.slug for category in categories}
+        assert slugs == set(DEFAULT_CATEGORY_FALLBACKS.keys())
+
+        # ensure idempotency
+        categories_again = ensure_partner_categories()
+        assert len(categories_again) == len(categories)
+
+
+def test_ensure_partner_extra_data_column_adds_missing_column(app):
+    with app.app_context():
+        db.session.execute(db.text("ALTER TABLE partners DROP COLUMN extra_data"))
+        db.session.commit()
+
+        created = ensure_partner_extra_data_column()
+        assert created is True
+
+        inspector = inspect(db.engine)
+        columns = {column["name"] for column in inspector.get_columns("partners")}
+        assert "extra_data" in columns
 
 
 def test_price_first_vs_renewal(app, category, partner_factory):
