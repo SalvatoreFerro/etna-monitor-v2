@@ -1,34 +1,26 @@
 {% extends "layout.html" %}
 
 {% block content %}
-<section class="page page--experience">
-  <div class="container stack">
-    <header class="experience-hero">
-      <div class="experience-hero__copy">
-        <span class="eyebrow">Etna Experience</span>
-        <h1>Vivi l'Etna come un insider</h1>
-        <p class="page__lede">
-          Abbiamo selezionato le migliori guide, tour e strutture certificate per aiutarti a costruire l'itinerario perfetto
-          tra crateri, vigneti e borghi sospesi nel tempo.
+<section class="page page--experience" aria-label="Etna Experience">
+  <div class="experience-hero" data-animate>
+    <div class="container experience-hero__inner">
+      <div class="experience-hero__content">
+        <span class="experience-hero__eyebrow">Etna Experience</span>
+        <h1>Etna Experience – vivi il vulcano in modo autentico</h1>
+        <p class="experience-hero__subtitle">
+          Le migliori uscite EtnaMonitor tra crateri, vigneti e borghi etnei.
         </p>
-        <div class="experience-hero__badges">
-          <span class="experience-badge">Guide locali certificate</span>
-          <span class="experience-badge">Esperienze outdoor e gourmet</span>
-          <span class="experience-badge">Controlli qualità trimestrali</span>
+        <div class="experience-hero__cta">
+          <a class="btn btn-primary" href="#experience-grid">Scopri le esperienze</a>
         </div>
-        <div class="page__actions experience-hero__actions">
-          <a class="btn btn-primary" href="#partners">Esplora i partner</a>
-          <a class="btn btn-secondary" href="#experience-journey">Scopri un itinerario tipo</a>
-          <button
-            class="btn btn-ghost"
-            type="button"
-            id="experience-recommendations-toggle"
-            aria-expanded="false"
-            aria-controls="experience-recommendations"
-          >
-            Consigli dinamici
-          </button>
-        </div>
+        <ul class="experience-hero__stats" role="list">
+          {% for stat in experience_stats %}
+            <li>
+              <span class="experience-hero__stat-value">{{ stat.value }}</span>
+              <span class="experience-hero__stat-label">{{ stat.label }}</span>
+            </li>
+          {% endfor %}
+        </ul>
       </div>
       <figure class="experience-hero__media" aria-hidden="true">
         <picture>
@@ -37,106 +29,47 @@
             src="{{ url_for('static', filename='images/etna-experience-hero.svg') }}"
             loading="lazy"
             decoding="async"
-            alt="Illustrazione del vulcano Etna al tramonto"
+            alt="Illustrazione stilizzata dell'Etna"
           />
         </picture>
       </figure>
-      <div class="experience-hero__panel">
-        <div class="experience-hero__panel-inner">
-          <h2>Curato con cura</h2>
-          <p>
-            Ogni proposta è stata verificata da un team misto di geologi, sommelier e guide alpine che conoscono il territorio
-            metro per metro.
-          </p>
-          <ul class="experience-stats" role="list">
-            {% for stat in experience_stats %}
-              <li>
-                <span class="experience-stat__value">{{ stat.value }}</span>
-                <span class="experience-stat__label">{{ stat.label }}</span>
-              </li>
-            {% endfor %}
-          </ul>
-        </div>
-      </div>
-    </header>
+    </div>
+  </div>
 
-    {% if recommended_partners %}
-      <section class="experience-recommendations card card--frosted" id="experience-recommendations" hidden>
-        <header class="experience-recommendations__header">
-          <h2>Consigli dinamici</h2>
-          <p>
-            In base alle preferenze più frequenti della community, ti proponiamo tre combinazioni che intrecciano natura, gusto
-            e benessere.
-          </p>
-        </header>
-        <ol class="experience-recommendations__list" role="list">
-          {% for partner in recommended_partners %}
-            <li>
-              <article class="experience-recommendation">
-                <div class="experience-recommendation__badge">
-                  {{ partner.category_label() }}
-                  {% if partner.verified %}
-                    <span class="badge badge--success">Verificato</span>
-                  {% endif %}
-                </div>
-                <h3>{{ partner.name }}</h3>
-                {% if partner.description %}
-                  <p>{{ partner.description }}</p>
-                {% endif %}
-                <div class="experience-recommendation__actions">
-                  {% if partner.website %}
-                    <a href="{{ partner.website }}" class="btn btn-secondary" target="_blank" rel="noopener">
-                      Visita il sito
-                    </a>
-                  {% endif %}
-                  <button
-                    class="btn btn-ghost"
-                    type="button"
-                    data-lead-trigger
-                    data-partner-name="{{ partner.name }}"
-                  >
-                    Richiedi itinerario
-                  </button>
-                </div>
-              </article>
-            </li>
-          {% endfor %}
-        </ol>
-      </section>
-    {% endif %}
+  <div class="container experience-container">
+    <section class="experience-directory" id="experience-grid" aria-labelledby="experience-directory-title">
+      <header class="experience-directory__header" data-animate>
+        <div>
+          <h2 id="experience-directory-title">Seleziona la tua esperienza</h2>
+          <p class="muted">Stai esplorando <strong>{{ category_label }}</strong></p>
+        </div>
+        <p class="experience-directory__results">
+          {{ pagination.total }} {{ 'proposta' if pagination.total == 1 else 'proposte' }} disponibili ora.
+        </p>
+      </header>
 
-    <section class="experience-section experience-section--directory" id="partners" aria-labelledby="experience-directory-title">
-      <div class="card card--outlined">
-        <div class="experience-directory__header">
-          <div>
-            <h2 id="experience-directory-title">Filtra per categoria</h2>
-            <p class="muted">Stai esplorando: <strong>{{ category_label }}</strong></p>
-          </div>
-          <p class="experience-directory__results">
-            {{ pagination.total }} {{ 'risultato' if pagination.total == 1 else 'risultati' }} curati dal nostro team.
-          </p>
-        </div>
-        <div class="filter-group" role="tablist" aria-label="Filtra partner per categoria">
-          {% for value, label in filter_labels %}
-            {% set is_active = (not selected_category and value == 'all') or (selected_category == value) %}
-            <button
-              type="button"
-              class="filter-chip {{ 'is-active' if is_active }}"
-              data-filter="{{ value }}"
-              role="tab"
-              aria-selected="{{ 'true' if is_active else 'false' }}"
-            >
-              {{ label }}
-            </button>
-          {% endfor %}
-        </div>
+      <div class="experience-directory__filters" role="tablist" aria-label="Filtra per categoria">
+        {% for value, label in filter_labels %}
+          {% set is_active = (not selected_category and value == 'all') or (selected_category == value) %}
+          <button
+            type="button"
+            class="filter-chip {{ 'is-active' if is_active }}"
+            data-filter="{{ value }}"
+            role="tab"
+            aria-selected="{{ 'true' if is_active else 'false' }}"
+          >
+            {{ label }}
+          </button>
+        {% endfor %}
       </div>
 
-      <div class="grid grid--columns-3">
+      <div class="experience-card-grid">
         {% if partners %}
           {% for partner in partners %}
-            <article class="card partner-card">
-              <figure class="partner-card__media">
+            {% set actions = contact_actions.get(partner.id, []) %}
+            {% set primary_action = actions[0] if actions else None %}
+            <article class="experience-card" data-animate>
+              <div class="experience-card__media">
                 {% if partner.image_url %}
                   <img
                     src="{{ partner.image_url }}"
@@ -153,71 +86,77 @@
                     decoding="async"
                   />
                 {% endif %}
-              </figure>
-              <header class="partner-card__header">
-                <div class="partner-card__meta">
+                {% if partner.description %}
+                  <div class="experience-card__hover" aria-hidden="true">
+                    <p>{{ partner.description }}</p>
+                  </div>
+                {% endif %}
+              </div>
+              <div class="experience-card__body">
+                <div class="experience-card__meta">
                   <span class="pill">{{ partner.category_label() }}</span>
                   {% if partner.verified %}
                     <span class="badge badge--success">Verificato</span>
                   {% endif %}
                 </div>
                 <h3>{{ partner.name }}</h3>
-                {% if partner.contact %}
-                  <p class="partner-card__contact muted">{{ partner.contact }}</p>
-                {% endif %}
-              </header>
-              {% if partner.description %}
-                <p class="partner-card__description">{{ partner.description }}</p>
-              {% endif %}
-              <div class="partner-card__actions">
-                {% set actions = contact_actions.get(partner.id, []) %}
-                {% if actions %}
-                  {% for action in actions %}
-                    {% set is_external = action.href.startswith('http') %}
-                    <a
-                      href="{{ action.href }}"
-                      class="btn btn-secondary"
-                      {% if is_external %}target="_blank" rel="noopener"{% endif %}
-                    >
-                      {{ action.label }}
-                    </a>
-                  {% endfor %}
-                {% endif %}
-                {% if partner.website %}
-                  <a href="{{ partner.website }}" class="btn btn-ghost" target="_blank" rel="noopener">Visita il sito</a>
-                {% endif %}
-                <button
-                  class="btn btn-ghost"
-                  type="button"
-                  data-lead-trigger
-                  data-partner-name="{{ partner.name }}"
-                >
-                  Richiedi itinerario
-                </button>
+                <p class="experience-card__info">
+                  {{ partner.contact or 'Durata e prezzo su richiesta' }}
+                </p>
               </div>
-              {% if partner.lat and partner.lon %}
-                <p class="partner-card__map">
+              <div class="experience-card__actions">
+                {% if partner.website %}
                   <a
-                    href="https://www.openstreetmap.org/?mlat={{ '%.5f'|format(partner.lat) }}&mlon={{ '%.5f'|format(partner.lon) }}#map=13/{{ '%.5f'|format(partner.lat) }}/{{ '%.5f'|format(partner.lon) }}"
+                    href="{{ partner.website }}"
+                    class="btn btn-primary"
                     target="_blank"
                     rel="noopener"
                   >
-                    Vedi sulla mappa
+                    Dettagli
                   </a>
-                </p>
-              {% endif %}
+                {% else %}
+                  <button
+                    class="btn btn-primary"
+                    type="button"
+                    data-lead-trigger
+                    data-partner-name="{{ partner.name }}"
+                  >
+                    Dettagli
+                  </button>
+                {% endif %}
+
+                {% if primary_action %}
+                  {% set is_external = primary_action.href.startswith('http') %}
+                  <a
+                    href="{{ primary_action.href }}"
+                    class="btn btn-ghost"
+                    {% if is_external %}target="_blank" rel="noopener"{% endif %}
+                  >
+                    {{ primary_action.label }}
+                  </a>
+                {% else %}
+                  <button
+                    class="btn btn-ghost"
+                    type="button"
+                    data-lead-trigger
+                    data-partner-name="{{ partner.name }}"
+                  >
+                    Contatta
+                  </button>
+                {% endif %}
+              </div>
             </article>
           {% endfor %}
         {% else %}
-          <div class="card">
-            <h3>Nessun partner disponibile</h3>
-            <p>Stiamo selezionando nuove esperienze da mostrare qui. Torna a trovarci presto!</p>
+          <div class="experience-card experience-card--empty" data-animate>
+            <h3>Nessuna esperienza disponibile</h3>
+            <p>Stiamo caricando nuove proposte curate: torna a trovarci a breve.</p>
           </div>
         {% endif %}
       </div>
 
       {% if pagination.pages > 1 %}
-        <nav class="pagination" aria-label="Navigazione pagine partner">
+        <nav class="pagination" aria-label="Navigazione pagine esperienze">
           {% set category_param = selected_category if selected_category else None %}
           {% if pagination.page > 1 %}
             <a
@@ -249,285 +188,143 @@
       {% endif %}
     </section>
 
-    <section class="experience-section experience-section--features" aria-labelledby="experience-features">
-      <div class="card card--frosted">
-        <h2 id="experience-features">Cosa troverai in Etna Experience</h2>
-        <div class="experience-feature-grid">
-          <article class="experience-feature">
-            <div class="experience-feature__icon" aria-hidden="true">🌋</div>
-            <h3>Avventure vulcaniche guidate</h3>
-            <p>Escursioni all'alba, trekking in notturna e discese in grotta con guide alpine e geologi certificati.</p>
-          </article>
-          <article class="experience-feature">
-            <div class="experience-feature__icon" aria-hidden="true">🍷</div>
-            <h3>Degustazioni e terroir</h3>
-            <p>Wine tour, cene in vigna e visite alle cantine con pairing personalizzati realizzati da sommelier locali.</p>
-          </article>
-          <article class="experience-feature">
-            <div class="experience-feature__icon" aria-hidden="true">🏡</div>
-            <h3>Hospitality diffusa</h3>
-            <p>Resort, boutique hotel e rifugi di charme con servizi premium e concierge h24 per pianificare ogni dettaglio.</p>
-          </article>
-          <article class="experience-feature">
-            <div class="experience-feature__icon" aria-hidden="true">🧑‍🍳</div>
-            <h3>Laboratori e masterclass</h3>
-            <p>Cooking class siciliane, corsi di fotografia naturalistica e workshop di vulcanologia per tutte le età.</p>
-          </article>
-        </div>
+    <section class="experience-section" aria-labelledby="experience-how" data-animate>
+      <header class="experience-section__header">
+        <h2 id="experience-how">Come funziona</h2>
+        <p>Tre passaggi rapidi per costruire la tua Etna Experience perfetta.</p>
+      </header>
+      <div class="experience-steps">
+        <article class="experience-step">
+          <div class="experience-step__icon" aria-hidden="true">🧭</div>
+          <h3>Seleziona la proposta</h3>
+          <p>Scegli tra trekking, jeep tour, shooting o momenti relax con filtri intuitivi.</p>
+        </article>
+        <article class="experience-step">
+          <div class="experience-step__icon" aria-hidden="true">📞</div>
+          <h3>Parla con la guida</h3>
+          <p>Ricevi disponibilità, briefing sicurezza e suggerimenti logistici in poche ore.</p>
+        </article>
+        <article class="experience-step">
+          <div class="experience-step__icon" aria-hidden="true">🔥</div>
+          <h3>Vivi il vulcano</h3>
+          <p>Arriva preparato con itinerario personalizzato e supporto continuo sul territorio.</p>
+        </article>
       </div>
     </section>
 
-    <div class="experience-info-bar" role="list">
-      <div class="experience-info-bar__item" role="listitem">
-        <span class="experience-info-bar__title">Selezione indipendente</span>
-        <p>Partner invitati su referenza, audit periodici e raccolta feedback da chi ha già vissuto l'esperienza.</p>
-      </div>
-      <div class="experience-info-bar__item" role="listitem">
-        <span class="experience-info-bar__title">Sostenibilità reale</span>
-        <p>Collaboriamo solo con attività che rispettano i protocolli vulcanologici e promuovono filiere locali.</p>
-      </div>
-      <div class="experience-info-bar__item" role="listitem">
-        <span class="experience-info-bar__title">Supporto dedicato</span>
-        <p>Hai bisogno di un consiglio? Scrivici e ti mettiamo in contatto con i partner più adatti alla tua idea di viaggio.</p>
-      </div>
-    </div>
-
-    <section class="experience-section experience-section--journey" id="experience-journey" aria-labelledby="experience-journey-title">
-      <div class="card card--outlined">
-        <div class="experience-journey__header">
-          <h2 id="experience-journey-title">Un itinerario perfetto in 4 mosse</h2>
-          <p>Usa Etna Experience come base per comporre un soggiorno dinamico, alternando adrenalina, gusto e relax.</p>
-        </div>
-        <ol class="experience-journey" role="list">
-          <li>
-            <h3>Briefing e scouting</h3>
-            <p>Contatta le guide certificate per definire il livello di difficoltà e gli orari migliori in base all'attività vulcanica.</p>
-          </li>
-          <li>
-            <h3>Salita al vulcano</h3>
-            <p>Esplora i crateri sommitali, le colate storiche e le grotte di ghiaccio con equipaggiamento fornito dai partner.</p>
-          </li>
-          <li>
-            <h3>Esperienze del gusto</h3>
-            <p>Concludi la giornata tra vigneti e masserie con tasting guidati da chef e produttori selezionati.</p>
-          </li>
-          <li>
-            <h3>Relax e benessere</h3>
-            <p>Prenota spa vulcaniche, bagni in botte o ritiri benessere immersi nel bosco etneo per riequilibrare corpo e mente.</p>
-          </li>
-        </ol>
+    <section class="experience-section experience-section--reasons" aria-labelledby="experience-why" data-animate>
+      <header class="experience-section__header">
+        <h2 id="experience-why">Perché scegliere guide EtnaMonitor</h2>
+        <p>Affidati a una rete locale curata con verifiche periodiche e strumenti digitali.</p>
+      </header>
+      <div class="experience-reasons">
+        <article class="experience-reason">
+          <h3>Curatela indipendente</h3>
+          <p>Ogni partner è verificato sul campo con audit trimestrali e feedback reali.</p>
+        </article>
+        <article class="experience-reason">
+          <h3>Monitoraggio vulcanico</h3>
+          <p>Le guide ricevono aggiornamenti dai modelli EtnaMonitor per pianificare in sicurezza.</p>
+        </article>
+        <article class="experience-reason">
+          <h3>Esperienze modulari</h3>
+          <p>Combina più attività grazie a calendari sincronizzati e supporto concierge.</p>
+        </article>
+        <article class="experience-reason">
+          <h3>Sostenibilità concreta</h3>
+          <p>Promuoviamo filiere locali, mobilità leggera e protocolli ambientali condivisi.</p>
+        </article>
       </div>
     </section>
 
-    <section class="experience-section experience-section--highlights" aria-labelledby="experience-highlights">
-      <div class="card card--outlined">
-        <div class="experience-highlight-grid">
-          <div class="experience-highlight-grid__intro">
-            <h2 id="experience-highlights">Perché scegliere i nostri partner</h2>
-            <p>Storie autentiche, accoglienza sincera e attenzione ai dettagli. Ogni realtà è stata intervistata, provata sul campo e dotata di strumenti per accoglierti al meglio.</p>
-          </div>
-          <ul class="experience-highlight-list" role="list">
-            <li>
-              <span class="experience-highlight__badge">100% locale</span>
-              <p>Proprietari e staff vivono sul territorio e ti accompagnano oltre i circuiti turistici classici.</p>
-            </li>
-            <li>
-              <span class="experience-highlight__badge">Storytelling dedicato</span>
-              <p>Ogni partner riceve materiale personalizzato per raccontare l'Etna con voce unica e coinvolgente.</p>
-            </li>
-            <li>
-              <span class="experience-highlight__badge">Esperienze modulari</span>
-              <p>Combina più attività in modo fluido grazie a calendari sincronizzati e disponibilità in tempo reale.</p>
-            </li>
-            <li>
-              <span class="experience-highlight__badge">Community verificata</span>
-              <p>Raccogliamo recensioni verificate e suggerimenti per mantenere un livello di qualità costante.</p>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <div class="cta-panel">
-      <div>
-        <h2>Vuoi apparire su Etna Experience?</h2>
-        <p>
-          Compila il modulo dedicato, raccontaci la tua storia e condividi il tuo impegno per il territorio: il nostro team ti ricontatterà entro 72 ore.
-        </p>
-        <ul class="cta-panel__metrics" role="list">
-          <li><strong>72h</strong> tempo medio di risposta</li>
-          <li><strong>68%</strong> candidature approvate</li>
-          <li><strong>Supporto</strong> one-to-one con il team editoriale</li>
-        </ul>
-      </div>
-      <div class="cta-panel__actions">
-        <a class="btn btn-primary" href="{{ url_for('experience.become_partner') }}">Candidati come partner</a>
-      </div>
-    </div>
-
-    <section class="experience-section experience-section--lead" aria-labelledby="experience-lead-title">
-      <div class="card card--frosted">
-        <div class="experience-lead__intro">
-          <h2 id="experience-lead-title">Serve una mano per pianificare?</h2>
-          <p>Invia una richiesta rapida al concierge territoriale: prepareremo una proposta combinando i partner che hai scelto.</p>
-        </div>
-        <form class="lead-form" data-lead-form>
-          <div class="lead-form__group">
-            <label for="lead-partner">Partner preferito</label>
-            <input id="lead-partner" name="partner" type="text" placeholder="Seleziona un partner" data-lead-partner readonly />
-          </div>
-          <div class="lead-form__group">
-            <label for="lead-name">Il tuo nome</label>
-            <input id="lead-name" name="name" type="text" autocomplete="name" required />
-          </div>
-          <div class="lead-form__group">
-            <label for="lead-email">Email di contatto</label>
-            <input id="lead-email" name="email" type="email" autocomplete="email" required />
-          </div>
-          <div class="lead-form__group lead-form__group--wide">
-            <label for="lead-message">Cosa vorresti vivere?</label>
-            <textarea id="lead-message" name="message" rows="4" placeholder="Raccontaci periodo, numero di persone e attività desiderate." required></textarea>
-          </div>
-          <div class="lead-form__actions">
-            <button class="btn btn-primary" type="submit">Invia richiesta</button>
-            <p class="muted">Ti risponderemo entro un giorno lavorativo via email.</p>
-          </div>
-        </form>
-      </div>
-    </section>
-
-    <section class="experience-section experience-section--voices" aria-labelledby="experience-voices">
-      <div class="card card--frosted">
-        <div class="experience-voices__header">
-          <h2 id="experience-voices">Voci dal territorio</h2>
-          <p>Un assaggio delle storie che rendono unica la nostra community Etna Experience.</p>
-        </div>
-        {% if community_quotes %}
-          <div class="experience-voices">
-            {% for quote in community_quotes %}
-              <figure class="experience-voice">
-                {% if quote.description %}
-                  <blockquote>“{{ quote.description }}”</blockquote>
-                {% endif %}
-                <figcaption>— {{ quote.name }} · {{ quote.category_label() }}</figcaption>
-              </figure>
-            {% endfor %}
-          </div>
-        {% else %}
-          <div class="experience-voices">
-            <figure class="experience-voice">
-              <blockquote>
-                “Accompagniamo viaggiatori sulle colate del 2002 e chiudiamo le giornate con degustazioni al tramonto. Grazie a Etna Experience abbiamo avuto richieste da tutto il mondo.”
-              </blockquote>
-              <figcaption>— Martina, guida vulcanologica &amp; sommelier AIS</figcaption>
-            </figure>
-            <figure class="experience-voice">
-              <blockquote>
-                “La nostra masseria accoglie piccoli gruppi per cooking class siciliane. La piattaforma ci ha aiutato a creare pacchetti combinati con trekking e tour fotografici.”
-              </blockquote>
-              <figcaption>— Salvatore e Lucia, host di borgo diffuso</figcaption>
-            </figure>
-          </div>
-        {% endif %}
-      </div>
-    </section>
-
-    <section class="experience-section experience-section--faq" aria-labelledby="experience-faq">
-      <div class="card card--outlined">
-        <h2 id="experience-faq">Domande frequenti</h2>
-        <div class="experience-faq">
+    <section class="experience-section experience-section--faq" aria-labelledby="experience-faq" data-animate>
+      <header class="experience-section__header">
+        <h2 id="experience-faq">FAQ rapide</h2>
+        <p>Le risposte essenziali per organizzare la tua prossima uscita sull'Etna.</p>
+      </header>
+      <div class="experience-faq">
+        {% for entry in faq_entries %}
           <details>
-            <summary>Come vengono selezionati i partner?</summary>
-            <p>Richiediamo documentazione aggiornata, referenze reali e un periodo di prova. Solo dopo almeno due feedback positivi vengono pubblicati su Etna Experience.</p>
+            <summary>{{ entry.question }}</summary>
+            <p>{{ entry.answer }}</p>
           </details>
-          <details>
-            <summary>Posso prenotare direttamente dal sito?</summary>
-            <p>Per ora ti mettiamo in contatto diretto con la struttura o la guida. A breve integreremo un sistema di prenotazione sicuro con pagamenti tracciati.</p>
-          </details>
-          <details>
-            <summary>È possibile organizzare esperienze su misura?</summary>
-            <p>Certamente. Scrivici tramite il form partner: il nostro concierge territoriale costruirà un pacchetto personalizzato combinando più attività.</p>
-          </details>
-        </div>
+        {% endfor %}
       </div>
     </section>
   </div>
+
+  <a
+    class="experience-sticky-cta"
+    href="mailto:{{ concierge_email }}?subject={{ 'Prenotazione Etna Experience' |urlencode }}"
+    data-lead-trigger
+  >
+    Prenota o Contatta guide
+  </a>
 </section>
 
-{% if structured_data %}
-  <script type="application/ld+json" nonce="{{ csp_nonce() }}">{{ structured_data | safe }}</script>
-{% endif %}
+{% endblock %}
 
-<script nonce="{{ csp_nonce() }}">
-  document.addEventListener('DOMContentLoaded', () => {
-    const filterButtons = Array.from(document.querySelectorAll('[data-filter]'));
-    if (filterButtons.length) {
-      filterButtons.forEach((button) => {
-        button.addEventListener('click', () => {
-          const category = button.dataset.filter;
-          const url = new URL(window.location.href);
-          if (category === 'all') {
-            url.searchParams.delete('category');
-          } else {
-            url.searchParams.set('category', category);
-          }
-          url.searchParams.delete('page');
-          window.location.assign(url.toString());
+{% block page_structured_data %}
+  {{ super() }}
+{% endblock %}
+
+{% block extra_scripts %}
+  {{ super() }}
+  <script nonce="{{ csp_nonce() }}">
+    document.addEventListener('DOMContentLoaded', () => {
+      const filterButtons = Array.from(document.querySelectorAll('[data-filter]'));
+      if (filterButtons.length) {
+        filterButtons.forEach((button) => {
+          button.addEventListener('click', () => {
+            const category = button.dataset.filter;
+            const url = new URL(window.location.href);
+            if (category === 'all') {
+              url.searchParams.delete('category');
+            } else {
+              url.searchParams.set('category', category);
+            }
+            url.searchParams.delete('page');
+            window.location.assign(url.toString());
+          });
         });
-      });
-    }
+      }
 
-    const recommendationsToggle = document.getElementById('experience-recommendations-toggle');
-    const recommendationsPanel = document.getElementById('experience-recommendations');
-    if (recommendationsToggle && recommendationsPanel) {
-      recommendationsToggle.addEventListener('click', () => {
-        const isHidden = recommendationsPanel.hasAttribute('hidden');
-        if (isHidden) {
-          recommendationsPanel.removeAttribute('hidden');
-        } else {
-          recommendationsPanel.setAttribute('hidden', '');
-        }
-        recommendationsToggle.setAttribute('aria-expanded', String(isHidden));
-      });
-    }
-
-    const leadForm = document.querySelector('[data-lead-form]');
-    const leadInputs = {
-      partner: leadForm ? leadForm.querySelector('[data-lead-partner]') : null,
-      name: leadForm ? leadForm.querySelector('[name="name"]') : null,
-      email: leadForm ? leadForm.querySelector('[name="email"]') : null,
-      message: leadForm ? leadForm.querySelector('[name="message"]') : null,
-    };
-
-    if (leadForm) {
-      document.querySelectorAll('[data-lead-trigger]').forEach((trigger) => {
-        trigger.addEventListener('click', () => {
-          const partnerName = trigger.getAttribute('data-partner-name');
-          if (leadInputs.partner) {
-            leadInputs.partner.value = partnerName || '';
-            leadInputs.partner.focus();
+      const leadButtons = Array.from(document.querySelectorAll('[data-lead-trigger]'));
+      leadButtons.forEach((button) => {
+        button.addEventListener('click', (event) => {
+          const partnerName = button.getAttribute('data-partner-name');
+          const subjectBase = partnerName ? `Richiesta dettagli Etna Experience – ${partnerName}` : 'Richiesta Etna Experience';
+          const bodyLines = [
+            partnerName ? `Esperienza: ${partnerName}` : 'Esperienza: da consigliare',
+            'Periodo preferito:',
+            'Numero partecipanti:',
+            'Note:'
+          ];
+          const mailto = `mailto:{{ concierge_email }}?subject=${encodeURIComponent(subjectBase)}&body=${encodeURIComponent(bodyLines.join('\n'))}`;
+          if (event.currentTarget.tagName === 'A' && event.currentTarget.getAttribute('href').startsWith('mailto:')) {
+            return;
           }
-          window.scrollTo({ top: leadForm.offsetTop - 80, behavior: 'smooth' });
+          window.location.href = mailto;
         });
       });
 
-      leadForm.addEventListener('submit', (event) => {
-        event.preventDefault();
-        const partnerName = leadInputs.partner ? leadInputs.partner.value : '';
-        const name = leadInputs.name ? leadInputs.name.value.trim() : '';
-        const email = leadInputs.email ? leadInputs.email.value.trim() : '';
-        const message = leadInputs.message ? leadInputs.message.value.trim() : '';
-        if (!name || !email || !message) {
-          alert('Compila tutti i campi per inviare la richiesta.');
-          return;
-        }
-        const subject = encodeURIComponent(`Richiesta Etna Experience da ${name}`);
-        const body = encodeURIComponent(
-          `Partner di interesse: ${partnerName || 'Da suggerire'}\nEmail: ${email}\n\n${message}`,
-        );
-        window.location.href = `mailto:concierge@etnamonitor.it?subject=${subject}&body=${body}`;
-      });
-    }
-  });
-</script>
+      const animatedElements = Array.from(document.querySelectorAll('[data-animate]'));
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver((entries, obs) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add('is-visible');
+              obs.unobserve(entry.target);
+            }
+          });
+        }, {
+          rootMargin: '0px 0px -10%',
+          threshold: 0.2,
+        });
+        animatedElements.forEach((el) => observer.observe(el));
+      } else {
+        animatedElements.forEach((el) => el.classList.add('is-visible'));
+      }
+    });
+  </script>
 {% endblock %}

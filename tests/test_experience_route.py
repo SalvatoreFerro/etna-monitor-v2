@@ -41,7 +41,7 @@ def client(app):
 def test_experience_handles_empty_database(client):
     response = client.get("/experience")
     assert response.status_code == 200
-    assert "Nessun partner disponibile" in response.get_data(as_text=True)
+    assert "Nessuna esperienza disponibile" in response.get_data(as_text=True)
 
 
 def test_experience_orders_and_filters_partners(client, app):

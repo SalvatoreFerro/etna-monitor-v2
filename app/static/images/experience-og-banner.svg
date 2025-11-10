@@ -1,0 +1,46 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="title desc">
+  <title id="title">Etna Experience catalogo di escursioni e tour</title>
+  <desc id="desc">Banner in stile dark con illustrazione del vulcano Etna e call to action Etna Experience, formato 1200 per 630 pixel per condivisioni social.</desc>
+  <defs>
+    <linearGradient id="og-sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="50%" stop-color="#1e1b4b" />
+      <stop offset="100%" stop-color="#1f2937" />
+    </linearGradient>
+    <linearGradient id="og-lava" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#fb923c" />
+      <stop offset="100%" stop-color="#f97316" />
+    </linearGradient>
+    <linearGradient id="og-glow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="rgba(253,186,116,0.7)" />
+      <stop offset="100%" stop-color="rgba(249,115,22,0)" />
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" rx="36" fill="url(#og-sky)" />
+  <circle cx="1050" cy="120" r="110" fill="rgba(253,186,116,0.25)" />
+  <g fill="#cbd5f5" opacity="0.5">
+    <circle cx="180" cy="140" r="3" />
+    <circle cx="260" cy="90" r="2" />
+    <circle cx="340" cy="130" r="2.5" />
+    <circle cx="520" cy="60" r="2" />
+    <circle cx="640" cy="110" r="2.5" />
+    <circle cx="820" cy="70" r="3" />
+  </g>
+  <path d="M80 480 L260 360 L420 250 L520 310 L620 250 L780 360 L960 320 L1120 380 L1120 540 L80 540 Z" fill="#0b1120" opacity="0.85" />
+  <path d="M520 300 C560 260 600 210 620 170 C640 130 660 150 660 190 C660 250 600 330 540 360" fill="url(#og-lava)" opacity="0.75" />
+  <path d="M620 200 Q640 150 660 80 Q670 120 700 170 L660 190 Z" fill="url(#og-glow)" opacity="0.7" />
+  <path d="M80 540 H1120 V590 C940 550 820 560 700 580 C580 600 460 620 340 600 C220 580 160 570 80 560 Z" fill="#111827" opacity="0.65" />
+  <g transform="translate(120, 170)" fill="#e2e8f0">
+    <text x="0" y="0" font-size="20" font-weight="600" letter-spacing="0.24em" opacity="0.75">ETNA MONITOR</text>
+    <text x="0" y="80" font-size="72" font-weight="700">Etna Experience</text>
+    <text x="0" y="140" font-size="32" opacity="0.85">Escursioni, tour e attività vulcaniche curate</text>
+    <rect x="0" y="180" width="340" height="68" rx="34" fill="#f97316" opacity="0.92" />
+    <text x="170" y="226" font-size="30" font-weight="700" text-anchor="middle" fill="#0f172a">Scopri le esperienze</text>
+  </g>
+  <g transform="translate(780, 330)" fill="#cbd5f5" opacity="0.85">
+    <text x="0" y="0" font-size="20" font-weight="600" opacity="0.75">In evidenza</text>
+    <text x="0" y="60" font-size="30">• Trekking guidati all'alba</text>
+    <text x="0" y="110" font-size="30">• Tour in jeep tra crateri e colate</text>
+    <text x="0" y="160" font-size="30">• Degustazioni e relax sotto le stelle</text>
+  </g>
+</svg>

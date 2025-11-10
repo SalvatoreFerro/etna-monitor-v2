@@ -2927,3 +2927,451 @@
   gap: 0.6rem;
   color: var(--color-text-muted);
 }  
+
+@layer layout {
+  .page--experience {
+    padding-block: clamp(var(--space-10), 8vw, var(--space-16));
+  }
+
+  .page--experience .experience-container {
+    display: grid;
+    gap: clamp(var(--space-10), 7vw, var(--space-14));
+  }
+
+  .experience-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-2xl);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    background: radial-gradient(160% 160% at 10% 10%, rgba(99, 102, 241, 0.22), transparent 55%),
+      radial-gradient(140% 180% at 85% 20%, rgba(20, 184, 166, 0.32), transparent 65%),
+      linear-gradient(135deg, rgba(6, 12, 24, 0.96), rgba(15, 23, 42, 0.9));
+    padding: clamp(var(--space-8), 7vw, var(--space-12));
+    min-height: clamp(24rem, 65vh, 32rem);
+    max-height: 70vh;
+    display: flex;
+    align-items: center;
+    margin-bottom: clamp(var(--space-9), 6vw, var(--space-12));
+  }
+
+  .experience-hero::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 1px solid rgba(100, 244, 255, 0.18);
+    pointer-events: none;
+  }
+
+  .experience-hero__inner {
+    position: relative;
+    z-index: 2;
+    display: grid;
+    gap: clamp(var(--space-6), 5vw, var(--space-10));
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    width: 100%;
+  }
+
+  @media (min-width: 960px) {
+    .experience-hero__inner {
+      grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    }
+  }
+
+  .experience-directory {
+    display: grid;
+    gap: clamp(var(--space-6), 4vw, var(--space-8));
+  }
+
+  .experience-card-grid {
+    display: grid;
+    gap: clamp(var(--space-5), 3vw, var(--space-6));
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
+  @media (min-width: 640px) {
+    .experience-card-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .experience-card-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .experience-section {
+    display: grid;
+    gap: clamp(var(--space-4), 2vw, var(--space-5));
+  }
+
+  .experience-section + .experience-section {
+    margin-top: clamp(var(--space-10), 6vw, var(--space-12));
+  }
+
+  .experience-section__header {
+    display: grid;
+    gap: var(--space-2);
+    max-width: 40rem;
+  }
+
+  .experience-section--faq .experience-section__header,
+  .experience-section--reasons .experience-section__header {
+    max-width: 48rem;
+  }
+}
+
+@layer components {
+  .experience-hero__content {
+    display: grid;
+    gap: clamp(var(--space-3), 2vw, var(--space-4));
+    max-width: 32rem;
+  }
+
+  .experience-hero__eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.75rem;
+    border-radius: var(--radius-pill);
+    background: rgba(100, 244, 255, 0.16);
+    color: var(--color-heading);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+  }
+
+  .experience-hero__subtitle {
+    margin: 0;
+    color: rgba(226, 232, 240, 0.82);
+    font-size: 1rem;
+  }
+
+  .experience-hero__cta {
+    display: inline-flex;
+  }
+
+  .experience-hero__stats {
+    display: grid;
+    gap: var(--space-4);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: clamp(var(--space-4), 2vw, var(--space-5));
+  }
+
+  .experience-hero__stats li {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.9rem 1rem;
+    border-radius: var(--radius-lg);
+    background: rgba(15, 23, 42, 0.65);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+  }
+
+  .experience-hero__stat-value {
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    font-weight: 700;
+    color: var(--color-heading);
+  }
+
+  .experience-hero__stat-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(148, 163, 184, 0.85);
+  }
+
+  .experience-hero__media {
+    justify-self: center;
+    width: min(24rem, 90%);
+    filter: drop-shadow(0 30px 45px rgba(6, 182, 212, 0.25));
+  }
+
+  @media (min-width: 960px) {
+    .experience-hero__media {
+      width: min(28rem, 100%);
+      justify-self: end;
+    }
+  }
+
+  .experience-directory__header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  @media (min-width: 768px) {
+    .experience-directory__header {
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+  }
+
+  .experience-directory__results {
+    color: rgba(148, 163, 184, 0.85);
+    font-size: 0.9rem;
+  }
+
+  .experience-directory__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .experience-card {
+    position: relative;
+    display: grid;
+    gap: var(--space-4);
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(5, 13, 27, 0.85);
+    overflow: hidden;
+    box-shadow: 0 18px 40px -35px rgba(15, 118, 110, 0.6);
+    transition: transform 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+
+  .experience-card:is(:hover, :focus-within) {
+    transform: translateY(-6px);
+    border-color: rgba(94, 234, 212, 0.45);
+    box-shadow: 0 28px 55px -30px rgba(45, 212, 191, 0.55);
+  }
+
+  .experience-card__media {
+    position: relative;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+  }
+
+  .experience-card__media img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.4s ease;
+  }
+
+  .experience-card:is(:hover, :focus-within) .experience-card__media img {
+    transform: scale(1.05);
+  }
+
+  .experience-card__hover {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    align-content: end;
+    padding: 1.2rem;
+    background: linear-gradient(180deg, transparent 20%, rgba(4, 12, 24, 0.88));
+    color: rgba(226, 232, 240, 0.92);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+  }
+
+  .experience-card__hover p {
+    margin: 0;
+    font-size: 0.9rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .experience-card:is(:hover, :focus-within) .experience-card__hover {
+    opacity: 1;
+  }
+
+  .experience-card__body {
+    display: grid;
+    gap: var(--space-2);
+    padding: 0 1.5rem;
+  }
+
+  .experience-card__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .experience-card__body h3 {
+    margin: 0;
+    font-size: 1.15rem;
+  }
+
+  .experience-card__info {
+    margin: 0;
+    color: rgba(148, 163, 184, 0.9);
+    font-size: 0.9rem;
+  }
+
+  .experience-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    padding: 0 1.5rem 1.5rem;
+  }
+
+  .experience-card--empty {
+    text-align: center;
+    padding: clamp(var(--space-8), 6vw, var(--space-10));
+    border: 1px dashed rgba(148, 163, 184, 0.35);
+    background: rgba(6, 12, 24, 0.6);
+  }
+
+  .experience-card--empty h3 {
+    margin-bottom: var(--space-2);
+  }
+
+  .experience-steps {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  @media (min-width: 768px) {
+    .experience-steps {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .experience-step {
+    display: grid;
+    gap: var(--space-3);
+    padding: clamp(var(--space-4), 3vw, var(--space-5));
+    border-radius: var(--radius-xl);
+    background: rgba(4, 12, 24, 0.72);
+    border: 1px solid rgba(94, 234, 212, 0.24);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .experience-step__icon {
+    font-size: 1.8rem;
+  }
+
+  .experience-reasons {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  @media (min-width: 768px) {
+    .experience-reasons {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  .experience-reason {
+    padding: clamp(var(--space-4), 3vw, var(--space-5));
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(148, 163, 184, 0.22);
+    background: rgba(4, 12, 24, 0.7);
+    box-shadow: var(--shadow-xs);
+    display: grid;
+    gap: var(--space-2);
+  }
+
+  .experience-reason h3 {
+    margin: 0;
+    font-size: 1.05rem;
+  }
+
+  .experience-reason p {
+    margin: 0;
+    color: rgba(148, 163, 184, 0.9);
+    font-size: 0.95rem;
+  }
+
+  .experience-faq {
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .experience-faq details {
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(4, 12, 24, 0.7);
+    padding: clamp(var(--space-3), 2vw, var(--space-4));
+    transition: border-color 0.3s ease, background 0.3s ease;
+  }
+
+  .experience-faq summary {
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--color-heading);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .experience-faq summary::after {
+    content: "+";
+    font-size: 1.2rem;
+    color: rgba(94, 234, 212, 0.9);
+    transition: transform 0.3s ease;
+  }
+
+  .experience-faq details[open] summary::after {
+    content: "−";
+  }
+
+  .experience-faq details[open] {
+    border-color: rgba(94, 234, 212, 0.4);
+    background: rgba(15, 118, 110, 0.18);
+  }
+
+  .experience-faq p {
+    margin: var(--space-2) 0 0;
+    color: rgba(226, 232, 240, 0.85);
+    font-size: 0.95rem;
+  }
+
+  .experience-sticky-cta {
+    position: fixed;
+    left: 50%;
+    bottom: 1.25rem;
+    transform: translateX(-50%);
+    width: calc(100% - 2.5rem);
+    max-width: 22rem;
+    text-align: center;
+    padding: 0.85rem 1.5rem;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(90deg, rgba(34, 211, 238, 0.92), rgba(129, 140, 248, 0.92));
+    color: #041021;
+    font-weight: 700;
+    box-shadow: 0 25px 40px -25px rgba(34, 211, 238, 0.75);
+    z-index: 1200;
+  }
+
+  .experience-sticky-cta:hover,
+  .experience-sticky-cta:focus-visible {
+    color: #041021;
+    text-decoration: none;
+    box-shadow: 0 28px 45px -22px rgba(129, 140, 248, 0.75);
+  }
+
+  @media (min-width: 768px) {
+    .experience-sticky-cta {
+      position: sticky;
+      bottom: auto;
+      top: 6rem;
+      margin-left: auto;
+      transform: none;
+      width: auto;
+      max-width: none;
+      padding-inline: 1.75rem;
+    }
+  }
+}
+
+@layer utilities {
+  [data-animate] {
+    opacity: 0;
+    transform: translateY(32px);
+    transition: opacity 0.5s ease, transform 0.5s ease;
+  }
+
+  .is-visible {
+    opacity: 1 !important;
+    transform: translateY(0) !important;
+  }
+}
