@@ -8,6 +8,7 @@ import sys
 import redis
 import warnings
 import copy
+import click
 from datetime import datetime, timedelta
 from time import perf_counter
 from urllib.parse import urlparse, urlunparse
@@ -33,6 +34,7 @@ from sqlalchemy.pool import QueuePool, StaticPool
 from .routes.main import bp as main_bp
 from .routes.partners import bp as partners_bp
 from .routes.community import bp as community_bp
+from .routes.category import bp as category_bp
 from .routes.account import bp as account_bp, register_rate_limits as account_rate_limits
 from .routes.dashboard import bp as dashboard_bp
 from .routes.admin import bp as admin_bp
@@ -53,6 +55,7 @@ from .bootstrap import (
 )
 from .assets.social_preview import ensure_social_preview_image
 from .models import db
+from .models.partner import PartnerCategory
 from .filters import md
 from .utils.csrf import generate_csrf_token
 from .utils.logger import configure_logging
@@ -780,6 +783,7 @@ def create_app(config_overrides: dict | None = None):
 
     app.register_blueprint(main_bp)
     app.register_blueprint(partners_bp)
+    app.register_blueprint(category_bp)
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(legacy_auth_bp)
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
@@ -836,6 +840,18 @@ def create_app(config_overrides: dict | None = None):
                 response.headers.setdefault("Cache-Control", "public, max-age=300")
         return response
 
+    @app.errorhandler(404)
+    def render_not_found(error):  # pragma: no cover - presentation only
+        current_app.logger.info("[404] Not found: %s", request.path)
+        return (
+            render_template(
+                "errors/404.html",
+                page_title="Pagina non trovata",
+                page_description="La pagina che stai cercando non esiste o è stata spostata.",
+            ),
+            404,
+        )
+
     @app.errorhandler(500)
     def render_internal_error(error):  # pragma: no cover - presentation only
         app.logger.exception("[500] Internal server error")
@@ -846,6 +862,59 @@ def create_app(config_overrides: dict | None = None):
                 page_description="Si è verificato un errore inaspettato. Riprova fra poco.",
             ),
             500,
+        )
+
+    @app.teardown_request
+    def cleanup_session(exception):  # pragma: no cover - defensive cleanup
+        try:
+            if exception is not None:
+                db.session.rollback()
+        finally:
+            db.session.remove()
+
+    @app.cli.command("categories-ensure-seed")
+    def categories_ensure_seed() -> None:
+        """Ensure default partner categories exist."""
+
+        db.session.remove()
+        session = db.session
+
+        seeds = [
+            {"slug": "guide", "name": "Guide autorizzate", "sort_order": 0},
+            {"slug": "hotel", "name": "Hotel", "sort_order": 1},
+            {"slug": "ristoranti", "name": "Ristoranti", "sort_order": 2},
+        ]
+
+        created = 0
+        updated = 0
+
+        for payload in seeds:
+            category = session.query(PartnerCategory).filter_by(slug=payload["slug"]).first()
+            if category is None:
+                category = PartnerCategory(**payload, is_active=True, max_slots=10)
+                session.add(category)
+                created += 1
+            else:
+                changed = False
+                for key, value in (
+                    ("name", payload["name"]),
+                    ("sort_order", payload["sort_order"]),
+                ):
+                    if getattr(category, key) != value:
+                        setattr(category, key, value)
+                        changed = True
+                if not category.is_active:
+                    category.is_active = True
+                    changed = True
+                if category.max_slots != 10:
+                    category.max_slots = 10
+                    changed = True
+                if changed:
+                    updated += 1
+
+        session.commit()
+        click.echo(
+            f"Seed completed: {created} created, {updated} updated."
         )
 
     return app

@@ -5,11 +5,19 @@
   {'label': 'Feedback', 'url': url_for('community.feedback_portal'), 'endpoint': 'community.feedback_portal'},
 ] %}
 {% set nav_links = [
-  {'label': 'Partner', 'url': url_for('partners.category_listing', slug='guide'), 'endpoint': 'partners.category_listing'},
   {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
   {'label': 'Webcam Etna', 'url': url_for('main.webcam_etna'), 'endpoint': 'main.webcam_etna'},
   {'label': 'Community', 'children': community_links},
 ] %}
+
+{% if config.PARTNER_DIRECTORY_ENABLED %}
+  {% set experience_children = [
+    {'label': 'Guide autorizzate', 'url': url_for('category.category_view', slug='guide'), 'endpoint': 'category.category_view', 'slug': 'guide'},
+    {'label': 'Hotel', 'url': url_for('category.category_view', slug='hotel'), 'endpoint': 'category.category_view', 'slug': 'hotel'},
+    {'label': 'Ristoranti', 'url': url_for('category.category_view', slug='ristoranti'), 'endpoint': 'category.category_view', 'slug': 'ristoranti'}
+  ] %}
+  {% set nav_links = [{'label': 'Etna Experience', 'children': experience_children}] + nav_links %}
+{% endif %}
 
 {% if not session.user_id %}
   {% set nav_links = nav_links + [
@@ -68,8 +76,9 @@
                 </summary>
                 <ul class="site-nav__submenu" role="menu">
                   {% for child in link.children %}
+                    {% set is_child_active = request.endpoint == child.endpoint and (child.slug is not defined or request.view_args.get('slug') == child.slug) %}
                     <li>
-                      <a role="menuitem" class="site-nav__sublink {{ 'is-active' if request.endpoint == child.endpoint }}" href="{{ child.url }}">{{ child.label }}</a>
+                      <a role="menuitem" class="site-nav__sublink {{ 'is-active' if is_child_active }}" href="{{ child.url }}">{{ child.label }}</a>
                     </li>
                   {% endfor %}
                 </ul>

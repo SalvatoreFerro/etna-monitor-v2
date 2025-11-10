@@ -114,6 +114,21 @@ def test_category_listing_limits_to_max_slots(client, app, category, partner_fac
     assert "Partner A" in body
     assert "Partner B" in body
     assert "Partner C" not in body
+    assert "COMPLETA (2/2)" in body
+
+
+def test_category_view_returns_404_for_missing_category(client):
+    response = client.get("/categoria/non-esiste")
+    assert response.status_code == 404
+    body = response.get_data(as_text=True)
+    assert "Pagina non trovata" in body
+
+
+def test_category_view_handles_empty_partner_list(client):
+    response = client.get("/categoria/guide")
+    assert response.status_code == 200
+    body = response.get_data(as_text=True)
+    assert "Nessun partner disponibile" in body
 
 
 def test_price_first_vs_renewal(app, category, partner_factory):
@@ -159,3 +174,18 @@ def test_cannot_approve_when_slots_full(app, category, partner_factory):
 def test_generate_invoice_number_format():
     number = generate_invoice_number(5, year=2025)
     assert number == "EM-PARTNER-2025-0005"
+
+
+def test_categories_seed_cli(app):
+    with app.app_context():
+        PartnerCategory.query.delete(synchronize_session=False)
+        db.session.commit()
+
+    runner = app.test_cli_runner()
+    result = runner.invoke(args=["categories-ensure-seed"])
+
+    assert result.exit_code == 0
+    with app.app_context():
+        categories = {category.slug: category for category in PartnerCategory.query.all()}
+        assert {"guide", "hotel", "ristoranti"}.issubset(categories.keys())
+        assert all(category.max_slots == 10 for category in categories.values())

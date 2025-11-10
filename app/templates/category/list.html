@@ -1,0 +1,100 @@
+{% extends "layout.html" %}
+{% set page_title = category.name ~ " - Etna Experience" %}
+{% set page_description = category.description or "Scopri i partner selezionati di Etna Experience." %}
+
+{% block content %}
+<section class="section category-listing py-5">
+  <div class="container mb-5">
+    <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
+      <div>
+        <p class="text-uppercase text-muted small mb-2">Etna Experience</p>
+        <h1 class="display-6 mb-0">{{ category.name }}</h1>
+      </div>
+      <span class="badge {{ 'bg-danger' if is_full else 'bg-success' }} align-self-start">
+        {% if is_full %}
+          COMPLETA ({{ occupied }}/{{ max_slots }})
+        {% else %}
+          DISPONIBILE ({{ occupied }}/{{ max_slots }})
+        {% endif %}
+      </span>
+    </div>
+    {% if category.description %}
+      <p class="lead text-muted mt-3">{{ category.description }}</p>
+    {% endif %}
+  </div>
+
+  <div class="container mb-5">
+    <div class="row g-4">
+      {% for partner in partners %}
+        <div class="col-12 col-md-6 col-lg-4">
+          <article class="card h-100 shadow-sm">
+            <div class="card-body d-flex flex-column">
+              <h2 class="h5">{{ partner.name }}</h2>
+              {% if partner.short_desc %}
+                <p class="text-muted">{{ partner.short_desc }}</p>
+              {% elif partner.long_desc %}
+                <p class="text-muted">{{ partner.long_desc | truncate(160, True, '…') }}</p>
+              {% endif %}
+              <div class="mt-auto">
+                <a class="btn btn-primary btn-sm" href="{{ url_for('partners.partner_detail', slug=category.slug, partner_slug=partner.slug) }}">
+                  Scopri di più
+                </a>
+              </div>
+            </div>
+          </article>
+        </div>
+      {% else %}
+        <div class="col-12">
+          <div class="border border-dashed rounded-4 p-5 text-center bg-light">
+            <h2 class="h4 mb-3">Nessun partner disponibile</h2>
+            <p class="text-muted mb-0">
+              Stiamo selezionando nuovi partner per questa categoria. Torna a trovarci presto!
+            </p>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        {% if is_full %}
+          <h2 class="h5">Lista d'attesa</h2>
+          <p class="text-muted">
+            La categoria è al completo. Lascia i tuoi dati e ti contatteremo non appena si libera uno slot.
+          </p>
+          <form method="post" action="{{ url_for('partners.join_waitlist', slug=category.slug) }}" class="row g-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <div class="col-md-6">
+              <label class="form-label" for="waitlist-name">Nome*</label>
+              <input class="form-control" type="text" id="waitlist-name" name="name" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="waitlist-email">Email*</label>
+              <input class="form-control" type="email" id="waitlist-email" name="email" required />
+            </div>
+            <div class="col-md-6">
+              <label class="form-label" for="waitlist-phone">Telefono</label>
+              <input class="form-control" type="tel" id="waitlist-phone" name="phone" />
+            </div>
+            <div class="col-12">
+              <label class="form-label" for="waitlist-notes">Note</label>
+              <textarea class="form-control" id="waitlist-notes" name="notes" rows="3"></textarea>
+            </div>
+            <div class="col-12 d-flex justify-content-end">
+              <button class="btn btn-primary" type="submit">Unisciti alla lista d'attesa</button>
+            </div>
+          </form>
+        {% else %}
+          <h2 class="h5">Diventa partner</h2>
+          <p class="text-muted">
+            Sei un professionista dell'Etna Experience? Scrivici per conoscere come entrare a far parte della rete di partner.
+          </p>
+          <a class="btn btn-primary" href="mailto:partnership@etnamonitor.it">Candidati ora</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
