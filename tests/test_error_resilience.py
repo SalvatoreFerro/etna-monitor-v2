@@ -3,7 +3,7 @@ import os
 import pytest
 from flask import session
 from sqlalchemy import text
-from sqlalchemy.exc import ProgrammingError
+from sqlalchemy.exc import ProgrammingError, SQLAlchemyError
 from sqlalchemy.pool import StaticPool
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
@@ -67,4 +67,22 @@ def test_internal_error_handler_resets_session_state(app):
 
     with app.app_context():
         # The session should be usable again after the error handler ran.
+        db.session.execute(text("SELECT 1"))
+
+
+def test_inject_user_survives_sqlalchemy_error(app, monkeypatch):
+    from app.context_processors import inject_user
+
+    def explode():
+        raise SQLAlchemyError("boom")
+
+    with app.test_request_context("/"):
+        monkeypatch.setattr("app.context_processors.get_current_user", explode)
+        context = inject_user()
+
+        assert context["current_user"] is None
+        assert context["current_user_name"] is None
+        assert context["current_user_avatar_url"] is None
+
+    with app.app_context():
         db.session.execute(text("SELECT 1"))
