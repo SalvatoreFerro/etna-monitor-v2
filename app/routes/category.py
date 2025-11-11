@@ -14,6 +14,8 @@ from app.models.partner import Partner, PartnerCategory, PartnerSubscription
 from app.services.partner_categories import (
     DEFAULT_CATEGORY_FALLBACKS,
     StaticCategory,
+    ensure_partner_extra_data_column,
+    missing_column_error,
     missing_table_error,
 )
 
@@ -76,6 +78,14 @@ def category_view(slug: str):
     today = date.today()
 
     try:
+        ensure_partner_extra_data_column()
+    except SQLAlchemyError as exc:  # pragma: no cover - defensive safeguard
+        current_app.logger.exception(
+            "Unable to ensure partners.extra_data column before category view",
+            exc_info=exc,
+        )
+
+    try:
         category = (
             PartnerCategory.query.filter_by(slug=slug, is_active=True).first()
         )
@@ -104,9 +114,8 @@ def category_view(slug: str):
         abort(404)
 
     try:
-        if getattr(category, "id", None) is None:
-            partners = []
-        else:
+        partners = []
+        if getattr(category, "id", None) is not None:
             partners = (
                 Partner.query.filter(
                     Partner.category_id == category.id,
@@ -132,7 +141,38 @@ def category_view(slug: str):
             )
     except SQLAlchemyError as exc:  # pragma: no cover - defensive logging
         db.session.rollback()
-        if missing_table_error(exc, "partner_subscriptions"):
+        if missing_column_error(exc, "partners", "extra_data"):
+            current_app.logger.warning(
+                "partners.extra_data column missing; attempting automatic migration before listing category %s",
+                slug,
+            )
+            ensure_partner_extra_data_column()
+            partners = []
+            if getattr(category, "id", None) is not None:
+                partners = (
+                    Partner.query.filter(
+                        Partner.category_id == category.id,
+                        Partner.status == "approved",
+                        Partner.subscriptions.any(
+                            and_(
+                                PartnerSubscription.status == "paid",
+                                PartnerSubscription.valid_to >= today,
+                                or_(
+                                    PartnerSubscription.valid_from == None,  # noqa: E711
+                                    PartnerSubscription.valid_from <= today,
+                                ),
+                            )
+                        ),
+                    )
+                    .order_by(
+                        Partner.featured.desc(),
+                        Partner.sort_order.asc(),
+                        Partner.approved_at.asc(),
+                    )
+                    .limit(category.max_slots)
+                    .all()
+                )
+        elif missing_table_error(exc, "partner_subscriptions"):
             current_app.logger.warning(
                 "Partner subscriptions table unavailable; falling back to empty listing for category %s",
                 slug,
