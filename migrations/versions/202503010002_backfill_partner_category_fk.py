@@ -42,44 +42,39 @@ def upgrade() -> None:
 
     has_categories = inspector.has_table("partner_categories")
     if has_categories:
-        slug_to_id = dict(bind.execute(text("SELECT slug, id FROM partner_categories")))
+        while True:
+            rows = bind.execute(
+                text(
+                    """
+                    SELECT p.id, pc.id
+                    FROM partners AS p
+                    JOIN partner_categories AS pc ON pc.slug = p.category
+                    WHERE p.category_id IS NULL
+                    ORDER BY p.id
+                    LIMIT :limit
+                    """
+                ),
+                {"limit": CHUNK_SIZE},
+            ).fetchall()
 
-        if slug_to_id:
-            while True:
-                rows = bind.execute(
-                    text(
-                        """
-                        SELECT id, category
-                        FROM partners
-                        WHERE category_id IS NULL AND category IS NOT NULL AND category <> ''
-                        ORDER BY id
-                        LIMIT :limit
-                        """
-                    ),
-                    {"limit": CHUNK_SIZE},
-                ).fetchall()
+            if not rows:
+                break
 
-                if not rows:
-                    break
+            updates = [
+                {"partner_id": partner_id, "category_id": category_id}
+                for partner_id, category_id in rows
+            ]
 
-                updates = []
-                for partner_id, slug in rows:
-                    category_id = slug_to_id.get(slug)
-                    if category_id is None:
-                        continue
-                    updates.append({"partner_id": partner_id, "category_id": category_id})
-
-                if updates:
-                    bind.execute(
-                        text(
-                            """
-                            UPDATE partners
-                            SET category_id = :category_id
-                            WHERE id = :partner_id
-                            """
-                        ),
-                        updates,
-                    )
+            bind.execute(
+                text(
+                    """
+                    UPDATE partners
+                    SET category_id = :category_id
+                    WHERE id = :partner_id
+                    """
+                ),
+                updates,
+            )
     # Create or recreate the index in a safe way.
     existing_indexes = {index["name"] for index in inspector.get_indexes("partners")}
     if INDEX_NAME not in existing_indexes:
