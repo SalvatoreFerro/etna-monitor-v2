@@ -42,49 +42,39 @@ def upgrade() -> None:
 
     has_categories = inspector.has_table("partner_categories")
     if has_categories:
-        with bind.begin() as connection:
-            slug_to_id = dict(
-                connection.execute(text("SELECT slug, id FROM partner_categories"))
+        while True:
+            rows = bind.execute(
+                text(
+                    """
+                    SELECT p.id, pc.id
+                    FROM partners AS p
+                    JOIN partner_categories AS pc ON pc.slug = p.category
+                    WHERE p.category_id IS NULL
+                    ORDER BY p.id
+                    LIMIT :limit
+                    """
+                ),
+                {"limit": CHUNK_SIZE},
+            ).fetchall()
+
+            if not rows:
+                break
+
+            updates = [
+                {"partner_id": partner_id, "category_id": category_id}
+                for partner_id, category_id in rows
+            ]
+
+            bind.execute(
+                text(
+                    """
+                    UPDATE partners
+                    SET category_id = :category_id
+                    WHERE id = :partner_id
+                    """
+                ),
+                updates,
             )
-
-        if slug_to_id:
-            while True:
-                with bind.begin() as connection:
-                    rows = connection.execute(
-                        text(
-                            """
-                            SELECT id, category
-                            FROM partners
-                            WHERE category_id IS NULL AND category IS NOT NULL AND category <> ''
-                            ORDER BY id
-                            LIMIT :limit
-                            """
-                        ),
-                        {"limit": CHUNK_SIZE},
-                    ).fetchall()
-
-                if not rows:
-                    break
-
-                updates = []
-                for partner_id, slug in rows:
-                    category_id = slug_to_id.get(slug)
-                    if category_id is None:
-                        continue
-                    updates.append({"partner_id": partner_id, "category_id": category_id})
-
-                if updates:
-                    with bind.begin() as connection:
-                        connection.execute(
-                            text(
-                                """
-                                UPDATE partners
-                                SET category_id = :category_id
-                                WHERE id = :partner_id
-                                """
-                            ),
-                            updates,
-                        )
     # Create or recreate the index in a safe way.
     existing_indexes = {index["name"] for index in inspector.get_indexes("partners")}
     if INDEX_NAME not in existing_indexes:
@@ -106,10 +96,9 @@ def upgrade() -> None:
 
     if has_categories:
         remaining_nulls = 0
-        with bind.begin() as connection:
-            remaining_nulls = connection.execute(
-                text("SELECT COUNT(*) FROM partners WHERE category_id IS NULL")
-            ).scalar_one()
+        remaining_nulls = bind.execute(
+            text("SELECT COUNT(*) FROM partners WHERE category_id IS NULL")
+        ).scalar_one()
 
         fk_names = {fk["name"] for fk in inspector.get_foreign_keys("partners")}
         if "fk_partners_category_id" not in fk_names:
