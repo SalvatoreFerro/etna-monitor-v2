@@ -382,6 +382,7 @@ def index():
         page_og_title=page_title,
         page_og_description=page_description,
         page_og_image=og_image,
+        page_keywords="Etna, tremore vulcanico, grafico INGV, monitoraggio Etna tempo reale, vulcano Sicilia, attività vulcanica oggi, sismografo Etna, Catania, Monte Etna live, dati sismici, eruzione Etna, allerta vulcanica",
         page_structured_data=page_structured_data,
         latest_value=latest_value,
         latest_timestamp_iso=latest_timestamp_iso,
@@ -413,12 +414,52 @@ def security_txt():
 
 @bp.route("/pricing")
 def pricing():
+    # Breadcrumb structured data
+    breadcrumb_schema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": url_for("main.index", _external=True),
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Prezzi",
+                "item": url_for("main.pricing", _external=True),
+            },
+        ],
+    }
+    
+    # Offer structured data
+    offer_schema = {
+        "@context": "https://schema.org",
+        "@type": "Product",
+        "name": "EtnaMonitor Premium",
+        "description": "Piano Premium per monitoraggio avanzato del tremore vulcanico dell'Etna con allerta personalizzati e grafici HD",
+        "brand": {
+            "@type": "Brand",
+            "name": "EtnaMonitor"
+        },
+        "offers": {
+            "@type": "Offer",
+            "priceCurrency": "EUR",
+            "availability": "https://schema.org/InStock",
+            "url": url_for("main.pricing", _external=True)
+        }
+    }
+    
     return render_template(
         "pricing.html",
         page_title="Prezzi e piani – EtnaMonitor",
         page_description="Scopri i piani Free e Premium di EtnaMonitor per accedere a grafici avanzati e avvisi sul tremore dell'Etna.",
         page_og_title="Prezzi e piani – EtnaMonitor",
         page_og_description="Scopri i piani Free e Premium di EtnaMonitor per accedere a grafici avanzati e avvisi sul tremore dell'Etna.",
+        page_keywords="prezzi EtnaMonitor, piano premium, abbonamento monitoraggio Etna, costo allerta vulcanica",
+        page_structured_data=[breadcrumb_schema, offer_schema],
     )
 
 
@@ -524,7 +565,41 @@ def webcam_etna():
                 }
                 for index, camera in enumerate(webcams)
             ],
-        }
+        },
+        # Add VideoObject for each webcam
+        *[
+            {
+                "@context": "https://schema.org",
+                "@type": "VideoObject",
+                "name": camera["name"],
+                "description": camera["description"],
+                "thumbnailUrl": camera["thumbnail"],
+                "embedUrl": camera["embed_url"],
+                "uploadDate": datetime.now(timezone.utc).isoformat(),
+                "contentUrl": camera["url"],
+                "inLanguage": "it-IT",
+            }
+            for camera in webcams
+        ],
+        # Breadcrumb
+        {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": 1,
+                    "name": "Home",
+                    "item": url_for("main.index", _external=True),
+                },
+                {
+                    "@type": "ListItem",
+                    "position": 2,
+                    "name": "Webcam",
+                    "item": url_for("main.webcam_etna", _external=True),
+                },
+            ],
+        },
     ]
 
     if weather_preview and weather_preview.get("updated_at_iso"):
@@ -549,6 +624,7 @@ def webcam_etna():
         page_og_title="Webcam Etna in diretta",
         page_og_description="Tre webcam live dell'Etna con anteprima meteo aggiornata su vento, temperatura e umidità.",
         page_og_image=og_image,
+        page_keywords="webcam Etna live, streaming Etna, webcam crateri Etna, meteo Etna tempo reale, vista crateri diretta, escursioni Etna",
         canonical_url=canonical,
         webcams=webcams,
         weather_preview=weather_preview,
@@ -560,6 +636,62 @@ def webcam_etna():
 @bp.route("/tecnologia")
 def tecnologia():
     og_image = url_for('static', filename='icons/icon-512.png', _external=True)
+    
+    # Breadcrumb structured data
+    breadcrumb_schema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": url_for("main.index", _external=True),
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Tecnologia",
+                "item": url_for("main.tecnologia", _external=True),
+            },
+        ],
+    }
+    
+    # HowTo structured data for technology page
+    howto_schema = {
+        "@context": "https://schema.org",
+        "@type": "HowTo",
+        "name": "Come EtnaMonitor elabora i dati del tremore vulcanico",
+        "description": "Pipeline tecnologica completa per il monitoraggio del tremore dell'Etna",
+        "step": [
+            {
+                "@type": "HowToStep",
+                "name": "Acquisizione dati INGV",
+                "text": "Download automatico dei grafici PNG pubblicati dall'INGV ogni 5 minuti"
+            },
+            {
+                "@type": "HowToStep",
+                "name": "Estrazione dati",
+                "text": "Analisi dell'immagine con algoritmi di computer vision per estrarre i valori del tremore"
+            },
+            {
+                "@type": "HowToStep",
+                "name": "Normalizzazione CSV",
+                "text": "Conversione dei dati in formato CSV strutturato per l'analisi"
+            },
+            {
+                "@type": "HowToStep",
+                "name": "Analisi AI",
+                "text": "Elaborazione con modelli di machine learning per rilevare anomalie e trend"
+            },
+            {
+                "@type": "HowToStep",
+                "name": "Distribuzione",
+                "text": "Pubblicazione su web app e notifiche via bot Telegram"
+            }
+        ]
+    }
+    
     return render_template(
         "tecnologia.html",
         page_title="Tecnologia EtnaMonitor – Pipeline dati INGV, AI e Telegram",
@@ -567,13 +699,36 @@ def tecnologia():
         page_og_title="Tecnologia EtnaMonitor – Pipeline dati INGV, AI e Telegram",
         page_og_description="Scopri la pipeline tecnologica di EtnaMonitor: download PNG INGV, estrazione dati, normalizzazione CSV, modelli AI e distribuzione tramite bot Telegram.",
         page_og_image=og_image,
+        page_keywords="tecnologia monitoraggio vulcani, pipeline dati INGV, AI vulcanologia, estrazione dati sismici, machine learning Etna",
         canonical_url=url_for('main.tecnologia', _external=True),
+        page_structured_data=[breadcrumb_schema, howto_schema],
     )
 
 
 @bp.route("/progetto")
 def progetto():
     og_image = url_for('static', filename='icons/icon-512.png', _external=True)
+    
+    # Breadcrumb structured data
+    breadcrumb_schema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": url_for("main.index", _external=True),
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Il Progetto",
+                "item": url_for("main.progetto", _external=True),
+            },
+        ],
+    }
+    
     return render_template(
         "progetto.html",
         page_title="Il progetto EtnaMonitor – Visione, roadmap e filosofia",
@@ -581,13 +736,36 @@ def progetto():
         page_og_title="Il progetto EtnaMonitor – Visione, roadmap e filosofia",
         page_og_description="Scopri la visione di EtnaMonitor: trasparenza sui dati del tremore vulcanico dell'Etna, roadmap evolutiva e collaborazione con la community scientifica.",
         page_og_image=og_image,
+        page_keywords="progetto EtnaMonitor, open data vulcani, trasparenza dati INGV, community scientifica Etna",
         canonical_url=url_for('main.progetto', _external=True),
+        page_structured_data=[breadcrumb_schema],
     )
 
 
 @bp.route("/team")
 def team():
     og_image = url_for('static', filename='icons/icon-512.png', _external=True)
+    
+    # Breadcrumb structured data
+    breadcrumb_schema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": url_for("main.index", _external=True),
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Team",
+                "item": url_for("main.team", _external=True),
+            },
+        ],
+    }
+    
     return render_template(
         "team.html",
         page_title="Team EtnaMonitor – Chi c'è dietro il monitoraggio",
@@ -595,13 +773,36 @@ def team():
         page_og_title="Team EtnaMonitor – Chi c'è dietro il monitoraggio",
         page_og_description="Conosci il team di EtnaMonitor: missione, competenze e valori di trasparenza che guidano il monitoraggio del tremore vulcanico dell'Etna.",
         page_og_image=og_image,
+        page_keywords="team EtnaMonitor, sviluppatori monitoraggio vulcani, chi siamo, staff EtnaMonitor",
         canonical_url=url_for('main.team', _external=True),
+        page_structured_data=[breadcrumb_schema],
     )
 
 
 @bp.route("/news")
 def news():
     og_image = url_for('static', filename='icons/icon-512.png', _external=True)
+    
+    # Breadcrumb structured data
+    breadcrumb_schema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": url_for("main.index", _external=True),
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "News",
+                "item": url_for("main.news", _external=True),
+            },
+        ],
+    }
+    
     return render_template(
         "news.html",
         page_title="News EtnaMonitor – Aggiornamenti su tremore e piattaforma",
@@ -609,7 +810,9 @@ def news():
         page_og_title="News EtnaMonitor – Aggiornamenti su tremore e piattaforma",
         page_og_description="Rimani aggiornato sulle news di EtnaMonitor: articoli, analisi del tremore vulcanico dell'Etna e aggiornamenti sulla piattaforma.",
         page_og_image=og_image,
+        page_keywords="news Etna, aggiornamenti vulcano, notizie tremore vulcanico, ultime attività Etna",
         canonical_url=url_for('main.news', _external=True),
+        page_structured_data=[breadcrumb_schema],
     )
 
 
@@ -634,6 +837,26 @@ for directive in ("frame-src", "child-src"):
 def etna3d():
     user = get_current_user()
     plan_type = (getattr(user, "plan_type", "free") or "free") if user else "free"
+    
+    # Breadcrumb structured data
+    breadcrumb_schema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": url_for("main.index", _external=True),
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Etna 3D",
+                "item": url_for("main.etna3d", _external=True),
+            },
+        ],
+    }
 
     return render_template(
         "etna3d.html",
@@ -642,17 +865,41 @@ def etna3d():
         page_description="Esplora il modello 3D interattivo dell'Etna con visualizzazione Sketchfab in tema scuro.",
         page_og_title="Modello 3D dell'Etna – EtnaMonitor",
         page_og_description="Esplora il modello 3D interattivo dell'Etna con visualizzazione Sketchfab in tema scuro.",
+        page_keywords="modello 3D Etna, visualizzazione 3D vulcano, Sketchfab Etna, esplorazione virtuale Etna",
+        page_structured_data=[breadcrumb_schema],
     )
 
 
 @bp.route("/roadmap")
 def roadmap():
+    # Breadcrumb structured data
+    breadcrumb_schema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": url_for("main.index", _external=True),
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Roadmap",
+                "item": url_for("main.roadmap", _external=True),
+            },
+        ],
+    }
+    
     return render_template(
         "roadmap.html",
         page_title="Roadmap – Evoluzione di EtnaMonitor",
         page_description="Aggiornamenti pianificati, nuove funzionalità e obiettivi futuri per EtnaMonitor.",
         page_og_title="Roadmap – Evoluzione di EtnaMonitor",
         page_og_description="Aggiornamenti pianificati, nuove funzionalità e obiettivi futuri per EtnaMonitor.",
+        page_keywords="roadmap EtnaMonitor, funzionalità future, sviluppo piattaforma, aggiornamenti programmati",
+        page_structured_data=[breadcrumb_schema],
     )
 
 

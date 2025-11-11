@@ -511,6 +511,18 @@ def create_app(config_overrides: dict | None = None):
                 "name": "EtnaMonitor",
                 "url": canonical_base,
                 "logo": logo_url,
+                "description": "Piattaforma di monitoraggio in tempo reale del tremore vulcanico dell'Etna con dati INGV, analisi AI e sistema di allerta per la comunità scientifica e gli appassionati",
+                "foundingDate": "2024",
+                "areaServed": {
+                    "@type": "Place",
+                    "name": "Sicilia, Italia",
+                    "geo": {
+                        "@type": "GeoCoordinates",
+                        "latitude": 37.751,
+                        "longitude": 14.9934
+                    }
+                },
+                "knowsAbout": ["Vulcanologia", "Monitoraggio sismico", "Etna", "Tremore vulcanico", "Analisi dati geofisici"],
                 "sameAs": [
                     "https://www.instagram.com/etna_monitor_official?igsh=Mm9oeXlmOWZsNHNm",
                     "https://www.facebook.com/share/17jhakJdrv/?mibextid=wwXIfr",
@@ -529,9 +541,15 @@ def create_app(config_overrides: dict | None = None):
                 "@context": "https://schema.org",
                 "@type": "WebSite",
                 "name": "EtnaMonitor",
+                "alternateName": "Monitoraggio Etna",
                 "url": canonical_base,
                 "inLanguage": "it-IT",
                 "isAccessibleForFree": True,
+                "about": {
+                    "@type": "Thing",
+                    "name": "Monitoraggio vulcanico dell'Etna",
+                    "description": "Sistema di monitoraggio continuo del tremore vulcanico del Monte Etna in Sicilia"
+                },
                 "potentialAction": {
                     "@type": "SearchAction",
                     "target": f"{canonical_base}/search?q={{search_term_string}}",

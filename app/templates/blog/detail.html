@@ -16,6 +16,11 @@
       {{ breadcrumb_schema | tojson(indent=2) }}
     </script>
   {% endif %}
+  {% if article_schema %}
+    <script type="application/ld+json" nonce="{{ csp_nonce() }}">
+      {{ article_schema | tojson(indent=2) }}
+    </script>
+  {% endif %}
 {% endblock %}
 
 {% block content %}
