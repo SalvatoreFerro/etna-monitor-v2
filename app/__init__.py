@@ -13,7 +13,7 @@ from datetime import datetime, timedelta
 from time import perf_counter
 from urllib.parse import urlparse, urlunparse
 from pathlib import Path
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 
 # Alembic può non essere disponibile: gestiscilo in modo sicuro
 try:  # pragma: no cover - optional dependency guard
@@ -123,6 +123,34 @@ def _ensure_partners_table(app: Flask) -> None:
         app.logger.info("[BOOT] partners table ensured ✅")
     except Exception as ex:  # pragma: no cover - defensive fallback
         app.logger.warning("[BOOT] partners table ensure failed: %s", ex)
+        return
+
+    try:
+        inspector = inspect(db.engine)
+        partner_columns = {column["name"] for column in inspector.get_columns("partners")}
+    except SQLAlchemyError as exc:  # pragma: no cover - defensive fallback
+        app.logger.warning("[BOOT] Unable to inspect partners table: %s", exc)
+        return
+
+    if "category_id" not in partner_columns:
+        app.logger.warning(
+            "[BOOT] partners.category_id column missing; attempting automatic recovery"
+        )
+        ddl = text("ALTER TABLE partners ADD COLUMN category_id INTEGER")
+        try:
+            with db.engine.begin() as conn:
+                conn.execute(ddl)
+            app.logger.info(
+                "[BOOT] partners.category_id column created successfully (nullable)"
+            )
+        except SQLAlchemyError as exc:  # pragma: no cover - defensive fallback
+            app.logger.error(
+                "[BOOT] Failed to add partners.category_id column automatically: %s", exc
+            )
+        except Exception as exc:  # pragma: no cover - defensive fallback
+            app.logger.error(
+                "[BOOT] Unexpected error while adding partners.category_id: %s", exc
+            )
 
 
 def _ensure_sponsor_tables(app: Flask) -> None:
@@ -893,6 +921,12 @@ def create_app(config_overrides: dict | None = None):
 
     @app.errorhandler(500)
     def render_internal_error(error):  # pragma: no cover - presentation only
+        try:
+            db.session.rollback()
+        except SQLAlchemyError as exc:
+            app.logger.error("[500] Failed to rollback session: %s", exc)
+        finally:
+            db.session.remove()
         app.logger.exception("[500] Internal server error")
         return (
             render_template(
@@ -907,7 +941,16 @@ def create_app(config_overrides: dict | None = None):
     def cleanup_session(exception):  # pragma: no cover - defensive cleanup
         try:
             if exception is not None:
-                db.session.rollback()
+                app.logger.debug(
+                    "[SESSION] Rolling back transaction because of exception: %s",
+                    exception,
+                )
+                try:
+                    db.session.rollback()
+                except SQLAlchemyError as exc:
+                    app.logger.error(
+                        "[SESSION] Failed to rollback session during teardown: %s", exc
+                    )
         finally:
             db.session.remove()
 

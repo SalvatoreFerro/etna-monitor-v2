@@ -9,7 +9,7 @@ import warnings
 from functools import wraps
 
 import bcrypt
-from flask import flash, redirect, request, session, url_for
+from flask import current_app, flash, redirect, request, session, url_for
 from flask_login import current_user
 from sqlalchemy.exc import OperationalError, ProgrammingError, SQLAlchemyError
 from sqlalchemy.orm import load_only
@@ -65,24 +65,47 @@ def admin_required(f):
     return decorated_function
 
 def get_current_user():
-    """Return the current session user, caching only successful lookups."""
+    """Return the current session user, recovering gracefully from DB failures."""
 
-    if current_user.is_authenticated:
-        return current_user
+    try:
+        if current_user.is_authenticated:
+            return current_user
+    except SQLAlchemyError as exc:
+        current_app.logger.warning(
+            "[AUTH] current_user authentication check failed: %s", exc
+        )
+        db.session.rollback()
+        db.session.remove()
+        return None
 
     user_id = session.get('user_id')
     if user_id is None:
         return None
 
+    user = None
+
     try:
         user = db.session.get(User, user_id)
-    except (ProgrammingError, OperationalError, SQLAlchemyError):
+    except (ProgrammingError, OperationalError, SQLAlchemyError) as exc:
+        current_app.logger.warning(
+            "[AUTH] Primary user lookup failed, attempting safe reload: %s", exc
+        )
         db.session.rollback()
         safe_columns = get_login_safe_user_columns()
         query = db.session.query(User)
         if safe_columns:
             query = query.options(load_only(*safe_columns))
-        user = query.filter(User.id == user_id).one_or_none()
+        try:
+            user = query.filter(User.id == user_id).one_or_none()
+        except SQLAlchemyError as fallback_exc:
+            current_app.logger.error(
+                "[AUTH] Fallback user lookup failed, clearing session: %s",
+                fallback_exc,
+            )
+            db.session.rollback()
+            db.session.remove()
+            session.pop('user_id', None)
+            return None
 
     if user is None:
         session.pop('user_id', None)

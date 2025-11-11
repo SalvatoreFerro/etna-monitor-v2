@@ -1,5 +1,6 @@
 from flask import current_app, request
 from sqlalchemy import inspect
+from sqlalchemy.exc import SQLAlchemyError
 
 from .models import db
 from .utils.auth import get_current_user
@@ -11,13 +12,30 @@ except Exception:  # pragma: no cover - optional dependency guard
 
 
 def inject_user():
-    user = get_current_user()
+    try:
+        user = get_current_user()
+    except SQLAlchemyError as exc:
+        current_app.logger.warning("[CTX] Unable to resolve current user: %s", exc)
+        db.session.rollback()
+        db.session.remove()
+        user = None
+
     user_name = None
     user_avatar = None
 
     if user:
-        user_name = user.name or user.email
-        user_avatar = user.picture_url
+        try:
+            user_name = user.name or user.email
+            user_avatar = user.picture_url
+        except SQLAlchemyError as exc:
+            current_app.logger.warning(
+                "[CTX] Failed to read user attributes, returning anonymous: %s", exc
+            )
+            db.session.rollback()
+            db.session.remove()
+            user = None
+            user_name = None
+            user_avatar = None
 
     return dict(
         current_user=user,
