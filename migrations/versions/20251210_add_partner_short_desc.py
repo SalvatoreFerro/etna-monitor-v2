@@ -1,4 +1,4 @@
-"""Ensure partners.short_desc column exists"""
+"""Ensure missing partner description columns exist"""
 
 from __future__ import annotations
 
@@ -24,16 +24,13 @@ def upgrade() -> None:
             "partners",
             sa.Column("short_desc", sa.String(length=280), nullable=True),
         )
+    if _column_missing("partners", "long_desc"):
+        op.add_column(
+            "partners",
+            sa.Column("long_desc", sa.Text(), nullable=True),
+        )
 
 
-def downgrade() -> None:
-    bind = op.get_bind()
-    inspector = sa.inspect(bind)
-    if "partners" not in inspector.get_table_names():
-        return
-
-    columns = {col["name"] for col in inspector.get_columns("partners")}
-    if "short_desc" not in columns:
-        return
-
-    op.drop_column("partners", "short_desc")
+def downgrade() -> None:  # pragma: no cover - destructive downgrade intentionally omitted
+    """Downgrade intentionally left empty to avoid accidental data loss."""
+    pass
