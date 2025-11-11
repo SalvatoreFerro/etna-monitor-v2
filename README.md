@@ -264,10 +264,39 @@ ALERT_THRESHOLD_DEFAULT=2.0
 - Configurare il **Pre-deploy Command** su Render a:
 
   ```bash
-  ALEMBIC_RUNNING=1 SKIP_SCHEMA_VALIDATION=1 PYTHONPATH=. alembic -c alembic.ini upgrade head
+  ALEMBIC_RUNNING=1 SKIP_SCHEMA_VALIDATION=1 ALEMBIC_SKIP_BACKFILL=1 PYTHONPATH=. alembic -c alembic.ini upgrade head
   ```
 
   Questo export evita side-effect applicativi durante l'esecuzione delle migration.
+
+### Zero-downtime migrations on Render
+
+Il deploy su Render si articola ora in tre step per mantenere il downtime nullo:
+
+1. **Schema-only** – Il pre-deploy (`alembic upgrade head` con `ALEMBIC_SKIP_BACKFILL=1`) applica solo la migrazione 202503010002,
+   aggiungendo `partners.category_id`, l'indice e il vincolo `NOT VALID` senza bloccare tabelle.
+2. **One-off backfill** – Dopo il deploy eseguire un job one-off per popolare i dati:
+
+   ```bash
+   render one-off: python app/scripts/run_backfill_partners_category.py
+   ```
+
+   oppure, riutilizzando il contesto Flask:
+
+   ```bash
+   render one-off: flask backfill-partners-category
+   ```
+
+   Lo script legge `DATABASE_URL`, elabora chunk configurabili via `BACKFILL_CHUNK` (default 2000) con keyset pagination e logga i
+   progressi (riprende automaticamente da dove si ferma).
+3. **Validazione FK** – Una volta completato il backfill rimuovere `ALEMBIC_SKIP_BACKFILL` e validare il vincolo con una seconda
+   one-off:
+
+   ```bash
+   render one-off: alembic -c alembic.ini upgrade head
+   ```
+
+   In alternativa è possibile targettare direttamente la migrazione `202503010003_validate_fk`.
 
 - Se in produzione la tabella `partners` è già presente ma Alembic risulta fermo a `20240702_add_plan_fields`, dopo aver reso la migration idempotente puoi, se necessario, riallineare manualmente lo stato con:
 
