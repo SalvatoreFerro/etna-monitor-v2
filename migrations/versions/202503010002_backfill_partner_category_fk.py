@@ -42,8 +42,12 @@ def upgrade() -> None:
 
     has_categories = inspector.has_table("partner_categories")
     if has_categories:
-        category_rows = bind.execute(text("SELECT slug, id FROM partner_categories"))
-        slug_to_id = {row["slug"]: row["id"] for row in category_rows.mappings()}
+        category_rows = (
+            bind.execute(text("SELECT slug, id FROM partner_categories"))
+            .mappings()
+            .all()
+        )
+        slug_to_id = {row["slug"]: row["id"] for row in category_rows}
 
         if slug_to_id:
             while True:
