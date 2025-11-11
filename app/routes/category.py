@@ -16,6 +16,8 @@ from app.services.partner_categories import (
     StaticCategory,
     ensure_partner_extra_data_column,
     ensure_partner_category_fk,
+    ensure_partner_slug_column,
+    ensure_partner_subscriptions_table,
     missing_column_error,
     missing_table_error,
 )
@@ -91,6 +93,22 @@ def category_view(slug: str):
     except SQLAlchemyError as exc:  # pragma: no cover - defensive safeguard
         current_app.logger.exception(
             "Unable to ensure partners.extra_data column before category view",
+            exc_info=exc,
+        )
+
+    try:
+        ensure_partner_slug_column()
+    except SQLAlchemyError as exc:  # pragma: no cover - defensive safeguard
+        current_app.logger.exception(
+            "Unable to ensure partners.slug column before category view",
+            exc_info=exc,
+        )
+
+    try:
+        ensure_partner_subscriptions_table()
+    except SQLAlchemyError as exc:  # pragma: no cover - defensive safeguard
+        current_app.logger.exception(
+            "Unable to ensure partner_subscriptions table before category view",
             exc_info=exc,
         )
 

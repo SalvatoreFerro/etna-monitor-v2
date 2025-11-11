@@ -11,6 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.models import db
 from app.models.partner import PartnerCategory
+from app.utils.partners import slugify_partner_name
 
 
 @dataclass
@@ -150,6 +151,73 @@ def missing_column_error(err: SQLAlchemyError, table_name: str, column_name: str
     )
 
 
+def ensure_partner_slug_column() -> bool:
+    """Add and populate the partners.slug column when missing."""
+
+    engine = db.engine
+    inspector = inspect(engine)
+    columns = {column["name"] for column in inspector.get_columns("partners")}
+    if "slug" in columns:
+        return False
+
+    dialect = engine.dialect.name
+    if dialect == "sqlite":
+        add_column_sql = "ALTER TABLE partners ADD COLUMN slug TEXT"
+    else:
+        add_column_sql = "ALTER TABLE partners ADD COLUMN slug VARCHAR(120)"
+
+    with engine.begin() as connection:
+        connection.execute(text(add_column_sql))
+
+    existing_slugs: set[str] = set()
+    pending_updates: list[dict[str, object]] = []
+
+    with engine.connect() as connection:
+        rows = connection.execute(
+            text("SELECT id, COALESCE(name, '') AS name FROM partners ORDER BY id")
+        ).mappings()
+        for row in rows:
+            base = slugify_partner_name(row["name"] or "partner")
+            slug = base
+            suffix = 1
+            while slug in existing_slugs:
+                suffix += 1
+                slug = f"{base}-{suffix}"
+            existing_slugs.add(slug)
+            pending_updates.append({"id": row["id"], "slug": slug})
+
+    if pending_updates:
+        with engine.begin() as connection:
+            for update in pending_updates:
+                connection.execute(
+                    text("UPDATE partners SET slug = :slug WHERE id = :id"), update
+                )
+
+            try:
+                connection.execute(
+                    text(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS ix_partners_slug ON partners (slug)"
+                    )
+                )
+            except SQLAlchemyError:
+                current_app.logger.warning(
+                    "Unable to create ix_partners_slug index automatically"
+                )
+
+            if dialect == "postgresql":
+                try:
+                    connection.execute(
+                        text("ALTER TABLE partners ALTER COLUMN slug SET NOT NULL")
+                    )
+                except SQLAlchemyError:
+                    current_app.logger.warning(
+                        "Unable to enforce NOT NULL constraint on partners.slug"
+                    )
+
+    current_app.logger.info("Added partners.slug column via ensure helper")
+    return True
+
+
 def ensure_partner_extra_data_column() -> bool:
     """Add the partners.extra_data column when missing.
 
@@ -178,6 +246,80 @@ def ensure_partner_extra_data_column() -> bool:
         connection.execute(alter_sql)
 
     current_app.logger.info("Added partners.extra_data column via ensure helper")
+    return True
+
+
+def ensure_partner_subscriptions_table() -> bool:
+    """Create the partner_subscriptions table when operating on legacy schemas."""
+
+    engine = db.engine
+    inspector = inspect(engine)
+
+    if current_app.config.get("TESTING"):
+        # Unit tests explicitly exercise the degraded mode where the table is
+        # missing; avoid recreating it automatically in that environment.
+        return False
+
+    if inspector.has_table("partner_subscriptions"):
+        return False
+
+    dialect = engine.dialect.name
+    if dialect == "sqlite":
+        create_sql = text(
+            """
+            CREATE TABLE IF NOT EXISTS partner_subscriptions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                partner_id INTEGER NOT NULL REFERENCES partners(id) ON DELETE CASCADE,
+                year INTEGER NOT NULL,
+                price_eur NUMERIC(8, 2) NOT NULL DEFAULT 0,
+                status TEXT NOT NULL DEFAULT 'paid',
+                payment_method TEXT NOT NULL DEFAULT 'paypal_manual',
+                payment_ref TEXT,
+                paid_at DATETIME,
+                valid_from DATE,
+                valid_to DATE,
+                invoice_number TEXT NOT NULL UNIQUE,
+                created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+        )
+    else:
+        create_sql = text(
+            """
+            CREATE TABLE IF NOT EXISTS partner_subscriptions (
+                id SERIAL PRIMARY KEY,
+                partner_id INTEGER NOT NULL REFERENCES partners(id) ON DELETE CASCADE,
+                year INTEGER NOT NULL,
+                price_eur NUMERIC(8, 2) NOT NULL DEFAULT 0,
+                status VARCHAR(32) NOT NULL DEFAULT 'paid',
+                payment_method VARCHAR(32) NOT NULL DEFAULT 'paypal_manual',
+                payment_ref VARCHAR(120),
+                paid_at TIMESTAMPTZ,
+                valid_from DATE,
+                valid_to DATE,
+                invoice_number VARCHAR(64) NOT NULL UNIQUE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+            """
+        )
+
+    with engine.begin() as connection:
+        connection.execute(create_sql)
+        try:
+            connection.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_partner_subscriptions_partner_id "
+                    "ON partner_subscriptions (partner_id)"
+                )
+            )
+        except SQLAlchemyError:
+            current_app.logger.warning(
+                "Unable to create ix_partner_subscriptions_partner_id index automatically"
+            )
+
+    current_app.logger.info(
+        "Created partner_subscriptions table via ensure helper for legacy database"
+    )
     return True
 
 
