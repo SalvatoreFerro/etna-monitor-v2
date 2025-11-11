@@ -13,9 +13,20 @@ depends_on = None
 
 
 def _column_missing(table: str, column: str) -> bool:
-    inspector = sa.inspect(op.get_bind())
-    columns = {col["name"] for col in inspector.get_columns(table)}
-    return column not in columns
+    """Return True when the requested column is absent from the table."""
+
+    conn = op.get_bind()
+    query = sa.text(
+        """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_name = :table
+          AND column_name = :column
+          AND table_schema = current_schema()
+        """
+    )
+    result = conn.execute(query, {"table": table, "column": column})
+    return result.first() is None
 
 
 def upgrade() -> None:
