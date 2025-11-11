@@ -776,10 +776,18 @@ def create_app(config_overrides: dict | None = None):
         force_https=os.getenv("FLASK_ENV") == "production",
         frame_options="DENY",
         referrer_policy="no-referrer-when-downgrade",
+        feature_policy={
+            "geolocation": "'none'",
+            "microphone": "'none'",
+            "camera": "'none'",
+        },
     )
 
     @app.after_request
     def _apply_csp(response):
+        # Add additional security headers
+        if "X-XSS-Protection" not in response.headers:
+            response.headers["X-XSS-Protection"] = "1; mode=block"
         return apply_csp_headers(response)
 
     redis_url = os.getenv("REDIS_URL")
