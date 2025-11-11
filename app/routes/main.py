@@ -399,6 +399,18 @@ def ads_txt():
     project_root = Path(current_app.root_path).parent
     return send_from_directory(project_root, "ads.txt", mimetype="text/plain")
 
+
+@bp.route("/.well-known/security.txt")
+@cache.cached(timeout=3600)
+def security_txt():
+    """Serve security.txt for responsible disclosure."""
+    return send_from_directory(
+        os.path.join(current_app.static_folder, ".well-known"),
+        "security.txt",
+        mimetype="text/plain"
+    )
+
+
 @bp.route("/pricing")
 def pricing():
     return render_template(

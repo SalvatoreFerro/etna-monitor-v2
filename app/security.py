@@ -120,6 +120,8 @@ def apply_csp_headers(response) -> object:
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
+    response.headers["X-XSS-Protection"] = "1; mode=block"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
     setattr(response, "_csp_header_applied", True)
     return response
 
