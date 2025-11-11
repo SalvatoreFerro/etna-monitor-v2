@@ -15,6 +15,7 @@ from app.services.partner_categories import (
     DEFAULT_CATEGORY_FALLBACKS,
     StaticCategory,
     ensure_partner_extra_data_column,
+    ensure_partner_category_fk,
     missing_column_error,
     missing_table_error,
 )
@@ -76,6 +77,14 @@ def category_view(slug: str):
         abort(404)
 
     today = date.today()
+
+    try:
+        ensure_partner_category_fk()
+    except SQLAlchemyError as exc:  # pragma: no cover - defensive safeguard
+        current_app.logger.exception(
+            "Unable to ensure partners.category_id column before category view",
+            exc_info=exc,
+        )
 
     try:
         ensure_partner_extra_data_column()
@@ -175,6 +184,12 @@ def category_view(slug: str):
         elif missing_table_error(exc, "partner_subscriptions"):
             current_app.logger.warning(
                 "Partner subscriptions table unavailable; falling back to empty listing for category %s",
+                slug,
+            )
+            partners = []
+        elif missing_column_error(exc, "partners", "category_id"):
+            current_app.logger.warning(
+                "partners.category_id column missing after ensure helper; falling back to empty listing for category %s",
                 slug,
             )
             partners = []
