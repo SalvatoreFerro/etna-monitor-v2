@@ -181,6 +181,85 @@ def ensure_partner_extra_data_column() -> bool:
     return True
 
 
+def ensure_partner_category_fk() -> bool:
+    """Create the partners.category_id column when operating on legacy schemas.
+
+    Older databases stored the partner category slug inside a ``category`` text
+    column.  When that legacy column is detected we automatically backfill the
+    new foreign key so that the public listings and admin dashboard keep
+    working without requiring a manual migration step.
+
+    Returns ``True`` when the column has been created or backfilled.
+    """
+
+    engine = db.engine
+    inspector = inspect(engine)
+    columns = {column["name"] for column in inspector.get_columns("partners")}
+
+    if "category_id" in columns:
+        return False
+
+    if "category" not in columns:
+        current_app.logger.warning(
+            "partners.category_id column missing but no legacy 'category' column found"
+        )
+        return False
+
+    with engine.begin() as connection:
+        connection.execute(text("ALTER TABLE partners ADD COLUMN category_id INTEGER"))
+
+    has_category_table = inspector.has_table("partner_categories")
+    backfilled = 0
+    unmatched: int | None = None
+
+    if has_category_table:
+        update_sql = text(
+            """
+            UPDATE partners
+            SET category_id = (
+                SELECT id
+                FROM partner_categories
+                WHERE slug = partners.category
+                LIMIT 1
+            )
+            WHERE category IS NOT NULL AND category_id IS NULL
+            """
+        )
+
+        try:
+            with engine.begin() as connection:
+                result = connection.execute(update_sql)
+                backfilled = result.rowcount or 0
+
+            with engine.begin() as connection:
+                unmatched = connection.execute(
+                    text(
+                        "SELECT COUNT(*) FROM partners WHERE category IS NOT NULL AND category_id IS NULL"
+                    )
+                ).scalar_one()
+        except SQLAlchemyError as exc:  # pragma: no cover - defensive safeguard
+            current_app.logger.warning(
+                "Automatic backfill of partners.category_id from legacy slug column failed", exc_info=exc
+            )
+            unmatched = None
+        else:
+            if unmatched:
+                current_app.logger.warning(
+                    "Unable to backfill %s partner rows with a category_id automatically",
+                    unmatched,
+                )
+    else:
+        current_app.logger.warning(
+            "partner_categories table missing while creating partners.category_id; leaving values NULL"
+        )
+
+    current_app.logger.info(
+        "Added partners.category_id column to legacy schema (backfilled %s rows)",
+        backfilled,
+    )
+    return True
+
+
 def ensure_partner_categories(seed_defaults: bool = True) -> list[PartnerCategory]:
     """Create the partner categories table when missing and seed defaults."""
 

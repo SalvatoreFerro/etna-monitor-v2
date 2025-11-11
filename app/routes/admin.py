@@ -36,6 +36,7 @@ from ..services.gamification_service import ensure_demo_profiles
 from ..services.partner_categories import (
     CATEGORY_FORM_FIELDS,
     ensure_partner_categories,
+    ensure_partner_category_fk,
     ensure_partner_extra_data_column,
     missing_table_error,
     missing_column_error,
@@ -1011,6 +1012,13 @@ def donations():
 @admin_required
 def partners_dashboard():
     try:
+        ensure_partner_category_fk()
+    except SQLAlchemyError as exc:  # pragma: no cover - defensive safeguard
+        current_app.logger.exception(
+            "Unable to ensure partners.category_id column", exc_info=exc
+        )
+
+    try:
         ensure_partner_extra_data_column()
     except SQLAlchemyError as exc:  # pragma: no cover - defensive safeguard
         current_app.logger.exception(
@@ -1089,6 +1097,13 @@ def partners_create():
     if not validate_csrf_token(request.form.get("csrf_token")):
         flash("Token CSRF non valido.", "error")
         return redirect(url_for("admin.partners_dashboard"))
+
+    try:
+        ensure_partner_category_fk()
+    except SQLAlchemyError as exc:  # pragma: no cover - defensive safeguard
+        current_app.logger.exception(
+            "Unable to ensure partners.category_id column before create", exc_info=exc
+        )
 
     try:
         ensure_partner_extra_data_column()

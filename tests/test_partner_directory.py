@@ -21,6 +21,7 @@ from sqlalchemy import inspect
 from app.services.partner_categories import (
     DEFAULT_CATEGORY_FALLBACKS,
     ensure_partner_categories,
+    ensure_partner_category_fk,
     ensure_partner_extra_data_column,
 )
 from app.services.partner_directory import (
@@ -210,6 +211,143 @@ def test_ensure_partner_extra_data_column_adds_missing_column(app):
         columns = {column["name"] for column in inspector.get_columns("partners")}
         assert "extra_data" in columns
 
+
+def test_ensure_partner_category_fk_adds_missing_column(app):
+    with app.app_context():
+        db.session.execute(db.text("DROP TABLE partners"))
+        db.session.commit()
+
+        db.session.execute(
+            db.text(
+                """
+                CREATE TABLE partners (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    slug TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    short_desc TEXT,
+                    long_desc TEXT,
+                    website_url TEXT,
+                    phone TEXT,
+                    whatsapp TEXT,
+                    email TEXT,
+                    instagram TEXT,
+                    facebook TEXT,
+                    tiktok TEXT,
+                    address TEXT,
+                    city TEXT,
+                    geo_lat NUMERIC,
+                    geo_lng NUMERIC,
+                    logo_path TEXT,
+                    hero_image_path TEXT,
+                    extra_data TEXT NOT NULL DEFAULT '{}',
+                    images_json TEXT NOT NULL DEFAULT '[]',
+                    status TEXT NOT NULL DEFAULT 'draft',
+                    featured BOOLEAN NOT NULL DEFAULT 0,
+                    sort_order INTEGER NOT NULL DEFAULT 0,
+                    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                    approved_at DATETIME,
+                    category TEXT
+                )
+                """
+            )
+        )
+        db.session.commit()
+
+        db.session.execute(
+            db.text(
+                """
+                INSERT INTO partners (
+                    slug,
+                    name,
+                    status,
+                    extra_data,
+                    images_json,
+                    featured,
+                    sort_order,
+                    created_at,
+                    updated_at,
+                    category
+                )
+                VALUES (
+                    :slug,
+                    :name,
+                    'approved',
+                    '{}',
+                    '[]',
+                    0,
+                    0,
+                    CURRENT_TIMESTAMP,
+                    CURRENT_TIMESTAMP,
+                    :category
+                )
+                """
+            ),
+            {"slug": "legacy-partner", "name": "Legacy Partner", "category": "guide"},
+        )
+        db.session.commit()
+
+        created = ensure_partner_category_fk()
+        assert created is True
+
+        inspector = inspect(db.engine)
+        columns = {column["name"] for column in inspector.get_columns("partners")}
+        assert "category_id" in columns
+
+        category_id = db.session.execute(
+            db.text("SELECT category_id FROM partners WHERE slug = :slug"),
+            {"slug": "legacy-partner"},
+        ).scalar_one()
+
+        expected_category = (
+            PartnerCategory.query.filter_by(slug="guide").first()
+        )
+        assert expected_category is not None
+        assert category_id == expected_category.id
+
+
+def test_ensure_partner_category_fk_handles_missing_category_table(app):
+    with app.app_context():
+        db.session.execute(db.text("DROP TABLE partners"))
+        db.session.execute(db.text("DROP TABLE partner_categories"))
+        db.session.commit()
+
+        db.session.execute(
+            db.text(
+                """
+                CREATE TABLE partners (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    slug TEXT NOT NULL,
+                    name TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'approved',
+                    category TEXT
+                )
+                """
+            )
+        )
+        db.session.execute(
+            db.text(
+                """
+                INSERT INTO partners (slug, name, status, category)
+                VALUES (:slug, :name, 'approved', :category)
+                """
+            ),
+            {"slug": "legacy", "name": "Legacy", "category": "guide"},
+        )
+        db.session.commit()
+
+        created = ensure_partner_category_fk()
+        assert created is True
+
+        inspector = inspect(db.engine)
+        columns = {column["name"] for column in inspector.get_columns("partners")}
+        assert "category_id" in columns
+
+        value = db.session.execute(
+            db.text("SELECT category_id FROM partners WHERE slug = :slug"),
+            {"slug": "legacy"},
+        ).scalar_one()
+        assert value is None
 
 def test_price_first_vs_renewal(app, category, partner_factory):
     with app.app_context():
