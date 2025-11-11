@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 def main() -> None:
     """Entrypoint used by Procfile to run migrations and start Gunicorn."""
 
+    os.environ.setdefault("ALLOW_AUTO_MIGRATE", "1")
     configure_logging(os.getenv("LOG_DIR", "logs"))
     logger.info("Starting EtnaMonitor deployment...")
 

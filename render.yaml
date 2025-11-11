@@ -4,7 +4,8 @@ services:
     env: python
     plan: free
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn "app:create_app()"
+    preDeployCommand: python -m scripts.run_migrations
+    startCommand: python startup.py
     envVars:
       - key: DATA_DIR
         value: /data

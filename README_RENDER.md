@@ -52,17 +52,24 @@ STRIPE_PRICE_PREMIUM=price_...
 
 ## Start Command
 
-Set the Start Command for the **web service** to:
+Imposta il comando di avvio per il **web service** su:
 ```
-gunicorn app:app -k gthread -w 2 -b 0.0.0.0:$PORT
+python startup.py
 ```
 
-Add a second **worker service** with the Start Command:
+Questo script esegue automaticamente il bootstrap delle directory (`DATA_DIR`, `LOG_DIR`), verifica lo stato delle migrazioni e – grazie alla variabile `ALLOW_AUTO_MIGRATE` impostata internamente – lancia `alembic upgrade` prima di avviare Gunicorn.
+
+Configura anche un comando di **pre-deploy** su Render per applicare le migrazioni in modo deterministico prima di ogni deploy:
+```
+python -m scripts.run_migrations
+```
+
+Il worker resta invariato:
 ```
 python -m app.worker
 ```
 
-L'applicazione verifica lo stato delle migrazioni Alembic durante la creazione dell'app Flask (sia nel processo web che nel worker). In produzione il bootstrap fallisce se lo schema non è aggiornato a `head`; facoltativamente puoi impostare `ALLOW_AUTO_MIGRATE=1` per eseguire un singolo `alembic upgrade head` con lock file prima di esporre il servizio. Il worker (`python -m app.worker`) si occupa di Telegram bot e scheduler APScheduler applicando un advisory lock Postgres per evitare istanze duplicate.
+L'applicazione verifica lo stato delle migrazioni Alembic durante la creazione dell'app Flask (sia nel processo web che nel worker). In produzione il bootstrap fallisce se lo schema non è aggiornato a `head`; con lo script di pre-deploy e `startup.py` le migrazioni vengono applicate automaticamente evitando errori di multi-head. Il worker (`python -m app.worker`) si occupa di Telegram bot e scheduler APScheduler applicando un advisory lock Postgres per evitare istanze duplicate.
 
 ## Health Check Configuration
 
