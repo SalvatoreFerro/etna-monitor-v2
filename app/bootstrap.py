@@ -189,9 +189,26 @@ def _run_auto_migrate(app: Flask, config: AlembicConfig, log: logging.Logger) ->
         os.write(fd, str(os.getpid()).encode("utf-8"))
         os.close(fd)
         os.environ[skip_var] = "1"
-        log.info("[MIGRATE] Running alembic upgrade head (auto-migrate enabled)")
-        command.upgrade(config, "head")
-        log.info("[MIGRATE] Alembic upgrade head completed")
+
+        try:
+            script = ScriptDirectory.from_config(config)
+            heads = script.get_heads()
+        except Exception as exc:  # pragma: no cover - defensive guard
+            log.warning("[MIGRATE] Unable to inspect Alembic heads: %s", exc)
+            heads = None
+
+        if heads and len(heads) > 1:
+            target = "heads"
+            log.warning(
+                "[MIGRATE] Multiple Alembic heads detected (%s); upgrading all heads",
+                ", ".join(heads),
+            )
+        else:
+            target = "head"
+            log.info("[MIGRATE] Running alembic upgrade head (auto-migrate enabled)")
+
+        command.upgrade(config, target)
+        log.info("[MIGRATE] Alembic upgrade %s completed", target)
         return True
     except Exception:
         log.exception("[MIGRATE] Alembic auto-migrate failed")
