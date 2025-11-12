@@ -9,6 +9,25 @@
     <p class="muted">Gestisci candidature, approvazioni e rinnovi del network EtnaMonitor.</p>
   </header>
 
+  {% set total_partners = partners|length %}
+  {% set approved_partners = partners|selectattr('status', 'equalto', 'approved')|list|length %}
+  {% set pending_partners = partners|selectattr('status', 'equalto', 'pending')|list|length %}
+
+  <div class="admin-metrics admin-metrics--compact">
+    <div class="admin-metric">
+      <span class="admin-metric__label">Partner totali</span>
+      <span class="admin-metric__value">{{ total_partners }}</span>
+    </div>
+    <div class="admin-metric">
+      <span class="admin-metric__label">Approvati</span>
+      <span class="admin-metric__value">{{ approved_partners }}</span>
+    </div>
+    <div class="admin-metric">
+      <span class="admin-metric__label">In revisione</span>
+      <span class="admin-metric__value">{{ pending_partners }}</span>
+    </div>
+  </div>
+
   <div class="admin-grid">
     <section class="admin-card">
       <h2>Stato categorie</h2>
@@ -26,11 +45,17 @@
             {% set used, max_slots = usage.get(category.id, (0, category.max_slots)) %}
             <tr>
               <td>{{ category.name }}</td>
-              <td>{{ max_slots }}</td>
+              <td>
+                <form method="post" action="{{ url_for('admin.partners_update_slots', category_id=category.id) }}" class="slot-editor">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                  <input type="number" name="max_slots" class="admin-input admin-input--inline" min="{{ used if used > 0 else 1 }}" value="{{ max_slots }}" aria-label="Aggiorna slot per {{ category.name }}" />
+                  <button type="submit" class="btn btn-secondary btn-sm">Aggiorna</button>
+                </form>
+              </td>
               <td>
                 <span class="badge {{ 'badge-danger' if used >= max_slots else 'badge-success' }}">{{ used }}</span>
               </td>
-              <td>{{ max_slots - used }}</td>
+              <td>{{ (max_slots - used) if (max_slots - used) > 0 else 0 }}</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -39,36 +64,59 @@
 
     <section class="admin-card">
       <h2>Nuovo partner</h2>
-      <form method="post" action="{{ url_for('admin.partners_create') }}" class="admin-form">
+      <form method="post" action="{{ url_for('admin.partners_create') }}" class="admin-form partner-admin-form" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
         <div class="form-grid">
-          <label>Nome *<input type="text" name="name" required maxlength="180" /></label>
-          <label>
-            Categoria *
-            <select name="category_id" required>
+          <label class="admin-field">
+            <span class="admin-field__label">Nome *</span>
+            <input type="text" class="admin-input" name="name" required maxlength="180" placeholder="Nome partner" />
+          </label>
+          <label class="admin-field">
+            <span class="admin-field__label">Categoria *</span>
+            <select name="category_id" class="admin-input" required>
               {% for category in categories %}
                 <option value="{{ category.id }}" data-slug="{{ category.slug }}">{{ category.name }}</option>
               {% endfor %}
             </select>
           </label>
         </div>
-        <label>Descrizione breve<input type="text" name="short_desc" maxlength="280" /></label>
-        <label>Descrizione completa<textarea name="long_desc" rows="4"></textarea></label>
+        <label class="admin-field">
+          <span class="admin-field__label">Descrizione breve</span>
+          <input type="text" class="admin-input" name="short_desc" maxlength="280" placeholder="Titolo sintetico visibile in elenco" />
+        </label>
+        <label class="admin-field">
+          <span class="admin-field__label">Descrizione completa</span>
+          <textarea name="long_desc" rows="4" class="admin-input" placeholder="Racconta i servizi, valori e punti di forza"></textarea>
+        </label>
         <div class="form-grid">
-          <label>Sito<input type="url" name="website_url" /></label>
-          <label>Email<input type="email" name="email" /></label>
-          <label>Telefono<input type="text" name="phone" /></label>
-          <label>WhatsApp<input type="text" name="whatsapp" /></label>
+          <label class="admin-field"><span class="admin-field__label">Sito</span><input type="url" class="admin-input" name="website_url" placeholder="https://" /></label>
+          <label class="admin-field"><span class="admin-field__label">Email</span><input type="email" class="admin-input" name="email" placeholder="contatto@email" /></label>
+          <label class="admin-field"><span class="admin-field__label">Telefono</span><input type="text" class="admin-input" name="phone" placeholder="Numero principale" /></label>
+          <label class="admin-field"><span class="admin-field__label">WhatsApp</span><input type="text" class="admin-input" name="whatsapp" placeholder="Numero WhatsApp" /></label>
         </div>
         <div class="form-grid">
-          <label>Instagram<input type="url" name="instagram" /></label>
-          <label>Facebook<input type="url" name="facebook" /></label>
-          <label>TikTok<input type="url" name="tiktok" /></label>
+          <label class="admin-field"><span class="admin-field__label">Instagram</span><input type="url" class="admin-input" name="instagram" placeholder="https://instagram.com/..." /></label>
+          <label class="admin-field"><span class="admin-field__label">Facebook</span><input type="url" class="admin-input" name="facebook" placeholder="https://facebook.com/..." /></label>
+          <label class="admin-field"><span class="admin-field__label">TikTok</span><input type="url" class="admin-input" name="tiktok" placeholder="https://tiktok.com/@..." /></label>
         </div>
         <div class="form-grid">
-          <label>Indirizzo<input type="text" name="address" /></label>
-          <label>Città<input type="text" name="city" /></label>
+          <label class="admin-field"><span class="admin-field__label">Indirizzo</span><input type="text" class="admin-input" name="address" placeholder="Via e numero civico" /></label>
+          <label class="admin-field"><span class="admin-field__label">Città</span><input type="text" class="admin-input" name="city" placeholder="Comune" /></label>
         </div>
+
+        <div class="admin-field partner-upload">
+          <span class="admin-field__label">Logo profilo partner</span>
+          <div class="upload-dropzone" data-dropzone tabindex="0" role="button" aria-label="Carica logo partner">
+            <input type="file" name="logo" accept="image/*" class="upload-dropzone__input" data-dropzone-input />
+            <div class="upload-dropzone__content">
+              <i class="fas fa-cloud-upload-alt"></i>
+              <p data-dropzone-label>Trascina qui l'immagine o clicca per selezionarla.</p>
+            </div>
+            <img data-dropzone-preview class="upload-dropzone__preview" alt="Anteprima logo" hidden />
+          </div>
+          <small class="muted">Formati supportati: PNG, JPG, WebP e SVG.</small>
+        </div>
+
         {% for category in categories %}
           {% set fields = category_fields.get(category.slug, []) %}
           {% if fields %}
@@ -98,7 +146,7 @@
         {% endfor %}
         <label class="form-switch">
           <input type="checkbox" name="featured" />
-          <span>Featured</span>
+          <span>Evidenzia il partner in homepage</span>
         </label>
         <button type="submit" class="btn btn-primary">Salva bozza</button>
       </form>
@@ -195,6 +243,105 @@
       };
       select.addEventListener('change', toggleGroups);
       toggleGroups();
+    })();
+
+    (function() {
+      const dropzone = document.querySelector('[data-dropzone]');
+      if (!dropzone) {
+        return;
+      }
+
+      const input = dropzone.querySelector('[data-dropzone-input]');
+      const preview = dropzone.querySelector('[data-dropzone-preview]');
+      const label = dropzone.querySelector('[data-dropzone-label]');
+      const defaultLabel = label ? label.textContent : '';
+
+      const preventDefaults = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      };
+
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((eventName) => {
+        dropzone.addEventListener(eventName, preventDefaults, false);
+      });
+
+      ['dragenter', 'dragover'].forEach((eventName) => {
+        dropzone.addEventListener(eventName, () => dropzone.classList.add('is-dragover'), false);
+      });
+
+      ['dragleave', 'drop'].forEach((eventName) => {
+        dropzone.addEventListener(eventName, () => dropzone.classList.remove('is-dragover'), false);
+      });
+
+      const updatePreview = (file) => {
+        if (!label || !preview) {
+          return;
+        }
+
+        if (!file) {
+          label.textContent = defaultLabel;
+          preview.setAttribute('hidden', 'hidden');
+          preview.removeAttribute('src');
+          return;
+        }
+
+        if (!(file.type || '').startsWith('image/')) {
+          label.textContent = 'Carica un file immagine (PNG, JPG, WebP o SVG).';
+          preview.setAttribute('hidden', 'hidden');
+          preview.removeAttribute('src');
+          return;
+        }
+
+        label.textContent = file.name;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            preview.src = event.target.result;
+            preview.removeAttribute('hidden');
+          }
+        };
+        reader.readAsDataURL(file);
+      };
+
+      const assignFilesToInput = (files) => {
+        if (!input || !files || !files.length) {
+          return;
+        }
+        try {
+          const dataTransfer = new DataTransfer();
+          Array.from(files).forEach((file) => dataTransfer.items.add(file));
+          input.files = dataTransfer.files;
+        } catch (error) {
+          input.files = files;
+        }
+        updatePreview(files[0]);
+      };
+
+      dropzone.addEventListener('drop', (event) => {
+        const files = event.dataTransfer?.files;
+        if (files && files.length) {
+          assignFilesToInput(files);
+        }
+      });
+
+      dropzone.addEventListener('click', () => {
+        input?.click();
+      });
+
+      dropzone.addEventListener('keydown', (event) => {
+        if (event.key === ' ' || event.key === 'Enter') {
+          event.preventDefault();
+          input?.click();
+        }
+      });
+
+      input?.addEventListener('change', () => {
+        if (input.files && input.files.length) {
+          updatePreview(input.files[0]);
+        } else {
+          updatePreview(null);
+        }
+      });
     })();
   </script>
 {% endblock %}
