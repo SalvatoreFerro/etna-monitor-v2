@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 from sqlalchemy.pool import StaticPool
+from werkzeug.datastructures import MultiDict
 
 os.environ.setdefault("SECRET_KEY", "test-secret-key")
 os.environ.setdefault("PARTNER_DIRECTORY_ENABLED", "1")
@@ -82,6 +83,32 @@ def test_create_partner_draft_succeeds(client, app, admin_user, category):
     with app.app_context():
         partner = Partner.query.filter_by(name="Partner Test").one()
         assert partner.status == "draft"
+        assert partner.category_id == category.id
+
+
+def test_create_partner_publish_sets_status_and_timestamp(client, app, admin_user, category):
+    _authorize_admin_session(client, admin_user)
+
+    response = client.post(
+        "/admin/partners",
+        data=MultiDict(
+            [
+                ("csrf_token", "csrf-token"),
+                ("name", "Partner Pubblicato"),
+                ("category_id", str(category.id)),
+                ("guide_license_id", "GT67890"),
+                ("submit_action", "draft"),
+                ("submit_action", "publish"),
+            ]
+        ),
+    )
+
+    assert response.status_code == 302
+
+    with app.app_context():
+        partner = Partner.query.filter_by(name="Partner Pubblicato").one()
+        assert partner.status == "approved"
+        assert partner.approved_at is not None
         assert partner.category_id == category.id
 
 
