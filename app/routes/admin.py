@@ -1215,9 +1215,15 @@ def partners_create():
         )
 
     name = (request.form.get("name") or "").strip()
-    category_id = request.form.get("category_id")
-    if not name or not category_id:
+    category_id_raw = request.form.get("category_id")
+    if not name or not category_id_raw:
         flash("Nome e categoria sono obbligatori.", "error")
+        return redirect(url_for("admin.partners_dashboard"))
+
+    try:
+        category_id = int(category_id_raw)
+    except (TypeError, ValueError):
+        flash("Categoria non valida.", "error")
         return redirect(url_for("admin.partners_dashboard"))
 
     category = PartnerCategory.query.get(category_id)
@@ -1287,6 +1293,25 @@ def partners_create():
     return redirect(url_for("admin.partners_dashboard"))
 
 
+def _delete_partner_logo(partner: Partner) -> None:
+    if not partner.logo_path:
+        return
+
+    static_folder = Path(current_app.static_folder or "static")
+    logo_path = static_folder / partner.logo_path
+
+    try:
+        if logo_path.exists() and logo_path.is_file():
+            logo_path.unlink()
+    except OSError as exc:  # pragma: no cover - filesystem failures are non-fatal
+        current_app.logger.warning(
+            "Unable to remove logo %s for partner %s: %s",
+            partner.logo_path,
+            partner.id,
+            exc,
+        )
+
+
 @bp.route("/partners/<int:partner_id>/status", methods=["POST"])
 @admin_required
 def partners_update_status(partner_id: int):
@@ -1319,6 +1344,23 @@ def partners_update_status(partner_id: int):
     else:
         flash("Azione non riconosciuta.", "error")
 
+    return redirect(url_for("admin.partners_dashboard"))
+
+
+@bp.route("/partners/<int:partner_id>/delete", methods=["POST"])
+@admin_required
+def partners_delete(partner_id: int):
+    if not validate_csrf_token(request.form.get("csrf_token")):
+        flash("Token CSRF non valido.", "error")
+        return redirect(url_for("admin.partners_dashboard"))
+
+    partner = Partner.query.options(joinedload(Partner.category)).get_or_404(partner_id)
+
+    _delete_partner_logo(partner)
+    db.session.delete(partner)
+    db.session.commit()
+
+    flash(f"Partner {partner.name} eliminato.", "success")
     return redirect(url_for("admin.partners_dashboard"))
 
 
