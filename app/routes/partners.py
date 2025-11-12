@@ -24,10 +24,12 @@ from app.utils.partners import (
     build_contact_actions,
     build_lead_payload,
     build_waitlist_payload,
+    build_partner_media_url,
     filter_visible_partners,
     load_category_with_partners,
     partner_directory_enabled,
     rate_limit,
+    resolve_partner_media_path,
     require_partner_directory_enabled,
     serialize_partner_for_ldjson,
 )
@@ -134,6 +136,8 @@ def partner_detail(slug: str, partner_slug: str):
     structured_data["@type"] = "LocalBusiness"
     structured_data["@context"] = "https://schema.org"
 
+    hero_media_url = build_partner_media_url(resolve_partner_media_path(partner))
+
     related = [
         other
         for other in filter_visible_partners(partner.category.partners)
@@ -146,6 +150,7 @@ def partner_detail(slug: str, partner_slug: str):
         category=partner.category,
         contact_actions=contact_actions,
         related_partners=related,
+        hero_image_url=hero_media_url,
         structured_data=structured_data,
     )
 

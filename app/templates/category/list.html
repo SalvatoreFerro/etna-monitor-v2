@@ -27,19 +27,27 @@
     <div class="row g-4">
       {% for partner in partners %}
         <div class="col-12 col-md-6 col-lg-4">
-          <article class="card h-100 shadow-sm">
-            <div class="card-body d-flex flex-column">
-              <h2 class="h5">{{ partner.name }}</h2>
-              {% if partner.short_desc %}
-                <p class="text-muted">{{ partner.short_desc }}</p>
-              {% elif partner.long_desc %}
-                <p class="text-muted">{{ partner.long_desc | truncate(160, True, '…') }}</p>
+          <article class="partner-card">
+            <div class="partner-card__summary">
+              {% set preview_src = partner_image_urls.get(partner.id) %}
+              {% if preview_src %}
+                <img class="partner-card__avatar" src="{{ preview_src }}" alt="Foto di {{ partner.name }}" loading="lazy" decoding="async" />
+              {% else %}
+                <span class="partner-card__avatar partner-card__avatar--fallback" aria-hidden="true">{{ partner.name[:1] }}</span>
               {% endif %}
-              <div class="mt-auto">
-                <a class="btn btn-primary btn-sm" href="{{ url_for('partners.partner_detail', slug=category.slug, partner_slug=partner.slug) }}">
-                  Scopri di più
-                </a>
+              <div class="partner-card__heading">
+                <h2 class="partner-card__title">{{ partner.name }}</h2>
+                {% if partner.short_desc %}
+                  <p class="partner-card__subtitle">{{ partner.short_desc }}</p>
+                {% elif partner.long_desc %}
+                  <p class="partner-card__subtitle">{{ partner.long_desc | truncate(160, True, '…') }}</p>
+                {% endif %}
               </div>
+            </div>
+            <div class="partner-card__actions">
+              <a class="btn btn-primary btn-sm" href="{{ url_for('partners.partner_detail', slug=category.slug, partner_slug=partner.slug) }}">
+                Scopri di più
+              </a>
             </div>
           </article>
         </div>
@@ -57,9 +65,9 @@
   </div>
 
   <div class="container">
-    <div class="card shadow-sm border-0">
-      <div class="card-body">
-        {% if is_full %}
+    {% if is_full %}
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
           <h2 class="h5">Lista d'attesa</h2>
           <p class="text-muted">
             La categoria è al completo. Lascia i tuoi dati e ti contatteremo non appena si libera uno slot.
@@ -86,15 +94,19 @@
               <button class="btn btn-primary" type="submit">Unisciti alla lista d'attesa</button>
             </div>
           </form>
-        {% else %}
-          <h2 class="h5">Diventa partner</h2>
-          <p class="text-muted">
+        </div>
+      </div>
+    {% else %}
+      <section class="partner-cta" aria-labelledby="partner-cta-title">
+        <div class="partner-cta__content">
+          <p class="partner-cta__eyebrow" id="partner-cta-title">Diventa partner</p>
+          <p class="partner-cta__text">
             Sei un professionista dell'Etna Experience? Scrivici per conoscere come entrare a far parte della rete di partner.
           </p>
-          <a class="btn btn-primary" href="mailto:partnership@etnamonitor.it">Candidati ora</a>
-        {% endif %}
-      </div>
-    </div>
+        </div>
+        <a class="btn btn-primary btn-sm partner-cta__button" href="mailto:partnership@etnamonitor.it">Candidati ora</a>
+      </section>
+    {% endif %}
   </div>
 </section>
 {% endblock %}

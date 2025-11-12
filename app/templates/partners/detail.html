@@ -15,11 +15,13 @@
         {% endfor %}
       </div>
     </div>
-    {% if partner.hero_image_path %}
-      <figure class="partner-detail__hero-media" aria-hidden="true">
-        <img src="{{ url_for('static', filename=partner.hero_image_path) }}" alt="" loading="lazy" decoding="async" />
-      </figure>
-    {% endif %}
+    <figure class="partner-detail__hero-media" aria-hidden="true">
+      {% if hero_image_url %}
+        <img src="{{ hero_image_url }}" alt="Foto di {{ partner.name }}" loading="lazy" decoding="async" />
+      {% else %}
+        <span class="partner-detail__hero-placeholder">{{ partner.name[:1] }}</span>
+      {% endif %}
+    </figure>
   </header>
 
   <div class="container partner-detail__body">

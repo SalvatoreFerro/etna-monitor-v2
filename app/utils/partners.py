@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import re
 from typing import Iterable, Mapping
 
-from flask import current_app, session
+from flask import current_app, session, url_for
 from slugify import slugify
 from sqlalchemy.orm import joinedload
 
@@ -20,6 +20,28 @@ _ALLOWED_SOCIALS = {
     "facebook": "Facebook",
     "tiktok": "TikTok",
 }
+_MEDIA_EXTRA_KEYS = (
+    "hero_image_path",
+    "hero_image",
+    "cover_image",
+    "cover_image_path",
+    "profile_image",
+    "profile_image_path",
+    "profile_photo",
+    "profile_photo_path",
+    "avatar",
+    "avatar_url",
+    "avatar_path",
+    "photo",
+    "photo_url",
+    "photo_path",
+    "image",
+    "image_url",
+    "image_path",
+    "logo",
+    "logo_url",
+    "logo_path",
+)
 _RATE_LIMIT_SECONDS = 60
 _RATE_LIMIT_BUCKET = 3
 
@@ -70,6 +92,56 @@ def filter_visible_partners(partners: Iterable[Partner], *, reference_date=None)
         )
     )
     return visible
+
+
+def resolve_partner_media_path(partner: Partner) -> str | None:
+    """Return the best available media path for the partner profile."""
+
+    candidates: list[str] = []
+
+    def _append(value: object) -> None:
+        if not value:
+            return
+        if isinstance(value, str):
+            normalized = value.strip()
+            if normalized:
+                candidates.append(normalized)
+
+    _append(partner.hero_image_path)
+
+    extra = getattr(partner, "extra_data", {}) or {}
+    if isinstance(extra, dict):
+        for key in _MEDIA_EXTRA_KEYS:
+            _append(extra.get(key))
+
+    _append(partner.logo_path)
+
+    gallery = getattr(partner, "images_json", None)
+    if isinstance(gallery, (list, tuple)):
+        for item in gallery:
+            _append(item)
+
+    return next(iter(candidates), None)
+
+
+def build_partner_media_url(media_path: str | None) -> str | None:
+    """Convert a stored media path into a browser-consumable URL."""
+
+    if not media_path:
+        return None
+
+    normalized = media_path.strip()
+    if not normalized:
+        return None
+
+    if normalized.startswith(("http://", "https://", "//")):
+        return normalized
+
+    normalized = normalized.lstrip("/")
+    if normalized.startswith("static/"):
+        normalized = normalized[7:]
+
+    return url_for("static", filename=normalized)
 
 
 def build_contact_actions(partner: Partner) -> list[dict[str, str]]:

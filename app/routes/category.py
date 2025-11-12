@@ -21,6 +21,7 @@ from app.services.partner_categories import (
     missing_column_error,
     missing_table_error,
 )
+from app.utils.partners import build_partner_media_url, resolve_partner_media_path
 
 
 bp = Blueprint("category", __name__, url_prefix="/categoria")
@@ -221,6 +222,11 @@ def category_view(slug: str):
     max_slots = category.max_slots
     is_full = occupied >= max_slots
 
+    partner_image_urls = {
+        partner.id: build_partner_media_url(resolve_partner_media_path(partner))
+        for partner in partners
+    }
+
     return render_template(
         "category/list.html",
         category=category,
@@ -228,4 +234,5 @@ def category_view(slug: str):
         occupied=occupied,
         is_full=is_full,
         max_slots=max_slots,
+        partner_image_urls=partner_image_urls,
     )
