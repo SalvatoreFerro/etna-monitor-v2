@@ -15,17 +15,13 @@
         {% endfor %}
       </div>
     </div>
-    {% set hero_media = partner.hero_image_path or partner.logo_path %}
-    {% if hero_media %}
-      {% if hero_media.startswith('http') %}
-        {% set hero_src = hero_media %}
+    <figure class="partner-detail__hero-media" aria-hidden="true">
+      {% if hero_image_url %}
+        <img src="{{ hero_image_url }}" alt="Foto di {{ partner.name }}" loading="lazy" decoding="async" />
       {% else %}
-        {% set hero_src = url_for('static', filename=hero_media) %}
+        <span class="partner-detail__hero-placeholder">{{ partner.name[:1] }}</span>
       {% endif %}
-      <figure class="partner-detail__hero-media" aria-hidden="true">
-        <img src="{{ hero_src }}" alt="Foto di {{ partner.name }}" loading="lazy" decoding="async" />
-      </figure>
-    {% endif %}
+    </figure>
   </header>
 
   <div class="container partner-detail__body">
