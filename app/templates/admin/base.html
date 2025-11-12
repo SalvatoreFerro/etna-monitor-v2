@@ -29,6 +29,17 @@
   </header>
 
   <main class="admin-main">
+    {% with messages = get_flashed_messages(with_categories=True) %}
+      {% if messages %}
+        <div class="admin-flashes" role="status" aria-live="polite">
+          {% for category, message in messages %}
+            <div class="admin-flash admin-flash--{{ category }}">
+              {{ message }}
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
     {% block admin_content %}{% endblock %}
   </main>
 

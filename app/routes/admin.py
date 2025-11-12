@@ -1186,7 +1186,12 @@ def partners_create():
         flash("Token CSRF non valido.", "error")
         return redirect(url_for("admin.partners_dashboard"))
 
-    submit_action = (request.form.get("submit_action") or "draft").strip().lower()
+    raw_submit_actions = [
+        value.strip().lower()
+        for value in request.form.getlist("submit_action")
+        if value
+    ]
+    submit_action = raw_submit_actions[-1] if raw_submit_actions else "draft"
     publish_now = submit_action == "publish"
 
     try:

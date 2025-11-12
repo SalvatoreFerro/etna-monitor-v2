@@ -1,5 +1,10 @@
 {% extends 'admin/base.html' %}
 
+{% block head_extra %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
+{% endblock %}
+
 {% block title %}Directory partner{% endblock %}
 
 {% block admin_content %}
@@ -66,6 +71,7 @@
       <h2>Nuovo partner</h2>
       <form method="post" action="{{ url_for('admin.partners_create') }}" class="admin-form partner-admin-form" enctype="multipart/form-data">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="submit_action" value="draft" data-submit-field />
         <div class="form-grid">
           <label class="admin-field">
             <span class="admin-field__label">Nome *</span>
@@ -148,13 +154,17 @@
           <input type="checkbox" name="featured" />
           <span>Evidenzia il partner in homepage</span>
         </label>
-        <div class="form-actions">
-          <button type="submit" name="submit_action" value="draft" class="btn btn-primary">
+        <div class="form-actions" data-submit-controls>
+          <button type="submit" name="submit_action" value="draft" class="btn btn-primary" data-submit-action="draft">
             Salva bozza
           </button>
-          <button type="submit" name="submit_action" value="publish" class="btn btn-success">
+          <button type="submit" name="submit_action" value="publish" class="btn btn-success" data-submit-action="publish">
             Pubblica ora
           </button>
+          <div class="form-actions__busy" data-submit-busy hidden role="status" aria-live="polite">
+            <span class="form-actions__spinner" aria-hidden="true"></span>
+            <span>Invio in corso…</span>
+          </div>
         </div>
       </form>
     </section>
@@ -238,9 +248,9 @@
 </section>
 {% endblock %}
 
-{% block extra_scripts %}
+{% block admin_scripts %}
   {{ super() }}
-  <script>
+  <script nonce="{{ csp_nonce() }}">
     (function() {
       const select = document.querySelector('select[name="category_id"]');
       if (!select) {
@@ -378,6 +388,55 @@
         } else {
           updatePreview(null);
         }
+      });
+    })();
+
+    (function() {
+      const form = document.querySelector('.partner-admin-form');
+      if (!form) {
+        return;
+      }
+
+      const submitField = form.querySelector('[data-submit-field]');
+      const buttons = Array.from(form.querySelectorAll('[data-submit-action]'));
+      const busyIndicator = form.querySelector('[data-submit-busy]');
+
+      const setSubmitValue = (value) => {
+        if (submitField) {
+          submitField.value = value || 'draft';
+        }
+      };
+
+      buttons.forEach((button) => {
+        button.addEventListener('click', () => {
+          setSubmitValue(button.dataset.submitAction || button.value || 'draft');
+        });
+      });
+
+      form.addEventListener('submit', () => {
+        const active = document.activeElement;
+        if (
+          active &&
+          active.form === form &&
+          active.dataset.submitAction &&
+          active !== submitField
+        ) {
+          setSubmitValue(active.dataset.submitAction);
+        }
+
+        if (!submitField?.value && buttons.length) {
+          setSubmitValue(buttons[0].dataset.submitAction || buttons[0].value || 'draft');
+        }
+
+        if (busyIndicator) {
+          busyIndicator.hidden = false;
+        }
+
+        form.classList.add('is-submitting');
+        buttons.forEach((button) => {
+          button.disabled = true;
+          button.setAttribute('aria-disabled', 'true');
+        });
       });
     })();
   </script>
