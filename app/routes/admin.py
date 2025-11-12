@@ -2,6 +2,7 @@ import csv
 import io
 from datetime import datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 
 from flask import (
     Blueprint,
@@ -18,6 +19,8 @@ from flask_login import current_user
 from sqlalchemy import and_, cast, func, or_
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
+from werkzeug.datastructures import FileStorage
+from werkzeug.utils import secure_filename
 
 from ..utils.auth import admin_required
 from ..models import (
@@ -124,6 +127,40 @@ def _serialize_partner(partner: Partner) -> dict:
 
 
 ADMIN_USERS_PER_PAGE = 20
+
+_ALLOWED_LOGO_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"}
+
+
+def _store_partner_logo(file_storage: FileStorage | None, *, slug: str) -> tuple[str | None, str | None]:
+    """Persist the uploaded partner logo to the static directory.
+
+    Returns a tuple of (relative_path, error_message).
+    """
+
+    if not file_storage or not file_storage.filename:
+        return None, None
+
+    filename = secure_filename(file_storage.filename)
+    if not filename:
+        return None, "Nome file non valido."
+
+    extension = Path(filename).suffix.lower()
+    if extension not in _ALLOWED_LOGO_EXTENSIONS:
+        return None, "Formato immagine non supportato."
+
+    static_folder = Path(current_app.static_folder or "static")
+    upload_dir = static_folder / "images" / "partners"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    timestamp = int(datetime.utcnow().timestamp())
+    stored_name = f"{slug}-{timestamp}{extension}"
+    destination = upload_dir / stored_name
+
+    file_storage.stream.seek(0)
+    file_storage.save(destination)
+
+    relative_path = Path("images") / "partners" / stored_name
+    return relative_path.as_posix(), None
 
 
 def _get_admin_ip() -> str | None:
@@ -1107,6 +1144,41 @@ def partners_dashboard():
     )
 
 
+@bp.route("/partners/categories/<int:category_id>/slots", methods=["POST"])
+@admin_required
+def partners_update_slots(category_id: int):
+    if not validate_csrf_token(request.form.get("csrf_token")):
+        flash("Token CSRF non valido.", "error")
+        return redirect(url_for("admin.partners_dashboard"))
+
+    category = PartnerCategory.query.get_or_404(category_id)
+
+    try:
+        max_slots = int(request.form.get("max_slots", "").strip())
+    except (TypeError, ValueError):
+        flash("Numero di slot non valido.", "error")
+        return redirect(url_for("admin.partners_dashboard"))
+
+    if max_slots <= 0:
+        flash("Il numero di slot deve essere positivo.", "error")
+        return redirect(url_for("admin.partners_dashboard"))
+
+    used, _ = slots_usage(category)
+    if max_slots < used:
+        flash(
+            f"La categoria ha già {used} partner attivi. Imposta almeno {used} slot.",
+            "error",
+        )
+        return redirect(url_for("admin.partners_dashboard"))
+
+    category.max_slots = max_slots
+    category.updated_at = datetime.utcnow()
+    db.session.commit()
+
+    flash(f"Slot aggiornati per {category.name}.", "success")
+    return redirect(url_for("admin.partners_dashboard"))
+
+
 @bp.route("/partners", methods=["POST"])
 @admin_required
 def partners_create():
@@ -1182,6 +1254,12 @@ def partners_create():
         else:
             extra_fields[field_name] = raw_value
 
+    slug_value = next_partner_slug(name)
+    logo_path, error = _store_partner_logo(request.files.get("logo"), slug=slug_value)
+    if error:
+        flash(error, "error")
+        return redirect(url_for("admin.partners_dashboard"))
+
     partner = Partner(
         category=category,
         name=name,
@@ -1199,8 +1277,9 @@ def partners_create():
         featured=bool(request.form.get("featured")),
         status="draft",
         extra_data=extra_fields,
+        logo_path=logo_path,
     )
-    partner.slug = next_partner_slug(partner.name)
+    partner.slug = slug_value
 
     db.session.add(partner)
     db.session.commit()
