@@ -234,13 +234,38 @@
       if (!select) {
         return;
       }
+
       const groups = document.querySelectorAll('[data-category-fields]');
-      const toggleGroups = () => {
-        const slug = select.options[select.selectedIndex]?.dataset.slug;
-        groups.forEach(group => {
-          group.hidden = group.dataset.categoryFields !== slug;
+      const captureRequiredState = (control) => {
+        if (!control.dataset.originalRequired) {
+          control.dataset.originalRequired = control.required ? 'true' : 'false';
+        }
+      };
+
+      const setGroupState = (group, isActive) => {
+        group.hidden = !isActive;
+        const controls = group.querySelectorAll('input, select, textarea');
+        controls.forEach((control) => {
+          captureRequiredState(control);
+          const wasRequired = control.dataset.originalRequired === 'true';
+          control.disabled = !isActive;
+          control.required = isActive && wasRequired;
+          if (!isActive) {
+            if (control.type === 'checkbox' || control.type === 'radio') {
+              control.checked = false;
+            }
+          }
         });
       };
+
+      const toggleGroups = () => {
+        const slug = select.options[select.selectedIndex]?.dataset.slug;
+        groups.forEach((group) => {
+          const isActive = group.dataset.categoryFields === slug;
+          setGroupState(group, isActive);
+        });
+      };
+
       select.addEventListener('change', toggleGroups);
       toggleGroups();
     })();
