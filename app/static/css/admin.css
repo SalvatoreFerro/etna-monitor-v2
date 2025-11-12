@@ -169,6 +169,12 @@
 }
 
 .admin-field input[type="search"],
+.admin-field input[type="text"],
+.admin-field input[type="url"],
+.admin-field input[type="email"],
+.admin-field input[type="tel"],
+.admin-field input[type="number"],
+.admin-field textarea,
 .admin-field select {
   width: 100%;
   padding: 0.55rem 0.75rem;
@@ -180,10 +186,37 @@
 }
 
 .admin-field input[type="search"]:focus,
+.admin-field input[type="text"]:focus,
+.admin-field input[type="url"]:focus,
+.admin-field input[type="email"]:focus,
+.admin-field input[type="tel"]:focus,
+.admin-field input[type="number"]:focus,
+.admin-field textarea:focus,
 .admin-field select:focus {
   outline: none;
   border-color: rgba(129, 140, 248, 0.7);
   box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.25);
+}
+
+.admin-input {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(9, 16, 35, 0.65);
+  color: var(--color-text-primary);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-input:focus {
+  outline: none;
+  border-color: rgba(129, 140, 248, 0.7);
+  box-shadow: 0 0 0 2px rgba(129, 140, 248, 0.25);
+}
+
+.admin-input--inline {
+  max-width: 6.5rem;
+  text-align: center;
 }
 
 .admin-table-wrapper {
@@ -206,6 +239,81 @@
   background: rgba(255, 255, 255, 0.05);
   padding: 0.15rem 0.4rem;
   border-radius: var(--radius-sm);
+}
+
+.slot-editor {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.slot-editor .btn {
+  white-space: nowrap;
+}
+
+.partner-admin-form .form-grid {
+  gap: clamp(0.75rem, 2vw, 1.25rem);
+}
+
+.partner-admin-form .form-grid .admin-field {
+  min-width: 0;
+}
+
+.partner-admin-form textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+.upload-dropzone {
+  position: relative;
+  display: grid;
+  place-items: center;
+  gap: 0.75rem;
+  padding: clamp(1rem, 2vw, 1.5rem);
+  border-radius: var(--radius-xl);
+  border: 1px dashed rgba(255, 255, 255, 0.25);
+  background: rgba(9, 16, 35, 0.55);
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
+}
+
+.upload-dropzone:focus-visible {
+  outline: 2px solid rgba(129, 140, 248, 0.8);
+  outline-offset: 4px;
+}
+
+.upload-dropzone i {
+  font-size: 1.5rem;
+  color: var(--color-text-tertiary);
+}
+
+.upload-dropzone__content p {
+  margin: 0;
+  max-width: 260px;
+  font-size: var(--font-size-sm);
+}
+
+.upload-dropzone__input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+.upload-dropzone__preview {
+  max-width: min(200px, 100%);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.45);
+}
+
+.upload-dropzone.is-dragover {
+  border-color: rgba(129, 140, 248, 0.85);
+  background: rgba(99, 102, 241, 0.18);
+  transform: translateY(-1px);
 }
 
 .admin-table-wrapper.is-loading {
@@ -507,6 +615,11 @@
   font-size: var(--font-size-sm);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+.admin-metrics--compact {
+  margin-top: clamp(0.5rem, 1vw, 0.75rem);
+  margin-bottom: clamp(1rem, 2vw, 1.5rem);
 }
 
 .admin-metric__value {
