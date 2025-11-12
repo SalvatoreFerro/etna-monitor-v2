@@ -264,6 +264,18 @@
   resize: vertical;
 }
 
+.partner-admin-form .form-actions {
+  display: flex;
+  gap: clamp(0.5rem, 2vw, 1rem);
+  justify-content: flex-end;
+  margin-top: clamp(1rem, 2vw, 1.5rem);
+  flex-wrap: wrap;
+}
+
+.partner-admin-form .form-actions .btn {
+  min-width: 160px;
+}
+
 .upload-dropzone {
   position: relative;
   display: grid;

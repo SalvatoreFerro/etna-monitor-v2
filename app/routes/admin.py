@@ -1186,6 +1186,9 @@ def partners_create():
         flash("Token CSRF non valido.", "error")
         return redirect(url_for("admin.partners_dashboard"))
 
+    submit_action = (request.form.get("submit_action") or "draft").strip().lower()
+    publish_now = submit_action == "publish"
+
     try:
         ensure_partner_slug_column()
     except SQLAlchemyError as exc:  # pragma: no cover - defensive safeguard
@@ -1281,15 +1284,20 @@ def partners_create():
         address=(request.form.get("address") or "").strip() or None,
         city=(request.form.get("city") or "").strip() or None,
         featured=bool(request.form.get("featured")),
-        status="draft",
+        status="approved" if publish_now else "draft",
         extra_data=extra_fields,
         logo_path=logo_path,
     )
     partner.slug = slug_value
+    if publish_now:
+        partner.approved_at = datetime.utcnow()
 
     db.session.add(partner)
     db.session.commit()
-    flash("Partner creato in bozza.", "success")
+    if publish_now:
+        flash("Partner pubblicato con successo.", "success")
+    else:
+        flash("Partner creato in bozza.", "success")
     return redirect(url_for("admin.partners_dashboard"))
 
 
