@@ -96,64 +96,262 @@ def _is_truthy_env(value: str | None) -> bool:
 
 
 def _ensure_partners_table(app: Flask) -> None:
-    """Ensure the partners table exists with the expected schema."""
+    """Ensure the partners table exists with the expected schema.
 
-    create_sql = text(
-        """
-        CREATE TABLE IF NOT EXISTS partners (
-            id SERIAL PRIMARY KEY,
-            name TEXT,
-            category TEXT,
-            description TEXT,
-            website TEXT,
-            contact TEXT,
-            image_url TEXT,
-            lat DOUBLE PRECISION,
-            lon DOUBLE PRECISION,
-            verified BOOLEAN DEFAULT FALSE,
-            visible BOOLEAN DEFAULT TRUE,
-            created_at TIMESTAMP DEFAULT NOW()
-        );
-        """
-    )
+    This function will:
+    - create the partners table with the modern schema if missing,
+    - or, if the table exists, add any missing columns and try to migrate
+      data from legacy columns to the new ones (non-destructive).
+    """
+    engine = db.engine
+    dialect = engine.dialect.name
+
+    # Expected modern columns based on app/models/partner.py and migrations
+    expected_columns = {
+        "id",
+        "category_id",
+        "slug",
+        "name",
+        "short_desc",
+        "long_desc",
+        "website_url",
+        "phone",
+        "whatsapp",
+        "email",
+        "instagram",
+        "facebook",
+        "tiktok",
+        "address",
+        "city",
+        "geo_lat",
+        "geo_lng",
+        "logo_path",
+        "hero_image_path",
+        "extra_data",
+        "images_json",
+        "status",
+        "featured",
+        "sort_order",
+        "created_at",
+        "updated_at",
+        "approved_at",
+    }
 
     try:
-        with db.engine.connect() as conn:
-            conn.execute(create_sql)
-            conn.commit()
-        app.logger.info("[BOOT] partners table ensured ✅")
-    except Exception as ex:  # pragma: no cover - defensive fallback
-        app.logger.warning("[BOOT] partners table ensure failed: %s", ex)
+        inspector = inspect(engine)
+    except SQLAlchemyError as exc:
+        app.logger.warning("[BOOT] Unable to inspect DB engine for partners table: %s", exc)
         return
+
+    has_table = inspector.has_table("partners")
 
     try:
-        inspector = inspect(db.engine)
-        partner_columns = {column["name"] for column in inspector.get_columns("partners")}
-    except SQLAlchemyError as exc:  # pragma: no cover - defensive fallback
-        app.logger.warning("[BOOT] Unable to inspect partners table: %s", exc)
-        return
+        if not has_table:
+            app.logger.info("[BOOT] partners table missing; creating with modern schema")
+            if dialect == "sqlite":
+                create_sql = text(
+                    """
+                    CREATE TABLE IF NOT EXISTS partners (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        category_id INTEGER,
+                        slug TEXT UNIQUE,
+                        name VARCHAR(180) NOT NULL,
+                        short_desc VARCHAR(280),
+                        long_desc TEXT,
+                        website_url VARCHAR(512),
+                        phone VARCHAR(64),
+                        whatsapp VARCHAR(64),
+                        email VARCHAR(255),
+                        instagram VARCHAR(255),
+                        facebook VARCHAR(255),
+                        tiktok VARCHAR(255),
+                        address VARCHAR(255),
+                        city VARCHAR(120),
+                        geo_lat NUMERIC,
+                        geo_lng NUMERIC,
+                        logo_path VARCHAR(255),
+                        hero_image_path VARCHAR(255),
+                        extra_data TEXT NOT NULL DEFAULT '{}',
+                        images_json TEXT NOT NULL DEFAULT '[]',
+                        status VARCHAR(32) NOT NULL DEFAULT 'draft',
+                        featured INTEGER NOT NULL DEFAULT 0,
+                        sort_order INTEGER NOT NULL DEFAULT 0,
+                        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                        approved_at DATETIME
+                    );
+                    """
+                )
+            else:
+                # PostgreSQL schema
+                create_sql = text(
+                    """
+                    CREATE TABLE IF NOT EXISTS partners (
+                        id SERIAL PRIMARY KEY,
+                        category_id INTEGER,
+                        slug VARCHAR(120) UNIQUE,
+                        name VARCHAR(180) NOT NULL,
+                        short_desc VARCHAR(280),
+                        long_desc TEXT,
+                        website_url VARCHAR(512),
+                        phone VARCHAR(64),
+                        whatsapp VARCHAR(64),
+                        email VARCHAR(255),
+                        instagram VARCHAR(255),
+                        facebook VARCHAR(255),
+                        tiktok VARCHAR(255),
+                        address VARCHAR(255),
+                        city VARCHAR(120),
+                        geo_lat NUMERIC(9,6),
+                        geo_lng NUMERIC(9,6),
+                        logo_path VARCHAR(255),
+                        hero_image_path VARCHAR(255),
+                        extra_data JSONB NOT NULL DEFAULT '{}'::jsonb,
+                        images_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+                        status VARCHAR(32) NOT NULL DEFAULT 'draft',
+                        featured BOOLEAN NOT NULL DEFAULT FALSE,
+                        sort_order INTEGER NOT NULL DEFAULT 0,
+                        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        approved_at TIMESTAMPTZ
+                    );
+                    """
+                )
 
-    if "category_id" not in partner_columns:
-        app.logger.warning(
-            "[BOOT] partners.category_id column missing; attempting automatic recovery"
-        )
-        ddl = text("ALTER TABLE partners ADD COLUMN category_id INTEGER")
-        try:
-            with db.engine.begin() as conn:
-                conn.execute(ddl)
-            app.logger.info(
-                "[BOOT] partners.category_id column created successfully (nullable)"
-            )
-        except SQLAlchemyError as exc:  # pragma: no cover - defensive fallback
-            app.logger.error(
-                "[BOOT] Failed to add partners.category_id column automatically: %s", exc
-            )
-        except Exception as exc:  # pragma: no cover - defensive fallback
-            app.logger.error(
-                "[BOOT] Unexpected error while adding partners.category_id: %s", exc
-            )
+            with engine.begin() as conn:
+                conn.execute(create_sql)
+            app.logger.info("[BOOT] partners table created or confirmed")
 
+            # After creation, refresh inspector and return
+            inspector = inspect(engine)
+            return
+        else:
+            # Table exists: check missing columns and add them
+            partner_columns = {c["name"] for c in inspector.get_columns("partners")}
+            missing = expected_columns - partner_columns
+            if not missing:
+                app.logger.info("[BOOT] partners table present and appears up-to-date")
+                return
 
+            app.logger.warning("[BOOT] partners table exists but missing columns: %s", ", ".join(sorted(missing)))
+
+            # Prepare ALTER statements for missing columns.
+            alter_statements = []
+            # Mapping for JSON types between sqlite and pg
+            json_type_sql = "TEXT" if dialect == "sqlite" else "JSONB"
+            bool_type_sql = "INTEGER" if dialect == "sqlite" else "BOOLEAN"
+
+            for col in sorted(missing):
+                if col == "category_id":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN category_id INTEGER"))
+                elif col == "slug":
+                    sql = "ALTER TABLE partners ADD COLUMN slug VARCHAR(120)"
+                    if dialect != "sqlite":
+                        sql += " UNIQUE"
+                    alter_statements.append(text(sql))
+                elif col == "short_desc":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN short_desc VARCHAR(280)"))
+                elif col == "long_desc":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN long_desc TEXT"))
+                elif col == "website_url":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN website_url VARCHAR(512)"))
+                elif col == "phone":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN phone VARCHAR(64)"))
+                elif col == "whatsapp":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN whatsapp VARCHAR(64)"))
+                elif col == "email":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN email VARCHAR(255)"))
+                elif col == "instagram":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN instagram VARCHAR(255)"))
+                elif col == "facebook":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN facebook VARCHAR(255)"))
+                elif col == "tiktok":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN tiktok VARCHAR(255)"))
+                elif col == "address":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN address VARCHAR(255)"))
+                elif col == "city":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN city VARCHAR(120)"))
+                elif col == "geo_lat":
+                    if dialect == "sqlite":
+                        alter_statements.append(text("ALTER TABLE partners ADD COLUMN geo_lat NUMERIC"))
+                    else:
+                        alter_statements.append(text("ALTER TABLE partners ADD COLUMN geo_lat NUMERIC(9,6)"))
+                elif col == "geo_lng":
+                    if dialect == "sqlite":
+                        alter_statements.append(text("ALTER TABLE partners ADD COLUMN geo_lng NUMERIC"))
+                    else:
+                        alter_statements.append(text("ALTER TABLE partners ADD COLUMN geo_lng NUMERIC(9,6)"))
+                elif col == "logo_path":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN logo_path VARCHAR(255)"))
+                elif col == "hero_image_path":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN hero_image_path VARCHAR(255)"))
+                elif col == "extra_data":
+                    alter_statements.append(text(f"ALTER TABLE partners ADD COLUMN extra_data {json_type_sql} NOT NULL DEFAULT {('{}' if dialect=='sqlite' else \"'{}'::jsonb\")}"))
+                elif col == "images_json":
+                    alter_statements.append(text(f"ALTER TABLE partners ADD COLUMN images_json {json_type_sql} NOT NULL DEFAULT {('[]' if dialect=='sqlite' else \"'[]'::jsonb\")}"))
+                elif col == "status":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN status VARCHAR(32) NOT NULL DEFAULT 'draft'"))
+                elif col == "featured":
+                    alter_statements.append(text(f"ALTER TABLE partners ADD COLUMN featured {bool_type_sql} NOT NULL DEFAULT {('0' if dialect=='sqlite' else 'FALSE')}"))
+                elif col == "sort_order":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0"))
+                elif col == "created_at":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN created_at TIMESTAMP"))
+                elif col == "updated_at":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN updated_at TIMESTAMP"))
+                elif col == "approved_at":
+                    alter_statements.append(text("ALTER TABLE partners ADD COLUMN approved_at TIMESTAMP"))
+                else:
+                    # Generic fallback: add as TEXT
+                    alter_statements.append(text(f"ALTER TABLE partners ADD COLUMN {col} TEXT"))
+
+            # Execute ALTERs in a single transaction
+            try:
+                with engine.begin() as conn:
+                    for stmt in alter_statements:
+                        conn.execute(stmt)
+                app.logger.info("[BOOT] Added missing partners columns: %s", ", ".join(sorted(missing)))
+            except SQLAlchemyError as exc:
+                app.logger.error("[BOOT] Failed to add missing partners columns automatically: %s", exc, exc_info=True)
+
+            # If legacy columns exist, try to copy data to new columns non-destructively
+            legacy_to_new = [
+                ("description", "long_desc"),
+                ("website", "website_url"),
+                ("image_url", "logo_path"),
+                ("lat", "geo_lat"),
+                ("lon", "geo_lng"),
+                ("contact", "phone"),
+            ]
+
+            try:
+                with engine.begin() as conn:
+                    existing_cols = {c["name"] for c in inspector.get_columns("partners")}
+                    for old, new in legacy_to_new:
+                        if old in existing_cols and new in existing_cols:
+                            # copy where new is NULL
+                            copy_sql = text(
+                                f"UPDATE partners SET {new} = {old} WHERE ({new} IS NULL OR {new} = '') AND ({old} IS NOT NULL AND {old} != '')"
+                            )
+                            conn.execute(copy_sql)
+                app.logger.info("[BOOT] Attempted to migrate legacy partners columns to new names where possible")
+            except SQLAlchemyError:
+                app.logger.exception("[BOOT] Legacy -> new column data copy failed (non-fatal)")
+
+            # Re-inspect to confirm
+            try:
+                inspector = inspect(engine)
+                partner_columns = {c["name"] for c in inspector.get_columns("partners")}
+                missing_after = expected_columns - partner_columns
+                if missing_after:
+                    app.logger.warning("[BOOT] After automatic adjustments, still missing partners columns: %s", ", ".join(sorted(missing_after)))
+                else:
+                    app.logger.info("[BOOT] partners table schema aligned with expectations after automatic adjustments")
+            except SQLAlchemyError:
+                app.logger.warning("[BOOT] Unable to re-inspect partners table after adjustments")
+
+    except Exception as exc:  # pragma: no cover - defensive fallback
+        app.logger.exception("[BOOT] Unexpected error while ensuring partners table: %s", exc)
 def _ensure_sponsor_tables(app: Flask) -> None:
     """Ensure sponsor banner tables exist to avoid runtime failures."""
 
