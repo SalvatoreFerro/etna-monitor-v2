@@ -512,13 +512,9 @@
     border: 1px solid rgba(100, 116, 139, 0.25);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-lg);
-    display: grid;
+    display: none;
     gap: var(--space-3);
     width: 100%;
-  }
-
-  .site-nav__menu[hidden] {
-    display: none;
   }
 
   .site-nav__menu.is-open {
@@ -784,8 +780,8 @@
       min-width: 0;
     }
 
-    .site-nav__menu[hidden] {
-      display: block;
+    .site-nav__menu.is-open {
+      display: flex;
     }
 
     .site-nav__links {
