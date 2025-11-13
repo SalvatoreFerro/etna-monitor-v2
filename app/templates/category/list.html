@@ -2,63 +2,92 @@
 {% set page_title = category.name ~ " - Etna Experience" %}
 {% set page_description = category.description or "Scopri i partner selezionati di Etna Experience." %}
 
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/category-listing.css') }}?v={{ static_asset_version }}" />
+{% endblock %}
+
 {% block content %}
 <section class="section category-listing py-5">
   <div class="container mb-5">
-    <div class="d-flex flex-column flex-md-row align-items-md-center gap-3">
-      <div>
-        <p class="text-uppercase text-muted small mb-2">Etna Experience</p>
-        <h1 class="display-6 mb-0">{{ category.name }}</h1>
-      </div>
-      <span class="badge {{ 'bg-danger' if is_full else 'bg-success' }} align-self-start">
-        {% if is_full %}
-          COMPLETA ({{ occupied }}/{{ max_slots }})
-        {% else %}
-          DISPONIBILE ({{ occupied }}/{{ max_slots }})
+    <div class="category-header">
+      <div class="category-header__content">
+        <p class="category-header__eyebrow">Etna Experience</p>
+        <h1 class="category-header__title">{{ category.name }}</h1>
+        {% if category.description %}
+          <p class="category-header__description">{{ category.description }}</p>
         {% endif %}
+      </div>
+      <span class="category-badge category-badge--{{ 'full' if is_full else 'available' }}">
+        <span class="category-badge__icon">
+          {% if is_full %}
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M8 1.5C4.41 1.5 1.5 4.41 1.5 8C1.5 11.59 4.41 14.5 8 14.5C11.59 14.5 14.5 11.59 14.5 8C14.5 4.41 11.59 1.5 8 1.5ZM8 13C5.24 13 3 10.76 3 8C3 5.24 5.24 3 8 3C10.76 3 13 5.24 13 8C13 10.76 10.76 13 8 13ZM10.5 8C10.5 9.38 9.38 10.5 8 10.5C6.62 10.5 5.5 9.38 5.5 8C5.5 6.62 6.62 5.5 8 5.5C9.38 5.5 10.5 6.62 10.5 8Z" fill="currentColor"/>
+            </svg>
+          {% else %}
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M6.5 11.5L3 8L4.06 6.94L6.5 9.38L11.94 3.94L13 5L6.5 11.5Z" fill="currentColor"/>
+            </svg>
+          {% endif %}
+        </span>
+        <span class="category-badge__label">
+          {% if is_full %}
+            Completa
+          {% else %}
+            Disponibile
+          {% endif %}
+        </span>
+        <span class="category-badge__count">({{ occupied }}/{{ max_slots }})</span>
       </span>
     </div>
-    {% if category.description %}
-      <p class="lead text-muted mt-3">{{ category.description }}</p>
-    {% endif %}
   </div>
 
   <div class="container mb-5">
-    <div class="row g-4">
+    <div class="partners-grid">
       {% for partner in partners %}
-        <div class="col-12 col-md-6 col-lg-4">
-          <article class="partner-card">
-            <div class="partner-card__summary">
+        <article class="partner-card-enhanced">
+          <div class="partner-card-enhanced__glow"></div>
+          <div class="partner-card-enhanced__content">
+            <div class="partner-card-enhanced__header">
               {% set preview_src = partner_image_urls.get(partner.id) %}
               {% if preview_src %}
-                <img class="partner-card__avatar" src="{{ preview_src }}" alt="Foto di {{ partner.name }}" loading="lazy" decoding="async" />
+                <div class="partner-card-enhanced__avatar-wrapper">
+                  <img class="partner-card-enhanced__avatar" src="{{ preview_src }}" alt="Foto di {{ partner.name }}" loading="lazy" decoding="async" />
+                </div>
               {% else %}
-                <span class="partner-card__avatar partner-card__avatar--fallback" aria-hidden="true">{{ partner.name[:1] }}</span>
+                <div class="partner-card-enhanced__avatar-wrapper">
+                  <span class="partner-card-enhanced__avatar partner-card-enhanced__avatar--fallback" aria-hidden="true">{{ partner.name[:1] }}</span>
+                </div>
               {% endif %}
-              <div class="partner-card__heading">
-                <h2 class="partner-card__title">{{ partner.name }}</h2>
+              <div class="partner-card-enhanced__info">
+                <h2 class="partner-card-enhanced__title">{{ partner.name }}</h2>
                 {% if partner.short_desc %}
-                  <p class="partner-card__subtitle">{{ partner.short_desc }}</p>
+                  <p class="partner-card-enhanced__description">{{ partner.short_desc }}</p>
                 {% elif partner.long_desc %}
-                  <p class="partner-card__subtitle">{{ partner.long_desc | truncate(160, True, '…') }}</p>
+                  <p class="partner-card-enhanced__description">{{ partner.long_desc | truncate(120, True, '…') }}</p>
                 {% endif %}
               </div>
             </div>
-            <div class="partner-card__actions">
-              <a class="btn btn-primary btn-sm" href="{{ url_for('partners.partner_detail', slug=category.slug, partner_slug=partner.slug) }}">
-                Scopri di più
+            <div class="partner-card-enhanced__actions">
+              <a class="partner-card-enhanced__btn" href="{{ url_for('partners.partner_detail', slug=category.slug, partner_slug=partner.slug) }}">
+                <span>Scopri di più</span>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M6 3L11 8L6 13" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
               </a>
             </div>
-          </article>
-        </div>
-      {% else %}
-        <div class="col-12">
-          <div class="border border-dashed rounded-4 p-5 text-center bg-light">
-            <h2 class="h4 mb-3">Nessun partner disponibile</h2>
-            <p class="text-muted mb-0">
-              Stiamo selezionando nuovi partner per questa categoria. Torna a trovarci presto!
-            </p>
           </div>
+        </article>
+      {% else %}
+        <div class="partners-empty">
+          <div class="partners-empty__icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM13 17H11V15H13V17ZM13 13H11V7H13V13Z" fill="currentColor" opacity="0.5"/>
+            </svg>
+          </div>
+          <h2 class="partners-empty__title">Nessun partner disponibile</h2>
+          <p class="partners-empty__description">
+            Stiamo selezionando nuovi partner per questa categoria. Torna a trovarci presto!
+          </p>
         </div>
       {% endfor %}
     </div>
@@ -66,45 +95,74 @@
 
   <div class="container">
     {% if is_full %}
-      <div class="card shadow-sm border-0">
-        <div class="card-body">
-          <h2 class="h5">Lista d'attesa</h2>
-          <p class="text-muted">
-            La categoria è al completo. Lascia i tuoi dati e ti contatteremo non appena si libera uno slot.
-          </p>
-          <form method="post" action="{{ url_for('partners.join_waitlist', slug=category.slug) }}" class="row g-3">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-            <div class="col-md-6">
-              <label class="form-label" for="waitlist-name">Nome*</label>
-              <input class="form-control" type="text" id="waitlist-name" name="name" required />
-            </div>
-            <div class="col-md-6">
-              <label class="form-label" for="waitlist-email">Email*</label>
-              <input class="form-control" type="email" id="waitlist-email" name="email" required />
-            </div>
-            <div class="col-md-6">
-              <label class="form-label" for="waitlist-phone">Telefono</label>
-              <input class="form-control" type="tel" id="waitlist-phone" name="phone" />
-            </div>
-            <div class="col-12">
-              <label class="form-label" for="waitlist-notes">Note</label>
-              <textarea class="form-control" id="waitlist-notes" name="notes" rows="3"></textarea>
-            </div>
-            <div class="col-12 d-flex justify-content-end">
-              <button class="btn btn-primary" type="submit">Unisciti alla lista d'attesa</button>
-            </div>
-          </form>
+      <div class="waitlist-card">
+        <div class="waitlist-card__header">
+          <div class="waitlist-card__icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M19 4H5C3.89 4 3 4.9 3 6V18C3 19.1 3.89 20 5 20H19C20.11 20 21 19.1 21 18V6C21 4.9 20.11 4 19 4ZM19 18H5V8H19V18ZM12 11C13.1 11 14 10.1 14 9C14 7.9 13.1 7 12 7C10.9 7 10 7.9 10 9C10 10.1 10.9 11 12 11ZM16 15.99C16 13.9 13.03 13 12 13C10.97 13 8 13.9 8 15.99V17H16V15.99Z" fill="currentColor"/>
+            </svg>
+          </div>
+          <div>
+            <h2 class="waitlist-card__title">Lista d'attesa</h2>
+            <p class="waitlist-card__description">
+              La categoria è al completo. Lascia i tuoi dati e ti contatteremo non appena si libera uno slot.
+            </p>
+          </div>
         </div>
+        <form method="post" action="{{ url_for('partners.join_waitlist', slug=category.slug) }}" class="waitlist-form">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+          <div class="waitlist-form__row">
+            <div class="waitlist-form__field">
+              <label class="waitlist-form__label" for="waitlist-name">Nome*</label>
+              <input class="waitlist-form__input" type="text" id="waitlist-name" name="name" required />
+            </div>
+            <div class="waitlist-form__field">
+              <label class="waitlist-form__label" for="waitlist-email">Email*</label>
+              <input class="waitlist-form__input" type="email" id="waitlist-email" name="email" required />
+            </div>
+          </div>
+          <div class="waitlist-form__row">
+            <div class="waitlist-form__field">
+              <label class="waitlist-form__label" for="waitlist-phone">Telefono</label>
+              <input class="waitlist-form__input" type="tel" id="waitlist-phone" name="phone" />
+            </div>
+          </div>
+          <div class="waitlist-form__field">
+            <label class="waitlist-form__label" for="waitlist-notes">Note</label>
+            <textarea class="waitlist-form__input waitlist-form__textarea" id="waitlist-notes" name="notes" rows="3"></textarea>
+          </div>
+          <div class="waitlist-form__actions">
+            <button class="waitlist-form__submit" type="submit">
+              <span>Unisciti alla lista d'attesa</span>
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </button>
+          </div>
+        </form>
       </div>
     {% else %}
-      <section class="partner-cta" aria-labelledby="partner-cta-title">
-        <div class="partner-cta__content">
-          <p class="partner-cta__eyebrow" id="partner-cta-title">Diventa partner</p>
-          <p class="partner-cta__text">
-            Sei un professionista dell'Etna Experience? Scrivici per conoscere come entrare a far parte della rete di partner.
-          </p>
+      <section class="partner-cta-enhanced" aria-labelledby="partner-cta-title">
+        <div class="partner-cta-enhanced__glow"></div>
+        <div class="partner-cta-enhanced__content">
+          <div class="partner-cta-enhanced__icon">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M16 11C17.66 11 18.99 9.66 18.99 8C18.99 6.34 17.66 5 16 5C14.34 5 13 6.34 13 8C13 9.66 14.34 11 16 11ZM8 11C9.66 11 10.99 9.66 10.99 8C10.99 6.34 9.66 5 8 5C6.34 5 5 6.34 5 8C5 9.66 6.34 11 8 11ZM8 13C5.67 13 1 14.17 1 16.5V19H15V16.5C15 14.17 10.33 13 8 13ZM16 13C15.71 13 15.38 13.02 15.03 13.05C16.19 13.89 17 15.02 17 16.5V19H23V16.5C23 14.17 18.33 13 16 13Z" fill="currentColor"/>
+            </svg>
+          </div>
+          <div class="partner-cta-enhanced__text">
+            <p class="partner-cta-enhanced__eyebrow" id="partner-cta-title">Diventa partner</p>
+            <p class="partner-cta-enhanced__description">
+              Sei un professionista dell'Etna Experience? Scrivici per conoscere come entrare a far parte della rete di partner.
+            </p>
+          </div>
+          <a class="partner-cta-enhanced__button" href="mailto:partnership@etnamonitor.it">
+            <span>Candidati ora</span>
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M3 8H13M13 8L9 4M13 8L9 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </a>
         </div>
-        <a class="btn btn-primary btn-sm partner-cta__button" href="mailto:partnership@etnamonitor.it">Candidati ora</a>
       </section>
     {% endif %}
   </div>
