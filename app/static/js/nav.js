@@ -34,7 +34,6 @@
 
     function openMenu() {
       menu.classList.add('is-open');
-      menu.removeAttribute('hidden');
       menu.setAttribute('aria-hidden', 'false');
       toggle.setAttribute('aria-expanded', 'true');
       setDocumentListeners(true);
@@ -44,12 +43,10 @@
       menu.classList.remove('is-open');
       const dropdowns = menu.querySelectorAll('[data-site-nav-dropdown]');
       dropdowns.forEach((dropdown) => dropdown.removeAttribute('open'));
-      if (!desktopQuery.matches) {
-        menu.setAttribute('hidden', '');
-        menu.setAttribute('aria-hidden', 'true');
-      } else {
-        menu.removeAttribute('hidden');
+      if (desktopQuery.matches) {
         menu.setAttribute('aria-hidden', 'false');
+      } else {
+        menu.setAttribute('aria-hidden', 'true');
       }
       toggle.setAttribute('aria-expanded', 'false');
       setDocumentListeners(false);
@@ -58,7 +55,6 @@
     function syncToViewport() {
       if (desktopQuery.matches) {
         menu.classList.add('is-open');
-        menu.removeAttribute('hidden');
         menu.setAttribute('aria-hidden', 'false');
         toggle.setAttribute('aria-expanded', 'false');
         setDocumentListeners(false);
@@ -72,7 +68,7 @@
         return;
       }
       event.preventDefault();
-      const isOpen = menu.classList.contains('is-open') && !menu.hasAttribute('hidden');
+      const isOpen = menu.classList.contains('is-open');
       if (isOpen) {
         closeMenu();
       } else {
