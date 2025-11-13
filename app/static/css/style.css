@@ -538,7 +538,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    padding: 0.5rem 0.5rem;
+    padding: 0.5rem 0.75rem;
     color: var(--color-text-muted);
     font-weight: 500;
     font-size: 0.95rem;
@@ -546,6 +546,7 @@
     letter-spacing: 0.01em;
     transition: color 0.2s ease;
     white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .site-nav__link-icon {
@@ -756,8 +757,8 @@
       display: flex;
       align-items: center;
       justify-content: flex-start;
-      gap: clamp(var(--space-4), 3vw, var(--space-7));
-      flex-wrap: wrap;
+      gap: clamp(var(--space-4), 3vw, var(--space-8));
+      flex-wrap: nowrap;
     }
 
     .site-nav__wordmark {
@@ -779,7 +780,7 @@
       border: 0;
       box-shadow: none;
       border-radius: 0;
-      min-width: 0;
+      overflow: visible;
     }
 
     .site-nav__menu.is-open {
@@ -789,11 +790,11 @@
     .site-nav__links {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: clamp(var(--space-3), 2vw, var(--space-6));
+      justify-content: flex-start;
+      gap: clamp(var(--space-4), 2.5vw, var(--space-8));
       row-gap: var(--space-3);
       padding-inline: clamp(var(--space-2), 1vw, var(--space-4));
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
     }
 
     .site-nav__links-wrapper {
@@ -847,10 +848,12 @@
   @media (min-width: 1201px) {
     .site-nav__inner {
       flex-wrap: nowrap;
+      gap: clamp(var(--space-5), 3.5vw, var(--space-10));
     }
 
     .site-nav__links {
       flex-wrap: nowrap;
+      gap: clamp(var(--space-5), 3vw, var(--space-10));
     }
   }
 
