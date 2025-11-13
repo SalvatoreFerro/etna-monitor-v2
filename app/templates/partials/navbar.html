@@ -7,7 +7,7 @@
 {% set nav_links = [
   {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
   {'label': 'Webcam Etna', 'url': url_for('main.webcam_etna'), 'endpoint': 'main.webcam_etna'},
-  {'label': 'Community', 'children': community_links, 'priority': 'secondary'},
+  {'label': 'Community', 'children': community_links},
 ] %}
 
 {% if config.PARTNER_DIRECTORY_ENABLED %}
@@ -46,16 +46,8 @@
   ] %}
 {% endif %}
 
-{% set primary_links = [] %}
+{% set ordered_links = nav_links %}
 {% set secondary_links = [] %}
-{% for link in nav_links %}
-  {% if link.get('priority') == 'secondary' %}
-    {% set secondary_links = secondary_links + [link] %}
-  {% else %}
-    {% set primary_links = primary_links + [link] %}
-  {% endif %}
-{% endfor %}
-{% set ordered_links = primary_links + secondary_links %}
 
 <nav class="site-nav" role="navigation" aria-label="Navigazione principale">
   <div class="container site-nav__inner">
