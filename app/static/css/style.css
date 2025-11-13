@@ -538,13 +538,14 @@
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    padding: 0.5rem 0.25rem;
+    padding: 0.5rem 0.5rem;
     color: var(--color-text-muted);
     font-weight: 500;
     font-size: 0.95rem;
     text-decoration: none;
     letter-spacing: 0.01em;
     transition: color 0.2s ease;
+    white-space: nowrap;
   }
 
   .site-nav__link-icon {
@@ -567,6 +568,7 @@
   .site-nav__link-label {
     display: inline-flex;
     align-items: center;
+    white-space: nowrap;
   }
 
   .site-nav__link::after {
@@ -788,8 +790,8 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: clamp(var(--space-2), 1.6vw, var(--space-6));
-      row-gap: var(--space-2);
+      gap: clamp(var(--space-3), 2vw, var(--space-6));
+      row-gap: var(--space-3);
       padding-inline: clamp(var(--space-2), 1vw, var(--space-4));
       flex-wrap: wrap;
     }
@@ -830,7 +832,7 @@
   @media (min-width: 1024px) and (max-width: 1200px) {
     .site-nav__links {
       justify-content: flex-start;
-      gap: clamp(var(--space-2), 1vw, var(--space-4));
+      gap: clamp(var(--space-2), 1.2vw, var(--space-5));
     }
 
     .site-nav__item--secondary {
