@@ -137,9 +137,23 @@ def build_partner_media_url(media_path: str | None) -> str | None:
     if normalized.startswith(("http://", "https://", "//")):
         return normalized
 
-    normalized = normalized.lstrip("/")
-    if normalized.startswith("static/"):
-        normalized = normalized[7:]
+    # Normalise legacy values such as "static/images/.." or Windows style paths.
+    normalized = normalized.replace("\\", "/").lstrip("/")
+
+    static_prefixes = ("static/", "app/static/")
+    for prefix in static_prefixes:
+        if normalized.startswith(prefix):
+            normalized = normalized[len(prefix) :]
+            break
+
+    legacy_mappings = {
+        "uploads/partners/": "images/partners/",
+        "media/partners/": "images/partners/",
+    }
+    for source, target in legacy_mappings.items():
+        if normalized.startswith(source):
+            normalized = target + normalized[len(source) :]
+            break
 
     return url_for("static", filename=normalized)
 
