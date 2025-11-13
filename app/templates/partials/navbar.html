@@ -75,6 +75,34 @@
       <span class="site-nav__toggle-lines" aria-hidden="true"></span>
     </button>
 
+    <noscript>
+      <style>
+        .site-nav__toggle {
+          display: none !important;
+        }
+
+        .site-nav__menu[hidden][data-site-nav-menu] {
+          display: grid !important;
+          position: static !important;
+          padding: var(--space-4) !important;
+          background: rgba(8, 13, 32, 0.98) !important;
+          border: 1px solid rgba(100, 116, 139, 0.25) !important;
+          border-radius: var(--radius-xl) !important;
+          box-shadow: var(--shadow-lg) !important;
+        }
+
+        @media (min-width: 1024px) {
+          .site-nav__menu[hidden][data-site-nav-menu] {
+            display: flex !important;
+            padding: 0 !important;
+            background: transparent !important;
+            border: 0 !important;
+            box-shadow: none !important;
+          }
+        }
+      </style>
+    </noscript>
+
     <div class="site-nav__menu" id="primary-navigation" data-site-nav-menu aria-hidden="true" hidden>
       <div class="site-nav__links-wrapper">
         <ul class="site-nav__links">
