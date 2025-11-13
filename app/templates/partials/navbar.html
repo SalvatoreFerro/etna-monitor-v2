@@ -7,7 +7,7 @@
 {% set nav_links = [
   {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
   {'label': 'Webcam Etna', 'url': url_for('main.webcam_etna'), 'endpoint': 'main.webcam_etna'},
-  {'label': 'Community', 'children': community_links},
+  {'label': 'Community', 'children': community_links, 'priority': 'secondary'},
 ] %}
 
 {% if config.PARTNER_DIRECTORY_ENABLED %}
@@ -46,11 +46,22 @@
   ] %}
 {% endif %}
 
+{% set primary_links = [] %}
+{% set secondary_links = [] %}
+{% for link in nav_links %}
+  {% if link.get('priority') == 'secondary' %}
+    {% set secondary_links = secondary_links + [link] %}
+  {% else %}
+    {% set primary_links = primary_links + [link] %}
+  {% endif %}
+{% endfor %}
+{% set ordered_links = primary_links + secondary_links %}
+
 <nav class="site-nav" role="navigation" aria-label="Navigazione principale">
   <div class="container site-nav__inner">
     <a class="site-nav__brand" href="/" aria-label="EtnaMonitor home">
-      <span class="site-nav__mark">EtnaMonitor</span>
-      <span>EtnaMonitor</span>
+      <span class="site-nav__mark" aria-hidden="true">EM</span>
+      <span class="site-nav__wordmark">EtnaMonitor</span>
     </a>
 
     <button
@@ -67,23 +78,24 @@
     <div class="site-nav__menu" id="primary-navigation" data-site-nav-menu aria-hidden="true" hidden>
       <div class="site-nav__links-wrapper">
         <ul class="site-nav__links">
-          {% for link in nav_links %}
-            <li class="{{ 'site-nav__item--has-children' if link.children }}">
+          {% for link in ordered_links %}
+            {% set priority = link.get('priority') %}
+            <li class="site-nav__item{{ ' site-nav__item--has-children' if link.children }}{{ ' site-nav__item--secondary' if priority == 'secondary' }}">
               {% if link.children %}
                 <details class="site-nav__dropdown" data-site-nav-dropdown>
                   <summary class="site-nav__link {{ link.extra_class or '' }}">
-                  <span class="site-nav__link-label">{{ link.label }}</span>
-                  <i class="fas fa-chevron-down" aria-hidden="true"></i>
-                </summary>
-                <ul class="site-nav__submenu" role="menu">
-                  {% for child in link.children %}
-                    {% set is_child_active = request.endpoint == child.endpoint and (child.slug is not defined or request.view_args.get('slug') == child.slug) %}
-                    <li>
-                      <a role="menuitem" class="site-nav__sublink {{ 'is-active' if is_child_active }}" href="{{ child.url }}">{{ child.label }}</a>
-                    </li>
-                  {% endfor %}
-                </ul>
-              </details>
+                    <span class="site-nav__link-label">{{ link.label }}</span>
+                    <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                  </summary>
+                  <ul class="site-nav__submenu" role="menu">
+                    {% for child in link.children %}
+                      {% set is_child_active = request.endpoint == child.endpoint and (child.slug is not defined or request.view_args.get('slug') == child.slug) %}
+                      <li>
+                        <a role="menuitem" class="site-nav__sublink {{ 'is-active' if is_child_active }}" href="{{ child.url }}">{{ child.label }}</a>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                </details>
             {% else %}
               <a class="site-nav__link {{ link.extra_class or '' }} {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">
                 {% if link.icon_src %}
@@ -96,6 +108,40 @@
               {% endif %}
             </li>
           {% endfor %}
+          {% if secondary_links %}
+            <li class="site-nav__item site-nav__item--overflow">
+              <details class="site-nav__dropdown" data-site-nav-dropdown>
+                <summary class="site-nav__link">
+                  <span class="site-nav__link-label">Altri</span>
+                  <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                </summary>
+                <ul class="site-nav__submenu" role="menu">
+                  {% for link in secondary_links %}
+                    <li>
+                      {% if link.children %}
+                        <details class="site-nav__submenu-dropdown">
+                          <summary class="site-nav__sublink">
+                            <span>{{ link.label }}</span>
+                            <i class="fas fa-chevron-down" aria-hidden="true"></i>
+                          </summary>
+                          <ul class="site-nav__submenu-list" role="group">
+                            {% for child in link.children %}
+                              {% set is_child_active = request.endpoint == child.endpoint and (child.slug is not defined or request.view_args.get('slug') == child.slug) %}
+                              <li>
+                                <a role="menuitem" class="site-nav__sublink {{ 'is-active' if is_child_active }}" href="{{ child.url }}">{{ child.label }}</a>
+                              </li>
+                            {% endfor %}
+                          </ul>
+                        </details>
+                      {% else %}
+                        <a role="menuitem" class="site-nav__sublink {{ 'is-active' if request.endpoint == link.endpoint }}" href="{{ link.url }}">{{ link.label }}</a>
+                      {% endif %}
+                    </li>
+                  {% endfor %}
+                </ul>
+              </details>
+            </li>
+          {% endif %}
         </ul>
       </div>
     </div>
