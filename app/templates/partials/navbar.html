@@ -65,12 +65,13 @@
     </button>
 
     <div class="site-nav__menu" id="primary-navigation" data-site-nav-menu aria-hidden="true" hidden>
-      <ul class="site-nav__links">
-        {% for link in nav_links %}
-          <li class="{{ 'site-nav__item--has-children' if link.children }}">
-            {% if link.children %}
-              <details class="site-nav__dropdown" data-site-nav-dropdown>
-                <summary class="site-nav__link {{ link.extra_class or '' }}">
+      <div class="site-nav__links-wrapper">
+        <ul class="site-nav__links">
+          {% for link in nav_links %}
+            <li class="{{ 'site-nav__item--has-children' if link.children }}">
+              {% if link.children %}
+                <details class="site-nav__dropdown" data-site-nav-dropdown>
+                  <summary class="site-nav__link {{ link.extra_class or '' }}">
                   <span class="site-nav__link-label">{{ link.label }}</span>
                   <i class="fas fa-chevron-down" aria-hidden="true"></i>
                 </summary>
@@ -92,10 +93,11 @@
                 {% endif %}
                 <span class="site-nav__link-label">{{ link.label }}</span>
               </a>
-            {% endif %}
-          </li>
-        {% endfor %}
-      </ul>
+              {% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
     </div>
 
     <div class="site-nav__actions">

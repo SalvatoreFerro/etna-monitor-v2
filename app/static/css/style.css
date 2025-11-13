@@ -419,6 +419,8 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--space-4);
+    flex-wrap: wrap;
+    row-gap: var(--space-3);
     min-height: var(--nav-height);
   }
 
@@ -507,6 +509,7 @@
     box-shadow: var(--shadow-lg);
     display: grid;
     gap: var(--space-3);
+    width: 100%;
   }
 
   .site-nav__menu[hidden] {
@@ -523,6 +526,10 @@
     list-style: none;
     margin: 0;
     padding: 0;
+  }
+
+  .site-nav__links-wrapper {
+    max-width: 100%;
   }
 
   .site-nav__link {
@@ -699,18 +706,31 @@
   }
 
   @media (min-width: 1024px) {
+    .site-nav__inner {
+      display: grid;
+      grid-template-columns: auto minmax(0, 1fr) auto;
+      align-items: center;
+      gap: clamp(var(--space-4), 3vw, var(--space-7));
+    }
+
+    .site-nav__brand span:last-child {
+      display: inline;
+    }
+
     .site-nav__toggle {
       display: none;
     }
 
     .site-nav__menu {
       position: static;
-      display: block;
+      display: flex;
+      align-items: center;
       padding: 0;
       background: transparent;
       border: 0;
       box-shadow: none;
       border-radius: 0;
+      min-width: 0;
     }
 
     .site-nav__menu[hidden] {
@@ -720,11 +740,34 @@
     .site-nav__links {
       display: flex;
       align-items: center;
-      gap: var(--space-4);
+      gap: clamp(var(--space-3), 2vw, var(--space-6));
+      padding-inline: clamp(var(--space-2), 1vw, var(--space-4));
+      flex-wrap: nowrap;
+    }
+
+    .site-nav__links-wrapper {
+      overflow-x: auto;
+      max-width: 100%;
+      padding-block: 0.35rem;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(148, 163, 184, 0.45) transparent;
+    }
+
+    .site-nav__links-wrapper::-webkit-scrollbar {
+      height: 6px;
+    }
+
+    .site-nav__links-wrapper::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.45);
+      border-radius: 999px;
     }
 
     .site-nav__actions {
       display: inline-flex;
+      justify-content: flex-end;
+      gap: var(--space-3);
+      flex-wrap: nowrap;
+      white-space: nowrap;
     }
 
     .site-nav__link--mobile-only {
