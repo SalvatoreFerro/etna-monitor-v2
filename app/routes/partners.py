@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from urllib.parse import urljoin
 
 from flask import (
     Blueprint,
@@ -138,6 +139,14 @@ def partner_detail(slug: str, partner_slug: str):
 
     hero_media_url = build_partner_media_url(resolve_partner_media_path(partner))
 
+    og_image = hero_media_url
+    if og_image and og_image.startswith("/"):
+        og_image = urljoin(request.url_root, og_image.lstrip("/"))
+
+    meta_title = f"{partner.name} – {partner.category.name}"
+    description_source = partner.short_desc or partner.long_desc or ""
+    meta_description = (description_source.strip() or f"Scopri {partner.name} su EtnaMonitor.")
+
     related = [
         other
         for other in filter_visible_partners(partner.category.partners)
@@ -152,6 +161,11 @@ def partner_detail(slug: str, partner_slug: str):
         related_partners=related,
         hero_image_url=hero_media_url,
         structured_data=structured_data,
+        page_title=meta_title,
+        page_description=meta_description,
+        page_og_title=meta_title,
+        page_og_description=meta_description,
+        page_og_image=og_image,
     )
 
 
