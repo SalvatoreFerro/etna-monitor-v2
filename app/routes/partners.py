@@ -187,22 +187,26 @@ def create_partner_lead(partner_id: int):
     db.session.add(lead)
     db.session.commit()
 
+    # Send lead requests to the site owner's personal email
+    owner_email = "salvoferro16@gmail.com"
     admin_email = current_app.config.get("ADMIN_EMAIL")
-    recipients = [partner.email] if partner.email else []
-    bcc = [admin_email] if admin_email else []
-    delivery_recipients = recipients or bcc
+    
+    # Always send to owner's personal email as primary recipient
+    recipients = [owner_email]
+    
+    # BCC to admin email if configured and different from owner email
+    bcc = [admin_email] if admin_email and admin_email != owner_email else []
 
-    if delivery_recipients:
-        send_email(
-            subject=f"Nuovo contatto per {partner.name}",
-            recipients=delivery_recipients,
-            bcc=bcc if recipients else None,
-            body=render_template(
-                "email/partners/lead_notification.txt",
-                partner=partner,
-                lead=lead,
-            ),
-        )
+    send_email(
+        subject=f"Nuovo contatto per {partner.name}",
+        recipients=recipients,
+        bcc=bcc if bcc else None,
+        body=render_template(
+            "email/partners/lead_notification.txt",
+            partner=partner,
+            lead=lead,
+        ),
+    )
 
     flash("Richiesta inviata con successo.", "success")
     return redirect(
