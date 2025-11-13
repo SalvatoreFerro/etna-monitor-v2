@@ -5,23 +5,58 @@
 {% block content %}
 <section class="page page--partner-detail" aria-labelledby="partner-detail-title">
   <header class="partner-detail__hero">
-    <div class="container">
-      <p class="partner-detail__eyebrow">Partner ufficiale EtnaMonitor</p>
-      <h1 id="partner-detail-title">{{ partner.name }}</h1>
-      <p class="partner-detail__subtitle">{{ partner.short_desc or partner.long_desc|truncate(180) }}</p>
-      <div class="partner-detail__cta">
-        {% for action in contact_actions %}
-          <a class="btn btn-primary" href="{{ action.href }}">{{ action.label }}</a>
-        {% endfor %}
+    <div class="partner-detail__hero-inner container">
+      <div class="partner-detail__hero-copy">
+        <p class="partner-detail__eyebrow">Partner ufficiale EtnaMonitor</p>
+        <h1 id="partner-detail-title">{{ partner.name }}</h1>
+        <p class="partner-detail__subtitle">{{ partner.short_desc or partner.long_desc|truncate(180) }}</p>
+
+        <ul class="partner-detail__meta" role="list">
+          {% if partner.city %}
+            <li><i class="fas fa-map-marker-alt" aria-hidden="true"></i><span>{{ partner.city }}</span></li>
+          {% endif %}
+          <li><i class="fas fa-certificate" aria-hidden="true"></i><span>{{ category.name }}</span></li>
+          {% if partner.website_url %}
+            <li>
+              <i class="fas fa-globe" aria-hidden="true"></i>
+              <span><a href="{{ partner.website_url }}" target="_blank" rel="noopener">Sito ufficiale</a></span>
+            </li>
+          {% endif %}
+        </ul>
+
+        <div class="partner-detail__cta" role="group" aria-label="Azioni di contatto">
+          {% for action in contact_actions %}
+            <a
+              class="btn btn-primary partner-detail__cta-btn"
+              data-action-type="{{ action.type }}"
+              href="{{ action.href }}"
+            >
+              <span class="partner-detail__cta-icon" aria-hidden="true">
+                {% if action.type == 'call' %}
+                  <i class="fas fa-phone-alt"></i>
+                {% elif action.type == 'whatsapp' %}
+                  <i class="fab fa-whatsapp"></i>
+                {% elif action.type == 'email' %}
+                  <i class="fas fa-envelope"></i>
+                {% elif action.type == 'website' %}
+                  <i class="fas fa-external-link-alt"></i>
+                {% else %}
+                  <i class="fas fa-arrow-right"></i>
+                {% endif %}
+              </span>
+              <span>{{ action.label }}</span>
+            </a>
+          {% endfor %}
+        </div>
       </div>
+      <figure class="partner-detail__hero-media" aria-hidden="true">
+        {% if hero_image_url %}
+          <img src="{{ hero_image_url }}" alt="Foto di {{ partner.name }}" loading="lazy" decoding="async" />
+        {% else %}
+          <span class="partner-detail__hero-placeholder">{{ partner.name[:1] }}</span>
+        {% endif %}
+      </figure>
     </div>
-    <figure class="partner-detail__hero-media" aria-hidden="true">
-      {% if hero_image_url %}
-        <img src="{{ hero_image_url }}" alt="Foto di {{ partner.name }}" loading="lazy" decoding="async" />
-      {% else %}
-        <span class="partner-detail__hero-placeholder">{{ partner.name[:1] }}</span>
-      {% endif %}
-    </figure>
   </header>
 
   <div class="container partner-detail__body">
@@ -80,12 +115,52 @@
     <aside class="partner-detail__sidebar">
       <section aria-labelledby="partner-info">
         <h2 id="partner-info">Informazioni rapide</h2>
-        <ul class="partner-detail__info-list">
-          {% if partner.address %}<li><strong>Indirizzo</strong><span>{{ partner.address }}</span></li>{% endif %}
-          {% if partner.city %}<li><strong>Città</strong><span>{{ partner.city }}</span></li>{% endif %}
-          {% if partner.phone %}<li><strong>Telefono</strong><span>{{ partner.phone }}</span></li>{% endif %}
-          {% if partner.email %}<li><strong>Email</strong><span>{{ partner.email }}</span></li>{% endif %}
-          {% if partner.website_url %}<li><strong>Sito</strong><a href="{{ partner.website_url }}">Visita</a></li>{% endif %}
+        <ul class="partner-detail__info-list" role="list">
+          {% if partner.address %}
+            <li>
+              <i class="fas fa-location-arrow" aria-hidden="true"></i>
+              <div>
+                <strong>Indirizzo</strong>
+                <span>{{ partner.address }}</span>
+              </div>
+            </li>
+          {% endif %}
+          {% if partner.city %}
+            <li>
+              <i class="fas fa-city" aria-hidden="true"></i>
+              <div>
+                <strong>Città</strong>
+                <span>{{ partner.city }}</span>
+              </div>
+            </li>
+          {% endif %}
+          {% if partner.phone %}
+            <li>
+              <i class="fas fa-phone" aria-hidden="true"></i>
+              <div>
+                <strong>Telefono</strong>
+                <span>{{ partner.phone }}</span>
+              </div>
+            </li>
+          {% endif %}
+          {% if partner.email %}
+            <li>
+              <i class="fas fa-envelope-open-text" aria-hidden="true"></i>
+              <div>
+                <strong>Email</strong>
+                <span>{{ partner.email }}</span>
+              </div>
+            </li>
+          {% endif %}
+          {% if partner.website_url %}
+            <li>
+              <i class="fas fa-link" aria-hidden="true"></i>
+              <div>
+                <strong>Sito</strong>
+                <a href="{{ partner.website_url }}" target="_blank" rel="noopener">Visita</a>
+              </div>
+            </li>
+          {% endif %}
         </ul>
       </section>
 
