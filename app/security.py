@@ -117,9 +117,14 @@ def apply_csp_headers(response) -> object:
                 sources.append(nonce_fragment)
 
     response.headers.set("Content-Security-Policy", serialize_csp(policy))
-    response.headers["X-Frame-Options"] = "DENY"
-    response.headers["X-Content-Type-Options"] = "nosniff"
-    response.headers["Referrer-Policy"] = "no-referrer-when-downgrade"
+    
+    # Additional security headers (Talisman handles X-Frame-Options and others)
+    # Only set if not already present to avoid conflicts with Talisman
+    if "X-XSS-Protection" not in response.headers:
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+    if "Permissions-Policy" not in response.headers:
+        response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=()"
+    
     setattr(response, "_csp_header_applied", True)
     return response
 

@@ -1,0 +1,33 @@
+Contact: mailto:security@etnamonitor.it
+Expires: 2026-12-31T23:59:59.000Z
+Preferred-Languages: it, en
+Canonical: https://etnamonitor.it/.well-known/security.txt
+Acknowledgments: https://etnamonitor.it/security-acknowledgments
+Policy: https://etnamonitor.it/security-policy
+
+# Security Policy for EtnaMonitor
+
+We take security seriously and appreciate responsible disclosure of vulnerabilities.
+
+## Reporting a Vulnerability
+
+If you discover a security vulnerability, please:
+1. Email security@etnamonitor.it with details
+2. Include steps to reproduce if possible
+3. Allow us reasonable time to respond before public disclosure
+
+## Scope
+
+Security issues affecting:
+- Authentication and authorization
+- Data privacy and protection
+- Infrastructure and deployment
+- Dependencies with known CVEs
+
+## Out of Scope
+
+- Social engineering attacks
+- Physical attacks
+- Denial of service attacks
+
+Thank you for helping keep EtnaMonitor secure!

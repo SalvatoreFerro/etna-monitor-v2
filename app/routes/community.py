@@ -41,7 +41,59 @@ def blog_index():
         .order_by(BlogPost.created_at.desc())
         .all()
     )
-    return render_template("blog/index.html", posts=posts)
+    
+    # Breadcrumb structured data
+    breadcrumb_schema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": url_for("main.index", _external=True),
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Community",
+                "item": url_for("community.forum_home", _external=True),
+            },
+            {
+                "@type": "ListItem",
+                "position": 3,
+                "name": "Blog",
+                "item": url_for("community.blog_index", _external=True),
+            },
+        ],
+    }
+    
+    # Blog page structured data
+    blog_schema = {
+        "@context": "https://schema.org",
+        "@type": "Blog",
+        "name": "Blog EtnaMonitor",
+        "description": "Articoli, analisi e aggiornamenti sul monitoraggio del tremore vulcanico dell'Etna",
+        "url": url_for("community.blog_index", _external=True),
+        "inLanguage": "it-IT",
+        "publisher": {
+            "@type": "Organization",
+            "name": "EtnaMonitor",
+            "logo": {
+                "@type": "ImageObject",
+                "url": url_for('static', filename='images/og-image.png', _external=True)
+            }
+        }
+    }
+    
+    return render_template(
+        "blog/index.html",
+        posts=posts,
+        page_title="Blog EtnaMonitor – Articoli e analisi sul tremore dell'Etna",
+        page_description="Leggi articoli, analisi e aggiornamenti sul monitoraggio del tremore vulcanico dell'Etna con approfondimenti scientifici e tecnici",
+        page_keywords="blog Etna, articoli vulcanologia, analisi tremore vulcanico, notizie Etna, attività vulcanica Sicilia",
+        page_structured_data=[breadcrumb_schema, blog_schema],
+    )
 
 
 @bp.route("/blog/<slug>/")
@@ -118,6 +170,39 @@ def blog_detail(slug: str):
         ],
     }
 
+    # Article structured data for better SEO
+    article_schema = {
+        "@context": "https://schema.org",
+        "@type": "BlogPosting",
+        "headline": post.title,
+        "description": post.content[:200] if hasattr(post, 'content') and post.content else post.title,
+        "url": post_url,
+        "datePublished": post.created_at.isoformat() if hasattr(post, 'created_at') and post.created_at else None,
+        "dateModified": post.updated_at.isoformat() if hasattr(post, 'updated_at') and post.updated_at else None,
+        "author": {
+            "@type": "Person",
+            "name": author_name or "EtnaMonitor Team"
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "EtnaMonitor",
+            "logo": {
+                "@type": "ImageObject",
+                "url": url_for('static', filename='images/og-image.png', _external=True)
+            }
+        },
+        "mainEntityOfPage": {
+            "@type": "WebPage",
+            "@id": post_url
+        },
+        "inLanguage": "it-IT",
+        "keywords": "Etna, vulcano, tremore vulcanico, monitoraggio, Sicilia, INGV"
+    }
+
+    # Prepare article metadata for OpenGraph
+    article_published_time = post.created_at.isoformat() if hasattr(post, 'created_at') and post.created_at else None
+    article_modified_time = post.updated_at.isoformat() if hasattr(post, 'updated_at') and post.updated_at else None
+
     return render_template(
         "blog/detail.html",
         post=post,
@@ -126,6 +211,14 @@ def blog_detail(slug: str):
         previous_post=previous_post,
         next_post=next_post,
         breadcrumb_schema=breadcrumb_schema,
+        article_schema=article_schema,
+        page_og_type="article",
+        page_article_published_time=article_published_time,
+        page_article_modified_time=article_modified_time,
+        page_article_author=author_name or "EtnaMonitor Team",
+        page_article_section="Vulcanologia",
+        page_title=f"{post.title} – Blog EtnaMonitor",
+        page_description=post.content[:160] if hasattr(post, 'content') and post.content else post.title,
     )
 
 
@@ -167,7 +260,42 @@ def forum_home():
         return redirect(url_for("community.thread_detail", slug=thread.slug))
 
     threads = ForumThread.query.order_by(ForumThread.updated_at.desc()).limit(30).all()
-    return render_template("forum/index.html", threads=threads, display_name=display_name)
+    
+    # Forum SEO metadata
+    breadcrumb_schema = {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": 1,
+                "name": "Home",
+                "item": url_for("main.index", _external=True),
+            },
+            {
+                "@type": "ListItem",
+                "position": 2,
+                "name": "Community",
+                "item": url_for("community.forum_home", _external=True),
+            },
+            {
+                "@type": "ListItem",
+                "position": 3,
+                "name": "Forum",
+                "item": url_for("community.forum_home", _external=True),
+            },
+        ],
+    }
+    
+    return render_template(
+        "forum/index.html",
+        threads=threads,
+        display_name=display_name,
+        page_title="Forum EtnaMonitor – Domande e risposte sul vulcano Etna",
+        page_description="Partecipa alle discussioni sulla community EtnaMonitor: domande, risposte e confronto sul monitoraggio del tremore vulcanico dell'Etna",
+        page_keywords="forum Etna, domande vulcano, community vulcanologia, Q&A Etna, discussioni monitoraggio vulcanico",
+        page_structured_data=[breadcrumb_schema],
+    )
 
 
 @bp.route("/forum/<slug>/", methods=["GET", "POST"])
