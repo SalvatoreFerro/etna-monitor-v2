@@ -679,7 +679,7 @@
     transform: translateY(10px);
     transition: opacity 0.2s ease, transform 0.2s ease;
     pointer-events: none;
-    z-index: var(--z-nav);
+    z-index: 1050;
   }
 
   .site-nav__submenu-dropdown {
