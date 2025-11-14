@@ -538,7 +538,7 @@
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    padding: 0.5rem 0.5rem;
+    padding: 0.5rem 0.75rem;
     color: var(--color-text-muted);
     font-weight: 500;
     font-size: 0.95rem;
@@ -546,6 +546,7 @@
     letter-spacing: 0.01em;
     transition: color 0.2s ease;
     white-space: nowrap;
+    flex-shrink: 0;
   }
 
   .site-nav__link-icon {
@@ -755,9 +756,9 @@
     .site-nav__inner {
       display: flex;
       align-items: center;
-      justify-content: flex-start;
-      gap: clamp(var(--space-4), 3vw, var(--space-7));
-      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: var(--space-4);
+      flex-wrap: nowrap;
     }
 
     .site-nav__wordmark {
@@ -771,7 +772,7 @@
     .site-nav__menu {
       position: static;
       display: flex;
-      flex: 1 1 auto;
+      flex: 0 1 auto;
       align-items: center;
       min-width: 0;
       padding: 0;
@@ -779,7 +780,7 @@
       border: 0;
       box-shadow: none;
       border-radius: 0;
-      min-width: 0;
+      overflow: visible;
     }
 
     .site-nav__menu.is-open {
@@ -789,11 +790,11 @@
     .site-nav__links {
       display: flex;
       align-items: center;
-      justify-content: center;
-      gap: clamp(var(--space-3), 2vw, var(--space-6));
+      justify-content: flex-start;
+      gap: var(--space-4);
       row-gap: var(--space-3);
-      padding-inline: clamp(var(--space-2), 1vw, var(--space-4));
-      flex-wrap: wrap;
+      padding-inline: var(--space-2);
+      flex-wrap: nowrap;
     }
 
     .site-nav__links-wrapper {
@@ -807,7 +808,6 @@
       gap: var(--space-3);
       flex-wrap: nowrap;
       white-space: nowrap;
-      margin-left: auto;
       flex: 0 0 auto;
     }
 
@@ -832,7 +832,7 @@
   @media (min-width: 1024px) and (max-width: 1200px) {
     .site-nav__links {
       justify-content: flex-start;
-      gap: clamp(var(--space-2), 1.2vw, var(--space-5));
+      gap: var(--space-3);
     }
 
     .site-nav__item--secondary {
@@ -847,10 +847,12 @@
   @media (min-width: 1201px) {
     .site-nav__inner {
       flex-wrap: nowrap;
+      gap: var(--space-6);
     }
 
     .site-nav__links {
       flex-wrap: nowrap;
+      gap: var(--space-5);
     }
   }
 
