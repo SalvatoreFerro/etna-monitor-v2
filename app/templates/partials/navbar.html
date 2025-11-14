@@ -34,7 +34,8 @@
     {
       'label': 'Dashboard',
       'url': url_for('dashboard.dashboard_home'),
-      'endpoint': 'dashboard.dashboard_home'
+      'endpoint': 'dashboard.dashboard_home',
+      'extra_class': 'site-nav__link--mobile-only'
     },
     {
       'label': 'Esci',
@@ -167,7 +168,6 @@
     </div>
 
     <div class="site-nav__actions">
-      <button type="button" class="btn btn-ghost btn-sm" data-onboarding-trigger><i class="fas fa-compass"></i> Guida rapida</button>
       {% if session.user_id %}
         {% set display_name = (current_user.name if current_user else None) or (current_user.email if current_user else None) or 'Utente' %}
         <a class="btn btn-secondary btn-sm" href="{{ url_for('dashboard.dashboard_home') }}">Dashboard</a>
