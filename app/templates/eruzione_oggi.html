@@ -1,0 +1,277 @@
+{% extends "layout.html" %}
+{% set page_title = "Eruzione Etna Oggi " ~ current_date ~ " – Monitoraggio Live Tremore INGV" %}
+{% set page_description = "Aggiornamenti in tempo reale sull'attività dell'Etna oggi: grafico tremore INGV live, webcam diretta, bollettini ufficiali e indicazioni di sicurezza." %}
+{% set page_og_title = page_title %}
+{% set page_og_description = page_description %}
+{% set canonical_url = url_for('main.eruzione_oggi', _external=True) %}
+
+{% block content %}
+<section class="page page--eruption-today">
+  <div class="container stack">
+    <header class="page__header">
+      <span class="eyebrow">Aggiornamento {{ current_date }}</span>
+      <h1>Eruzione Etna Oggi: Monitoraggio Live {{ current_date }}</h1>
+      <p class="page__lede">
+        Situazione attuale dell'attività vulcanica dell'Etna con dati INGV in tempo reale, webcam live e collegamenti ai bollettini ufficiali.
+      </p>
+    </header>
+
+    <div class="eruption-status-grid">
+      <!-- Current Status Card -->
+      <div class="status-card status-card--primary">
+        <div class="status-card__header">
+          <h2>Stato Attuale Tremore</h2>
+          <span class="status-badge status-badge--{{ activity_level }}">{{ activity_level_text }}</span>
+        </div>
+        <div class="status-card__body">
+          {% if latest_value is not none %}
+            <div class="metric-display">
+              <div class="metric-display__value">{{ "%.2f"|format(latest_value) }} <span class="metric-display__unit">mV</span></div>
+              <div class="metric-display__label">Tremore vulcanico INGV</div>
+            </div>
+          {% else %}
+            <p class="muted">Dati in caricamento...</p>
+          {% endif %}
+          {% if latest_timestamp_display %}
+            <p class="status-card__meta">
+              <i class="fas fa-clock"></i> Ultimo aggiornamento: {{ latest_timestamp_display }} UTC
+            </p>
+          {% endif %}
+          <div class="status-card__actions">
+            <a href="{{ url_for('main.index') }}#grafico-etna" class="btn btn-primary">Visualizza grafico completo</a>
+            <button id="quick-update-btn" class="btn btn-ghost" type="button">Aggiorna dati</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- INGV Bulletin Card -->
+      <div class="status-card">
+        <div class="status-card__header">
+          <h2><i class="fas fa-file-alt"></i> Bollettino INGV Ufficiale</h2>
+        </div>
+        <div class="status-card__body">
+          <p>
+            Per informazioni ufficiali sull'attività dell'Etna, consulta sempre il sito dell'Istituto Nazionale di Geofisica e Vulcanologia.
+          </p>
+          <ul class="link-list">
+            <li>
+              <a href="https://www.ct.ingv.it" target="_blank" rel="noopener" class="link-arrow">
+                INGV Catania – Osservatorio Etneo
+              </a>
+            </li>
+            <li>
+              <a href="https://www.ct.ingv.it/index.php/monitoraggio/monitoraggio-sismico" target="_blank" rel="noopener" class="link-arrow">
+                Monitoraggio sismico e tremore
+              </a>
+            </li>
+            <li>
+              <a href="https://twitter.com/INGVvulcani" target="_blank" rel="noopener" class="link-arrow">
+                Twitter @INGVvulcani – Alert rapidi
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live Chart Section -->
+    <section class="eruption-chart-section" aria-labelledby="chart-title">
+      <h2 id="chart-title">Grafico Tremore INGV in Tempo Reale</h2>
+      <p class="section-intro">
+        Visualizzazione interattiva degli ultimi 7 giorni di dati dal Centro Nazionale Terremoti. 
+        Il grafico si aggiorna automaticamente ogni 5 minuti.
+      </p>
+      
+      <div class="chart-card">
+        {% if csv_snapshot.has_data %}
+          <div id="home-preview-loading" class="chart-loading" aria-live="polite">
+            <div class="chart-spinner" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <p>Caricamento dati INGV…</p>
+          </div>
+          <div id="home-preview-plot" aria-hidden="true"></div>
+          {% if preview_rows %}
+            <script id="home-bootstrap-data" type="application/json" nonce="{{ csp_nonce() }}">
+              {{ preview_rows | tojson(indent=0) | safe }}
+            </script>
+          {% endif %}
+        {% else %}
+          <div class="chart-loading" aria-live="polite">
+            <p><strong>Dati temporaneamente non disponibili</strong></p>
+            <p>Il grafico si popolerà automaticamente appena i dati INGV saranno disponibili. Riprova tra qualche minuto.</p>
+          </div>
+        {% endif %}
+      </div>
+      
+      <div class="chart-legend">
+        <h3>Come leggere il grafico</h3>
+        <div class="legend-grid">
+          <div class="legend-item legend-item--green">
+            <span class="legend-dot"></span>
+            <div>
+              <strong>Verde (basso)</strong>
+              <p>Attività normale, nessun alert</p>
+            </div>
+          </div>
+          <div class="legend-item legend-item--yellow">
+            <span class="legend-dot"></span>
+            <div>
+              <strong>Giallo (medio)</strong>
+              <p>Attività moderata, monitora</p>
+            </div>
+          </div>
+          <div class="legend-item legend-item--orange">
+            <span class="legend-dot"></span>
+            <div>
+              <strong>Arancione (elevato)</strong>
+              <p>Attività intensa, attenzione</p>
+            </div>
+          </div>
+          <div class="legend-item legend-item--red">
+            <span class="legend-dot"></span>
+            <div>
+              <strong>Rosso (molto elevato)</strong>
+              <p>Attività eccezionale, alert</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Webcam Section -->
+    <section class="eruption-webcam-section" aria-labelledby="webcam-title">
+      <h2 id="webcam-title">Webcam Etna in Diretta</h2>
+      <p class="section-intro">
+        Osserva i crateri dell'Etna in tempo reale con le webcam di Skyline. 
+        Le immagini si aggiornano continuamente durante il giorno.
+      </p>
+      
+      <div class="webcam-grid">
+        <div class="webcam-card">
+          <h3>Crateri Sommitali</h3>
+          <a href="https://www.skylinewebcams.com/it/webcam/italia/sicilia/catania/vulcano-etna.html" target="_blank" rel="noopener">
+            <img 
+              src="https://embed.skylinewebcams.com/img/741.jpg" 
+              alt="Webcam live Etna crateri sommitali - vista panoramica Bocca Nuova e Voragine"
+              loading="lazy"
+              decoding="async"
+            />
+          </a>
+          <p class="webcam-meta">Vista su Bocca Nuova, Voragine e Cratere Nord-Est</p>
+        </div>
+        
+        <div class="webcam-card">
+          <h3>Versante Nord</h3>
+          <a href="https://www.skylinewebcams.com/it/webcam/italia/sicilia/catania/vulcano-etna-versante-nord.html" target="_blank" rel="noopener">
+            <img 
+              src="https://embed.skylinewebcams.com/img/1737.jpg" 
+              alt="Webcam live Etna versante nord - Piano Provenzana in diretta"
+              loading="lazy"
+              decoding="async"
+            />
+          </a>
+          <p class="webcam-meta">Inquadratura da Piano Provenzana verso i crateri</p>
+        </div>
+        
+        <div class="webcam-card">
+          <h3>Versante Sud</h3>
+          <a href="https://www.skylinewebcams.com/it/webcam/italia/sicilia/catania/vulcano-etna-crateri.html" target="_blank" rel="noopener">
+            <img 
+              src="https://embed.skylinewebcams.com/img/1092.jpg" 
+              alt="Webcam live Etna versante sud - Rifugio Sapienza streaming"
+              loading="lazy"
+              decoding="async"
+            />
+          </a>
+          <p class="webcam-meta">Vista dai crateri meridionali con Rifugio Sapienza</p>
+        </div>
+      </div>
+      
+      <div class="section-actions">
+        <a href="{{ url_for('main.webcam_etna') }}" class="btn btn-primary">Tutte le webcam + meteo live</a>
+      </div>
+    </section>
+
+    <!-- What's Happening Section -->
+    <section class="eruption-info-section">
+      <h2>Cosa Sta Succedendo</h2>
+      <div class="info-grid">
+        <article class="info-card">
+          <h3><i class="fas fa-chart-line"></i> Interpretazione Dati</h3>
+          <p>
+            Il tremore vulcanico rappresenta l'energia rilasciata dal movimento di magma, gas e fluidi all'interno dell'Etna. 
+            Valori elevati e persistenti possono indicare un'intensificazione dell'attività vulcanica, ma non necessariamente 
+            un'eruzione imminente.
+          </p>
+          <p>
+            <strong>Monitora questi indicatori:</strong>
+          </p>
+          <ul>
+            <li>Trend del tremore (in aumento, stabile, in diminuzione)</li>
+            <li>Presenza di sciami sismici frequenti</li>
+            <li>Emissioni visibili dalle webcam (gas, cenere, incandescenza)</li>
+            <li>Bollettini INGV con valutazioni ufficiali</li>
+          </ul>
+        </article>
+
+        <article class="info-card">
+          <h3><i class="fas fa-shield-alt"></i> Indicazioni di Sicurezza</h3>
+          <p>
+            <strong>Se sei nei pressi dell'Etna:</strong>
+          </p>
+          <ul>
+            <li><strong>Non avvicinarti ai crateri</strong> durante aumenti significativi del tremore</li>
+            <li><strong>Segui le ordinanze</strong> della Protezione Civile e del Parco dell'Etna</li>
+            <li><strong>Affidati a guide certificate</strong> per escursioni sopra i 2.500m</li>
+            <li><strong>Porta protezione respiratoria</strong> (mascherina) per eventuali emissioni di cenere</li>
+            <li><strong>Tieniti informato</strong> tramite canali ufficiali e alert EtnaMonitor</li>
+          </ul>
+          <p>
+            <strong>Numeri di emergenza:</strong><br>
+            118 – Emergenze sanitarie<br>
+            1515 – Soccorso alpino e forestale<br>
+            112 – Numero unico emergenze
+          </p>
+        </article>
+      </div>
+    </section>
+
+    <!-- Alert Signup CTA -->
+    <aside class="eruption-cta">
+      <div class="eruption-cta__content">
+        <h2>🔔 Ricevi Alert in Tempo Reale</h2>
+        <p>
+          Attiva le notifiche Telegram e ricevi avvisi automatici quando il tremore supera le soglie che imposti tu. 
+          La prima notifica è sempre gratuita.
+        </p>
+        <div class="hero__actions">
+          <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Attiva gli alert</a>
+          <a href="{{ url_for('main.etna_bot') }}" class="btn btn-secondary">Scopri il bot Telegram</a>
+        </div>
+      </div>
+    </aside>
+
+    <!-- FAQ Quick Links -->
+    <section class="quick-faq">
+      <h2>Domande Frequenti</h2>
+      <ul class="faq-quick-list">
+        <li><a href="{{ url_for('main.faq') }}#tremore-aumenta">Cosa significa quando il tremore aumenta?</a></li>
+        <li><a href="{{ url_for('main.faq') }}#sta-per-eruttare">Come capire se l'Etna sta per eruttare?</a></li>
+        <li><a href="{{ url_for('main.faq') }}#escursione-sicura">Quando è sicuro fare trekking sull'Etna?</a></li>
+        <li><a href="{{ url_for('main.faq') }}">Tutte le FAQ →</a></li>
+      </ul>
+    </section>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+{{ super() }}
+{% set STATIC_ASSET_VERSION = static_asset_version %}
+<script defer src="{{ url_for('static', filename='js/plotly.min.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
+<script defer src="{{ url_for('static', filename='js/home.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
+<script defer src="{{ url_for('static', filename='js/chart.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
+{% endblock %}

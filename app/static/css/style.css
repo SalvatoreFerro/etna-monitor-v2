@@ -3953,6 +3953,507 @@
     font-size: 0.95rem;
   }
 
+  /* FAQ Page Styles */
+  .faq-container {
+    max-width: 48rem;
+    margin: var(--space-8) auto;
+  }
+
+  .faq-item {
+    margin-bottom: var(--space-4);
+    border: 1px solid rgba(226, 232, 240, 0.1);
+    border-radius: var(--radius-lg);
+    background: rgba(15, 23, 42, 0.5);
+    overflow: hidden;
+  }
+
+  .faq-question {
+    margin: 0;
+    font-size: 1.125rem;
+    font-weight: 600;
+  }
+
+  .faq-toggle {
+    width: 100%;
+    padding: var(--space-4);
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: rgba(226, 232, 240, 0.95);
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--space-3);
+    font-size: inherit;
+    font-weight: inherit;
+    font-family: inherit;
+    transition: background 0.2s ease;
+  }
+
+  .faq-toggle:hover {
+    background: rgba(94, 234, 212, 0.08);
+  }
+
+  .faq-icon {
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    position: relative;
+    transition: transform 0.2s ease;
+  }
+
+  .faq-icon::before,
+  .faq-icon::after {
+    content: "";
+    position: absolute;
+    background: currentColor;
+    border-radius: 2px;
+  }
+
+  .faq-icon::before {
+    top: 50%;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    transform: translateY(-50%);
+  }
+
+  .faq-icon::after {
+    top: 0;
+    left: 50%;
+    width: 2px;
+    height: 100%;
+    transform: translateX(-50%);
+    transition: opacity 0.2s ease;
+  }
+
+  .faq-toggle[aria-expanded="true"] .faq-icon {
+    transform: rotate(45deg);
+  }
+
+  .faq-answer {
+    padding: 0 var(--space-4) var(--space-4);
+    color: rgba(226, 232, 240, 0.8);
+    line-height: 1.7;
+  }
+
+  .faq-answer p {
+    margin-bottom: var(--space-3);
+  }
+
+  .faq-answer ul,
+  .faq-answer ol {
+    margin: var(--space-3) 0;
+    padding-left: var(--space-5);
+  }
+
+  .faq-answer li {
+    margin-bottom: var(--space-2);
+  }
+
+  .faq-answer strong {
+    color: rgba(94, 234, 212, 0.95);
+    font-weight: 600;
+  }
+
+  .faq-answer a {
+    color: rgba(94, 234, 212, 0.95);
+    text-decoration: underline;
+  }
+
+  .faq-answer a:hover {
+    color: rgba(94, 234, 212, 1);
+  }
+
+  .page-cta {
+    margin-top: var(--space-12);
+    padding: var(--space-8);
+    border: 1px solid rgba(226, 232, 240, 0.1);
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, rgba(15, 118, 110, 0.15) 0%, rgba(15, 23, 42, 0.3) 100%);
+    text-align: center;
+  }
+
+  .page-cta h2 {
+    margin-bottom: var(--space-3);
+    font-size: 1.5rem;
+    color: rgba(226, 232, 240, 0.95);
+  }
+
+  .page-cta p {
+    margin-bottom: var(--space-5);
+    color: rgba(226, 232, 240, 0.7);
+  }
+
+  /* Eruption Today Page Styles */
+  .eruption-status-grid {
+    display: grid;
+    gap: var(--space-6);
+    margin: var(--space-8) 0;
+  }
+
+  @media (min-width: 768px) {
+    .eruption-status-grid {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  .status-card {
+    border: 1px solid rgba(226, 232, 240, 0.1);
+    border-radius: var(--radius-xl);
+    background: rgba(15, 23, 42, 0.5);
+    padding: var(--space-6);
+  }
+
+  .status-card--primary {
+    background: linear-gradient(135deg, rgba(15, 118, 110, 0.15) 0%, rgba(15, 23, 42, 0.5) 100%);
+  }
+
+  .status-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--space-5);
+  }
+
+  .status-card__header h2 {
+    font-size: 1.25rem;
+    color: rgba(226, 232, 240, 0.95);
+    margin: 0;
+  }
+
+  .status-badge {
+    padding: 0.375rem 0.875rem;
+    border-radius: var(--radius-pill);
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .status-badge--low {
+    background: rgba(34, 197, 94, 0.2);
+    color: rgba(34, 197, 94, 1);
+  }
+
+  .status-badge--moderate {
+    background: rgba(234, 179, 8, 0.2);
+    color: rgba(234, 179, 8, 1);
+  }
+
+  .status-badge--elevated {
+    background: rgba(249, 115, 22, 0.2);
+    color: rgba(249, 115, 22, 1);
+  }
+
+  .status-badge--high {
+    background: rgba(239, 68, 68, 0.2);
+    color: rgba(239, 68, 68, 1);
+  }
+
+  .status-badge--unknown {
+    background: rgba(148, 163, 184, 0.2);
+    color: rgba(148, 163, 184, 1);
+  }
+
+  .metric-display {
+    margin: var(--space-6) 0;
+  }
+
+  .metric-display__value {
+    font-size: 3rem;
+    font-weight: 700;
+    color: rgba(94, 234, 212, 0.95);
+    line-height: 1;
+  }
+
+  .metric-display__unit {
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: rgba(226, 232, 240, 0.6);
+  }
+
+  .metric-display__label {
+    margin-top: var(--space-2);
+    font-size: 0.875rem;
+    color: rgba(226, 232, 240, 0.6);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .status-card__meta {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-top: var(--space-4);
+    font-size: 0.875rem;
+    color: rgba(226, 232, 240, 0.6);
+  }
+
+  .status-card__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: var(--space-5);
+  }
+
+  .link-list {
+    list-style: none;
+    padding: 0;
+    margin: var(--space-4) 0 0;
+  }
+
+  .link-list li {
+    margin-bottom: var(--space-3);
+  }
+
+  .link-arrow {
+    color: rgba(94, 234, 212, 0.95);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-2);
+    transition: transform 0.2s ease;
+  }
+
+  .link-arrow::after {
+    content: "→";
+  }
+
+  .link-arrow:hover {
+    transform: translateX(0.25rem);
+    color: rgba(94, 234, 212, 1);
+  }
+
+  .eruption-chart-section,
+  .eruption-webcam-section,
+  .eruption-info-section {
+    margin: var(--space-12) 0;
+  }
+
+  .section-intro {
+    max-width: 42rem;
+    margin: var(--space-4) 0 var(--space-6);
+    color: rgba(226, 232, 240, 0.7);
+    line-height: 1.6;
+  }
+
+  .chart-legend {
+    margin-top: var(--space-6);
+    padding: var(--space-5);
+    border: 1px solid rgba(226, 232, 240, 0.1);
+    border-radius: var(--radius-lg);
+    background: rgba(15, 23, 42, 0.3);
+  }
+
+  .chart-legend h3 {
+    margin-bottom: var(--space-4);
+    font-size: 1.125rem;
+    color: rgba(226, 232, 240, 0.95);
+  }
+
+  .legend-grid {
+    display: grid;
+    gap: var(--space-4);
+  }
+
+  @media (min-width: 768px) {
+    .legend-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .legend-dot {
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+    border-radius: 50%;
+    margin-top: 0.25rem;
+  }
+
+  .legend-item--green .legend-dot {
+    background: rgba(34, 197, 94, 0.8);
+  }
+
+  .legend-item--yellow .legend-dot {
+    background: rgba(234, 179, 8, 0.8);
+  }
+
+  .legend-item--orange .legend-dot {
+    background: rgba(249, 115, 22, 0.8);
+  }
+
+  .legend-item--red .legend-dot {
+    background: rgba(239, 68, 68, 0.8);
+  }
+
+  .legend-item strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: rgba(226, 232, 240, 0.95);
+  }
+
+  .legend-item p {
+    margin: 0;
+    font-size: 0.875rem;
+    color: rgba(226, 232, 240, 0.6);
+  }
+
+  .webcam-grid {
+    display: grid;
+    gap: var(--space-6);
+    margin-top: var(--space-6);
+  }
+
+  @media (min-width: 768px) {
+    .webcam-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  .webcam-card {
+    border: 1px solid rgba(226, 232, 240, 0.1);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.5);
+  }
+
+  .webcam-card h3 {
+    padding: var(--space-4);
+    margin: 0;
+    font-size: 1rem;
+    color: rgba(226, 232, 240, 0.95);
+  }
+
+  .webcam-card img {
+    width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  .webcam-meta {
+    padding: var(--space-3) var(--space-4);
+    margin: 0;
+    font-size: 0.875rem;
+    color: rgba(226, 232, 240, 0.6);
+  }
+
+  .info-grid {
+    display: grid;
+    gap: var(--space-6);
+    margin-top: var(--space-6);
+  }
+
+  @media (min-width: 768px) {
+    .info-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  .info-card {
+    padding: var(--space-6);
+    border: 1px solid rgba(226, 232, 240, 0.1);
+    border-radius: var(--radius-lg);
+    background: rgba(15, 23, 42, 0.5);
+  }
+
+  .info-card h3 {
+    margin-bottom: var(--space-4);
+    font-size: 1.25rem;
+    color: rgba(94, 234, 212, 0.95);
+  }
+
+  .info-card h3 i {
+    margin-right: var(--space-2);
+  }
+
+  .info-card p,
+  .info-card li {
+    color: rgba(226, 232, 240, 0.8);
+    line-height: 1.6;
+  }
+
+  .info-card ul {
+    margin: var(--space-3) 0;
+    padding-left: var(--space-5);
+  }
+
+  .info-card li {
+    margin-bottom: var(--space-2);
+  }
+
+  .eruption-cta {
+    margin: var(--space-12) 0;
+    padding: var(--space-8);
+    border: 1px solid rgba(94, 234, 212, 0.3);
+    border-radius: var(--radius-xl);
+    background: linear-gradient(135deg, rgba(15, 118, 110, 0.2) 0%, rgba(15, 23, 42, 0.4) 100%);
+    text-align: center;
+  }
+
+  .eruption-cta h2 {
+    margin-bottom: var(--space-3);
+    font-size: 1.75rem;
+    color: rgba(226, 232, 240, 0.95);
+  }
+
+  .eruption-cta p {
+    max-width: 36rem;
+    margin: 0 auto var(--space-5);
+    color: rgba(226, 232, 240, 0.7);
+  }
+
+  .quick-faq {
+    margin: var(--space-10) 0;
+  }
+
+  .quick-faq h2 {
+    margin-bottom: var(--space-5);
+    color: rgba(226, 232, 240, 0.95);
+  }
+
+  .faq-quick-list {
+    list-style: none;
+    padding: 0;
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  @media (min-width: 768px) {
+    .faq-quick-list {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  .faq-quick-list a {
+    display: block;
+    padding: var(--space-4);
+    border: 1px solid rgba(226, 232, 240, 0.1);
+    border-radius: var(--radius-lg);
+    background: rgba(15, 23, 42, 0.5);
+    color: rgba(94, 234, 212, 0.95);
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+
+  .faq-quick-list a:hover {
+    border-color: rgba(94, 234, 212, 0.3);
+    background: rgba(15, 118, 110, 0.1);
+    transform: translateY(-2px);
+  }
+
+  .section-actions {
+    margin-top: var(--space-6);
+    text-align: center;
+  }
+
   .experience-sticky-cta {
     position: fixed;
     left: 50%;
