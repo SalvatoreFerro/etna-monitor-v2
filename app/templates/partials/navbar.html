@@ -4,9 +4,14 @@
   {'label': 'Forum', 'url': url_for('community.forum_home'), 'endpoint': 'community.forum_home'},
   {'label': 'Feedback', 'url': url_for('community.feedback_portal'), 'endpoint': 'community.feedback_portal'},
 ] %}
-{% set nav_links = [
+{% set tools_links = [
   {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
   {'label': 'Webcam Etna', 'url': url_for('main.webcam_etna'), 'endpoint': 'main.webcam_etna'},
+  {'label': 'Notifiche EtnaBot', 'url': url_for('main.etna_bot'), 'endpoint': 'main.etna_bot'}
+] %}
+
+{% set nav_links = [
+  {'label': 'Strumenti', 'children': tools_links},
   {'label': 'Community', 'children': community_links},
 ] %}
 
@@ -104,7 +109,7 @@
             <li class="site-nav__item{{ ' site-nav__item--has-children' if link.children }}{{ ' site-nav__item--secondary' if priority == 'secondary' }}">
               {% if link.children %}
                 <details class="site-nav__dropdown" data-site-nav-dropdown>
-                  <summary class="site-nav__link {{ link.extra_class or '' }}">
+                  <summary class="site-nav__link {{ link.extra_class or '' }}" aria-haspopup="true">
                     <span class="site-nav__link-label">{{ link.label }}</span>
                     <i class="fas fa-chevron-down" aria-hidden="true"></i>
                   </summary>
@@ -168,7 +173,6 @@
     </div>
 
     <div class="site-nav__actions">
-      <a class="site-nav__extra-link" href="{{ url_for('main.etna_bot') }}">Notifiche EtnaBot</a>
       {% if session.user_id %}
         {% set display_name = (current_user.name if current_user else None) or (current_user.email if current_user else None) or 'Utente' %}
         {% set user_initials = 'EM' %}

@@ -30,6 +30,12 @@
           </div>
           <span class="muted">Scala logaritmica 10<sup>-1</sup>–10<sup>1</sup> · aggiornamento 5'</span>
         </div>
+        <nav class="home-breadcrumb chart-card__breadcrumb" aria-label="Percorso di navigazione">
+          <ol class="home-breadcrumb__list">
+            <li class="home-breadcrumb__item"><a href="{{ url_for('main.index') }}">Home</a></li>
+            <li class="home-breadcrumb__item" aria-current="page">Monitoraggio</li>
+          </ol>
+        </nav>
         <h2 id="grafico-title">Curva del tremore vulcanico</h2>
         <div class="chart-range-selector" role="group" aria-label="Intervallo temporale">
           <button type="button" class="chart-range-btn" data-limit="288">24h</button>
@@ -99,19 +105,29 @@
           href="https://twitter.com/intent/tweet?text={{ share_text | urlencode }}&url={{ share_url | urlencode }}"
           target="_blank"
           rel="noopener"
+          aria-label="Condividi EtnaMonitor su X"
         >X</a>
         <a
           class="hero__share-link"
           href="https://t.me/share/url?url={{ share_url | urlencode }}&text={{ share_text | urlencode }}"
           target="_blank"
           rel="noopener"
+          aria-label="Condividi EtnaMonitor su Telegram"
         >Telegram</a>
         <a
           class="hero__share-link"
           href="https://www.facebook.com/sharer/sharer.php?u={{ share_url | urlencode }}"
           target="_blank"
           rel="noopener"
+          aria-label="Condividi EtnaMonitor su Facebook"
         >Facebook</a>
+      </div>
+      <div class="monitor-graph-cta" aria-label="Registrati per ricevere notifiche su EtnaMonitor">
+        <div class="monitor-graph-cta__copy">
+          <h3>Alert smart vicino al grafico</h3>
+          <p>Ricevi avvisi Telegram e email quando il tremore supera le soglie personalizzabili.</p>
+        </div>
+        <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Accedi / Registrati</a>
       </div>
     </div>
   </div>
@@ -137,21 +153,23 @@
         <span class="home-section__toggle-icon" aria-hidden="true"></span>
       </button>
     </div>
-    <div class="home-section__body" id="section-guide">
-      <p>
-        Il grafico del tremore vulcanico mostra l’energia registrata dai sensori INGV nel tempo e mette in relazione ampiezza,
-        frequenza e variazioni improvvise. Le bande colorate corrispondono ai diversi livelli di attività e permettono di
-        capire a colpo d’occhio quando il vulcano passa da uno stato di quiete a fasi più vivaci. La scala logaritmica rende
-        confrontabili episodi distanti nel tempo, mentre i pulsanti 24h, 3 giorni e 7 giorni consentono di analizzare sia le
-        oscillazioni minute sia le tendenze più lente.
-      </p>
-      <p>
-        Quando la curva supera le soglie gialla e arancione è opportuno confrontare il dato con le note ufficiali INGV e con
-        gli aggiornamenti visuali delle webcam. I tooltip interattivi svelano valore, timestamp UTC e eventuali annotazioni
-        della community. In questo modo ogni appassionato o tecnico può validare rapidamente l’intensità di un episodio,
-        compararlo con eventi passati e avviare comunicazioni puntuali verso i team di protezione civile o i gruppi di
-        ricerca collegati.
-      </p>
+    <div class="home-section__body home-section__body--panel" id="section-guide">
+      <div class="home-section__grid home-section__grid--two">
+        <p>
+          Il grafico del tremore vulcanico mostra l’energia registrata dai sensori INGV nel tempo e mette in relazione
+          ampiezza, frequenza e variazioni improvvise. Le bande colorate corrispondono ai diversi livelli di attività e
+          permettono di capire a colpo d’occhio quando il vulcano passa da uno stato di quiete a fasi più vivaci. La scala
+          logaritmica rende confrontabili episodi distanti nel tempo, mentre i pulsanti 24h, 3 giorni e 7 giorni consentono di
+          analizzare sia le oscillazioni minute sia le tendenze più lente.
+        </p>
+        <p>
+          Quando la curva supera le soglie gialla e arancione è opportuno confrontare il dato con le note ufficiali INGV e con
+          gli aggiornamenti visuali delle webcam. I tooltip interattivi svelano valore, timestamp UTC e eventuali annotazioni
+          della community. In questo modo ogni appassionato o tecnico può validare rapidamente l’intensità di un episodio,
+          compararlo con eventi passati e avviare comunicazioni puntuali verso i team di protezione civile o i gruppi di
+          ricerca collegati.
+        </p>
+      </div>
     </div>
   </div>
 </section>
@@ -176,21 +194,23 @@
         <span class="home-section__toggle-icon" aria-hidden="true"></span>
       </button>
     </div>
-    <div class="home-section__body" id="section-data" hidden>
-      <p>
-        La pipeline di EtnaMonitor scarica il file CSV del tremore pubblicato dal Centro Nazionale Terremoti e lo elabora
-        ogni cinque minuti, verificando checksum e completezza prima di inserirlo nella serie storica. Quando il documento
-        dell’INGV presenta ritardi o colonne incoerenti, il sistema esegue retry automatici, segnala l’anomalia nel log pubblico
-        e attiva un alert interno affinché i gestori possano intervenire. Tutti i campioni vengono salvati in UTC per evitare
-        ambiguità durante il cambio di ora legale e sono successivamente arricchiti con statistiche giornaliere.
-      </p>
-      <p>
-        Oltre al tremore, la piattaforma integra un archivio di immagini webcam, dataset sismici e note ufficiali raccolte da
-        INGV Catania e Protezione Civile Regionale. Queste fonti sono collegate tra loro tramite identificatori temporali
-        univoci, così da confrontare eventi anche a distanza di anni. La roadmap prevede l’inclusione di bollettini meteo,
-        dati satellitari e flussi IoT sperimentali che potranno migliorare ulteriormente la capacità di forecasting del
-        sistema, mantenendo sempre tracciabile la provenienza di ogni singolo valore.
-      </p>
+    <div class="home-section__body home-section__body--panel" id="section-data" hidden>
+      <div class="home-section__grid home-section__grid--two">
+        <p>
+          La pipeline di EtnaMonitor scarica il file CSV del tremore pubblicato dal Centro Nazionale Terremoti e lo elabora
+          ogni cinque minuti, verificando checksum e completezza prima di inserirlo nella serie storica. Quando il documento
+          dell’INGV presenta ritardi o colonne incoerenti, il sistema esegue retry automatici, segnala l’anomalia nel log
+          pubblico e attiva un alert interno affinché i gestori possano intervenire. Tutti i campioni vengono salvati in UTC
+          per evitare ambiguità durante il cambio di ora legale e sono successivamente arricchiti con statistiche giornaliere.
+        </p>
+        <p>
+          Oltre al tremore, la piattaforma integra un archivio di immagini webcam, dataset sismici e note ufficiali raccolte da
+          INGV Catania e Protezione Civile Regionale. Queste fonti sono collegate tra loro tramite identificatori temporali
+          univoci, così da confrontare eventi anche a distanza di anni. La roadmap prevede l’inclusione di bollettini meteo,
+          dati satellitari e flussi IoT sperimentali che potranno migliorare ulteriormente la capacità di forecasting del
+          sistema, mantenendo sempre tracciabile la provenienza di ogni singolo valore.
+        </p>
+      </div>
     </div>
   </div>
 </section>
@@ -215,21 +235,23 @@
         <span class="home-section__toggle-icon" aria-hidden="true"></span>
       </button>
     </div>
-    <div class="home-section__body" id="section-alerts" hidden>
-      <p>
-        Il bot Telegram <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">@etna_turi_bot</a> invia in modo
-        proattivo le notifiche sugli scarti di tremore rispetto alla media mobile, classificando gli eventi in quattro livelli:
-        informativo, attenzione, preallarme e operativo. Le soglie sono calibrate sulle bande INGV e possono essere
-        personalizzate da guide alpine, operatori turistici e protezione civile locale tramite pannello dedicato. Quando il
-        livello supera l’arancione, il messaggio include anche snapshot del grafico e link alle webcam più rilevanti.
-      </p>
-      <p>
-        Ogni avviso è accompagnato da suggerimenti pratici, come la revisione dei piani di evacuazione o il controllo dei
-        canali radio di emergenza. Gli utenti autenticati possono rispondere ai messaggi del bot per allegare foto e note sul
-        campo: il sistema archivia i contributi e li rende disponibili nel forum con tag geolocalizzati. Questo canale diretto
-        riduce la latenza di comunicazione, mantiene alta la consapevolezza situazionale e favorisce decisioni coordinate anche
-        durante fasi di attività intensa dell’Etna.
-      </p>
+    <div class="home-section__body home-section__body--panel" id="section-alerts" hidden>
+      <div class="home-section__grid home-section__grid--two">
+        <p>
+          Il bot Telegram <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">@etna_turi_bot</a> invia in modo
+          proattivo le notifiche sugli scarti di tremore rispetto alla media mobile, classificando gli eventi in quattro
+          livelli: informativo, attenzione, preallarme e operativo. Le soglie sono calibrate sulle bande INGV e possono essere
+          personalizzate da guide alpine, operatori turistici e protezione civile locale tramite pannello dedicato. Quando il
+          livello supera l’arancione, il messaggio include anche snapshot del grafico e link alle webcam più rilevanti.
+        </p>
+        <p>
+          Ogni avviso è accompagnato da suggerimenti pratici, come la revisione dei piani di evacuazione o il controllo dei
+          canali radio di emergenza. Gli utenti autenticati possono rispondere ai messaggi del bot per allegare foto e note sul
+          campo: il sistema archivia i contributi e li rende disponibili nel forum con tag geolocalizzati. Questo canale diretto
+          riduce la latenza di comunicazione, mantiene alta la consapevolezza situazionale e favorisce decisioni coordinate
+          anche durante fasi di attività intensa dell’Etna.
+        </p>
+      </div>
     </div>
   </div>
 </section>
@@ -254,7 +276,7 @@
         <span class="home-section__toggle-icon" aria-hidden="true"></span>
       </button>
     </div>
-    <div class="home-section__body" id="section-experience" hidden>
+    <div class="home-section__body home-section__body--panel" id="section-experience" hidden>
       <p class="lead">Nuovi componenti, nuove gerarchie visive e una palette pensata per consultazioni rapide su mobile e desktop.</p>
       <div class="home-section__cta">
         <a class="btn btn-primary" href="{{ url_for('category.category_view', slug='guide') }}">Scopri i partner certificati</a>
@@ -410,14 +432,6 @@
     </div>
   </div>
 </section>
-
-<div class="container">
-  <div class="cta-alert">
-    <h3>🔔 Vuoi ricevere un avviso quando il tremore dell’Etna aumenta?</h3>
-    <p>Registrati GRATIS e ricevi la prima notifica via Telegram.</p>
-    <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Accedi / Registrati</a>
-  </div>
-</div>
 
 <div class="popup-overlay" data-popup-overlay hidden>
   <div class="popup-alert" role="dialog" aria-modal="true" aria-labelledby="popup-alert-title">
