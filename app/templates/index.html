@@ -17,6 +17,11 @@
             <span class="muted">Scala logaritmica 10<sup>-1</sup>–10<sup>1</sup> · aggiornamento 5'</span>
           </div>
           <h2 id="grafico-title">Curva del tremore vulcanico</h2>
+          <div class="cta-alert">
+            <h3>🔔 Vuoi ricevere un avviso quando il tremore dell’Etna aumenta?</h3>
+            <p>Registrati GRATIS e ricevi la prima notifica via Telegram.</p>
+            <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Accedi / Registrati</a>
+          </div>
           <div class="chart-range-selector" role="group" aria-label="Intervallo temporale">
             <button type="button" class="chart-range-btn" data-limit="288">24h</button>
             <button type="button" class="chart-range-btn" data-limit="864">3 giorni</button>
@@ -105,6 +110,14 @@
     </div>
   </div>
 </section>
+
+<div class="container">
+  <div class="cta-alert">
+    <h3>🔔 Vuoi ricevere un avviso quando il tremore dell’Etna aumenta?</h3>
+    <p>Registrati GRATIS e ricevi la prima notifica via Telegram.</p>
+    <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Accedi / Registrati</a>
+  </div>
+</div>
 
 <section class="home-section home-section--guide">
   <div class="container">
@@ -399,6 +412,23 @@
     </div>
   </div>
 </section>
+
+<div class="container">
+  <div class="cta-alert">
+    <h3>🔔 Vuoi ricevere un avviso quando il tremore dell’Etna aumenta?</h3>
+    <p>Registrati GRATIS e ricevi la prima notifica via Telegram.</p>
+    <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Accedi / Registrati</a>
+  </div>
+</div>
+
+<div class="popup-overlay" data-popup-overlay hidden>
+  <div class="popup-alert" role="dialog" aria-modal="true" aria-labelledby="popup-alert-title">
+    <button class="popup-alert__close" type="button" aria-label="Chiudi" data-popup-close>&times;</button>
+    <h3 id="popup-alert-title">🔔 Ricevi un avviso quando il tremore aumenta</h3>
+    <p>La prima notifica è gratuita. Attiva ora EtnaBot.</p>
+    <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Registrati Gratis</a>
+  </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
