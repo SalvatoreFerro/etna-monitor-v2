@@ -9,6 +9,7 @@
     {% set computed_og_image = page_og_image or social_image_url %}
     {% set computed_canonical = canonical_url %}
     {% set canonical_home = request.url_root %}
+    {% set normalized_canonical = computed_canonical if request.path == '/' else computed_canonical.rstrip('/') %}
     {% set STATIC_ASSET_VERSION = static_asset_version %}
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -38,7 +39,9 @@
       rel="apple-touch-icon"
       href="{{ url_for('static', filename='images/og-image.png') }}?v={{ STATIC_ASSET_VERSION }}"
     />
-    <link rel="canonical" href="{{ canonical_home if request.path == '/' else computed_canonical }}" />
+    {% block head_extra %}{% endblock %}
+
+    <link rel="canonical" href="{{ canonical_home if request.path == '/' else normalized_canonical }}" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -65,7 +68,7 @@
     <meta property="og:title" content="{{ computed_og_title }}" />
     <meta property="og:description" content="{{ computed_og_description }}" />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="{{ computed_canonical }}" />
+    <meta property="og:url" content="{{ canonical_home if request.path == '/' else normalized_canonical }}" />
     <meta property="og:image" content="{{ computed_og_image }}" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
@@ -99,7 +102,7 @@
         "@context": "https://schema.org",
         "@type": "WebPage",
         "name": computed_title,
-        "url": canonical_home if request.path == '/' else computed_canonical,
+        "url": canonical_home if request.path == '/' else normalized_canonical,
         "description": computed_description,
         "inLanguage": "it-IT"
       }

@@ -167,4 +167,27 @@
     {% endif %}
   </div>
 </section>
+  <script type="application/ld+json" nonce="{{ csp_nonce() }}">
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      "name": {{ (category.name ~ " - EtnaMonitor") | tojson }},
+      "description": {{ (category.description or "Partner selezionati di EtnaMonitor") | tojson }},
+      "numberOfItems": {{ partners | length }},
+      "itemListElement": [
+        {% for partner in partners %}
+        {
+          "@type": "ListItem",
+          "position": {{ loop.index }},
+          "item": {
+            "@type": "LocalBusiness",
+            "name": {{ partner.name | tojson }},
+            "url": {{ url_for('partners.partner_detail', slug=category.slug, partner_slug=partner.slug, _external=True) | tojson }},
+            "description": {{ (partner.short_desc or partner.long_desc or partner.name) | tojson }}
+          }
+        }{% if not loop.last %},{% endif %}
+        {% endfor %}
+      ]
+    }
+  </script>
 {% endblock %}

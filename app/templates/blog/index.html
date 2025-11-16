@@ -44,4 +44,24 @@
     {% endif %}
   </div>
 </section>
+  {% if posts %}
+    <script type="application/ld+json" nonce="{{ csp_nonce() }}">
+      {
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        "name": "Blog EtnaMonitor",
+        "description": "Articoli, guide e approfondimenti sul monitoraggio dell'Etna",
+        "itemListElement": [
+          {% for post in posts %}
+          {
+            "@type": "ListItem",
+            "position": {{ loop.index }},
+            "url": {{ url_for('community.blog_detail', slug=post.slug, _external=True) | tojson }},
+            "name": {{ post.title | tojson }}
+          }{% if not loop.last %},{% endif %}
+          {% endfor %}
+        ]
+      }
+    </script>
+  {% endif %}
 {% endblock %}

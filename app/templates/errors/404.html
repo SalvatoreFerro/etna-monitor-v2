@@ -1,7 +1,6 @@
 {% extends "layout.html" %}
-{% block head %}
-  {{ super() }}
-  <meta name="robots" content="noindex" />
+{% block head_extra %}
+  <meta name="robots" content="noindex, nofollow" />
 {% endblock %}
 {% block title %}{{ page_title or "Pagina non trovata" }} · EtnaMonitor{% endblock %}
 {% block content %}
