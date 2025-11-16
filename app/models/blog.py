@@ -93,6 +93,26 @@ class BlogPost(db.Model):
 
         self.seo_score = min(score, 100)
 
+    @property
+    def hero_image_url(self) -> str | None:
+        """Return the configured hero image URL."""
+
+        return self.hero_image
+
+    @hero_image_url.setter
+    def hero_image_url(self, value: str | None) -> None:
+        self.hero_image = value
+
+    @property
+    def abstract(self) -> str | None:
+        """Expose ``summary`` as ``abstract`` for template ergonomics."""
+
+        return self.summary
+
+    @abstract.setter
+    def abstract(self, value: str | None) -> None:
+        self.summary = value
+
 
 def track_blog_update(mapper, connection, target: BlogPost) -> None:  # pragma: no cover - hook side effect
     """Ensure slug and updated timestamp are applied before commit."""

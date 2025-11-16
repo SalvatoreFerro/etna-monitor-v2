@@ -29,6 +29,7 @@ from ..models import (
 from ..services.gamification_service import GamificationService
 from ..utils.csrf import validate_csrf_token
 from ..utils.acl import role_required
+from ..filters import render_markdown
 
 
 bp = Blueprint("community", __name__, url_prefix="/community")
@@ -86,6 +87,7 @@ def blog_detail(slug: str):
 
     author_name = getattr(post, "author", None) or getattr(post, "author_name", None)
     post_url = url_for("community.blog_detail", slug=post.slug, _external=True)
+    body_html = render_markdown(post.content or "")
 
     breadcrumb_schema = {
         "@context": "https://schema.org",
@@ -121,11 +123,13 @@ def blog_detail(slug: str):
     return render_template(
         "blog/detail.html",
         post=post,
+        post_url=post_url,
         author_name=author_name,
         related_posts=related_posts,
         previous_post=previous_post,
         next_post=next_post,
         breadcrumb_schema=breadcrumb_schema,
+        body_html=body_html,
     )
 
 

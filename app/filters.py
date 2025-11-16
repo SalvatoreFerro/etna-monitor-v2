@@ -6,7 +6,7 @@ import re
 from typing import Iterable
 
 import bleach
-from markdown import markdown
+import markdown2
 from markupsafe import Markup
 
 _BR_TAG_PATTERN = re.compile(r"<br\s*/?>", re.IGNORECASE)
@@ -66,24 +66,30 @@ def _ensure_lazy_images(html: str) -> str:
     return _IMG_LOADING_PATTERN.sub(_inject_loading, html)
 
 
-def md(text: str | None) -> Markup:
+def render_markdown(text: str | None) -> str:
     """Render Markdown text into sanitized HTML safe for templates."""
 
     cleaned_input = strip_literal_breaks(text)
-    html = markdown(
+    html = markdown2.markdown(
         cleaned_input,
-        extensions=[
-            "fenced_code",
+        extras=[
+            "fenced-code-blocks",
             "tables",
-            "sane_lists",
-            "toc",
-            "attr_list",
+            "strike",
+            "header-ids",
+            "footnotes",
         ],
     )
     safe_html = bleach.clean(html, tags=ALLOWED_TAGS, attributes=ALLOWED_ATTRS, strip=True)
     safe_html = _ensure_lazy_images(safe_html)
-    return Markup(safe_html)
+    return safe_html
 
 
-__all__ = ["md", "strip_literal_breaks"]
+def md(text: str | None) -> Markup:
+    """Jinja filter that wraps :func:`render_markdown` and marks it safe."""
+
+    return Markup(render_markdown(text))
+
+
+__all__ = ["md", "render_markdown", "strip_literal_breaks"]
 

@@ -84,7 +84,7 @@ _SCRIPT_SOURCES = _unique(["'self'", *GOOGLE_SCRIPT_SOURCES])
 _STYLE_SOURCES = _unique(["'self'", "'unsafe-inline'", *STYLE_CDNS])
 _FONT_SOURCES = _unique(["'self'", *FONT_CDNS])
 _CONNECT_SOURCES = _unique(["'self'", *CONNECT_ENDPOINTS])
-_IMG_SOURCES = _unique(["'self'", "data:", *IMG_TRACKING_ENDPOINTS])
+_IMG_SOURCES = _unique(["'self'", "data:", "https:", *IMG_TRACKING_ENDPOINTS])
 _FRAME_SOURCES = _unique(["'self'", *FRAME_GOOGLE])
 
 
