@@ -3,66 +3,72 @@
 {% block content %}
 {% set share_url = request.url_root %}
 {% set share_text = "Monitora il tremore vulcanico dell'Etna in tempo reale su EtnaMonitor" %}
-<section class="hero hero--compact">
+<section class="hero hero--compact monitor-hero">
   <div class="container container--wide hero__layout">
-    <div class="hero__content">
+    <div class="hero__content monitor-hero__content">
       <span class="eyebrow hero__eyebrow">Monitoraggio in tempo reale</span>
-      <h1>Monitoraggio in tempo reale del tremore vulcanico dell’Etna (grafico INGV)</h1>
-      <div class="hero__chart-wrapper">
-        <div class="chart-card" id="grafico-etna" aria-labelledby="grafico-title">
-          <div class="chart-card__status">
-            <div>
-              <span class="pill">Grafico tremore</span>
-            </div>
-            <span class="muted">Scala logaritmica 10<sup>-1</sup>–10<sup>1</sup> · aggiornamento 5'</span>
-          </div>
-          <h2 id="grafico-title">Curva del tremore vulcanico</h2>
-          <div class="cta-alert">
-            <h3>🔔 Vuoi ricevere un avviso quando il tremore dell’Etna aumenta?</h3>
-            <p>Registrati GRATIS e ricevi la prima notifica via Telegram.</p>
-            <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Accedi / Registrati</a>
-          </div>
-          <div class="chart-range-selector" role="group" aria-label="Intervallo temporale">
-            <button type="button" class="chart-range-btn" data-limit="288">24h</button>
-            <button type="button" class="chart-range-btn" data-limit="864">3 giorni</button>
-            <button type="button" class="chart-range-btn is-active" data-limit="2016">7 giorni</button>
-          </div>
-          {% if csv_snapshot.has_data %}
-            <div id="home-preview-loading" class="chart-loading" aria-live="polite">
-              <div class="chart-spinner" aria-hidden="true">
-                <span></span>
-                <span></span>
-                <span></span>
-              </div>
-              <p>Caricamento dati INGV…</p>
-            </div>
-            <div id="home-preview-plot" aria-hidden="true"></div>
-            {% if preview_rows %}
-              <script id="home-bootstrap-data" type="application/json" nonce="{{ csp_nonce() }}">
-                {{ preview_rows | tojson(indent=0) | safe }}
-              </script>
-            {% endif %}
-          {% else %}
-            <div class="chart-loading" aria-live="polite">
-              <p><strong>Dati in preparazione</strong></p>
-              <p>
-                Il file <code>{{ csv_snapshot.path }}</code> risulta temporaneamente vuoto (motivo: {{ csv_snapshot.placeholder_reason }}).
-                Riprova più tardi: il grafico si popolerà automaticamente.
-              </p>
-            </div>
-          {% endif %}
-        </div>
-      </div>
-      <p class="lead hero__lead">
-        Abbiamo riportato il grafico storico in primo piano, con colori sobri, lettura immediata e pulsanti rapidi per avere
-        sotto controllo l'attività vulcanica senza fronzoli.
+      <h1 class="monitor-hero__title">Monitoraggio in tempo reale del tremore vulcanico dell’Etna (grafico INGV)</h1>
+      <p class="lead hero__lead monitor-hero__subtitle">
+        Il grafico storico torna al centro con colori sobri e lettura immediata per controllare l'attività vulcanica in pochi secondi.
       </p>
-      <div class="hero__actions">
+      <div class="cta-alert monitor-cta">
+        <h3>🔔 Vuoi ricevere un avviso quando il tremore dell’Etna aumenta?</h3>
+        <p>Registrati GRATIS e ricevi la prima notifica via Telegram.</p>
+        <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Accedi / Registrati</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="monitor-graph-section" aria-label="Grafico del tremore vulcanico">
+  <div class="container container--wide monitor-graph-layout">
+    <div class="hero__chart-wrapper monitor-graph-primary">
+      <div class="chart-card" id="grafico-etna" aria-labelledby="grafico-title">
+        <div class="chart-card__status">
+          <div>
+            <span class="pill">Grafico tremore</span>
+          </div>
+          <span class="muted">Scala logaritmica 10<sup>-1</sup>–10<sup>1</sup> · aggiornamento 5'</span>
+        </div>
+        <h2 id="grafico-title">Curva del tremore vulcanico</h2>
+        <div class="chart-range-selector" role="group" aria-label="Intervallo temporale">
+          <button type="button" class="chart-range-btn" data-limit="288">24h</button>
+          <button type="button" class="chart-range-btn" data-limit="864">3 giorni</button>
+          <button type="button" class="chart-range-btn is-active" data-limit="2016">7 giorni</button>
+        </div>
+        {% if csv_snapshot.has_data %}
+          <div id="home-preview-loading" class="chart-loading" aria-live="polite">
+            <div class="chart-spinner" aria-hidden="true">
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
+            <p>Caricamento dati INGV…</p>
+          </div>
+          <div id="home-preview-plot" aria-hidden="true"></div>
+          {% if preview_rows %}
+            <script id="home-bootstrap-data" type="application/json" nonce="{{ csp_nonce() }}">
+              {{ preview_rows | tojson(indent=0) | safe }}
+            </script>
+          {% endif %}
+        {% else %}
+          <div class="chart-loading" aria-live="polite">
+            <p><strong>Dati in preparazione</strong></p>
+            <p>
+              Il file <code>{{ csv_snapshot.path }}</code> risulta temporaneamente vuoto (motivo: {{ csv_snapshot.placeholder_reason }}).
+              Riprova più tardi: il grafico si popolerà automaticamente.
+            </p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    <div class="monitor-graph-meta">
+      <div class="hero__actions monitor-graph-actions">
         <button id="quick-update-btn" class="btn btn-primary" type="button">Aggiorna dati live</button>
-        <button class="btn btn-ghost" type="button" data-scroll-target="#grafico-etna">Vai al grafico</button>
+        <button class="btn btn-ghost" type="button" data-scroll-target="#section-guide">Note tecniche</button>
         <a class="btn btn-secondary" href="{{ url_for('main.tecnologia') }}">Approfondisci la raccolta dati</a>
       </div>
-      <div class="hero__quick-info">
+      <div class="hero__quick-info monitor-graph-info">
         <div class="hero__meta">
           <div class="chart-card__status">
             <span>
@@ -85,39 +91,31 @@
             </div>
           </dl>
         </div>
-        <div class="hero__share" aria-label="Condividi EtnaMonitor">
-          <span class="muted">Condividi:</span>
-          <a
-            class="hero__share-link"
-            href="https://twitter.com/intent/tweet?text={{ share_text | urlencode }}&url={{ share_url | urlencode }}"
-            target="_blank"
-            rel="noopener"
-          >X</a>
-          <a
-            class="hero__share-link"
-            href="https://t.me/share/url?url={{ share_url | urlencode }}&text={{ share_text | urlencode }}"
-            target="_blank"
-            rel="noopener"
-          >Telegram</a>
-          <a
-            class="hero__share-link"
-            href="https://www.facebook.com/sharer/sharer.php?u={{ share_url | urlencode }}"
-            target="_blank"
-            rel="noopener"
-          >Facebook</a>
-        </div>
+      </div>
+      <div class="hero__share monitor-graph-share" aria-label="Condividi EtnaMonitor">
+        <span class="muted">Condividi:</span>
+        <a
+          class="hero__share-link"
+          href="https://twitter.com/intent/tweet?text={{ share_text | urlencode }}&url={{ share_url | urlencode }}"
+          target="_blank"
+          rel="noopener"
+        >X</a>
+        <a
+          class="hero__share-link"
+          href="https://t.me/share/url?url={{ share_url | urlencode }}&text={{ share_text | urlencode }}"
+          target="_blank"
+          rel="noopener"
+        >Telegram</a>
+        <a
+          class="hero__share-link"
+          href="https://www.facebook.com/sharer/sharer.php?u={{ share_url | urlencode }}"
+          target="_blank"
+          rel="noopener"
+        >Facebook</a>
       </div>
     </div>
   </div>
 </section>
-
-<div class="container">
-  <div class="cta-alert">
-    <h3>🔔 Vuoi ricevere un avviso quando il tremore dell’Etna aumenta?</h3>
-    <p>Registrati GRATIS e ricevi la prima notifica via Telegram.</p>
-    <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Accedi / Registrati</a>
-  </div>
-</div>
 
 <section class="home-section home-section--guide">
   <div class="container">
