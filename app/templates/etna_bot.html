@@ -1,0 +1,87 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="page etna-bot-page">
+  <div class="container stack">
+    <header class="page__header etna-bot-page__hero">
+      <span class="eyebrow">Telegram Alerts</span>
+      <h1>Il bot Telegram che ti avvisa quando il tremore dell’Etna aumenta</h1>
+      <p class="page__lede">Alert automatici, soglia personalizzabile e prima notifica GRATIS.</p>
+      <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Attiva EtnaBot</a>
+    </header>
+
+    <section class="bot-feature-grid" aria-label="Funzionalità EtnaBot">
+      <article class="bot-feature-card">
+        <h2>Come funziona</h2>
+        <ul>
+          <li>Monitoraggio 24/7 del tremore INGV con soglie dinamiche.</li>
+          <li>Prima notifica gratuita per provare subito l’alert via Telegram.</li>
+          <li>Notifiche illimitate con soglia personalizzabile (Premium Lifetime).</li>
+          <li>Alert istantanei su Telegram con testo contestuale e link rapidi.</li>
+        </ul>
+        <div class="bot-feature-card__cta">
+          <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Attiva EtnaBot</a>
+        </div>
+      </article>
+      <article class="bot-demo-card" aria-labelledby="bot-demo-title">
+        <div class="bot-demo-card__header">
+          <span class="pill">Esempio notifica</span>
+          <strong id="bot-demo-title">Alert EtnaBot</strong>
+        </div>
+        <p>🔔 Tremore in aumento sul canale Nord. Ultimo valore: <strong>3.4</strong> (soglia personalizzata 3.0).</p>
+        <p class="muted">Aggiornamento istantaneo dal grafico INGV – 10:42 UTC</p>
+        <div class="bot-demo-card__footer">
+          <span>Rispondi con una nota o apri il grafico live.</span>
+        </div>
+      </article>
+    </section>
+
+    <section class="cta-alert">
+      <h3>🔔 Vuoi ricevere un avviso quando il tremore dell’Etna aumenta?</h3>
+      <p>Attiva EtnaBot, la prima notifica Telegram è GRATIS.</p>
+      <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Accedi / Registrati</a>
+    </section>
+
+    <section class="bot-reasons" aria-labelledby="bot-reasons-title">
+      <h2 id="bot-reasons-title">Perché usarlo</h2>
+      <ul class="bot-reasons__list">
+        <li>Aumento improvviso del tremore</li>
+        <li>Attività stromboliana</li>
+        <li>Fasi pre-eruttive da monitorare minuto per minuto</li>
+        <li>Monitoraggio semplice per trekking, operatori turistici e residenti</li>
+      </ul>
+    </section>
+
+    <section class="plan-summary" aria-label="Riassunto piani EtnaBot">
+      <article class="plan-summary__card">
+        <h3>Free</h3>
+        <p>Prima notifica GRATIS appena colleghi il tuo profilo Telegram.</p>
+        <ul>
+          <li>Accesso completo al grafico live</li>
+          <li>Alert di prova per testare il servizio</li>
+          <li>Dashboard responsive e note tecniche</li>
+        </ul>
+      </article>
+      <article class="plan-summary__card plan-summary__card--premium">
+        <h3>Premium Lifetime</h3>
+        <p>Notifiche illimitate + soglia personalizzabile + funzionalità avanzate.</p>
+        <ul>
+          <li>Alert multi-canale con priorità</li>
+          <li>Soglie personalizzate per attività specifiche</li>
+          <li>Accesso anticipato a feature sperimentali</li>
+        </ul>
+      </article>
+    </section>
+
+    <div class="cta-panel bot-cta-panel">
+      <div>
+        <h2>Attiva EtnaBot ora</h2>
+        <p>Imposta la tua soglia, ricevi il primo alert gratuito e resta sempre aggiornato.</p>
+      </div>
+      <div class="cta-panel__actions">
+        <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Attiva EtnaBot</a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
