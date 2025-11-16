@@ -5,8 +5,8 @@ Flask-Talisman==1.1.0
 Flask-Compress==1.14
 Flask-Caching==2.3.0
 Flask-Login==0.6.3
-Markdown==3.5.2
 bleach==6.2.0
+markdown2==2.4.12
 python-dotenv==1.0.1
 Flask-Migrate==4.0.7
 plotly==5.22.0
