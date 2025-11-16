@@ -7,6 +7,7 @@
 {% set nav_links = [
   {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
   {'label': 'Webcam Etna', 'url': url_for('main.webcam_etna'), 'endpoint': 'main.webcam_etna'},
+  {'label': 'Notifiche EtnaBot', 'url': url_for('main.etna_bot'), 'endpoint': 'main.etna_bot'},
   {'label': 'Community', 'children': community_links},
 ] %}
 
@@ -176,7 +177,7 @@
       {% else %}
         <form class="site-nav__auth-form" action="{{ url_for('auth.auth_google') }}" method="post">
           <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}" />
-          <button type="submit" class="btn btn-ghost btn-sm">Accedi</button>
+          <button type="submit" class="btn btn-ghost btn-sm">Accedi / Registrati</button>
         </form>
         <a class="btn btn-primary btn-sm" href="{{ url_for('main.pricing') }}">Piani</a>
       {% endif %}

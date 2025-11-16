@@ -410,6 +410,37 @@ def pricing():
     )
 
 
+@bp.route("/etna-bot")
+def etna_bot():
+    page_title = "EtnaBot – Notifiche Telegram sul tremore dell'Etna"
+    page_description = (
+        "Attiva EtnaBot per ricevere alert automatici via Telegram sul tremore vulcanico dell'Etna con soglie personalizzabili."
+    )
+
+    page_structured_data = {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "EtnaBot",
+        "operatingSystem": "Telegram",
+        "applicationCategory": "UtilityApplication",
+        "description": page_description,
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "EUR",
+        },
+    }
+
+    return render_template(
+        "etna_bot.html",
+        page_title=page_title,
+        page_description=page_description,
+        page_og_title=page_title,
+        page_og_description=page_description,
+        page_structured_data=page_structured_data,
+    )
+
+
 @bp.route("/webcam-etna")
 def webcam_etna():
     og_image = "https://embed.skylinewebcams.com/img/741.jpg"

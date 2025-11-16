@@ -4286,3 +4286,207 @@
     text-align: center;
   }
 }
+
+.cta-alert {
+  padding: var(--space-6);
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(100, 244, 255, 0.2);
+  background: linear-gradient(135deg, rgba(13, 21, 38, 0.95), rgba(33, 12, 60, 0.9));
+  box-shadow: 0 25px 45px rgba(2, 6, 23, 0.6);
+  display: grid;
+  gap: 0.75rem;
+  margin: var(--space-6) auto;
+  max-width: 920px;
+}
+
+.cta-alert h3 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.cta-alert p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.cta-alert .cta-button-primary {
+  justify-self: start;
+}
+
+.cta-button-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.85rem 1.75rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+  background: linear-gradient(135deg, #00c2ff, #6d2bff);
+  color: #040b16;
+  box-shadow: 0 15px 35px rgba(0, 194, 255, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.cta-button-primary:hover,
+.cta-button-primary:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 20px 40px rgba(109, 43, 255, 0.35);
+  color: #040b16;
+}
+
+.bot-cta-section {
+  margin: var(--space-8) 0;
+}
+
+.pricing-highlight {
+  background: rgba(100, 244, 255, 0.08);
+  border: 1px solid rgba(100, 244, 255, 0.25);
+  border-radius: var(--radius-xl);
+  padding: 0.75rem 1rem;
+  font-weight: 500;
+  color: #e8f7ff;
+}
+
+.popup-overlay[hidden] {
+  display: none !important;
+}
+
+.popup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 6, 15, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  z-index: 999;
+}
+
+.popup-alert {
+  background: linear-gradient(145deg, rgba(10, 14, 28, 0.98), rgba(26, 8, 44, 0.95));
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 2rem;
+  width: min(420px, 90vw);
+  position: relative;
+  display: grid;
+  gap: 0.85rem;
+  box-shadow: 0 30px 60px rgba(2, 6, 23, 0.65);
+}
+
+.popup-alert__close {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  background: transparent;
+  border: 0;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+
+.popup-alert p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.etna-bot-page {
+  padding-top: var(--space-10);
+}
+
+.bot-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: var(--space-6);
+  align-items: stretch;
+}
+
+.bot-feature-card,
+.bot-demo-card {
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: var(--space-6);
+  background: rgba(12, 16, 32, 0.85);
+  box-shadow: 0 18px 40px rgba(4, 8, 20, 0.55);
+}
+
+.bot-feature-card ul,
+.bot-reasons__list,
+.plan-summary__card ul {
+  margin: 0;
+  padding-left: 1rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.bot-feature-card__cta {
+  margin-top: 1.5rem;
+}
+
+.bot-demo-card {
+  display: grid;
+  gap: 0.75rem;
+  background: radial-gradient(circle at top, rgba(88, 34, 255, 0.35), rgba(9, 14, 30, 0.95));
+}
+
+.bot-demo-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.bot-demo-card__footer {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.bot-reasons {
+  display: grid;
+  gap: 1rem;
+  padding: var(--space-6);
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(9, 13, 26, 0.85);
+}
+
+.plan-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--space-5);
+}
+
+.plan-summary__card {
+  padding: var(--space-5);
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(12, 18, 32, 0.8);
+  box-shadow: 0 12px 32px rgba(5, 8, 24, 0.4);
+}
+
+.plan-summary__card--premium {
+  border-color: rgba(124, 92, 255, 0.65);
+  background: linear-gradient(135deg, rgba(30, 14, 60, 0.9), rgba(10, 14, 28, 0.9));
+}
+
+.bot-cta-panel .cta-button-primary {
+  width: auto;
+}
+
+@media (max-width: 640px) {
+  .cta-alert {
+    padding: var(--space-5);
+  }
+
+  .cta-alert .cta-button-primary {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .popup-alert {
+    padding: 1.5rem;
+  }
+}
