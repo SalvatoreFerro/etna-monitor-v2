@@ -58,6 +58,8 @@ STATIC_PAGES: Tuple[Tuple[str, str, str], ...] = (
     ("main.pricing", "weekly", "0.8"),
     ("main.etna_bot", "weekly", "0.8"),
     ("main.webcam_etna", "weekly", "0.9"),
+    ("main.eruzione_oggi", "hourly", "1.0"),
+    ("main.faq", "weekly", "0.9"),
     ("main.tecnologia", "weekly", "0.6"),
     ("main.progetto", "yearly", "0.5"),
     ("main.team", "yearly", "0.5"),

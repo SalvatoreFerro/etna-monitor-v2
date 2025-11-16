@@ -441,6 +441,134 @@ def etna_bot():
     )
 
 
+@bp.route("/eruzione-etna-oggi")
+def eruzione_oggi():
+    """Real-time eruption monitoring page for high-volume search queries."""
+    from datetime import datetime
+    
+    csv_path_setting = current_app.config.get("CURVA_CSV_PATH") or current_app.config.get("CSV_PATH")
+    csv_path = Path(csv_path_setting or "/var/tmp/curva.csv")
+    
+    # Reuse data loading logic from index
+    preview_rows: list[dict[str, object]] = []
+    latest_value: float | None = None
+    latest_timestamp_display: str | None = None
+    placeholder_reason: str | None = None
+    activity_level = "unknown"
+    activity_level_text = "In caricamento"
+    
+    if csv_path.exists():
+        try:
+            df = pd.read_csv(csv_path)
+            if "timestamp" in df.columns and not df.empty:
+                df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+                df = df.dropna(subset=["timestamp"])
+                
+                if not df.empty:
+                    df = df.sort_values("timestamp")
+                    preview_slice = df.tail(2016)
+                    preview_rows = []
+                    for row in preview_slice.itertuples(index=False):
+                        value = getattr(row, "value", None)
+                        if value is None:
+                            continue
+                        ts = row.timestamp
+                        preview_rows.append({
+                            "timestamp": to_iso_utc(ts),
+                            "value": float(value),
+                        })
+                    
+                    latest_value = float(df["value"].iloc[-1])
+                    temporal_end = df["timestamp"].iloc[-1]
+                    temporal_end_display = (
+                        temporal_end.tz_convert("UTC")
+                        if getattr(temporal_end, "tz", None) is not None
+                        else temporal_end.tz_localize("UTC")
+                    )
+                    latest_timestamp_display = temporal_end_display.strftime("%d/%m/%Y %H:%M")
+                    
+                    # Determine activity level
+                    if latest_value < 0.5:
+                        activity_level = "low"
+                        activity_level_text = "Basso (normale)"
+                    elif latest_value < 1.0:
+                        activity_level = "moderate"
+                        activity_level_text = "Moderato"
+                    elif latest_value < 2.0:
+                        activity_level = "elevated"
+                        activity_level_text = "Elevato"
+                    else:
+                        activity_level = "high"
+                        activity_level_text = "Molto elevato"
+                else:
+                    placeholder_reason = "empty"
+            else:
+                placeholder_reason = "missing_timestamp"
+        except Exception as exc:
+            placeholder_reason = "error"
+            current_app.logger.exception("[ERUPTION_TODAY] Failed to read tremor CSV")
+    else:
+        placeholder_reason = "missing"
+    
+    csv_snapshot = type('obj', (object,), {
+        'has_data': placeholder_reason is None,
+        'path': csv_path,
+        'placeholder_reason': placeholder_reason
+    })()
+    
+    current_date = datetime.now().strftime("%d/%m/%Y")
+    og_image = url_for('static', filename='icons/icon-512.png', _external=True)
+    
+    # LiveBlogPosting structured data for real-time updates
+    page_structured_data = {
+        "@context": "https://schema.org",
+        "@type": "LiveBlogPosting",
+        "headline": f"Eruzione Etna Oggi {current_date} – Monitoraggio Live",
+        "description": "Aggiornamenti in tempo reale sull'attività dell'Etna: grafico tremore INGV, webcam live e bollettini ufficiali",
+        "datePublished": datetime.now().isoformat(),
+        "dateModified": datetime.now().isoformat(),
+        "author": {
+            "@type": "Organization",
+            "name": "EtnaMonitor",
+            "url": url_for('main.index', _external=True)
+        },
+        "publisher": {
+            "@type": "Organization",
+            "name": "EtnaMonitor",
+            "url": url_for('main.index', _external=True),
+            "logo": {
+                "@type": "ImageObject",
+                "url": og_image
+            }
+        },
+        "coverageStartTime": datetime.now().isoformat(),
+        "liveBlogUpdate": [
+            {
+                "@type": "BlogPosting",
+                "headline": f"Tremore attuale: {latest_value:.2f} mV" if latest_value else "Dati in caricamento",
+                "articleBody": f"Ultimo aggiornamento INGV: {latest_timestamp_display}" if latest_timestamp_display else "In attesa di dati",
+                "datePublished": datetime.now().isoformat()
+            }
+        ]
+    }
+    
+    return render_template(
+        "eruzione_oggi.html",
+        page_title=f"Eruzione Etna Oggi {current_date} – Monitoraggio Live Tremore INGV",
+        page_description="Aggiornamenti in tempo reale sull'attività dell'Etna oggi: grafico tremore INGV live, webcam diretta, bollettini ufficiali e indicazioni di sicurezza.",
+        page_og_image=og_image,
+        canonical_url=url_for('main.eruzione_oggi', _external=True),
+        page_structured_data=page_structured_data,
+        csv_snapshot=csv_snapshot,
+        preview_rows=preview_rows,
+        latest_value=latest_value,
+        latest_timestamp_display=latest_timestamp_display,
+        activity_level=activity_level,
+        activity_level_text=activity_level_text,
+        current_date=current_date,
+    )
+
+
 @bp.route("/webcam-etna")
 def webcam_etna():
     og_image = "https://embed.skylinewebcams.com/img/741.jpg"
@@ -629,6 +757,94 @@ def news():
         page_og_description="Rimani aggiornato sulle news di EtnaMonitor: articoli, analisi del tremore vulcanico dell'Etna e aggiornamenti sulla piattaforma.",
         page_og_image=og_image,
         canonical_url=url_for('main.news', _external=True),
+    )
+
+
+@bp.route("/faq")
+def faq():
+    og_image = url_for('static', filename='icons/icon-512.png', _external=True)
+    
+    # FAQPage structured data for Google Featured Snippets
+    faq_structured_data = {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "Cosa significa quando il tremore dell'Etna aumenta?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Il tremore vulcanico è una vibrazione continua del terreno causata dal movimento di magma, gas e fluidi all'interno del vulcano. Un aumento del tremore può indicare: aumento dell'attività magmatica (il magma si muove verso la superficie), degassamento intenso (i gas si liberano dal magma), o fratturazione delle rocce. Un aumento del tremore non significa necessariamente che ci sarà un'eruzione imminente."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Come capire se l'Etna sta per eruttare?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "I vulcanologi INGV monitorano diversi parametri: tremore vulcanico (aumenti prolungati possono precedere un'eruzione), sciami sismici (terremoti frequenti indicano movimenti di magma), deformazione del suolo (rigonfiamento dell'edificio vulcanico), degassamento (aumento delle emissioni di SO₂), e anomalie termiche. Segui sempre i bollettini ufficiali dell'INGV Catania per previsioni affidabili."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Il grafico INGV del tremore è affidabile?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Sì, i dati del tremore vulcanico pubblicati dall'INGV sono estremamente affidabili e provengono da una rete di sensori sismici calibrati posizionati sull'Etna. EtnaMonitor scarica e visualizza questi dati ufficiali ogni 5 minuti senza modificare i valori, ma li rende più facili da consultare con grafici interattivi."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Cosa fare se sono in escursione sull'Etna e il tremore aumenta?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Mantieni la calma (un aumento del tremore non significa pericolo immediato), allontanati dai crateri scendendo di quota, segui le indicazioni delle guide alpine certificate, monitora i canali ufficiali INGV e Protezione Civile. In caso di eruzione improvvisa, allontanati dalla zona sommitale, proteggi naso e bocca dalla cenere, e chiama il 118 per emergenze mediche o il 1515 per soccorso alpino."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Dove trovare i bollettini ufficiali INGV sull'Etna?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "I bollettini ufficiali sono disponibili su: INGV Catania (www.ct.ingv.it) per bollettini settimanali e comunicati urgenti, la sezione monitoraggio sismico per grafici aggiornati, Protezione Civile Sicilia per allerte di sicurezza, e Twitter @INGVvulcani per aggiornamenti rapidi durante eventi significativi."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Come funziona il bot Telegram EtnaMonitor?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Il bot Telegram @etna_turi_bot invia notifiche automatiche quando il tremore supera soglie personalizzabili. Offre 4 livelli di allerta (Informativo, Attenzione, Preallarme, Operativo), include snapshot del grafico e link alle webcam. Per attivarlo: registrati su EtnaMonitor, vai su @etna_turi_bot, clicca Start e configura le soglie dal dashboard."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Le webcam dell'Etna mostrano eruzioni in diretta?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Sì, le webcam disponibili su EtnaMonitor mostrano immagini live dei crateri sommitali, versante nord (Piano Provenzana) e versante sud (Rifugio Sapienza). Durante un'eruzione permettono di vedere fontane di lava, colate, emissioni di cenere e gas, e attività stromboliana notturna. La visibilità dipende dalle condizioni meteo."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Quando è sicuro fare trekking sull'Etna?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "È sicuro quando: il tremore è basso e stabile (zona verde), non ci sono alert INGV in corso, le condizioni meteo sono buone, e si utilizza una guida certificata sopra i 2.500m. Fino a 2.900m (Rifugio Sapienza) è sempre accessibile tranne ordinanze specifiche. Zone sommitali (2.900-3.300m) solo con guida e senza restrizioni INGV. Rispetta sempre le ordinanze della Protezione Civile."
+                }
+            }
+        ]
+    }
+    
+    return render_template(
+        "faq.html",
+        page_title="FAQ Etna – Domande frequenti su tremore, eruzioni e monitoraggio",
+        page_description="Risposte alle domande più frequenti sul tremore vulcanico dell'Etna, come interpretare il grafico INGV, cosa fare in caso di eruzione e come funzionano gli alert.",
+        page_og_title="FAQ Etna – Domande frequenti su tremore, eruzioni e monitoraggio",
+        page_og_description="Risposte alle domande più frequenti sul tremore vulcanico dell'Etna, come interpretare il grafico INGV, cosa fare in caso di eruzione e come funzionano gli alert.",
+        page_og_image=og_image,
+        canonical_url=url_for('main.faq', _external=True),
+        page_structured_data=faq_structured_data,
     )
 
 

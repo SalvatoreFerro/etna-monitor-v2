@@ -1,0 +1,297 @@
+{% extends "layout.html" %}
+{% set page_title = "FAQ Etna – Domande frequenti su tremore, eruzioni e monitoraggio" %}
+{% set page_description = "Risposte alle domande più frequenti sul tremore vulcanico dell'Etna, come interpretare il grafico INGV, cosa fare in caso di eruzione e come funzionano gli alert." %}
+{% set page_og_title = page_title %}
+{% set page_og_description = page_description %}
+{% set canonical_url = url_for('main.faq', _external=True) %}
+
+{% block content %}
+<section class="page page--faq">
+  <div class="container stack">
+    <header class="page__header">
+      <span class="eyebrow">Supporto</span>
+      <h1>Domande frequenti (FAQ) – Monitoraggio Etna</h1>
+      <p class="page__lede">
+        Tutto quello che devi sapere sul tremore vulcanico dell'Etna, come leggere i grafici INGV e come usare EtnaMonitor per restare aggiornato.
+      </p>
+    </header>
+
+    <div class="faq-container">
+      <article class="faq-item" itemscope itemtype="https://schema.org/Question">
+        <h2 itemprop="name" class="faq-question">
+          <button type="button" class="faq-toggle" aria-expanded="false" data-faq-toggle>
+            Cosa significa quando il tremore dell'Etna aumenta?
+            <span class="faq-icon" aria-hidden="true"></span>
+          </button>
+        </h2>
+        <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer" hidden>
+          <div itemprop="text">
+            <p>
+              Il tremore vulcanico è una vibrazione continua del terreno causata dal movimento di magma, gas e fluidi all'interno del vulcano. 
+              Un aumento del tremore può indicare diversi fenomeni:
+            </p>
+            <ul>
+              <li><strong>Aumento dell'attività magmatica:</strong> Il magma si muove verso la superficie, aumentando la pressione interna</li>
+              <li><strong>Degassamento intenso:</strong> I gas si liberano dal magma e risalgono creando vibrazioni</li>
+              <li><strong>Fratturazione delle rocce:</strong> Il magma crea nuove vie di passaggio, rompendo le rocce circostanti</li>
+            </ul>
+            <p>
+              <strong>Importante:</strong> Un aumento del tremore non significa necessariamente che ci sarà un'eruzione imminente. 
+              L'INGV monitora costantemente questi parametri e pubblica bollettini ufficiali su <a href="https://www.ct.ingv.it" target="_blank" rel="noopener">www.ct.ingv.it</a>.
+            </p>
+          </div>
+        </div>
+      </article>
+
+      <article class="faq-item" itemscope itemtype="https://schema.org/Question">
+        <h2 itemprop="name" class="faq-question">
+          <button type="button" class="faq-toggle" aria-expanded="false" data-faq-toggle>
+            Come capire se l'Etna sta per eruttare?
+            <span class="faq-icon" aria-hidden="true"></span>
+          </button>
+        </h2>
+        <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer" hidden>
+          <div itemprop="text">
+            <p>
+              Non esiste un singolo indicatore che prevede con certezza un'eruzione, ma i vulcanologi INGV monitorano diversi parametri:
+            </p>
+            <ul>
+              <li><strong>Tremore vulcanico:</strong> Aumenti prolungati e persistenti possono precedere un'eruzione</li>
+              <li><strong>Sciami sismici:</strong> Terremoti frequenti indicano movimenti di magma</li>
+              <li><strong>Deformazione del suolo:</strong> Il rigonfiamento dell'edificio vulcanico misurato con GPS e satelliti</li>
+              <li><strong>Degassamento:</strong> Aumento delle emissioni di SO₂ e altri gas vulcanici</li>
+              <li><strong>Temperatura:</strong> Anomalie termiche rilevate dalle webcam infrarossi</li>
+            </ul>
+            <p>
+              <strong>Raccomandazione:</strong> Segui sempre i bollettini ufficiali dell'<a href="https://www.ct.ingv.it" target="_blank" rel="noopener">INGV Catania</a> 
+              e della Protezione Civile. EtnaMonitor ti aiuta a visualizzare il tremore in tempo reale, ma per previsioni affidabili consulta le fonti istituzionali.
+            </p>
+          </div>
+        </div>
+      </article>
+
+      <article class="faq-item" itemscope itemtype="https://schema.org/Question">
+        <h2 itemprop="name" class="faq-question">
+          <button type="button" class="faq-toggle" aria-expanded="false" data-faq-toggle>
+            Il grafico INGV del tremore è affidabile?
+            <span class="faq-icon" aria-hidden="true"></span>
+          </button>
+        </h2>
+        <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer" hidden>
+          <div itemprop="text">
+            <p>
+              Sì, i dati del tremore vulcanico pubblicati dall'INGV sono estremamente affidabili e provengono da una rete di sensori sismici calibrati posizionati 
+              sull'Etna. EtnaMonitor elabora automaticamente questi dati ufficiali per renderli più accessibili.
+            </p>
+            <p><strong>Come funziona:</strong></p>
+            <ul>
+              <li>I sensori INGV registrano le vibrazioni del suolo 24/7</li>
+              <li>I dati vengono pubblicati sul <a href="https://www.ct.ingv.it/index.php/monitoraggio/monitoraggio-sismico" target="_blank" rel="noopener">sito INGV</a></li>
+              <li>EtnaMonitor scarica e visualizza questi dati ogni 5 minuti</li>
+              <li>Il grafico mostra la scala logaritmica originale INGV (10⁻¹–10¹)</li>
+            </ul>
+            <p>
+              <strong>Nota:</strong> EtnaMonitor non modifica i valori dei dati INGV, ma li rende più facili da consultare con grafici interattivi, 
+              alert personalizzabili e confronti temporali.
+            </p>
+          </div>
+        </div>
+      </article>
+
+      <article class="faq-item" itemscope itemtype="https://schema.org/Question">
+        <h2 itemprop="name" class="faq-question">
+          <button type="button" class="faq-toggle" aria-expanded="false" data-faq-toggle>
+            Cosa fare se sono in escursione sull'Etna e il tremore aumenta?
+            <span class="faq-icon" aria-hidden="true"></span>
+          </button>
+        </h2>
+        <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer" hidden>
+          <div itemprop="text">
+            <p><strong>Procedura di sicurezza consigliata:</strong></p>
+            <ol>
+              <li><strong>Mantieni la calma:</strong> Un aumento del tremore non significa pericolo immediato</li>
+              <li><strong>Allontanati dai crateri:</strong> Scendi di quota e dirigiti verso aree sicure (rifugi, parcheggi)</li>
+              <li><strong>Segui le guide:</strong> Se sei con una guida alpina certificata, segui le sue indicazioni</li>
+              <li><strong>Monitora i canali ufficiali:</strong> Controlla gli alert INGV e Protezione Civile</li>
+              <li><strong>Usa il bot Telegram:</strong> <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">@etna_turi_bot</a> ti avvisa in tempo reale</li>
+            </ol>
+            <p>
+              <strong>Emergenza:</strong> In caso di eruzione improvvisa, allontanati immediatamente dalla zona sommitale seguendo i sentieri principali. 
+              Proteggi naso e bocca dalla cenere con una mascherina o un fazzoletto umido. Chiama il 118 per emergenze mediche o il 1515 per soccorso alpino.
+            </p>
+          </div>
+        </div>
+      </article>
+
+      <article class="faq-item" itemscope itemtype="https://schema.org/Question">
+        <h2 itemprop="name" class="faq-question">
+          <button type="button" class="faq-toggle" aria-expanded="false" data-faq-toggle>
+            Dove trovare i bollettini ufficiali INGV sull'Etna?
+            <span class="faq-icon" aria-hidden="true"></span>
+          </button>
+        </h2>
+        <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer" hidden>
+          <div itemprop="text">
+            <p><strong>Fonti ufficiali per bollettini e comunicazioni INGV:</strong></p>
+            <ul>
+              <li>
+                <strong>INGV Catania (Osservatorio Etneo):</strong> 
+                <a href="https://www.ct.ingv.it" target="_blank" rel="noopener">www.ct.ingv.it</a>
+                <br><small>Bollettini settimanali, comunicati urgenti e dati di monitoraggio</small>
+              </li>
+              <li>
+                <strong>Monitoraggio Sismico Etna:</strong> 
+                <a href="https://www.ct.ingv.it/index.php/monitoraggio/monitoraggio-sismico" target="_blank" rel="noopener">Sezione monitoraggio</a>
+                <br><small>Grafici aggiornati e report tecnici</small>
+              </li>
+              <li>
+                <strong>Protezione Civile Sicilia:</strong> 
+                <a href="http://www.protezionecivilesicilia.it" target="_blank" rel="noopener">www.protezionecivilesicilia.it</a>
+                <br><small>Allerte e ordinanze di sicurezza</small>
+              </li>
+              <li>
+                <strong>Twitter INGV Vulcani:</strong> 
+                <a href="https://twitter.com/INGVvulcani" target="_blank" rel="noopener">@INGVvulcani</a>
+                <br><small>Aggiornamenti rapidi durante eventi significativi</small>
+              </li>
+            </ul>
+            <p>
+              <strong>Su EtnaMonitor:</strong> Pubblichiamo link diretti ai bollettini INGV nella nostra 
+              <a href="{{ url_for('main.news') }}">sezione news</a> e tramite il 
+              <a href="{{ url_for('main.etna_bot') }}">bot Telegram</a> durante eventi di particolare interesse.
+            </p>
+          </div>
+        </div>
+      </article>
+
+      <article class="faq-item" itemscope itemtype="https://schema.org/Question">
+        <h2 itemprop="name" class="faq-question">
+          <button type="button" class="faq-toggle" aria-expanded="false" data-faq-toggle>
+            Come funziona il bot Telegram EtnaMonitor?
+            <span class="faq-icon" aria-hidden="true"></span>
+          </button>
+        </h2>
+        <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer" hidden>
+          <div itemprop="text">
+            <p>
+              Il bot Telegram <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">@etna_turi_bot</a> ti invia notifiche automatiche 
+              quando il tremore dell'Etna supera determinate soglie.
+            </p>
+            <p><strong>Caratteristiche:</strong></p>
+            <ul>
+              <li><strong>Alert personalizzabili:</strong> Imposta le tue soglie di tremore dal <a href="{{ url_for('dashboard.index') }}" rel="nofollow">dashboard</a></li>
+              <li><strong>4 livelli di allerta:</strong> Informativo, Attenzione, Preallarme, Operativo</li>
+              <li><strong>Snapshot del grafico:</strong> Ogni alert include un'immagine del grafico attuale</li>
+              <li><strong>Link alle webcam:</strong> Collegamenti diretti per vedere cosa sta succedendo</li>
+              <li><strong>Gratuito:</strong> La prima notifica è sempre gratis, piani premium per alert illimitati</li>
+            </ul>
+            <p><strong>Come attivarlo:</strong></p>
+            <ol>
+              <li>Registrati su <a href="{{ url_for('auth.login') }}">EtnaMonitor</a></li>
+              <li>Vai su <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">@etna_turi_bot</a></li>
+              <li>Clicca "Start" e segui le istruzioni per collegare il tuo account</li>
+              <li>Configura le soglie dal <a href="{{ url_for('dashboard.index') }}" rel="nofollow">dashboard</a></li>
+            </ol>
+          </div>
+        </div>
+      </article>
+
+      <article class="faq-item" itemscope itemtype="https://schema.org/Question">
+        <h2 itemprop="name" class="faq-question">
+          <button type="button" class="faq-toggle" aria-expanded="false" data-faq-toggle>
+            Le webcam dell'Etna mostrano eruzioni in diretta?
+            <span class="faq-icon" aria-hidden="true"></span>
+          </button>
+        </h2>
+        <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer" hidden>
+          <div itemprop="text">
+            <p>
+              Sì, le <a href="{{ url_for('main.webcam_etna') }}">webcam dell'Etna</a> disponibili su EtnaMonitor mostrano immagini live dei crateri 
+              sommitali e aggiornano continuamente durante il giorno.
+            </p>
+            <p><strong>Le nostre webcam coprono:</strong></p>
+            <ul>
+              <li><strong>Crateri sommitali:</strong> Vista panoramica su Bocca Nuova, Voragine, Cratere Nord-Est</li>
+              <li><strong>Versante Nord:</strong> Piano Provenzana e Valle del Leone</li>
+              <li><strong>Versante Sud:</strong> Rifugio Sapienza e Torre del Filosofo</li>
+            </ul>
+            <p>
+              Durante un'eruzione, le webcam permettono di vedere in tempo reale:
+            </p>
+            <ul>
+              <li>Fontane di lava e colate</li>
+              <li>Emissioni di cenere e gas</li>
+              <li>Attività stromboliana notturna</li>
+              <li>Condizioni meteo in quota</li>
+            </ul>
+            <p>
+              <strong>Nota:</strong> Le webcam dipendono dalle condizioni meteo. Con nebbia, pioggia o neve la visibilità può essere limitata. 
+              Consigliamo di consultare anche il <a href="{{ url_for('main.index') }}">grafico del tremore</a> per avere un quadro completo dell'attività vulcanica.
+            </p>
+          </div>
+        </div>
+      </article>
+
+      <article class="faq-item" itemscope itemtype="https://schema.org/Question">
+        <h2 itemprop="name" class="faq-question">
+          <button type="button" class="faq-toggle" aria-expanded="false" data-faq-toggle>
+            Quando è sicuro fare trekking sull'Etna?
+            <span class="faq-icon" aria-hidden="true"></span>
+          </button>
+        </h2>
+        <div class="faq-answer" itemscope itemprop="acceptedAnswer" itemtype="https://schema.org/Answer" hidden>
+          <div itemprop="text">
+            <p><strong>Regole generali per il trekking in sicurezza:</strong></p>
+            <ul>
+              <li><strong>Controlla il tremore:</strong> Valori bassi e stabili (zona verde) indicano quiete</li>
+              <li><strong>Leggi i bollettini INGV:</strong> Verifica che non ci siano alert in corso</li>
+              <li><strong>Verifica il meteo:</strong> Consulta le <a href="{{ url_for('main.webcam_etna') }}">condizioni meteo live</a></li>
+              <li><strong>Usa guide certificate:</strong> Sopra i 2.500m è obbligatoria una guida alpina o vulcanologica</li>
+              <li><strong>Porta l'attrezzatura:</strong> Scarpe da trekking, abbigliamento a strati, acqua, protezione solare</li>
+            </ul>
+            <p><strong>Zone di accesso:</strong></p>
+            <ul>
+              <li><strong>Fino a 2.900m (Rifugio Sapienza):</strong> Sempre accessibile tranne ordinanze specifiche</li>
+              <li><strong>2.900-3.300m (zone sommitali):</strong> Solo con guida e se l'INGV non ha pubblicato restrizioni</li>
+              <li><strong>Crateri attivi:</strong> Accesso vietato quando c'è attività esplosiva o emissioni intense</li>
+            </ul>
+            <p>
+              <strong>Importante:</strong> Rispetta sempre le ordinanze della Protezione Civile e del Parco dell'Etna. 
+              In caso di dubbio, contatta il <a href="https://www.parcoetna.it" target="_blank" rel="noopener">Parco dell'Etna</a> o 
+              una guida alpina certificata. Attiva gli alert su <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">@etna_turi_bot</a> 
+              per ricevere notifiche prima di partire.
+            </p>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <aside class="page-cta">
+      <h2>Hai altre domande?</h2>
+      <p>Unisciti alla community EtnaMonitor e partecipa alle discussioni sul forum.</p>
+      <div class="hero__actions">
+        <a href="{{ url_for('community.forum_home') }}" class="btn btn-primary">Vai al forum</a>
+        <a href="{{ url_for('community.feedback_portal') }}" class="btn btn-secondary">Invia feedback</a>
+      </div>
+    </aside>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<script nonce="{{ csp_nonce() }}">
+  document.addEventListener('DOMContentLoaded', function() {
+    const toggleButtons = document.querySelectorAll('[data-faq-toggle]');
+    
+    toggleButtons.forEach(button => {
+      button.addEventListener('click', function() {
+        const isExpanded = this.getAttribute('aria-expanded') === 'true';
+        const answer = this.closest('.faq-item').querySelector('.faq-answer');
+        
+        this.setAttribute('aria-expanded', !isExpanded);
+        answer.hidden = isExpanded;
+      });
+    });
+  });
+</script>
+{% endblock %}
