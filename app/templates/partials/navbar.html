@@ -7,7 +7,6 @@
 {% set nav_links = [
   {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
   {'label': 'Webcam Etna', 'url': url_for('main.webcam_etna'), 'endpoint': 'main.webcam_etna'},
-  {'label': 'Notifiche EtnaBot', 'url': url_for('main.etna_bot'), 'endpoint': 'main.etna_bot'},
   {'label': 'Community', 'children': community_links},
 ] %}
 
@@ -169,11 +168,39 @@
     </div>
 
     <div class="site-nav__actions">
+      <a class="site-nav__extra-link" href="{{ url_for('main.etna_bot') }}">Notifiche EtnaBot</a>
       {% if session.user_id %}
         {% set display_name = (current_user.name if current_user else None) or (current_user.email if current_user else None) or 'Utente' %}
-        <a class="btn btn-secondary btn-sm" href="{{ url_for('dashboard.dashboard_home') }}">Dashboard</a>
-        <a class="btn btn-primary btn-sm" href="{{ url_for('auth.logout') }}">Esci</a>
-        <span class="muted site-nav__user" aria-hidden="true">{{ display_name }}</span>
+        {% set user_initials = 'EM' %}
+        {% if display_name %}
+          {% set normalized_name = display_name.strip() %}
+          {% if '@' in normalized_name %}
+            {% set user_initials = normalized_name[:2] | upper %}
+          {% else %}
+            {% set name_parts = normalized_name.split() %}
+            {% if name_parts | length > 1 %}
+              {% set user_initials = (name_parts[0][:1] ~ name_parts[1][:1]) | upper %}
+            {% elif name_parts | length == 1 %}
+              {% set user_initials = name_parts[0][:2] | upper %}
+            {% endif %}
+          {% endif %}
+        {% endif %}
+        <div class="user-menu" data-user-menu>
+          <button
+            type="button"
+            class="user-menu-trigger"
+            aria-haspopup="true"
+            aria-expanded="false"
+            data-user-menu-trigger
+          >
+            <span aria-hidden="true">{{ user_initials }}</span>
+            <span class="sr-only">Apri menu utente</span>
+          </button>
+          <div class="user-menu-dropdown" role="menu" data-user-menu-dropdown hidden>
+            <a role="menuitem" href="{{ url_for('dashboard.dashboard_home') }}">Dashboard</a>
+            <a role="menuitem" href="{{ url_for('auth.logout') }}">Esci</a>
+          </div>
+        </div>
       {% else %}
         <form class="site-nav__auth-form" action="{{ url_for('auth.auth_google') }}" method="post">
           <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}" />
