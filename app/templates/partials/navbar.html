@@ -13,6 +13,7 @@
 {% set nav_links = [
   {'label': 'Strumenti', 'children': tools_links},
   {'label': 'Community', 'children': community_links},
+  {'label': "Cos'è EtnaMonitor", 'url': url_for('main.about'), 'endpoint': 'main.about'},
 ] %}
 
 {% if config.PARTNER_DIRECTORY_ENABLED %}

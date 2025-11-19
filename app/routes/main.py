@@ -891,6 +891,36 @@ def roadmap():
     )
 
 
+@bp.route("/about")
+def about():
+    description = (
+        "Scopri cos'è EtnaMonitor: piattaforma indipendente per monitoraggio del tremore vulcanico dell'Etna, notifiche Telegram"
+        " e dashboard realtime."
+    )
+    structured_data = {
+        "@context": "https://schema.org",
+        "@type": "AboutPage",
+        "name": "Cos'è EtnaMonitor",
+        "description": description,
+        "url": url_for("main.about", _external=True),
+        "publisher": {
+            "@type": "Organization",
+            "name": "EtnaMonitor",
+            "url": url_for("main.index", _external=True),
+        },
+    }
+
+    return render_template(
+        "about.html",
+        page_title="Cos'è EtnaMonitor – Monitoraggio tremore Etna",
+        page_description="Scopri cos'è EtnaMonitor: piattaforma indipendente per monitoraggio tremore vulcanico dell'Etna, notifiche Telegram e grafico realtime.",
+        page_og_title="Cos'è EtnaMonitor – Monitoraggio tremore Etna",
+        page_og_description="Scopri cos'è EtnaMonitor: piattaforma indipendente per monitoraggio tremore vulcanico dell'Etna, notifiche Telegram e grafico realtime.",
+        canonical_url=url_for("main.about", _external=True),
+        page_structured_data=[structured_data],
+    )
+
+
 @bp.route("/sponsor")
 def sponsor():
     return render_template(
