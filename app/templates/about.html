@@ -1,0 +1,88 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="page">
+  <div class="container stack">
+    <header class="page__header">
+      <span class="eyebrow">La piattaforma</span>
+      <h1>Cos'è EtnaMonitor</h1>
+      <p class="page__lede">
+        La piattaforma indipendente che rende accessibile il monitoraggio del tremore vulcanico dell'Etna.
+      </p>
+    </header>
+
+    <article class="card card--highlight">
+      <h2>Cosa fa la piattaforma</h2>
+      <p>
+        EtnaMonitor raccoglie e rielabora i dati ufficiali INGV per renderli leggibili da cittadini, operatori e maker in qualunque momento.
+      </p>
+      <ul>
+        <li>Analisi del tremore in tempo reale con grafici ottimizzati su scala logaritmica.</li>
+        <li>Notifiche Telegram automatiche con piani free e premium per diversi livelli di attenzione.</li>
+        <li>Dashboard utente completa di soglia personalizzata, log eventi e timeline delle variazioni.</li>
+        <li>Strumenti extra come webcam live, statistiche storiche e il modulo "eruzione oggi" per aggiornamenti rapidi.</li>
+      </ul>
+    </article>
+
+    <div class="card card--outlined">
+      <h2>Come funziona tecnicamente</h2>
+      <p class="muted">Workflow automatico dalla sorgente INGV al grafico interattivo.</p>
+      <ul class="feature-list">
+        <li><strong>Download automatico PNG INGV</strong> con controlli di integrità ogni 5 minuti.</li>
+        <li><strong>Estrazione curve tramite maschera HSV</strong> per isolare il tracciato del tremore.</li>
+        <li><strong>Ricostruzione CSV</strong> e rendering di un grafico Plotly interattivo pronto per mobile e desktop.</li>
+        <li><strong>Sistema di alert</strong> che confronta continuamente i valori con la soglia personalizzata impostata dall'utente.</li>
+      </ul>
+    </div>
+
+    <div class="page__grid about-audience">
+      <article class="page__card">
+        <h2>A chi serve</h2>
+        <p>Una piattaforma pensata per diversi profili sul territorio.</p>
+        <ul>
+          <li>Residenti che vogliono capire velocemente cosa sta succedendo.</li>
+          <li>Guide ed escursionisti che devono prendere decisioni operative.</li>
+          <li>Turisti e fotografi in cerca del momento migliore per osservare il vulcano.</li>
+          <li>Maker e ricercatori che analizzano dataset e trend.</li>
+        </ul>
+      </article>
+      <article class="page__card">
+        <h2>Free vs Premium</h2>
+        <div class="grid grid--columns-2">
+          <div class="card">
+            <h3>Free</h3>
+            <ul>
+              <li>Grafico realtime sempre accessibile.</li>
+              <li>Articoli editoriali e aggiornamenti.</li>
+              <li>Community e canali social.</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Premium</h3>
+            <ul>
+              <li>Soglia personalizzata e alert calibrati.</li>
+              <li>Notifiche Telegram prioritarie.</li>
+              <li>Log eventi dettagliato e strumenti extra futuri.</li>
+            </ul>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <div class="cta-panel">
+      <div>
+        <h2>Pronto a usare EtnaMonitor?</h2>
+        <p>Accedi per configurare la tua dashboard o collega il bot Telegram in pochi secondi.</p>
+      </div>
+      <div class="cta-panel__actions">
+        <a class="btn btn-primary" href="{{ url_for('auth.login') }}">Registrati / Accedi</a>
+        <a class="btn btn-secondary" href="{{ url_for('main.etna_bot') }}">Collega il bot Telegram</a>
+      </div>
+    </div>
+
+    <p class="muted" role="note">
+      EtnaMonitor non è un servizio ufficiale INGV né Protezione Civile. È un progetto indipendente nato per divulgazione, studio e supporto informativo.
+    </p>
+  </div>
+</section>
+{% endblock %}
