@@ -19,6 +19,7 @@ from openai import OpenAI
 # You can swap the model (e.g. ``gpt-5.1`` or ``gpt-4.1-mini``) by
 # editing the ``model`` parameter inside ``generate_ai_article``.
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=OPENAI_API_KEY)
 
 
 def _extract_meta_fields(markdown_text: str) -> tuple[str | None, str | None]:
@@ -45,6 +46,21 @@ def _extract_title(markdown_text: str, fallback: str) -> str:
     return fallback
 
 
+def _extract_response_text(response: Any) -> str | None:
+    """Return the first text block from a Responses API payload."""
+
+    try:
+        content_blocks = response.output[0].content  # type: ignore[index,attr-defined]
+    except Exception:
+        return None
+
+    for block in content_blocks:
+        text = getattr(block, "text", None) or (block.get("text") if isinstance(block, dict) else None)
+        if text:
+            return str(text)
+    return None
+
+
 def generate_ai_article(topic: str, main_keyword: str, target_length: str, tone: str) -> dict[str, Any]:
     """Generate a markdown draft for the EtnaMonitor blog using OpenAI.
 
@@ -53,10 +69,8 @@ def generate_ai_article(topic: str, main_keyword: str, target_length: str, tone:
     can surface a user-friendly message.
     """
 
-    if not OPENAI_API_KEY:
-        raise RuntimeError("OPENAI_API_KEY non configurata. Impostala nelle variabili d'ambiente.")
-
-    client = OpenAI(api_key=OPENAI_API_KEY)
+    if not OPENAI_API_KEY or not OPENAI_API_KEY.strip():
+        raise RuntimeError("Configura OPENAI_API_KEY nelle variabili d'ambiente.")
 
     system_prompt = (
         "Sei un redattore scientifico per EtnaMonitor.it. Scrivi in italiano, tono chiaro, "
@@ -78,14 +92,27 @@ def generate_ai_article(topic: str, main_keyword: str, target_length: str, tone:
     )
 
     try:
-        response = client.responses.create(
-            model="gpt-5.1-mini",
-            input=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-        )
-        content = response.output[0].content[0].text  # type: ignore[index]
+        if hasattr(client, "responses"):
+            response = client.responses.create(
+                model="gpt-5.1-mini",
+                input=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+            content = _extract_response_text(response)
+        else:  # pragma: no cover - legacy SDK compatibility
+            import openai as legacy_openai
+
+            legacy_openai.api_key = OPENAI_API_KEY
+            completion = legacy_openai.ChatCompletion.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+            content = completion.choices[0].message["content"]
     except Exception as exc:  # pragma: no cover - network/API errors
         raise RuntimeError(f"Errore nella generazione dell'articolo: {exc}") from exc
 
