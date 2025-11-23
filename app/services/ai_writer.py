@@ -19,6 +19,11 @@ from openai import OpenAI
 # You can swap the model (e.g. ``gpt-5.1`` or ``gpt-4.1-mini``) by
 # editing the ``model`` parameter inside ``generate_ai_article``.
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+print("[AI_WRITER] OPENAI_API_KEY presente? ->", bool(OPENAI_API_KEY))
+if OPENAI_API_KEY:
+    print("[AI_WRITER] OPENAI_API_KEY prefix:", OPENAI_API_KEY[:7])
+else:
+    print("[AI_WRITER] OPENAI_API_KEY NON trovata negli env")
 client = OpenAI(api_key=OPENAI_API_KEY)
 
 
@@ -69,6 +74,8 @@ def generate_ai_article(topic: str, main_keyword: str, target_length: str, tone:
     can surface a user-friendly message.
     """
 
+    if not OPENAI_API_KEY:
+        raise RuntimeError("OPENAI_API_KEY not configured")
     if not OPENAI_API_KEY or not OPENAI_API_KEY.strip():
         raise RuntimeError("Configura OPENAI_API_KEY nelle variabili d'ambiente.")
 
