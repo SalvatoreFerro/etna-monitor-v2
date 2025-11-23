@@ -444,6 +444,7 @@ def ai_writer():
                 generated_markdown=generated_markdown,
             )
 
+        article = None
         try:
             article = generate_ai_article(
                 form_values["topic"],
@@ -451,30 +452,41 @@ def ai_writer():
                 form_values["target_length"],
                 form_values["tone"],
             )
-        except RuntimeError as exc:
-            flash(str(exc), "error")
-        else:
-            generated_markdown = article["markdown"]
-            summary = article.get("meta_description") or None
-            post = BlogPost(
-                title=article.get("title") or form_values["topic"],
-                summary=summary,
-                content=generated_markdown,
-                seo_title=article.get("meta_title") or None,
-                seo_description=summary,
-                published=False,
+        except Exception as exc:
+            current_app.logger.exception("AI Writer failure: %s", exc)
+            flash(
+                "Errore nella generazione dell'articolo. Controlla la chiave OPENAI_API_KEY o riprova.",
+                "error",
             )
-            try:
-                db.session.add(post)
-                db.session.commit()
+        else:
+            if not article:
+                current_app.logger.error("AI Writer returned an empty article payload")
                 flash(
-                    "Bozza generata con successo. Revisiona e pubblica dall'editor del blog.",
-                    "success",
+                    "Errore nella generazione dell'articolo. Controlla la chiave OPENAI_API_KEY o riprova.",
+                    "error",
                 )
-                return redirect(url_for("admin.blog_manager"))
-            except SQLAlchemyError:
-                db.session.rollback()
-                flash("Errore nel salvataggio della bozza. Riprova.", "error")
+            else:
+                generated_markdown = article["markdown"]
+                summary = article.get("meta_description") or None
+                post = BlogPost(
+                    title=article.get("title") or form_values["topic"],
+                    summary=summary,
+                    content=generated_markdown,
+                    seo_title=article.get("meta_title") or None,
+                    seo_description=summary,
+                    published=False,
+                )
+                try:
+                    db.session.add(post)
+                    db.session.commit()
+                    flash(
+                        "Bozza generata con successo. Revisiona e pubblica dall'editor del blog.",
+                        "success",
+                    )
+                    return redirect(url_for("admin.blog_manager"))
+                except SQLAlchemyError:
+                    db.session.rollback()
+                    flash("Errore nel salvataggio della bozza. Riprova.", "error")
 
     return render_template(
         "admin/ai_writer.html",
