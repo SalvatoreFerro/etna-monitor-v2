@@ -69,6 +69,7 @@ from ..services.telegram_service import TelegramService
 from ..utils.csrf import validate_csrf_token
 from ..filters import strip_literal_breaks
 from ..services.email_service import send_email
+from ..services.ai_writer import generate_ai_article
 
 bp = Blueprint("admin", __name__)
 
@@ -326,6 +327,12 @@ def admin_home():
             "url": url_for("admin.blog_manager"),
         },
         {
+            "label": "AI Writer",
+            "description": "Genera bozze editoriali da revisionare prima della pubblicazione.",
+            "icon": "fa-robot",
+            "url": url_for("admin.ai_writer"),
+        },
+        {
             "label": "Forum Q&A",
             "description": "Gestisci discussioni e risposte della community.",
             "icon": "fa-people-group",
@@ -409,6 +416,70 @@ def admin_home():
         soft_deleted_count=soft_deleted_count,
         moderators_count=moderators_count,
         admin_shortcuts=admin_shortcuts,
+    )
+
+
+@bp.route("/ai-writer", methods=["GET", "POST"])
+@admin_required
+def ai_writer():
+    form_values = {
+        "topic": (request.form.get("topic") or "").strip(),
+        "main_keyword": (request.form.get("main_keyword") or "").strip(),
+        "target_length": (request.form.get("target_length") or "medium").strip(),
+        "tone": (request.form.get("tone") or "neutro").strip(),
+    }
+    generated_markdown: str | None = None
+
+    if request.method == "POST":
+        csrf_token = request.form.get("csrf_token")
+        if not _is_csrf_valid(csrf_token):
+            flash("Token CSRF non valido. Riprova.", "error")
+            return redirect(url_for("admin.ai_writer"))
+
+        if not form_values["topic"] or not form_values["main_keyword"]:
+            flash("Compila almeno argomento e keyword principale.", "error")
+            return render_template(
+                "admin/ai_writer.html",
+                form_values=form_values,
+                generated_markdown=generated_markdown,
+            )
+
+        try:
+            article = generate_ai_article(
+                form_values["topic"],
+                form_values["main_keyword"],
+                form_values["target_length"],
+                form_values["tone"],
+            )
+        except RuntimeError as exc:
+            flash(str(exc), "error")
+        else:
+            generated_markdown = article["markdown"]
+            summary = article.get("meta_description") or None
+            post = BlogPost(
+                title=article.get("title") or form_values["topic"],
+                summary=summary,
+                content=generated_markdown,
+                seo_title=article.get("meta_title") or None,
+                seo_description=summary,
+                published=False,
+            )
+            try:
+                db.session.add(post)
+                db.session.commit()
+                flash(
+                    "Bozza generata con successo. Revisiona e pubblica dall'editor del blog.",
+                    "success",
+                )
+                return redirect(url_for("admin.blog_manager"))
+            except SQLAlchemyError:
+                db.session.rollback()
+                flash("Errore nel salvataggio della bozza. Riprova.", "error")
+
+    return render_template(
+        "admin/ai_writer.html",
+        form_values=form_values,
+        generated_markdown=generated_markdown,
     )
 
 

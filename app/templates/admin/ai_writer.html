@@ -1,0 +1,83 @@
+{% extends "layout.html" %}
+
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
+{% endblock %}
+
+{% block title %}AI Writer{% endblock %}
+
+{% block content %}
+<section class="admin-page admin-container" aria-labelledby="ai-writer-title">
+  <header class="admin-card admin-card--hero card-premium animate-premium-fade admin-header" id="ai-writer-title">
+    <div>
+      <h1><i class="fas fa-robot"></i> AI Writer</h1>
+      <p>Genera bozze prudenziali sugli argomenti legati all'Etna, sempre da revisionare e pubblicare manualmente.</p>
+    </div>
+    <nav class="admin-actions" aria-label="Navigazione secondaria">
+      <a href="{{ url_for('admin.blog_manager') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-newspaper"></i> Gestione blog</a>
+      <a href="{{ url_for('admin.admin_home') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-arrow-left"></i> Dashboard admin</a>
+    </nav>
+  </header>
+
+  <article class="admin-card card-premium animate-premium-slide">
+    <header class="admin-section-header">
+      <div>
+        <h2><i class="fas fa-pen-nib"></i> Richiedi una bozza</h2>
+        <p>Tono informativo, senza allarmismi. Le bozze vengono salvate come <strong>draft</strong> e vanno sempre riviste prima della pubblicazione.</p>
+      </div>
+      <p class="admin-caption">Assicurati di aver configurato la variabile <code>OPENAI_API_KEY</code> nell'ambiente.</p>
+    </header>
+    <form method="post" class="admin-form admin-blog-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <div class="form-grid">
+        <label>
+          <span>Topic (obbligatorio)</span>
+          <input type="text" name="topic" value="{{ form_values.topic }}" required placeholder="es. Tremore vulcanico dell'Etna" />
+        </label>
+        <label>
+          <span>Keyword principale (obbligatoria)</span>
+          <input type="text" name="main_keyword" value="{{ form_values.main_keyword }}" required placeholder="es. tremore vulcanico etna" />
+        </label>
+      </div>
+      <div class="form-grid">
+        <label>
+          <span>Lunghezza desiderata</span>
+          <select name="target_length">
+            <option value="short" {% if form_values.target_length == 'short' %}selected{% endif %}>Breve</option>
+            <option value="medium" {% if form_values.target_length == 'medium' %}selected{% endif %}>Media</option>
+            <option value="long" {% if form_values.target_length == 'long' %}selected{% endif %}>Lunga</option>
+            <option value="1200 parole" {% if form_values.target_length == '1200 parole' %}selected{% endif %}>Circa 1200 parole</option>
+          </select>
+        </label>
+        <label>
+          <span>Tono</span>
+          <select name="tone">
+            <option value="neutro" {% if form_values.tone == 'neutro' %}selected{% endif %}>Neutro</option>
+            <option value="divulgativo" {% if form_values.tone == 'divulgativo' %}selected{% endif %}>Divulgativo</option>
+            <option value="tecnico" {% if form_values.tone == 'tecnico' %}selected{% endif %}>Tecnico</option>
+          </select>
+        </label>
+      </div>
+      <p class="admin-caption">Il contenuto include meta title, meta description, FAQ e suggerimenti di link interni. Nessuna bozza verrà pubblicata automaticamente.</p>
+      <button type="submit" class="btn btn-premium"><i class="fas fa-wand-magic-sparkles"></i> Genera bozza con IA</button>
+    </form>
+  </article>
+
+  {% if generated_markdown %}
+  <article class="admin-card card-premium animate-premium-fade">
+    <header class="admin-section-header">
+      <div>
+        <h2><i class="fas fa-eye"></i> Anteprima bozza</h2>
+        <p>Controlla rapidamente il testo generato. La versione completa è salvata come bozza nell'editor del blog.</p>
+      </div>
+      <span class="badge warning">Bozza non pubblicata</span>
+    </header>
+    <label>
+      <span>Markdown generato</span>
+      <textarea rows="18" readonly>{{ generated_markdown }}</textarea>
+    </label>
+  </article>
+  {% endif %}
+</section>
+{% endblock %}

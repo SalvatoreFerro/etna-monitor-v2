@@ -13,6 +13,7 @@
       <p>Pubblica articoli, ottimizza la SEO con un clic e mantieni la community aggiornata.</p>
     </div>
     <nav class="admin-actions" aria-label="Sezioni amministrative">
+      <a href="{{ url_for('admin.ai_writer') }}" class="btn btn-premium btn-sm"><i class="fas fa-robot"></i> AI Writer</a>
       <a href="{{ url_for('admin.admin_home') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-arrow-left"></i> Torna alla dashboard</a>
       <a href="{{ url_for('admin.feedback_center') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-comments"></i> Feedback utenti</a>
     </nav>
