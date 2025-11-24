@@ -891,6 +891,20 @@ def roadmap():
     )
 
 
+@bp.route("/experience")
+def experience():
+    return render_template(
+        "experience.html",
+        page_title="Etna Experience – Vivi l'Etna come un insider",
+        page_description=(
+            "La pagina madre di guide, hotel e ristoranti selezionati da EtnaMonitor per vivere l'Etna in modo autentico."
+        ),
+        page_og_title="Etna Experience – Vivi l'Etna come un insider",
+        page_og_description="Scopri guide autorizzate, hotel e ristoranti consigliati per la tua esperienza sull'Etna.",
+        canonical_url=url_for("main.experience", _external=True),
+    )
+
+
 @bp.route("/about")
 def about():
     description = (

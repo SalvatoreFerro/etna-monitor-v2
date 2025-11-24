@@ -1,0 +1,155 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="experience-hero">
+  <div class="container experience-hero__inner">
+    <div class="experience-hero__content">
+      <span class="experience-hero__eyebrow">Etna Experience</span>
+      <h1>Etna Experience — Vivi l'Etna come un insider</h1>
+      <p class="experience-hero__subtitle">
+        Le migliori guide, hotel, ristoranti ed esperienze selezionate con cura. Tutto in un unico posto, aggiornato
+        costantemente.
+      </p>
+      <div class="experience-hero__actions experience-hero__actions--wrap">
+        <a class="btn btn-primary" href="#categorie-experience">Esplora le categorie</a>
+        <a class="btn btn-secondary" href="{{ url_for('category.category_view', slug='guide') }}">Vai alle guide</a>
+      </div>
+      <ul class="experience-hero__stats" role="list">
+        <li>
+          <span class="experience-hero__stat-value">3</span>
+          <span class="experience-hero__stat-label">sezioni curate</span>
+        </li>
+        <li>
+          <span class="experience-hero__stat-value">100%</span>
+          <span class="experience-hero__stat-label">partner selezionati</span>
+        </li>
+      </ul>
+    </div>
+    <div class="experience-hero__media" aria-hidden="true">
+      <img src="{{ url_for('static', filename='images/etna-experience-hero.svg') }}" alt="Illustrazione Etna Experience" />
+    </div>
+  </div>
+</section>
+
+<section class="page page--experience">
+  <div class="container experience-container">
+    <section class="experience-section">
+      <div class="experience-section__header">
+        <span class="eyebrow">Cos'è Etna Experience?</span>
+        <h2>Curazione, affidabilità e orientamento per chi vuole vivere l'Etna</h2>
+        <p>
+          Etna Experience è la sezione di EtnaMonitor dedicata a chi vuole vivere l'Etna nel modo migliore. Niente liste
+          infinite e poco utili: qui trovi solo partner selezionati, verificati manualmente, con qualità e affidabilità come
+          criteri principali.
+        </p>
+      </div>
+      <div class="grid grid--columns-3">
+        <article class="card card--outlined">
+          <h3>🧭 Guide autorizzate</h3>
+          <p class="muted">Escursioni con professionisti che conoscono davvero il vulcano.</p>
+        </article>
+        <article class="card card--outlined">
+          <h3>🏡 Hotel &amp; B&amp;B</h3>
+          <p class="muted">Strutture in posizione strategica per visitare l'Etna.</p>
+        </article>
+        <article class="card card--outlined">
+          <h3>🍝 Ristoranti &amp; Locali</h3>
+          <p class="muted">Posti consigliati per mangiare e bere dopo un'escursione.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="experience-section" id="categorie-experience">
+      <div class="experience-section__header">
+        <span class="eyebrow">Categorie principali</span>
+        <h2>Le tre porte di accesso alla tua esperienza Etna</h2>
+        <p>Entra in contatto diretto con le realtà più affidabili per organizzare escursioni, soggiorni e momenti di gusto.</p>
+      </div>
+      <div class="experience-card-grid">
+        <article class="card card--highlight">
+          <div class="card__eyebrow">Consigliato per: chi vuole vivere l'Etna da vicino</div>
+          <h3>Guide &amp; Escursioni</h3>
+          <p>
+            Esperienze certificate, sicure e professionali: trekking, tour in jeep, crateri sommitali, tramonti e percorsi per
+            tutti i livelli.
+          </p>
+          <div class="card__actions">
+            <a class="btn btn-primary" href="{{ url_for('category.category_view', slug='guide') }}">Scopri le guide</a>
+          </div>
+        </article>
+
+        <article class="card card--highlight">
+          <div class="card__eyebrow">Perfetti per weekend, coppie, famiglie</div>
+          <h3>Hotel &amp; B&amp;B consigliati</h3>
+          <p>
+            Strutture selezionate nelle zone più comode per esplorare l'Etna, da Nicolosi a Linguaglossa.
+          </p>
+          <div class="card__actions">
+            <a class="btn btn-primary" href="{{ url_for('category.category_view', slug='hotel') }}">Vedi gli hotel</a>
+          </div>
+        </article>
+
+        <article class="card card--highlight">
+          <div class="card__eyebrow">Ideali dopo un'escursione o una visita serale</div>
+          <h3>Ristoranti &amp; Locali</h3>
+          <p>
+            Ristoranti, pizzerie e locali consigliati per completare la giornata sull'Etna con cucina tipica e prodotti locali.
+          </p>
+          <div class="card__actions">
+            <a class="btn btn-primary" href="{{ url_for('category.category_view', slug='ristoranti') }}">Scopri i ristoranti</a>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="experience-section">
+      <div class="experience-section__header">
+        <span class="eyebrow">Ispirazione</span>
+        <h2>Esempio di giornata tipo</h2>
+        <p class="muted">Una timeline essenziale per immaginare come combinare escursioni, sapori locali e relax.</p>
+      </div>
+      <div class="grid grid--columns-2">
+        <article class="card card--outlined">
+          <h3>🕘 09:00 – Escursione con la guida</h3>
+          <p>Ritrovo in uno dei punti di partenza (Nicolosi, Piano Provenzana) e salita accompagnata.</p>
+        </article>
+        <article class="card card--outlined">
+          <h3>🕛 13:00 – Pranzo tipico</h3>
+          <p>Pranzo in uno dei ristoranti partner, con prodotti del territorio.</p>
+        </article>
+        <article class="card card--outlined">
+          <h3>🕒 15:00 – Passeggiata e relax</h3>
+          <p>Giro tra crateri spenti, boschi o borghi etnei.</p>
+        </article>
+        <article class="card card--outlined">
+          <h3>🕕 19:00 – Tramonto sull'Etna</h3>
+          <p>Rientro in struttura o punto panoramico per godersi il tramonto sul vulcano.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="experience-section">
+      <div class="experience-section__header">
+        <span class="eyebrow">Diventa partner</span>
+        <h2>Diventa partner di Etna Experience</h2>
+        <p>
+          Sei una guida, un hotel, un B&amp;B, un ristorante o un'attività legata all'Etna? Etna Experience è uno spazio pensato
+          per realtà selezionate, che vogliono più visibilità online, inserite in un contesto serio e curato dedicato all'Etna.
+        </p>
+      </div>
+      <div class="card card--highlight">
+        <h3>Perché entrare in Etna Experience</h3>
+        <ul>
+          <li>Profilo dedicato nella sezione Etna Experience.</li>
+          <li>Possibilità di essere citati nei nostri articoli e post social.</li>
+          <li>Presenza in una piattaforma che monitora davvero il vulcano in tempo reale.</li>
+          <li>Nessun intermediario sulle prenotazioni: contatto diretto tra utente e partner.</li>
+        </ul>
+        <div class="card__actions">
+          <a class="btn btn-primary" href="mailto:partnership@etnamonitor.it">Richiedi di diventare partner</a>
+        </div>
+      </div>
+    </section>
+  </div>
+</section>
+{% endblock %}
