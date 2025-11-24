@@ -1127,14 +1127,7 @@ def create_app(config_overrides: dict | None = None):
     @app.errorhandler(404)
     def render_not_found(error):  # pragma: no cover - presentation only
         current_app.logger.info("[404] Not found: %s", request.path)
-        return (
-            render_template(
-                "errors/404.html",
-                page_title="Pagina non trovata",
-                page_description="La pagina che stai cercando non esiste o è stata spostata.",
-            ),
-            404,
-        )
+        return render_template("404.html"), 404
 
     @app.errorhandler(500)
     def render_internal_error(error):  # pragma: no cover - presentation only

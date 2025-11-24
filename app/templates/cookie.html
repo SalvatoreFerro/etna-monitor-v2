@@ -1,0 +1,72 @@
+{% extends "layout.html" %}
+{% set page_title = "Cookie policy – EtnaMonitor" %}
+{% set page_description = "Informativa completa sui cookie tecnici, analitici e di terze parti utilizzati da EtnaMonitor." %}
+{% set page_og_title = page_title %}
+{% set page_og_description = page_description %}
+{% set canonical_url = url_for('main.cookie', _external=True) %}
+
+{% block content %}
+<section class="page" aria-labelledby="cookie-title">
+  <div class="container stack">
+    <header class="page__header">
+      <span class="pill pill--glow">Legale</span>
+      <h1 id="cookie-title">Cookie policy</h1>
+      <p class="page__lede">Informazioni chiare su come usiamo i cookie e su come gestire le tue preferenze.</p>
+    </header>
+
+    <div class="card stack">
+      <h2>1. Cosa sono i cookie</h2>
+      <p>I cookie sono piccoli file di testo che il browser salva sul dispositivo per memorizzare informazioni utili alla navigazione. Possono avere durata di sessione (si cancellano alla chiusura del browser) o persistente.</p>
+    </div>
+
+    <div class="card stack">
+      <h2>2. Cookie tecnici</h2>
+      <p>Utilizziamo cookie tecnici necessari al funzionamento del sito, tra cui:</p>
+      <ul>
+        <li>Cookie di sessione per mantenere l'accesso autenticato e prevenire accessi non autorizzati.</li>
+        <li>Preferenze dell'utente (tema, consenso analytics) per ricordare le scelte effettuate.</li>
+      </ul>
+      <p>Questi cookie sono essenziali e non richiedono consenso.</p>
+    </div>
+
+    <div class="card stack">
+      <h2>3. Cookie analitici</h2>
+      <p>Raccogliamo statistiche aggregate e anonimizzate per migliorare le performance del sito.</p>
+      <ul>
+        <li>L'attivazione avviene solo previo consenso espresso tramite il banner cookie.</li>
+        <li>I dati raccolti non permettono l'identificazione diretta dell'utente.</li>
+      </ul>
+    </div>
+
+    <div class="card stack">
+      <h2>4. Cookie di terze parti</h2>
+      <p>Alcune pagine possono incorporare contenuti esterni (es. player video o mappe) che impostano propri cookie.</p>
+      <ul>
+        <li>Le terze parti sono responsabili delle informazioni raccolte e delle relative policy.</li>
+        <li>Puoi consultare le informative dei singoli fornitori per maggiori dettagli.</li>
+      </ul>
+    </div>
+
+    <div class="card stack">
+      <h2>5. Come disattivare i cookie</h2>
+      <p>Puoi modificare le preferenze in qualsiasi momento:</p>
+      <ul>
+        <li>Dal banner di consenso presente sul sito, per accettare o rifiutare gli analytics.</li>
+        <li>Dalle impostazioni del browser, cancellando o bloccando i cookie esistenti.</li>
+      </ul>
+      <p>La disattivazione dei cookie tecnici potrebbe limitare alcune funzionalità essenziali.</p>
+    </div>
+
+    <div class="card stack">
+      <h2>6. Riferimento al GDPR</h2>
+      <p>Il trattamento dei dati attraverso i cookie avviene nel rispetto del Regolamento (UE) 2016/679 (GDPR) e delle linee guida delle autorità competenti.</p>
+      <p>Per richieste o esercizio dei diritti privacy scrivi a <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a>.</p>
+    </div>
+
+    <div class="page__actions" role="group" aria-label="Azioni cookie">
+      <a class="btn btn-primary" href="mailto:salvoferro16@gmail.com">Contattaci</a>
+      <a class="btn btn-secondary" href="{{ url_for('main.index') }}">Torna alla home</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

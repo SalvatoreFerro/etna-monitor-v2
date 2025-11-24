@@ -10,6 +10,7 @@ from flask import (
     Blueprint,
     current_app,
     jsonify,
+    redirect,
     render_template,
     render_template_string,
     request,
@@ -439,6 +440,11 @@ def etna_bot():
         page_og_description=page_description,
         page_structured_data=page_structured_data,
     )
+
+
+@bp.route("/bot")
+def bot_redirect():
+    return redirect(url_for("main.etna_bot"))
 
 
 @bp.route("/eruzione-etna-oggi")
@@ -959,23 +965,44 @@ def privacy():
 
 @bp.route("/terms")
 def terms():
-    return render_template(
-        "terms.html",
-        page_title="Termini di servizio – EtnaMonitor",
-        page_description="Condizioni di utilizzo della piattaforma EtnaMonitor e dei suoi servizi.",
-        page_og_title="Termini di servizio – EtnaMonitor",
-        page_og_description="Condizioni di utilizzo della piattaforma EtnaMonitor e dei suoi servizi.",
-    )
+    return redirect(url_for("main.termini"))
 
 
 @bp.route("/cookies")
 def cookies():
+    return redirect(url_for("main.cookie"))
+
+
+@bp.route("/termini")
+def termini():
     return render_template(
-        "cookies.html",
+        "termini.html",
+        page_title="Termini di servizio – EtnaMonitor",
+        page_description="Condizioni complete di utilizzo di EtnaMonitor, del sito e dei bot Telegram correlati.",
+        page_og_title="Termini di servizio – EtnaMonitor",
+        page_og_description="Condizioni complete di utilizzo di EtnaMonitor, del sito e dei bot Telegram correlati.",
+    )
+
+
+@bp.route("/cookie")
+def cookie():
+    return render_template(
+        "cookie.html",
         page_title="Cookie policy – EtnaMonitor",
-        page_description="Informazioni sui cookie utilizzati da EtnaMonitor e su come gestirli.",
+        page_description="Spiegazione completa dei cookie tecnici, analitici e di terze parti utilizzati da EtnaMonitor.",
         page_og_title="Cookie policy – EtnaMonitor",
-        page_og_description="Informazioni sui cookie utilizzati da EtnaMonitor e su come gestirli.",
+        page_og_description="Spiegazione completa dei cookie tecnici, analitici e di terze parti utilizzati da EtnaMonitor.",
+    )
+
+
+@bp.route("/sostieni-il-progetto")
+def sostieni_progetto():
+    return render_template(
+        "sostieni_progetto.html",
+        page_title="Sostieni EtnaMonitor",
+        page_description="Perché sostenere EtnaMonitor, come funziona il progetto e come contribuire via PayPal o contattando il team.",
+        page_og_title="Sostieni EtnaMonitor",
+        page_og_description="Perché sostenere EtnaMonitor, come funziona il progetto e come contribuire via PayPal o contattando il team.",
     )
 
 @bp.route("/healthz")
