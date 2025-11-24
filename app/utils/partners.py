@@ -7,6 +7,8 @@ from datetime import datetime, timedelta
 import re
 from typing import Iterable, Mapping
 
+import json
+
 from flask import current_app, session, url_for
 from slugify import slugify
 from sqlalchemy.orm import joinedload
@@ -110,6 +112,11 @@ def resolve_partner_media_path(partner: Partner) -> str | None:
     _append(partner.hero_image_path)
 
     extra = getattr(partner, "extra_data", {}) or {}
+    if isinstance(extra, str):
+        try:
+            extra = json.loads(extra)
+        except ValueError:
+            extra = {}
     if isinstance(extra, dict):
         for key in _MEDIA_EXTRA_KEYS:
             _append(extra.get(key))
@@ -117,6 +124,11 @@ def resolve_partner_media_path(partner: Partner) -> str | None:
     _append(partner.logo_path)
 
     gallery = getattr(partner, "images_json", None)
+    if isinstance(gallery, str):
+        try:
+            gallery = json.loads(gallery)
+        except ValueError:
+            gallery = None
     if isinstance(gallery, (list, tuple)):
         for item in gallery:
             _append(item)
