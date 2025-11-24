@@ -18,6 +18,7 @@
 
 {% if config.PARTNER_DIRECTORY_ENABLED %}
   {% set experience_children = [
+    {'label': 'Panoramica Experience', 'url': url_for('main.experience'), 'endpoint': 'main.experience'},
     {'label': 'Guide autorizzate', 'url': url_for('category.category_view', slug='guide'), 'endpoint': 'category.category_view', 'slug': 'guide'},
     {'label': 'Hotel', 'url': url_for('category.category_view', slug='hotel'), 'endpoint': 'category.category_view', 'slug': 'hotel'},
     {'label': 'Ristoranti', 'url': url_for('category.category_view', slug='ristoranti'), 'endpoint': 'category.category_view', 'slug': 'ristoranti'}
