@@ -43,20 +43,30 @@
 </style>
 <footer class="global-footer" aria-label="Collegamenti EtnaMonitor">
   <nav class="footer-links" aria-label="Navigazione rapida footer">
-    <a href="{{ url_for('main.tecnologia') }}">Tecnologia</a>
+    <a href="{{ url_for('main.index') }}">Home</a>
     <span class="footer-separator" aria-hidden="true">•</span>
-    <a href="{{ url_for('main.progetto') }}">Il progetto</a>
+    <a href="{{ url_for('main.index') }}#grafico-etna">Grafico</a>
     <span class="footer-separator" aria-hidden="true">•</span>
-    <a href="{{ url_for('main.team') }}">Team</a>
+    <a href="{{ url_for('main.experience') }}">Etna Experience</a>
     <span class="footer-separator" aria-hidden="true">•</span>
-    <a href="{{ url_for('main.news') }}">News</a>
+    <a href="{{ url_for('category.category_view', slug='guide') }}">Guide</a>
+    <span class="footer-separator" aria-hidden="true">•</span>
+    <a href="{{ url_for('category.category_view', slug='hotel') }}">Hotel</a>
+    <span class="footer-separator" aria-hidden="true">•</span>
+    <a href="{{ url_for('category.category_view', slug='ristoranti') }}">Ristoranti</a>
+    <span class="footer-separator" aria-hidden="true">•</span>
+    <a href="{{ url_for('main.etna_bot') }}">Etna Bot</a>
+    <span class="footer-separator" aria-hidden="true">•</span>
+    <a href="mailto:salvoferro16@gmail.com">Contatti</a>
+    <span class="footer-separator" aria-hidden="true">•</span>
+    <a href="{{ url_for('main.roadmap') }}">Roadmap</a>
   </nav>
   <nav class="footer-meta-links" aria-label="Link legali">
-    <a href="{{ url_for('main.privacy') }}">Privacy</a>
+    <a href="{{ url_for('main.termini') }}">Termini</a>
     <span class="footer-separator" aria-hidden="true">•</span>
-    <a href="{{ url_for('main.terms') }}">Termini</a>
+    <a href="{{ url_for('main.cookie') }}">Cookie</a>
     <span class="footer-separator" aria-hidden="true">•</span>
-    <a href="{{ url_for('main.cookies') }}">Cookie</a>
+    <a href="{{ url_for('main.sostieni_progetto') }}">Sostieni il progetto</a>
   </nav>
   <p style="margin: 0; opacity: 0.65;">© {{ year }} EtnaMonitor</p>
 </footer>

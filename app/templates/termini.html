@@ -1,0 +1,91 @@
+{% extends "layout.html" %}
+{% set page_title = "Termini di servizio – EtnaMonitor" %}
+{% set page_description = "Condizioni di utilizzo per EtnaMonitor, inclusi sito, grafici e bot Telegram." %}
+{% set page_og_title = page_title %}
+{% set page_og_description = page_description %}
+{% set canonical_url = url_for('main.termini', _external=True) %}
+
+{% block content %}
+<section class="page" aria-labelledby="terms-title">
+  <div class="container stack">
+    <header class="page__header">
+      <span class="pill pill--glow">Legale</span>
+      <h1 id="terms-title">Termini di servizio</h1>
+      <p class="page__lede">Condizioni complete per utilizzare EtnaMonitor in modo sicuro e consapevole.</p>
+    </header>
+
+    <div class="card stack">
+      <h2>1. Utilizzo del sito e dei servizi</h2>
+      <p>EtnaMonitor fornisce informazioni divulgative sul tremore vulcanico dell'Etna. Il servizio è offerto "così com'è" e non sostituisce comunicazioni ufficiali di enti preposti alla protezione civile.</p>
+      <ul>
+        <li>È vietato utilizzare il sito per scopi illegali, fraudolenti o che possano danneggiare altri utenti.</li>
+        <li>L'accesso autenticato avviene tramite provider OAuth; l'utente è responsabile della protezione delle proprie credenziali.</li>
+        <li>Possiamo limitare o sospendere l'accesso in caso di uso improprio o violazione delle presenti condizioni.</li>
+      </ul>
+    </div>
+
+    <div class="card stack">
+      <h2>2. Limitazione di responsabilità</h2>
+      <p>Pur impegnandoci a mantenere dati aggiornati e infrastruttura disponibile, EtnaMonitor non garantisce l'assenza di errori o interruzioni.</p>
+      <ul>
+        <li>I grafici e i contenuti informativi non costituiscono allerta ufficiali o consigli operativi.</li>
+        <li>Non siamo responsabili per decisioni prese sulla base delle informazioni visualizzate sul sito o nei bot.</li>
+        <li>Eventuali indisponibilità temporanee non danno diritto a rimborsi o indennizzi.</li>
+      </ul>
+    </div>
+
+    <div class="card stack">
+      <h2>3. Uso del bot Telegram</h2>
+      <p>Il bot EtnaMonitor invia notifiche automatizzate sul tremore dell'Etna.</p>
+      <ul>
+        <li>Le notifiche si basano su dati pubblici e possono subire ritardi o variazioni.</li>
+        <li>È responsabilità dell'utente verificare lo stato delle proprie impostazioni e silenziare o disattivare il bot se non desidera ricevere messaggi.</li>
+        <li>L'uso del bot comporta l'accettazione delle policy di Telegram e di queste condizioni.</li>
+      </ul>
+    </div>
+
+    <div class="card stack">
+      <h2>4. Trattamento dei dati personali</h2>
+      <p>Raccogliamo il minimo indispensabile di dati personali per erogare i servizi (ad esempio email, ID utente, preferenze di notifica).</p>
+      <ul>
+        <li>I dati sono gestiti in conformità al GDPR e alla nostra <a href="{{ url_for('main.privacy') }}">Informativa Privacy</a>.</li>
+        <li>Conserviamo i log tecnici per garantire sicurezza e diagnostica dell'applicazione.</li>
+        <li>Puoi esercitare i diritti previsti dalla normativa contattandoci all'indirizzo indicato in fondo pagina.</li>
+      </ul>
+    </div>
+
+    <div class="card stack">
+      <h2>5. Contenuti generati automaticamente</h2>
+      <p>Alcuni elementi del sito (grafici, report, messaggi del bot) sono generati automaticamente a partire da fonti terze.</p>
+      <ul>
+        <li>Tali contenuti possono contenere errori o essere incompleti; sono forniti a scopo informativo.</li>
+        <li>Ci riserviamo il diritto di correggere o rimuovere contenuti generati automaticamente in qualsiasi momento.</li>
+      </ul>
+    </div>
+
+    <div class="card stack">
+      <h2>6. Proprietà intellettuale</h2>
+      <p>I marchi, i loghi, il design dell'interfaccia e i contenuti redazionali di EtnaMonitor sono di proprietà dei rispettivi titolari.</p>
+      <ul>
+        <li>È consentito condividere link e schermate citando la fonte.</li>
+        <li>È vietata la riproduzione massiva, l'estrazione automatizzata di dati e la modifica non autorizzata dei materiali.</li>
+      </ul>
+    </div>
+
+    <div class="card stack">
+      <h2>7. Norme generali</h2>
+      <p>Potremmo aggiornare periodicamente questi termini per riflettere modifiche tecniche o normative.</p>
+      <ul>
+        <li>La versione aggiornata è sempre disponibile su questa pagina con data di revisione.</li>
+        <li>L'uso continuato del servizio dopo la pubblicazione delle modifiche implica l'accettazione delle nuove condizioni.</li>
+      </ul>
+      <p class="muted">Ultimo aggiornamento: {{ (current_year if current_year is defined else 2025) }}.</p>
+    </div>
+
+    <div class="page__actions" role="group" aria-label="Azioni termini">
+      <a class="btn btn-primary" href="mailto:salvoferro16@gmail.com">Contattaci</a>
+      <a class="btn btn-secondary" href="{{ url_for('main.index') }}">Torna alla home</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -358,8 +358,8 @@
   <div class="container community-preview">
     <div class="community-preview__intro">
       <span class="eyebrow">Community hub</span>
-      <h2>Blog, forum e gamification per imparare insieme</h2>
-      <p class="lead">Abbiamo raccolto tutorial guidati, thread Q&amp;A e badge esclusivi per premiare chi contribuisce. La guida rapida ti accompagna fin dal primo accesso.</p>
+      <h2>Blog, forum e guide per imparare insieme</h2>
+      <p class="lead">Abbiamo raccolto tutorial guidati, thread Q&amp;A e risposte curate dagli esperti. La guida rapida ti accompagna fin dal primo accesso.</p>
       <div class="hero__actions">
         <a class="btn btn-primary" href="{{ url_for('community.blog_index') }}">Apri il blog</a>
         <a class="btn btn-secondary" href="{{ url_for('community.forum_home') }}">Vai al forum</a>
@@ -375,8 +375,8 @@
         <p>Dal pannello admin puoi generare metadati perfetti con un clic e pubblicare novità tecniche.</p>
       </li>
       <li>
-        <h3><i class="fas fa-medal"></i> Badge &amp; punti</h3>
-        <p>Ogni feedback, discussione e contributo assegna punti e badge progressivi.</p>
+        <h3><i class="fas fa-bell"></i> Alert e supporto</h3>
+        <p>Ricevi notifiche Telegram e trova risposte rapide grazie agli approfondimenti della community.</p>
       </li>
     </ul>
   </div>
@@ -406,7 +406,7 @@
             <a class="link-arrow" href="{{ url_for('main.webcam_etna') }}">Webcam Live</a>
             <a class="link-arrow" href="{{ url_for('main.faq') }}">FAQ</a>
             <a class="link-arrow" href="{{ url_for('main.news') }}">Newsroom</a>
-            <a class="link-arrow" href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">Bot Telegram</a>
+            <a class="link-arrow" href="{{ url_for('main.etna_bot') }}">Bot Telegram</a>
             <a class="link-arrow" href="{{ url_for('main.roadmap') }}">Roadmap</a>
           </div>
         </div>

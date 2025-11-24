@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+{% set page_title = "Pagina non trovata" %}
+{% set page_description = "La pagina richiesta non è disponibile o è stata spostata." %}
+{% set page_og_title = page_title %}
+{% set page_og_description = page_description %}
+
+{% block head_extra %}
+  <meta name="robots" content="noindex, nofollow" />
+{% endblock %}
+
+{% block content %}
+<section class="section" aria-labelledby="not-found-title">
+  <div class="container container--narrow stack" style="text-align: center; max-width: 720px;">
+    <span class="pill pill--glow" aria-hidden="true">Errore 404</span>
+    <h1 id="not-found-title">Pagina non trovata</h1>
+    <p>Sembra che la pagina che stai cercando non esista più o sia stata spostata.</p>
+    <a href="{{ url_for('main.index') }}" class="btn btn-primary mt-3">Torna alla Home</a>
+  </div>
+</section>
+{% endblock %}

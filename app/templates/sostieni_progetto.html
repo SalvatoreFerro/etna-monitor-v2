@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+{% set page_title = "Sostieni EtnaMonitor" %}
+{% set page_description = "Perché e come sostenere il progetto EtnaMonitor con contributi economici e collaborazione." %}
+{% set page_og_title = page_title %}
+{% set page_og_description = page_description %}
+{% set canonical_url = url_for('main.sostieni_progetto', _external=True) %}
+
+{% block content %}
+<section class="page" aria-labelledby="support-title">
+  <div class="container stack">
+    <header class="page__header">
+      <span class="pill pill--glow">Sostieni il progetto</span>
+      <h1 id="support-title">Perché supportare EtnaMonitor</h1>
+      <p class="page__lede">Manteniamo un servizio affidabile e indipendente sullo stato del vulcano: il tuo contributo rende possibile crescita e continuità.</p>
+    </header>
+
+    <div class="grid grid--columns-2 grid--gap-lg">
+      <div class="card stack">
+        <h2>Come funziona il progetto</h2>
+        <p>EtnaMonitor integra raccolta dati, grafici realtime, selezione di webcam e notifiche Telegram. L'infrastruttura cloud gestisce l'acquisizione continua dei dati e l'invio di alert agli utenti.</p>
+        <ul>
+          <li>Monitoraggio 24/7 con aggiornamenti automatici.</li>
+          <li>Dashboard web ottimizzata per desktop e mobile.</li>
+          <li>Supporto a community, guide e operatori locali.</li>
+        </ul>
+      </div>
+
+      <div class="card stack">
+        <h2>Dove vanno i fondi</h2>
+        <p>I contributi servono a coprire costi di server, storage storico, manutenzione del bot e sviluppo di nuove funzionalità.</p>
+        <ul>
+          <li>Scalabilità dell'infrastruttura durante i picchi di traffico.</li>
+          <li>Backup e conservazione dei dati per analisi a lungo termine.</li>
+          <li>Supporto tecnico e assistenza agli utenti.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card stack">
+      <h2>Come contribuire</h2>
+      <p>Puoi effettuare una donazione una tantum o programmata via PayPal.</p>
+      <div class="hero__actions">
+        <a class="btn btn-primary" href="https://www.paypal.com/donate/?hosted_button_id=VZQCM99ESR8Q4" target="_blank" rel="noopener">Dona con PayPal</a>
+        <a class="btn btn-secondary" href="mailto:salvoferro16@gmail.com">Contatta il team</a>
+      </div>
+      <p class="muted">Per proposte di partnership o supporto tecnico scrivi a <a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a>.</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

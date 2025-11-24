@@ -184,36 +184,23 @@
           <h2 class="site-footer__title">Navigazione</h2>
           <ul class="site-footer__list">
             <li><a href="{{ url_for('main.index') }}">Home</a></li>
-            <li><a href="{{ url_for('main.eruzione_oggi') }}">Eruzione Etna Oggi</a></li>
-            <li><a href="{{ url_for('main.webcam_etna') }}">Webcam Live</a></li>
-            <li><a href="{{ url_for('main.faq') }}">FAQ</a></li>
-            <li><a href="{{ url_for('main.tecnologia') }}">Tecnologia</a></li>
-            <li><a href="{{ url_for('main.progetto') }}">Il progetto</a></li>
-            <li><a href="{{ url_for('main.news') }}">News</a></li>
-            <li><a href="{{ url_for('main.team') }}">Team</a></li>
+            <li><a href="{{ url_for('main.index') }}#grafico-etna">Grafico</a></li>
+            <li><a href="{{ url_for('main.experience') }}">Etna Experience</a></li>
+            <li><a href="{{ url_for('category.category_view', slug='guide') }}">Guide</a></li>
+            <li><a href="{{ url_for('category.category_view', slug='hotel') }}">Hotel</a></li>
+            <li><a href="{{ url_for('category.category_view', slug='ristoranti') }}">Ristoranti</a></li>
+            <li><a href="{{ url_for('main.etna_bot') }}">Etna Bot</a></li>
           </ul>
         </div>
 
         <div class="site-footer__column">
-          <h2 class="site-footer__title">Strumenti</h2>
+          <h2 class="site-footer__title">Supporto e policy</h2>
           <ul class="site-footer__list">
-            <li><a href="{{ url_for('main.etna3d') }}">Etna 3D</a></li>
-            <li><a href="{{ url_for('category.category_view', slug='guide') }}">Partner EtnaMonitor</a></li>
-            <li><a href="{{ url_for('community.blog_index') }}">Blog</a></li>
-            <li><a href="{{ url_for('community.forum_home') }}">Forum Q&amp;A</a></li>
-            <li><a href="{{ url_for('community.feedback_portal') }}">Feedback</a></li>
-            <li><a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">Bot Telegram</a></li>
-            <li><a href="{{ url_for('billing.donate') }}">Sostieni il progetto</a></li>
-          </ul>
-        </div>
-
-        <div class="site-footer__column">
-          <h2 class="site-footer__title">Contatti &amp; policy</h2>
-          <ul class="site-footer__list">
-            <li><a href="mailto:salvoferro16@gmail.com">salvoferro16@gmail.com</a></li>
-            <li><a href="{{ url_for('main.privacy') }}">Privacy</a></li>
-            <li><a href="{{ url_for('main.terms') }}">Termini</a></li>
-            <li><a href="{{ url_for('main.cookies') }}">Cookie</a></li>
+            <li><a href="mailto:salvoferro16@gmail.com">Contatti</a></li>
+            <li><a href="{{ url_for('main.roadmap') }}">Roadmap</a></li>
+            <li><a href="{{ url_for('main.termini') }}">Termini</a></li>
+            <li><a href="{{ url_for('main.cookie') }}">Cookie</a></li>
+            <li><a href="{{ url_for('main.sostieni_progetto') }}">Sostieni il progetto</a></li>
           </ul>
         </div>
       </div>
