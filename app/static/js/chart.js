@@ -35,7 +35,8 @@
 
   const plotElement = document.getElementById('home-preview-plot');
   const loadingElement = document.getElementById('home-preview-loading');
-  const quickUpdateBtn = document.getElementById('quick-update-btn');
+  const quickUpdateBtn = document.getElementById('btn-aggiorna-dati-live')
+    || document.getElementById('quick-update-btn');
   const rangeButtons = Array.from(document.querySelectorAll('.chart-range-btn'));
   const lastUpdateEl = document.getElementById('live-last-update');
   const pointsEl = document.getElementById('live-data-points');
@@ -77,6 +78,7 @@
   let noticeTimer = null;
   let lastSuccessfulPayload = null;
   let currentLimit = DEFAULT_LIMIT;
+  let autoRefreshTimer = null;
 
   if (rangeButtons.length) {
     const activeButton = getActiveRangeButton() || rangeButtons[0];
@@ -629,6 +631,21 @@
     }
   }
 
+  function setupAutoRefresh() {
+    // Evita di creare intervalli duplicati nel caso in cui lo script venga inizializzato più volte.
+    if (autoRefreshTimer !== null) {
+      window.clearInterval(autoRefreshTimer);
+    }
+
+    // Aggiorna subito il grafico all'apertura della pagina, replicando il click manuale sul bottone.
+    runGlobalQuickUpdate();
+
+    // Aggiorna automaticamente il grafico ogni ora (60 minuti = 3.600.000 ms).
+    autoRefreshTimer = window.setInterval(() => {
+      runGlobalQuickUpdate();
+    }, 60 * 60 * 1000);
+  }
+
   function bindRangeSelector() {
     if (!rangeButtons.length) return;
     rangeButtons.forEach((button) => {
@@ -757,6 +774,7 @@
     refreshStatus();
     bindRangeSelector();
     bindQuickUpdate();
+    setupAutoRefresh();
     setupMobileNavObserver();
   }
 
