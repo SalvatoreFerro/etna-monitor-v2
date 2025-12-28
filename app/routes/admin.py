@@ -650,6 +650,8 @@ def media_library():
             flash("Risposta Cloudinary incompleta. Riprova.", "error")
             return redirect(url_for("admin.media_library"))
 
+        uploader = current_user if current_user.is_authenticated else None
+        uploader_id = uploader.id if uploader else None
         asset = MediaAsset(
             url=upload_payload.get("secure_url") or upload_payload.get("url"),
             public_id=upload_payload.get("public_id"),
@@ -657,7 +659,7 @@ def media_library():
             bytes=upload_payload.get("bytes") or size,
             width=upload_payload.get("width"),
             height=upload_payload.get("height"),
-            uploaded_by=current_user.id,
+            uploaded_by=uploader_id,
         )
         db.session.add(asset)
         db.session.commit()
