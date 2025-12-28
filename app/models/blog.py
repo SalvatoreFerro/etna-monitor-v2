@@ -19,12 +19,16 @@ class BlogPost(db.Model):
     slug = db.Column(db.String(200), nullable=False, unique=True, index=True)
     summary = db.Column(db.String(280), nullable=True)
     content = db.Column(db.Text, nullable=False)
-    hero_image = db.Column(db.String(512), nullable=True)
+    hero_image = db.Column(db.String(512), nullable=True)  # legacy storage
+    hero_image_url = db.Column(db.String(512), nullable=True)
+    meta_title = db.Column(db.String(190), nullable=True)
+    meta_description = db.Column(db.String(300), nullable=True)
     seo_title = db.Column(db.String(190), nullable=True)
     seo_description = db.Column(db.String(300), nullable=True)
     seo_keywords = db.Column(db.String(300), nullable=True)
     seo_score = db.Column(db.Integer, nullable=False, default=0)
     published = db.Column(db.Boolean, nullable=False, default=True, server_default=db.text("true"))
+    published_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -77,31 +81,24 @@ class BlogPost(db.Model):
 
         keywords = ", ".join(keyword_candidates[:12]) or None
 
-        self.seo_title = title[:180] if title else self.seo_title or None
-        self.seo_description = summary[:280] if summary else self.seo_description or None
+        self.meta_title = title[:180] if title else self.meta_title or None
+        self.meta_description = summary[:280] if summary else self.meta_description or None
+        # Keep legacy SEO fields in sync for backwards compatibility.
+        self.seo_title = self.meta_title
+        self.seo_description = self.meta_description
         self.seo_keywords = keywords
 
         score = 0
-        if self.seo_title:
+        if self.meta_title:
             score += 30
-        if self.seo_description and len(self.seo_description) >= 120:
+        if self.meta_description and len(self.meta_description) >= 120:
             score += 30
         if self.seo_keywords:
             score += 20
-        if self.hero_image:
+        if self.hero_image_url or self.hero_image:
             score += 20
 
         self.seo_score = min(score, 100)
-
-    @property
-    def hero_image_url(self) -> str | None:
-        """Return the configured hero image URL."""
-
-        return self.hero_image
-
-    @hero_image_url.setter
-    def hero_image_url(self, value: str | None) -> None:
-        self.hero_image = value
 
     @property
     def abstract(self) -> str | None:

@@ -14,6 +14,7 @@
     </div>
     <nav class="admin-actions" aria-label="Sezioni amministrative">
       <a href="{{ url_for('admin.ai_writer') }}" class="btn btn-premium btn-sm"><i class="fas fa-robot"></i> AI Writer</a>
+      <a href="{{ url_for('admin.media_library') }}" class="btn btn-secondary glass btn-sm" target="_blank" rel="noopener"><i class="fas fa-images"></i> Media Library</a>
       <a href="{{ url_for('admin.admin_home') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-arrow-left"></i> Torna alla dashboard</a>
       <a href="{{ url_for('admin.feedback_center') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-comments"></i> Feedback utenti</a>
     </nav>
@@ -36,13 +37,25 @@
         </label>
         <label>
           <span>Hero image (URL)</span>
-          <input type="url" name="hero_image" placeholder="https://…" />
+          <input type="url" name="hero_image_url" placeholder="https://…" data-hero-input />
+          <small><a href="{{ url_for('admin.media_library') }}" target="_blank" rel="noopener">Apri Media Library</a></small>
         </label>
       </div>
+      <img class="upload-dropzone__preview" data-hero-preview alt="Anteprima hero image" hidden />
       <label>
         <span>Abstract</span>
         <textarea name="summary" rows="3" maxlength="280" placeholder="Riassunto in 2-3 frasi"></textarea>
       </label>
+      <div class="form-grid">
+        <label>
+          <span>Meta title</span>
+          <input type="text" name="meta_title" maxlength="190" placeholder="Titolo SEO (opzionale)" />
+        </label>
+        <label>
+          <span>Meta description</span>
+          <textarea name="meta_description" rows="3" maxlength="300" placeholder="Descrizione SEO (opzionale)"></textarea>
+        </label>
+      </div>
       <label>
         <span>Contenuto</span>
         <textarea name="content" rows="8" required placeholder="Markdown o testo semplice supportato"></textarea>
@@ -57,6 +70,10 @@
           <span>Ottimizza SEO automaticamente</span>
         </label>
       </div>
+      <label>
+        <span>Programmazione pubblicazione (UTC)</span>
+        <input type="datetime-local" name="published_at" />
+      </label>
       <button type="submit" class="btn btn-premium"><i class="fas fa-rocket"></i> Pubblica articolo</button>
     </form>
   </article>
@@ -77,6 +94,7 @@
               <th>Slug</th>
               <th>SEO score</th>
               <th>Pubblicato</th>
+              <th>Pubblicazione</th>
               <th>Aggiornato</th>
               <th>Azioni</th>
             </tr>
@@ -96,6 +114,9 @@
                     <span class="badge muted">Bozza</span>
                   {% endif %}
                 </td>
+                <td data-label="Pubblicazione">
+                  {{ post.published_at.strftime('%d/%m/%Y %H:%M') if post.published_at else '—' }}
+                </td>
                 <td data-label="Aggiornato">{{ post.updated_at.strftime('%d/%m/%Y %H:%M') if post.updated_at else '—' }}</td>
                 <td data-label="Azioni">
                   <details class="admin-inline-editor">
@@ -110,15 +131,33 @@
                       </label>
                       <label>
                         <span>Hero image</span>
-                        <input type="url" name="hero_image" value="{{ post.hero_image or '' }}" />
+                        <input type="url" name="hero_image_url" value="{{ post.hero_image_url or post.hero_image or '' }}" data-hero-input />
+                        <small><a href="{{ url_for('admin.media_library') }}" target="_blank" rel="noopener">Apri Media Library</a></small>
                       </label>
+                      {% if post.hero_image_url or post.hero_image %}
+                        <img class="upload-dropzone__preview" data-hero-preview src="{{ post.hero_image_url or post.hero_image }}" alt="Anteprima hero image" />
+                      {% else %}
+                        <img class="upload-dropzone__preview" data-hero-preview alt="Anteprima hero image" hidden />
+                      {% endif %}
                       <label>
                         <span>Abstract</span>
                         <textarea name="summary" rows="3" maxlength="280">{{ post.summary or '' }}</textarea>
                       </label>
                       <label>
+                        <span>Meta title</span>
+                        <input type="text" name="meta_title" maxlength="190" value="{{ post.meta_title or post.seo_title or '' }}" />
+                      </label>
+                      <label>
+                        <span>Meta description</span>
+                        <textarea name="meta_description" rows="3" maxlength="300">{{ post.meta_description or post.seo_description or '' }}</textarea>
+                      </label>
+                      <label>
                         <span>Contenuto</span>
                         <textarea name="content" rows="6" required>{{ post.content }}</textarea>
+                      </label>
+                      <label>
+                        <span>Programmazione pubblicazione (UTC)</span>
+                        <input type="datetime-local" name="published_at" value="{{ post.published_at.strftime('%Y-%m-%dT%H:%M') if post.published_at else '' }}" />
                       </label>
                       <div class="form-grid">
                         <label class="checkbox">
@@ -132,6 +171,7 @@
                       </div>
                       <div class="admin-inline-actions">
                         <button type="submit" class="btn btn-premium btn-sm"><i class="fas fa-save"></i> Salva modifiche</button>
+                        <a class="btn btn-secondary glass btn-sm" href="{{ url_for('admin.blog_preview', post_id=post.id) }}" target="_blank" rel="noopener"><i class="fas fa-eye"></i> Preview</a>
                       </div>
                     </form>
                     <form method="post" class="admin-inline-actions">
@@ -158,4 +198,25 @@
     {% endif %}
   </article>
 </section>
+
+<script nonce="{{ csp_nonce() }}">
+  const heroInputs = document.querySelectorAll('[data-hero-input]');
+  heroInputs.forEach((input) => {
+    const form = input.closest('form');
+    const preview = form ? form.querySelector('[data-hero-preview]') : null;
+    if (!preview) return;
+    const updatePreview = () => {
+      const value = (input.value || '').trim();
+      if (!value) {
+        preview.hidden = true;
+        preview.removeAttribute('src');
+        return;
+      }
+      preview.src = value;
+      preview.hidden = false;
+    };
+    input.addEventListener('input', updatePreview);
+    updatePreview();
+  });
+</script>
 {% endblock %}

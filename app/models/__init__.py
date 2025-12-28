@@ -21,6 +21,7 @@ from .forum import ForumThread, ForumReply
 from .community_post import CommunityPost, ModerationAction
 from .feedback import UserFeedback, FeedbackVote
 from .gamification import UserGamificationProfile, UserBadge
+from .media_asset import MediaAsset
 
 try:
     from .sponsor_banner import (
@@ -53,6 +54,7 @@ __all__ = [
     'UserBadge',
     'CommunityPost',
     'ModerationAction',
+    'MediaAsset',
 ]
 
 if SponsorBanner is not None:

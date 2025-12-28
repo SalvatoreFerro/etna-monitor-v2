@@ -22,8 +22,8 @@
       <div class="blog-grid">
         {% for post in posts %}
           <article class="blog-card">
-            {% if post.hero_image %}
-              <img src="{{ post.hero_image }}" alt="{{ post.title }}" loading="lazy" decoding="async" />
+            {% if post.hero_image_url or post.hero_image %}
+              <img src="{{ post.hero_image_url or post.hero_image }}" alt="{{ post.title }}" loading="lazy" decoding="async" />
             {% endif %}
             <div class="blog-card__content">
               <span class="blog-card__date">{{ post.created_at.strftime('%d %B %Y') }}</span>
