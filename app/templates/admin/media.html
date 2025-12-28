@@ -1,0 +1,109 @@
+{% extends "layout.html" %}
+
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
+{% endblock %}
+
+{% block content %}
+<section class="admin-page admin-container" aria-labelledby="admin-media-title">
+  <header class="admin-card admin-card--hero card-premium animate-premium-fade admin-header" id="admin-media-title">
+    <div>
+      <h1><i class="fas fa-images"></i> Media Library</h1>
+      <p>Carica immagini su Cloudinary e copia gli URL pronti per l'editor del blog.</p>
+    </div>
+    <nav class="admin-actions" aria-label="Sezioni amministrative">
+      <a href="{{ url_for('admin.blog_manager') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-arrow-left"></i> Torna al blog</a>
+      <a href="{{ url_for('admin.admin_home') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-house"></i> Dashboard</a>
+    </nav>
+  </header>
+
+  <article class="admin-card card-premium animate-premium-slide">
+    <header class="admin-section-header">
+      <div>
+        <h2><i class="fas fa-cloud-upload-alt"></i> Upload nuova immagine</h2>
+        <p>Formati supportati: JPG, PNG, WEBP. Limite {{ '%.1f'|format(max_upload_bytes / (1024 * 1024)) }}MB.</p>
+      </div>
+    </header>
+    <form method="post" enctype="multipart/form-data" class="admin-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <label>
+        <span>Seleziona immagine</span>
+        <input type="file" name="media_file" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" required />
+      </label>
+      <p class="admin-caption">Nota: le immagini vengono salvate così come caricate (TODO: aggiungere stripping EXIF se necessario).</p>
+      <button type="submit" class="btn btn-premium"><i class="fas fa-upload"></i> Carica su Cloudinary</button>
+    </form>
+  </article>
+
+  <article class="admin-card card-premium animate-premium-fade">
+    <header class="admin-section-header">
+      <div>
+        <h2><i class="fas fa-photo-video"></i> Media caricati</h2>
+        <p>Ultimi file caricati dall'area admin.</p>
+      </div>
+    </header>
+    {% if assets %}
+      <div class="admin-table-wrapper">
+        <table class="table table-premium admin-table">
+          <thead>
+            <tr>
+              <th>Preview</th>
+              <th>File</th>
+              <th>Dimensioni</th>
+              <th>Caricato il</th>
+              <th>Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for asset in assets %}
+              <tr>
+                <td data-label="Preview">
+                  <img src="{{ asset.url }}" alt="{{ asset.original_filename or 'Media asset' }}" loading="lazy" decoding="async" width="80" />
+                </td>
+                <td data-label="File">
+                  <div>{{ asset.original_filename or asset.public_id }}</div>
+                  <small><code>{{ asset.public_id }}</code></small>
+                </td>
+                <td data-label="Dimensioni">
+                  {% if asset.width and asset.height %}
+                    {{ asset.width }} × {{ asset.height }} px
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td data-label="Caricato il">{{ asset.created_at.strftime('%d/%m/%Y %H:%M') if asset.created_at else '—' }}</td>
+                <td data-label="Azioni">
+                  <button type="button" class="btn btn-secondary glass btn-sm" data-copy-url="{{ asset.url }}">
+                    <i class="fas fa-copy"></i> Copia URL
+                  </button>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="admin-caption">Nessuna immagine caricata. Inizia con un upload dall'area sopra.</p>
+    {% endif %}
+  </article>
+</section>
+
+<script nonce="{{ csp_nonce() }}">
+  document.querySelectorAll('[data-copy-url]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const url = button.getAttribute('data-copy-url');
+      if (!url) return;
+      try {
+        await navigator.clipboard.writeText(url);
+        button.innerHTML = '<i class="fas fa-check"></i> Copiato';
+        setTimeout(() => {
+          button.innerHTML = '<i class="fas fa-copy"></i> Copia URL';
+        }, 1500);
+      } catch (error) {
+        window.prompt('Copia manualmente l\'URL:', url);
+      }
+    });
+  });
+</script>
+{% endblock %}

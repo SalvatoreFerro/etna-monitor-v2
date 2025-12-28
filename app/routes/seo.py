@@ -209,8 +209,12 @@ def sitemap() -> Response:
     # Blog index and articles
     blog_posts: list[BlogPost] = []
     try:
+        now = datetime.utcnow()
         blog_posts = (
-            BlogPost.query.filter_by(published=True)
+            BlogPost.query.filter(
+                BlogPost.published.is_(True),
+                or_(BlogPost.published_at.is_(None), BlogPost.published_at <= now),
+            )
             .order_by(BlogPost.updated_at.desc(), BlogPost.created_at.desc())
             .all()
         )

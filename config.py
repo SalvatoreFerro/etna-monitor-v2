@@ -136,6 +136,12 @@ class Config:
     DATA_DIR = os.getenv("DATA_DIR", "/var/tmp")
     CSV_PATH = os.getenv("CSV_PATH") or os.path.join(DATA_DIR, "curva.csv")
     STATIC_ASSET_VERSION = _resolve_static_asset_version()
+
+    # Media library settings (Cloudinary + upload size in bytes).
+    CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")
+    CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "")
+    CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "")
+    MEDIA_UPLOAD_MAX_BYTES = int(os.getenv("MEDIA_UPLOAD_MAX_BYTES", str(8 * 1024 * 1024)))
     
     # Archive settings
     ARCHIVE_BASE_PATH = os.getenv("ARCHIVE_BASE_PATH", "data/archives")
