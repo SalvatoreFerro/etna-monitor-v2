@@ -16,6 +16,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user, login_required
+from sqlalchemy import func, or_
 
 from ..models import (
     db,
@@ -37,9 +38,13 @@ bp = Blueprint("community", __name__, url_prefix="/community")
 
 @bp.route("/blog/")
 def blog_index():
+    now = datetime.utcnow()
     posts = (
-        BlogPost.query.filter_by(published=True)
-        .order_by(BlogPost.created_at.desc())
+        BlogPost.query.filter(
+            BlogPost.published.is_(True),
+            or_(BlogPost.published_at.is_(None), BlogPost.published_at <= now),
+        )
+        .order_by(func.coalesce(BlogPost.published_at, BlogPost.created_at).desc())
         .all()
     )
     return render_template("blog/index.html", posts=posts)
@@ -48,7 +53,11 @@ def blog_index():
 @bp.route("/blog/<slug>/")
 def blog_detail(slug: str):
     post = BlogPost.query.filter_by(slug=slug).first_or_404()
-    if not post.published and not (
+    now = datetime.utcnow()
+    is_visible = post.published and (
+        post.published_at is None or post.published_at <= now
+    )
+    if not is_visible and not (
         current_user.is_authenticated and current_user.is_admin
     ):
         flash("L'articolo richiesto non è disponibile.", "error")
@@ -60,9 +69,10 @@ def blog_detail(slug: str):
     related_posts = (
         BlogPost.query.filter(
             BlogPost.published.is_(True),
+            or_(BlogPost.published_at.is_(None), BlogPost.published_at <= now),
             BlogPost.id != post.id,
         )
-        .order_by(BlogPost.created_at.desc())
+        .order_by(func.coalesce(BlogPost.published_at, BlogPost.created_at).desc())
         .limit(3)
         .all()
     )
@@ -70,18 +80,22 @@ def blog_detail(slug: str):
     previous_post = (
         BlogPost.query.filter(
             BlogPost.published.is_(True),
-            BlogPost.created_at < post.created_at,
+            or_(BlogPost.published_at.is_(None), BlogPost.published_at <= now),
+            func.coalesce(BlogPost.published_at, BlogPost.created_at)
+            < func.coalesce(post.published_at, post.created_at),
         )
-        .order_by(BlogPost.created_at.desc())
+        .order_by(func.coalesce(BlogPost.published_at, BlogPost.created_at).desc())
         .first()
     )
 
     next_post = (
         BlogPost.query.filter(
             BlogPost.published.is_(True),
-            BlogPost.created_at > post.created_at,
+            or_(BlogPost.published_at.is_(None), BlogPost.published_at <= now),
+            func.coalesce(BlogPost.published_at, BlogPost.created_at)
+            > func.coalesce(post.published_at, post.created_at),
         )
-        .order_by(BlogPost.created_at.asc())
+        .order_by(func.coalesce(BlogPost.published_at, BlogPost.created_at).asc())
         .first()
     )
 

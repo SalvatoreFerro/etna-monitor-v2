@@ -26,6 +26,7 @@ from ..utils.auth import admin_required
 from ..models import (
     db,
     BlogPost,
+    MediaAsset,
     UserFeedback,
     AdminActionLog,
     CommunityPost,
@@ -67,9 +68,14 @@ except Exception:  # pragma: no cover - optional dependency guard
     SponsorBannerImpression = None  # type: ignore
 from ..services.telegram_service import TelegramService
 from ..utils.csrf import validate_csrf_token
-from ..filters import strip_literal_breaks
+from ..filters import render_markdown, strip_literal_breaks
 from ..services.email_service import send_email
 from ..services.ai_writer import generate_ai_article
+from ..services.media_library import (
+    configure_cloudinary,
+    upload_media_asset,
+    validate_media_file,
+)
 
 bp = Blueprint("admin", __name__)
 
@@ -88,6 +94,18 @@ def _parse_date_param(value, default):
         return datetime.strptime(value, "%Y-%m-%d").date()
     except ValueError:
         return default
+
+
+def _parse_datetime_local(value: str | None) -> datetime | None:
+    """Parse datetime-local input values from the admin forms."""
+
+    if not value:
+        return None
+    try:
+        # Admin inputs are stored as naive UTC timestamps for simplicity.
+        return datetime.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 def _apply_tracking_filters(query, model, start_dt, end_dt, banner_id, page_filter):
@@ -327,6 +345,12 @@ def admin_home():
             "url": url_for("admin.blog_manager"),
         },
         {
+            "label": "Media Library",
+            "description": "Carica immagini su Cloudinary e copia URL pronti per gli articoli.",
+            "icon": "fa-images",
+            "url": url_for("admin.media_library"),
+        },
+        {
             "label": "AI Writer",
             "description": "Genera bozze editoriali da revisionare prima della pubblicazione.",
             "icon": "fa-robot",
@@ -472,6 +496,8 @@ def ai_writer():
                     title=article.get("title") or form_values["topic"],
                     summary=summary,
                     content=generated_markdown,
+                    meta_title=article.get("meta_title") or None,
+                    meta_description=summary,
                     seo_title=article.get("meta_title") or None,
                     seo_description=summary,
                     published=False,
@@ -515,12 +541,17 @@ def blog_manager():
                 flash("Titolo e contenuto sono obbligatori.", "error")
                 return redirect(url_for("admin.blog_manager"))
 
+            hero_image_url = (request.form.get("hero_image_url") or "").strip() or None
             post = BlogPost(
                 title=title,
                 summary=(request.form.get("summary") or "").strip() or None,
                 content=content,
-                hero_image=(request.form.get("hero_image") or "").strip() or None,
+                hero_image_url=hero_image_url,
+                hero_image=hero_image_url,  # legacy sync for existing data consumers
+                meta_title=(request.form.get("meta_title") or "").strip() or None,
+                meta_description=(request.form.get("meta_description") or "").strip() or None,
                 published=request.form.get("published") == "1",
+                published_at=_parse_datetime_local(request.form.get("published_at")),
             )
             if request.form.get("auto_seo") == "1":
                 post.apply_seo_boost()
@@ -540,8 +571,13 @@ def blog_manager():
             post.summary = (request.form.get("summary") or "").strip() or None
             new_content = request.form.get("content") or post.content
             post.content = strip_literal_breaks(new_content).strip()
-            post.hero_image = (request.form.get("hero_image") or "").strip() or None
+            hero_image_url = (request.form.get("hero_image_url") or "").strip() or None
+            post.hero_image_url = hero_image_url
+            post.hero_image = hero_image_url  # legacy sync for existing data consumers
+            post.meta_title = (request.form.get("meta_title") or "").strip() or None
+            post.meta_description = (request.form.get("meta_description") or "").strip() or None
             post.published = request.form.get("published") == "1"
+            post.published_at = _parse_datetime_local(request.form.get("published_at"))
             if request.form.get("auto_seo") == "1":
                 post.apply_seo_boost()
             db.session.commit()
@@ -575,6 +611,90 @@ def blog_manager():
 
     posts = BlogPost.query.order_by(BlogPost.updated_at.desc()).all()
     return render_template("admin/blog.html", posts=posts)
+
+
+@bp.route("/media", methods=["GET", "POST"])
+@admin_required
+def media_library():
+    if request.method == "POST":
+        csrf_token = request.form.get("csrf_token")
+        if not _is_csrf_valid(csrf_token):
+            flash("Token CSRF non valido. Riprova.", "error")
+            return redirect(url_for("admin.media_library"))
+
+        max_bytes = int(current_app.config.get("MEDIA_UPLOAD_MAX_BYTES", 8 * 1024 * 1024))
+        file_storage = request.files.get("media_file")
+        is_valid, error_message, size, _extension = validate_media_file(
+            file_storage,
+            max_bytes=max_bytes,
+        )
+        if not is_valid:
+            flash(error_message or "File non valido.", "error")
+            return redirect(url_for("admin.media_library"))
+
+        configured, config_error = configure_cloudinary()
+        if not configured:
+            flash(config_error or "Configurazione Cloudinary mancante.", "error")
+            return redirect(url_for("admin.media_library"))
+
+        try:
+            upload_payload = upload_media_asset(file_storage)
+        except Exception as exc:  # pragma: no cover - external service dependency
+            current_app.logger.exception("Cloudinary upload failed: %s", exc)
+            flash("Errore durante l'upload su Cloudinary. Riprova.", "error")
+            return redirect(url_for("admin.media_library"))
+
+        if not upload_payload.get("public_id") or not (
+            upload_payload.get("secure_url") or upload_payload.get("url")
+        ):
+            flash("Risposta Cloudinary incompleta. Riprova.", "error")
+            return redirect(url_for("admin.media_library"))
+
+        uploader = current_user if current_user.is_authenticated else None
+        uploader_id = uploader.id if uploader else None
+        asset = MediaAsset(
+            url=upload_payload.get("secure_url") or upload_payload.get("url"),
+            public_id=upload_payload.get("public_id"),
+            original_filename=upload_payload.get("original_filename") or getattr(file_storage, "filename", None),
+            bytes=upload_payload.get("bytes") or size,
+            width=upload_payload.get("width"),
+            height=upload_payload.get("height"),
+            uploaded_by=uploader_id,
+        )
+        db.session.add(asset)
+        db.session.commit()
+        flash("Immagine caricata con successo.", "success")
+        return redirect(url_for("admin.media_library"))
+
+    assets = MediaAsset.query.order_by(MediaAsset.created_at.desc()).all()
+    max_bytes = int(current_app.config.get("MEDIA_UPLOAD_MAX_BYTES", 8 * 1024 * 1024))
+    return render_template(
+        "admin/media.html",
+        assets=assets,
+        max_upload_bytes=max_bytes,
+    )
+
+
+@bp.route("/blog/preview/<int:post_id>")
+@admin_required
+def blog_preview(post_id: int):
+    post = BlogPost.query.get_or_404(post_id)
+    author_name = getattr(post, "author", None) or getattr(post, "author_name", None)
+    post_url = url_for("community.blog_detail", slug=post.slug, _external=True)
+    body_html = render_markdown(post.content or "")
+
+    return render_template(
+        "blog/detail.html",
+        post=post,
+        post_url=post_url,
+        author_name=author_name,
+        related_posts=[],
+        previous_post=None,
+        next_post=None,
+        breadcrumb_schema=None,
+        body_html=body_html,
+        preview_mode=True,
+    )
 
 
 @bp.route("/forum", methods=["GET", "POST"])
