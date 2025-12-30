@@ -14,6 +14,18 @@
   {'label': 'Metodologia', 'url': url_for('main.tecnologia'), 'endpoint': 'main.tecnologia'},
   {'label': 'Contatti', 'url': 'mailto:salvoferro16@gmail.com', 'endpoint': none}
 ] %}
+{% set dashboard_url = url_for('dashboard.dashboard_home') %}
+{% set telegram_url = dashboard_url ~ '#alert-settings' %}
+{% set journey_links = [
+  {
+    'label': 'Login',
+    'url': url_for('auth.login') if not is_authenticated else dashboard_url,
+    'endpoint': 'auth.login'
+  },
+  {'label': 'Dashboard', 'url': dashboard_url, 'endpoint': 'dashboard.dashboard_home'},
+  {'label': 'Telegram', 'url': telegram_url, 'endpoint': 'dashboard.dashboard_home'},
+  {'label': 'Premium', 'url': url_for('main.pricing'), 'endpoint': 'main.pricing'},
+] %}
 
 {% set nav_links = [
   {'label': 'Dati', 'children': data_links},
