@@ -3,6 +3,7 @@ import io
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
+from uuid import uuid4
 
 from flask import (
     Blueprint,
@@ -35,7 +36,12 @@ from ..models import (
 )
 from ..models.user import User
 from ..models.event import Event
-from ..models.partner import Partner, PartnerCategory, PartnerSubscription
+from ..models.partner import (
+    PARTNER_STATUSES,
+    Partner,
+    PartnerCategory,
+    PartnerSubscription,
+)
 from ..services.gamification_service import ensure_demo_profiles
 from ..services.partner_categories import (
     CATEGORY_FORM_FIELDS,
@@ -54,7 +60,7 @@ from ..services.partner_directory import (
     generate_invoice_pdf,
     slots_usage,
 )
-from ..utils.partners import next_partner_slug
+from ..utils.partners import build_partner_media_url, next_partner_slug
 
 try:
     from ..models.sponsor_banner import (
@@ -148,31 +154,69 @@ def _serialize_partner(partner: Partner) -> dict:
 ADMIN_USERS_PER_PAGE = 20
 
 _ALLOWED_LOGO_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"}
+_ALLOWED_LOGO_MIME_TYPES = {
+    "image/png",
+    "image/jpeg",
+    "image/gif",
+    "image/webp",
+    "image/svg+xml",
+}
 
 
-def _store_partner_logo(file_storage: FileStorage | None, *, slug: str) -> tuple[str | None, str | None]:
+def _validate_partner_logo(
+    file_storage: FileStorage | None,
+    *,
+    max_bytes: int,
+) -> tuple[bool, str | None, str | None]:
+    if not file_storage or not file_storage.filename:
+        return False, None, None
+
+    filename = secure_filename(file_storage.filename)
+    if not filename:
+        return False, "Nome file non valido.", None
+
+    extension = Path(filename).suffix.lower()
+    if extension not in _ALLOWED_LOGO_EXTENSIONS:
+        return False, "Formato immagine non supportato.", None
+
+    mimetype = (file_storage.mimetype or "").lower()
+    if mimetype and mimetype not in _ALLOWED_LOGO_MIME_TYPES:
+        return False, "Tipo immagine non supportato.", None
+
+    file_storage.stream.seek(0, 2)
+    size = file_storage.stream.tell()
+    file_storage.stream.seek(0)
+
+    if size > max_bytes:
+        max_mb = max_bytes / (1024 * 1024)
+        return False, f"File troppo grande. Limite: {max_mb:.1f}MB.", None
+
+    return True, None, extension
+
+
+def _store_partner_logo(
+    file_storage: FileStorage | None,
+    *,
+    slug: str,
+    max_bytes: int,
+) -> tuple[str | None, str | None]:
     """Persist the uploaded partner logo to the static directory.
 
     Returns a tuple of (relative_path, error_message).
     """
 
-    if not file_storage or not file_storage.filename:
+    is_valid, error, extension = _validate_partner_logo(file_storage, max_bytes=max_bytes)
+    if not is_valid:
+        return None, error
+    if not extension:
         return None, None
-
-    filename = secure_filename(file_storage.filename)
-    if not filename:
-        return None, "Nome file non valido."
-
-    extension = Path(filename).suffix.lower()
-    if extension not in _ALLOWED_LOGO_EXTENSIONS:
-        return None, "Formato immagine non supportato."
 
     static_folder = Path(current_app.static_folder or "static")
     upload_dir = static_folder / "images" / "partners"
     upload_dir.mkdir(parents=True, exist_ok=True)
 
-    timestamp = int(datetime.utcnow().timestamp())
-    stored_name = f"{slug}-{timestamp}{extension}"
+    unique_id = uuid4().hex
+    stored_name = f"{slug}-{unique_id}{extension}"
     destination = upload_dir / stored_name
 
     file_storage.stream.seek(0)
@@ -1253,6 +1297,11 @@ def donations():
 @bp.route("/partners", methods=["GET"])
 @admin_required
 def partners_dashboard():
+    search_query = (request.args.get("q") or "").strip()
+    status_filter = (request.args.get("status") or "").strip()
+    category_filter = (request.args.get("category") or "").strip()
+    order_by = (request.args.get("order") or "created_desc").strip()
+
     try:
         ensure_partner_slug_column()
     except SQLAlchemyError as exc:  # pragma: no cover - defensive safeguard
@@ -1297,14 +1346,54 @@ def partners_dashboard():
             raise
 
     try:
-        partners = (
-            Partner.query.options(
-                joinedload(Partner.category),
-                joinedload(Partner.subscriptions),
-            )
-            .order_by(Partner.created_at.desc())
-            .all()
+        partners_query = Partner.query.options(
+            joinedload(Partner.category),
+            joinedload(Partner.subscriptions),
         )
+
+        if search_query:
+            like_value = f"%{search_query.lower()}%"
+            partners_query = partners_query.filter(
+                or_(
+                    func.lower(Partner.name).like(like_value),
+                    func.lower(Partner.email).like(like_value),
+                    func.lower(Partner.website_url).like(like_value),
+                )
+            )
+
+        if status_filter:
+            if status_filter == "active":
+                partners_query = partners_query.filter(Partner.status == "approved")
+            elif status_filter in PARTNER_STATUSES:
+                partners_query = partners_query.filter(Partner.status == status_filter)
+
+        if category_filter:
+            try:
+                category_id = int(category_filter)
+            except ValueError:
+                category_id = None
+            if category_id:
+                partners_query = partners_query.filter(Partner.category_id == category_id)
+
+        if order_by == "name_asc":
+            partners_query = partners_query.order_by(func.lower(Partner.name).asc())
+        elif order_by == "name_desc":
+            partners_query = partners_query.order_by(func.lower(Partner.name).desc())
+        elif order_by == "updated_desc":
+            partners_query = partners_query.order_by(Partner.updated_at.desc())
+        elif order_by == "created_asc":
+            partners_query = partners_query.order_by(Partner.created_at.asc())
+        elif order_by == "category":
+            partners_query = partners_query.join(Partner.category).order_by(
+                PartnerCategory.name.asc(),
+                Partner.name.asc(),
+            )
+        elif order_by == "status":
+            partners_query = partners_query.order_by(Partner.status.asc(), Partner.name.asc())
+        else:
+            partners_query = partners_query.order_by(Partner.created_at.desc())
+
+        partners = partners_query.all()
     except SQLAlchemyError as exc:
         db.session.rollback()
         if missing_column_error(exc, "partners", "extra_data"):
@@ -1312,23 +1401,17 @@ def partners_dashboard():
                 "partners.extra_data column missing. Attempting automatic migration."
             )
             ensure_partner_extra_data_column()
-            partners = (
-                Partner.query.options(
-                    joinedload(Partner.category),
-                    joinedload(Partner.subscriptions),
-                )
-                .order_by(Partner.created_at.desc())
-                .all()
-            )
+            partners = Partner.query.options(
+                joinedload(Partner.category),
+                joinedload(Partner.subscriptions),
+            ).order_by(Partner.created_at.desc()).all()
         elif missing_table_error(exc, "partner_subscriptions"):
             current_app.logger.warning(
                 "Partner subscriptions table unavailable. Showing partner list without subscriptions."
             )
-            partners = (
-                Partner.query.options(joinedload(Partner.category))
-                .order_by(Partner.created_at.desc())
-                .all()
-            )
+            partners = Partner.query.options(joinedload(Partner.category)).order_by(
+                Partner.created_at.desc()
+            ).all()
         else:  # pragma: no cover
             current_app.logger.exception("Unable to load partners", exc_info=exc)
             partners = []
@@ -1342,8 +1425,17 @@ def partners_dashboard():
         partners=partners,
         usage=usage,
         category_fields=category_fields,
+        filters={
+            "q": search_query,
+            "status": status_filter,
+            "category": category_filter,
+            "order": order_by,
+        },
         payment_methods=current_app.config.get("PARTNER_PAYMENT_METHODS", ("paypal_manual", "cash")),
         current_year=datetime.utcnow().year,
+        max_upload_bytes=int(
+            current_app.config.get("MEDIA_UPLOAD_MAX_BYTES", 8 * 1024 * 1024)
+        ),
     )
 
 
@@ -1442,37 +1534,21 @@ def partners_create():
         flash("Categoria non trovata.", "error")
         return redirect(url_for("admin.partners_dashboard"))
 
-    extra_fields: dict[str, object] = {}
-    definitions = CATEGORY_FORM_FIELDS.get(category.slug, [])
-    for field in definitions:
-        field_name = field["name"]
-        raw_value = (request.form.get(field_name) or "").strip()
-        if not raw_value:
-            if field.get("required"):
-                flash(f"{field['label']} è obbligatorio.", "error")
-                return redirect(url_for("admin.partners_dashboard"))
-            continue
-
-        field_type = field.get("type", "text")
-        if field_type == "number":
-            try:
-                value = int(raw_value)
-            except ValueError:
-                flash(f"{field['label']} deve essere un numero valido.", "error")
-                return redirect(url_for("admin.partners_dashboard"))
-            min_value = field.get("min")
-            if isinstance(min_value, int) and value < min_value:
-                flash(
-                    f"{field['label']} deve essere maggiore o uguale a {min_value}.",
-                    "error",
-                )
-                return redirect(url_for("admin.partners_dashboard"))
-            extra_fields[field_name] = value
-        else:
-            extra_fields[field_name] = raw_value
+    extra_fields, error = _build_partner_extra_data(
+        category=category,
+        form_data=request.form,
+    )
+    if error:
+        flash(error, "error")
+        return redirect(url_for("admin.partners_dashboard"))
 
     slug_value = next_partner_slug(name)
-    logo_path, error = _store_partner_logo(request.files.get("logo"), slug=slug_value)
+    max_bytes = int(current_app.config.get("MEDIA_UPLOAD_MAX_BYTES", 8 * 1024 * 1024))
+    logo_path, error = _store_partner_logo(
+        request.files.get("logo"),
+        slug=slug_value,
+        max_bytes=max_bytes,
+    )
     if error:
         flash(error, "error")
         return redirect(url_for("admin.partners_dashboard"))
@@ -1509,23 +1585,187 @@ def partners_create():
     return redirect(url_for("admin.partners_dashboard"))
 
 
-def _delete_partner_logo(partner: Partner) -> None:
-    if not partner.logo_path:
+@bp.route("/partners/<int:partner_id>/edit", methods=["GET", "POST"])
+@admin_required
+def partners_edit(partner_id: int):
+    partner = Partner.query.options(
+        joinedload(Partner.category),
+        joinedload(Partner.subscriptions),
+    ).get_or_404(partner_id)
+
+    try:
+        categories = (
+            PartnerCategory.query.order_by(PartnerCategory.sort_order, PartnerCategory.name).all()
+        )
+    except SQLAlchemyError as exc:
+        db.session.rollback()
+        if missing_table_error(exc, "partner_categories"):
+            current_app.logger.warning(
+                "Partner categories table missing. Bootstrapping defaults for admin editor."
+            )
+            categories = ensure_partner_categories()
+        else:  # pragma: no cover
+            current_app.logger.exception("Unable to load partner categories", exc_info=exc)
+            raise
+
+    category_fields = serialize_category_fields(categories)
+    max_bytes = int(current_app.config.get("MEDIA_UPLOAD_MAX_BYTES", 8 * 1024 * 1024))
+
+    if request.method == "POST":
+        if not validate_csrf_token(request.form.get("csrf_token")):
+            flash("Token CSRF non valido.", "error")
+            return redirect(url_for("admin.partners_edit", partner_id=partner.id))
+
+        name = (request.form.get("name") or "").strip()
+        category_id_raw = request.form.get("category_id")
+        if not name or not category_id_raw:
+            flash("Nome e categoria sono obbligatori.", "error")
+            return redirect(url_for("admin.partners_edit", partner_id=partner.id))
+
+        try:
+            category_id = int(category_id_raw)
+        except (TypeError, ValueError):
+            flash("Categoria non valida.", "error")
+            return redirect(url_for("admin.partners_edit", partner_id=partner.id))
+
+        category = PartnerCategory.query.get(category_id)
+        if not category:
+            flash("Categoria non trovata.", "error")
+            return redirect(url_for("admin.partners_edit", partner_id=partner.id))
+
+        extra_fields, error = _build_partner_extra_data(
+            category=category,
+            form_data=request.form,
+        )
+        if error:
+            flash(error, "error")
+            return redirect(url_for("admin.partners_edit", partner_id=partner.id))
+
+        status = (request.form.get("status") or partner.status).strip()
+        if status not in PARTNER_STATUSES:
+            flash("Stato non valido.", "error")
+            return redirect(url_for("admin.partners_edit", partner_id=partner.id))
+
+        was_approved = partner.status == "approved"
+        previous_category_id = partner.category_id
+
+        partner.name = name
+        partner.category = category
+        partner.short_desc = (request.form.get("short_desc") or "").strip()
+        partner.long_desc = (request.form.get("long_desc") or "").strip()
+        partner.website_url = (request.form.get("website_url") or "").strip() or None
+        partner.phone = (request.form.get("phone") or "").strip() or None
+        partner.whatsapp = (request.form.get("whatsapp") or "").strip() or None
+        partner.email = (request.form.get("email") or "").strip() or None
+        partner.instagram = (request.form.get("instagram") or "").strip() or None
+        partner.facebook = (request.form.get("facebook") or "").strip() or None
+        partner.tiktok = (request.form.get("tiktok") or "").strip() or None
+        partner.address = (request.form.get("address") or "").strip() or None
+        partner.city = (request.form.get("city") or "").strip() or None
+        partner.featured = bool(request.form.get("featured"))
+        try:
+            partner.sort_order = int(request.form.get("sort_order") or 0)
+        except ValueError:
+            flash("Ordine non valido.", "error")
+            return redirect(url_for("admin.partners_edit", partner_id=partner.id))
+        partner.extra_data = extra_fields
+
+        if status == "approved" and (not was_approved or previous_category_id != category.id):
+            if not can_approve_partner(partner):
+                flash("Categoria completa. Impossibile approvare.", "error")
+                return redirect(url_for("admin.partners_edit", partner_id=partner.id))
+
+        if status == "approved" and not was_approved:
+            partner.mark_approved()
+        elif status != "approved":
+            partner.status = status
+            partner.approved_at = None
+
+        logo_path, logo_error = _store_partner_logo(
+            request.files.get("logo"),
+            slug=partner.slug,
+            max_bytes=max_bytes,
+        )
+        if logo_error:
+            flash(logo_error, "error")
+            return redirect(url_for("admin.partners_edit", partner_id=partner.id))
+
+        remove_logo = request.form.get("remove_logo") == "1"
+        if logo_path:
+            previous_logo = partner.logo_path
+            partner.logo_path = logo_path
+            if previous_logo and previous_logo != logo_path:
+                _delete_partner_logo_path(previous_logo)
+        elif remove_logo:
+            previous_logo = partner.logo_path
+            partner.logo_path = None
+            _delete_partner_logo_path(previous_logo)
+
+        db.session.commit()
+        flash(f"Partner {partner.name} aggiornato.", "success")
+        return redirect(url_for("admin.partners_edit", partner_id=partner.id))
+
+    return render_template(
+        "admin/partner_edit.html",
+        partner=partner,
+        categories=categories,
+        category_fields=category_fields,
+        logo_url=build_partner_media_url(partner.logo_path),
+        max_upload_bytes=max_bytes,
+    )
+
+
+def _delete_partner_logo_path(logo_path: str | None) -> None:
+    if not logo_path:
         return
 
     static_folder = Path(current_app.static_folder or "static")
-    logo_path = static_folder / partner.logo_path
+    resolved_path = static_folder / logo_path
 
     try:
-        if logo_path.exists() and logo_path.is_file():
-            logo_path.unlink()
+        if resolved_path.exists() and resolved_path.is_file():
+            resolved_path.unlink()
     except OSError as exc:  # pragma: no cover - filesystem failures are non-fatal
         current_app.logger.warning(
             "Unable to remove logo %s for partner %s: %s",
-            partner.logo_path,
-            partner.id,
+            logo_path,
+            "n/a",
             exc,
         )
+
+
+def _delete_partner_logo(partner: Partner) -> None:
+    _delete_partner_logo_path(partner.logo_path)
+
+
+def _build_partner_extra_data(
+    *,
+    category: PartnerCategory,
+    form_data: dict,
+) -> tuple[dict[str, object], str | None]:
+    extra_fields: dict[str, object] = {}
+    definitions = CATEGORY_FORM_FIELDS.get(category.slug, [])
+    for field in definitions:
+        field_name = field["name"]
+        raw_value = (form_data.get(field_name) or "").strip()
+        if not raw_value:
+            if field.get("required"):
+                return {}, f"{field['label']} è obbligatorio."
+            continue
+
+        field_type = field.get("type", "text")
+        if field_type == "number":
+            try:
+                value = int(raw_value)
+            except ValueError:
+                return {}, f"{field['label']} deve essere un numero valido."
+            min_value = field.get("min")
+            if isinstance(min_value, int) and value < min_value:
+                return {}, f"{field['label']} deve essere maggiore o uguale a {min_value}."
+            extra_fields[field_name] = value
+        else:
+            extra_fields[field_name] = raw_value
+    return extra_fields, None
 
 
 @bp.route("/partners/<int:partner_id>/status", methods=["POST"])
@@ -1559,6 +1799,33 @@ def partners_update_status(partner_id: int):
         flash(f"Partner {partner.name} segnato come scaduto.", "warning")
     else:
         flash("Azione non riconosciuta.", "error")
+
+    return redirect(url_for("admin.partners_dashboard"))
+
+
+@bp.route("/partners/<int:partner_id>/toggle", methods=["POST"])
+@admin_required
+def partners_toggle_active(partner_id: int):
+    if not validate_csrf_token(request.form.get("csrf_token")):
+        flash("Token CSRF non valido.", "error")
+        return redirect(url_for("admin.partners_dashboard"))
+
+    partner = Partner.query.options(
+        joinedload(Partner.category),
+        joinedload(Partner.subscriptions),
+    ).get_or_404(partner_id)
+
+    if partner.status == "disabled":
+        if not can_approve_partner(partner):
+            flash("Categoria completa. Impossibile riattivare.", "error")
+            return redirect(url_for("admin.partners_dashboard"))
+        partner.mark_approved()
+        db.session.commit()
+        flash(f"Partner {partner.name} riattivato.", "success")
+    else:
+        partner.status = "disabled"
+        db.session.commit()
+        flash(f"Partner {partner.name} disabilitato.", "info")
 
     return redirect(url_for("admin.partners_dashboard"))
 
