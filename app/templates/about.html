@@ -72,10 +72,20 @@
     <div class="cta-panel">
       <div>
         <h2>Pronto a usare EtnaMonitor?</h2>
-        <p>Accedi per configurare la tua dashboard o collega il bot Telegram in pochi secondi.</p>
+        <p>
+          {% if current_user.is_authenticated %}
+            Vai in dashboard per configurare soglie, alert e collegamento Telegram.
+          {% else %}
+            Accedi per configurare la tua dashboard o collega il bot Telegram in pochi secondi.
+          {% endif %}
+        </p>
       </div>
       <div class="cta-panel__actions">
-        <a class="btn btn-primary" href="{{ url_for('auth.login') }}">Registrati / Accedi</a>
+        {% if current_user.is_authenticated %}
+          <a class="btn btn-primary" href="{{ url_for('dashboard.dashboard_home') }}">Vai alla Dashboard</a>
+        {% else %}
+          <a class="btn btn-primary" href="{{ url_for('auth.login') }}">Registrati / Accedi</a>
+        {% endif %}
         <a class="btn btn-secondary" href="{{ url_for('main.etna_bot') }}">Collega il bot Telegram</a>
       </div>
     </div>

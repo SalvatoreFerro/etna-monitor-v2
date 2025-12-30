@@ -159,6 +159,26 @@
       </article>
 
       <div class="side-grid">
+        <article class="card-premium account-status-card" aria-label="Stato account">
+          <header class="account-status-card__header">
+            <h2>Stato account</h2>
+            <p class="muted">Verifica a colpo d'occhio registrazione, premium e Telegram.</p>
+          </header>
+          <ul class="account-status-list">
+            <li>
+              <span class="account-status-label">Registrazione</span>
+              <span class="account-status-value">✓</span>
+            </li>
+            <li>
+              <span class="account-status-label">Premium</span>
+              <span class="account-status-value">{{ '✓' if user.has_premium_access else '✗' }}</span>
+            </li>
+            <li>
+              <span class="account-status-label">Telegram</span>
+              <span class="account-status-value">{{ '✓' if (user.telegram_chat_id or user.chat_id) else '✗' }}</span>
+            </li>
+          </ul>
+        </article>
         <article class="card-premium threshold-card animate-premium-slide" id="threshold-settings">
           <header class="card-header">
             <h3>Impostazioni soglia</h3>
