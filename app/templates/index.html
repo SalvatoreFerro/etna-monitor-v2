@@ -42,6 +42,26 @@
           <button type="button" class="chart-range-btn" data-limit="864">3 giorni</button>
           <button type="button" class="chart-range-btn is-active" data-limit="2016">7 giorni</button>
         </div>
+        <div class="chart-interaction-controls" role="group" aria-label="Controlli analisi grafico">
+          <button
+            type="button"
+            id="chart-analyze-toggle"
+            class="btn btn-secondary btn-sm chart-interaction-toggle"
+            aria-pressed="false"
+          >
+            Analizza
+          </button>
+          <button
+            type="button"
+            id="chart-reset-view"
+            class="btn btn-ghost btn-sm chart-interaction-reset"
+          >
+            Reset vista
+          </button>
+          <span id="chart-analyze-hint" class="chart-interaction-hint">
+            Attiva Analizza per selezionare un intervallo.
+          </span>
+        </div>
         {% if csv_snapshot.has_data %}
           <div id="home-preview-loading" class="chart-loading" aria-live="polite">
             <div class="chart-spinner" aria-hidden="true">

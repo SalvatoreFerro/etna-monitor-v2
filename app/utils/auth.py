@@ -43,6 +43,13 @@ def login_required(f):
     def decorated_function(*args, **kwargs):
         user = get_current_user()
         if not user:
+            current_app.logger.info(
+                "[AUTH] login_required redirect. endpoint=%s path=%s user_id=%s flask_user_id=%s",
+                request.endpoint,
+                request.path,
+                session.get("user_id"),
+                session.get("_user_id"),
+            )
             session.pop('user_id', None)
             flash('Please log in to access this page.', 'error')
             return redirect(url_for('auth.login', next=request.url))

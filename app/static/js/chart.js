@@ -35,6 +35,9 @@
 
   const plotElement = document.getElementById('home-preview-plot');
   const loadingElement = document.getElementById('home-preview-loading');
+  const analyzeToggle = document.getElementById('chart-analyze-toggle');
+  const analyzeHint = document.getElementById('chart-analyze-hint');
+  const resetViewBtn = document.getElementById('chart-reset-view');
   const quickUpdateBtn = document.getElementById('btn-aggiorna-dati-live')
     || document.getElementById('quick-update-btn');
   const rangeButtons = Array.from(document.querySelectorAll('.chart-range-btn'));
@@ -79,6 +82,7 @@
   let lastSuccessfulPayload = null;
   let currentLimit = DEFAULT_LIMIT;
   let autoRefreshTimer = null;
+  let analyzeModeEnabled = false;
 
   if (rangeButtons.length) {
     const activeButton = getActiveRangeButton() || rangeButtons[0];
@@ -167,6 +171,57 @@
     loadingElement.classList.remove('chart-notice');
     loadingElement.hidden = true;
     loadingElement.setAttribute('aria-hidden', 'true');
+  }
+
+  function updateAnalyzeUI() {
+    if (analyzeToggle) {
+      analyzeToggle.classList.toggle('is-active', analyzeModeEnabled);
+      analyzeToggle.setAttribute('aria-pressed', analyzeModeEnabled ? 'true' : 'false');
+      analyzeToggle.textContent = analyzeModeEnabled ? 'Analizza: attivo' : 'Analizza';
+    }
+    if (analyzeHint) {
+      analyzeHint.textContent = analyzeModeEnabled
+        ? 'Trascina sul grafico per selezionare l’intervallo da analizzare.'
+        : 'Attiva Analizza per selezionare un intervallo.';
+    }
+    if (plotElement) {
+      plotElement.classList.toggle('is-analyze-active', analyzeModeEnabled);
+    }
+  }
+
+  async function applyAnalyzeMode() {
+    updateAnalyzeUI();
+    if (!window.Plotly || !plotElement || !plotElement.data) {
+      return;
+    }
+    await window.Plotly.relayout(plotElement, {
+      dragmode: analyzeModeEnabled ? 'select' : 'pan'
+    });
+    if (!analyzeModeEnabled) {
+      await window.Plotly.restyle(plotElement, { selectedpoints: [null] });
+    }
+  }
+
+  function toggleAnalyzeMode() {
+    analyzeModeEnabled = !analyzeModeEnabled;
+    applyAnalyzeMode();
+  }
+
+  function resetPlotView() {
+    if (!window.Plotly || !plotElement || !plotElement.data) {
+      analyzeModeEnabled = false;
+      updateAnalyzeUI();
+      return;
+    }
+    analyzeModeEnabled = false;
+    window.Plotly.relayout(plotElement, {
+      'xaxis.autorange': true,
+      'yaxis.autorange': true,
+      dragmode: 'pan'
+    }).then(() => {
+      window.Plotly.restyle(plotElement, { selectedpoints: [null] });
+      updateAnalyzeUI();
+    });
   }
 
   function updateStatus(state) {
@@ -417,6 +472,7 @@
     const layout = {
       margin: { l: 64, r: 32, t: 24, b: 56 },
       hovermode: 'x unified',
+      dragmode: analyzeModeEnabled ? 'select' : 'pan',
       plot_bgcolor: 'rgba(0,0,0,0)',
       paper_bgcolor: 'rgba(0,0,0,0)',
       font: { color: isDarkTheme ? '#e2e8f0' : '#0f172a' },
@@ -461,6 +517,8 @@
       displaylogo: false,
       responsive: true,
       staticPlot: false,
+      scrollZoom: false,
+      doubleClick: false,
       modeBarButtonsToRemove: ['select2d', 'lasso2d']
     };
 
@@ -474,6 +532,7 @@
     plotElement.removeAttribute('aria-hidden');
     plotElement.style.display = 'block';
     ensureResizeListener();
+    updateAnalyzeUI();
     hideSpinner();
   }
 
@@ -684,6 +743,16 @@
     });
   }
 
+  function bindInteractionControls() {
+    if (analyzeToggle) {
+      analyzeToggle.addEventListener('click', toggleAnalyzeMode);
+    }
+    if (resetViewBtn) {
+      resetViewBtn.addEventListener('click', resetPlotView);
+    }
+    updateAnalyzeUI();
+  }
+
   function setupMobileNavObserver() {
     const links = Array.from(document.querySelectorAll('.mobile-quick-link'));
     if (!('IntersectionObserver' in window) || !links.length) {
@@ -774,6 +843,7 @@
     refreshStatus();
     bindRangeSelector();
     bindQuickUpdate();
+    bindInteractionControls();
     setupAutoRefresh();
     setupMobileNavObserver();
   }

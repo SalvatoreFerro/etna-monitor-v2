@@ -283,6 +283,7 @@ def login():
             return ("Invalid email or password", 401)
 
         login_user(user)
+        session.permanent = True
         session["user_id"] = user.id
         return redirect(url_for("dashboard.dashboard_home"))
 
@@ -308,6 +309,7 @@ def register():
     db.session.commit()
 
     login_user(user)
+    session.permanent = True
     session["user_id"] = user.id
     return redirect(url_for("dashboard.dashboard_home"))
 
@@ -582,6 +584,7 @@ def auth_callback():
             user_min = None
 
         login_user(user_min or user)
+        session.permanent = True
         session["user_id"] = user_id
         session["google_access_token"] = access_token
         if refresh_token:
@@ -609,4 +612,3 @@ def logout():
     session.clear()
     flash("Sei stato disconnesso.", "info")
     return redirect(url_for("main.index"))
-
