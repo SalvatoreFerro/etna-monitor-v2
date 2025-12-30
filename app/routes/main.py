@@ -917,16 +917,43 @@ def about():
         "Scopri cos'è EtnaMonitor: piattaforma indipendente per monitoraggio del tremore vulcanico dell'Etna, notifiche Telegram"
         " e dashboard realtime."
     )
-    structured_data = {
+    about_structured_data = {
         "@context": "https://schema.org",
         "@type": "AboutPage",
         "name": "Cos'è EtnaMonitor",
         "description": description,
         "url": url_for("main.about", _external=True),
+        "creator": {
+            "@type": "Person",
+            "name": "Salvatore Ferro",
+            "url": url_for("main.about", _external=True),
+        },
         "publisher": {
             "@type": "Organization",
             "name": "EtnaMonitor",
             "url": url_for("main.index", _external=True),
+        },
+    }
+    person_structured_data = {
+        "@context": "https://schema.org",
+        "@type": "Person",
+        "name": "Salvatore Ferro",
+        "url": url_for("main.about", _external=True),
+        "worksFor": {
+            "@type": "Organization",
+            "name": "EtnaMonitor",
+            "url": url_for("main.index", _external=True),
+        },
+    }
+    organization_structured_data = {
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        "name": "EtnaMonitor",
+        "url": url_for("main.index", _external=True),
+        "founder": {
+            "@type": "Person",
+            "name": "Salvatore Ferro",
+            "url": url_for("main.about", _external=True),
         },
     }
 
@@ -937,7 +964,11 @@ def about():
         page_og_title="Cos'è EtnaMonitor – Monitoraggio tremore Etna",
         page_og_description="Scopri cos'è EtnaMonitor: piattaforma indipendente per monitoraggio tremore vulcanico dell'Etna, notifiche Telegram e grafico realtime.",
         canonical_url=url_for("main.about", _external=True),
-        page_structured_data=[structured_data],
+        page_structured_data=[
+            about_structured_data,
+            person_structured_data,
+            organization_structured_data,
+        ],
     )
 
 
