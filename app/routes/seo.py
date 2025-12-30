@@ -60,13 +60,13 @@ STATIC_PAGES: Tuple[Tuple[str, str, str], ...] = (
     ("main.webcam_etna", "weekly", "0.9"),
     ("main.eruzione_oggi", "hourly", "1.0"),
     ("main.faq", "weekly", "0.9"),
-    ("main.tecnologia", "weekly", "0.6"),
+    ("main.tecnologia", "weekly", "0.8"),
     ("main.progetto", "yearly", "0.5"),
     ("main.team", "yearly", "0.5"),
     ("main.news", "monthly", "0.7"),
-    ("main.etna3d", "weekly", "0.7"),
+    ("main.etna3d", "weekly", "0.9"),
     ("main.roadmap", "monthly", "0.6"),
-    ("main.about", "monthly", "0.6"),
+    ("main.about", "monthly", "0.9"),
     ("main.sponsor", "monthly", "0.5"),
     ("main.privacy", "yearly", "0.3"),
     ("main.terms", "yearly", "0.3"),
@@ -204,7 +204,8 @@ def sitemap() -> Response:
             absolute = _normalize_external_url(url_for(endpoint, _external=True), base_url)
         except Exception:
             continue
-        _append_url(urls, seen_urls, absolute, static_lastmod, changefreq, priority)
+        lastmod = _default_lastmod() if endpoint == "main.about" else static_lastmod
+        _append_url(urls, seen_urls, absolute, lastmod, changefreq, priority)
 
     # Blog index and articles
     blog_posts: list[BlogPost] = []
