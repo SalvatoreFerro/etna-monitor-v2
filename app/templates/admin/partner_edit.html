@@ -1,0 +1,288 @@
+{% extends 'admin/base.html' %}
+
+{% block head_extra %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
+{% endblock %}
+
+{% block title %}Modifica partner{% endblock %}
+
+{% block admin_content %}
+<section class="admin-section">
+  <header class="admin-section__header">
+    <div>
+      <h1><i class="fas fa-handshake"></i> Modifica partner</h1>
+      <p class="muted">Aggiorna tutti i dettagli del partner e gestisci lo stato.</p>
+    </div>
+    <div>
+      <a href="{{ url_for('admin.partners_dashboard') }}" class="btn btn-secondary glass btn-sm">Torna alla lista</a>
+    </div>
+  </header>
+
+  <section class="admin-card">
+    <form method="post" action="{{ url_for('admin.partners_edit', partner_id=partner.id) }}" class="admin-form partner-admin-form" enctype="multipart/form-data">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <div class="form-grid">
+        <label class="admin-field">
+          <span class="admin-field__label">Nome *</span>
+          <input type="text" class="admin-input" name="name" required maxlength="180" value="{{ partner.name }}" />
+        </label>
+        <label class="admin-field">
+          <span class="admin-field__label">Categoria *</span>
+          <select name="category_id" class="admin-input" required>
+            {% for category in categories %}
+              <option value="{{ category.id }}" data-slug="{{ category.slug }}" {% if partner.category_id == category.id %}selected{% endif %}>
+                {{ category.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </label>
+      </div>
+      <div class="form-grid">
+        <label class="admin-field">
+          <span class="admin-field__label">Slug</span>
+          <input type="text" class="admin-input" value="{{ partner.slug }}" disabled />
+        </label>
+        <label class="admin-field">
+          <span class="admin-field__label">Stato</span>
+          <select name="status" class="admin-input">
+            {% for status in ['draft', 'pending', 'approved', 'rejected', 'expired', 'disabled'] %}
+              <option value="{{ status }}" {% if partner.status == status %}selected{% endif %}>{{ status }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="admin-field">
+          <span class="admin-field__label">Ordine</span>
+          <input type="number" class="admin-input" name="sort_order" value="{{ partner.sort_order }}" />
+        </label>
+      </div>
+      <label class="admin-field">
+        <span class="admin-field__label">Descrizione breve</span>
+        <input type="text" class="admin-input" name="short_desc" maxlength="280" value="{{ partner.short_desc or '' }}" />
+      </label>
+      <label class="admin-field">
+        <span class="admin-field__label">Descrizione completa</span>
+        <textarea name="long_desc" rows="4" class="admin-input">{{ partner.long_desc or '' }}</textarea>
+      </label>
+      <div class="form-grid">
+        <label class="admin-field"><span class="admin-field__label">Sito</span><input type="url" class="admin-input" name="website_url" value="{{ partner.website_url or '' }}" /></label>
+        <label class="admin-field"><span class="admin-field__label">Email</span><input type="email" class="admin-input" name="email" value="{{ partner.email or '' }}" /></label>
+        <label class="admin-field"><span class="admin-field__label">Telefono</span><input type="text" class="admin-input" name="phone" value="{{ partner.phone or '' }}" /></label>
+        <label class="admin-field"><span class="admin-field__label">WhatsApp</span><input type="text" class="admin-input" name="whatsapp" value="{{ partner.whatsapp or '' }}" /></label>
+      </div>
+      <div class="form-grid">
+        <label class="admin-field"><span class="admin-field__label">Instagram</span><input type="url" class="admin-input" name="instagram" value="{{ partner.instagram or '' }}" /></label>
+        <label class="admin-field"><span class="admin-field__label">Facebook</span><input type="url" class="admin-input" name="facebook" value="{{ partner.facebook or '' }}" /></label>
+        <label class="admin-field"><span class="admin-field__label">TikTok</span><input type="url" class="admin-input" name="tiktok" value="{{ partner.tiktok or '' }}" /></label>
+      </div>
+      <div class="form-grid">
+        <label class="admin-field"><span class="admin-field__label">Indirizzo</span><input type="text" class="admin-input" name="address" value="{{ partner.address or '' }}" /></label>
+        <label class="admin-field"><span class="admin-field__label">Città</span><input type="text" class="admin-input" name="city" value="{{ partner.city or '' }}" /></label>
+      </div>
+
+      <div class="admin-field partner-upload">
+        <span class="admin-field__label">Logo profilo partner</span>
+        <div class="upload-dropzone" data-dropzone tabindex="0" role="button" aria-label="Carica logo partner">
+          <input type="file" name="logo" accept="image/*" class="upload-dropzone__input" data-dropzone-input />
+          <div class="upload-dropzone__content">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p data-dropzone-label>Trascina qui l'immagine o clicca per selezionarla.</p>
+          </div>
+          <img data-dropzone-preview class="upload-dropzone__preview" alt="Anteprima logo" {% if logo_url %}src="{{ logo_url }}"{% else %}hidden{% endif %} />
+        </div>
+        <small class="muted">
+          Formati supportati: PNG, JPG, WebP e SVG. Max {{ (max_upload_bytes / (1024 * 1024)) | round(1) }}MB.
+        </small>
+        {% if logo_url %}
+          <label class="form-switch">
+            <input type="checkbox" name="remove_logo" value="1" />
+            <span>Rimuovi logo corrente</span>
+          </label>
+        {% endif %}
+      </div>
+
+      {% set extra_data = partner.extra_data or {} %}
+      {% for category in categories %}
+        {% set fields = category_fields.get(category.slug, []) %}
+        {% if fields %}
+          <fieldset class="category-extra" data-category-fields="{{ category.slug }}" hidden>
+            <legend>Dati specifici per {{ category.name }}</legend>
+            {% for field in fields %}
+              {% set field_type = field.get('type', 'text') %}
+              {% set field_value = extra_data.get(field.get('name')) %}
+              <label>
+                {{ field.get('label') }}{% if field.get('required') %} *{% endif %}
+                {% if field_type == 'textarea' %}
+                  <textarea name="{{ field.get('name') }}" rows="{{ field.get('rows', 3) }}" {% if field.get('required') %}required{% endif %} placeholder="{{ field.get('placeholder', '') }}">{{ field_value or '' }}</textarea>
+                {% elif field_type == 'select' %}
+                  <select name="{{ field.get('name') }}" {% if field.get('required') %}required{% endif %}>
+                    <option value="">Seleziona...</option>
+                    {% for option in field.get('options', []) %}
+                      <option value="{{ option.get('value') }}" {% if field_value is not none and option.get('value') == field_value %}selected{% endif %}>
+                        {{ option.get('label') }}
+                      </option>
+                    {% endfor %}
+                  </select>
+                {% else %}
+                  <input type="{{ field_type }}" name="{{ field.get('name') }}" {% if field_type == 'number' and field.get('min') is not none %}min="{{ field.get('min') }}"{% endif %} {% if field.get('required') %}required{% endif %} value="{{ field_value if field_value is not none else '' }}" placeholder="{{ field.get('placeholder', '') }}" />
+                {% endif %}
+                {% if field.get('help') %}<small class="muted">{{ field.get('help') }}</small>{% endif %}
+              </label>
+            {% endfor %}
+          </fieldset>
+        {% endif %}
+      {% endfor %}
+
+      <label class="form-switch">
+        <input type="checkbox" name="featured" {% if partner.featured %}checked{% endif %} />
+        <span>Evidenzia il partner in homepage</span>
+      </label>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Salva modifiche</button>
+        <a href="{{ url_for('partners.partner_detail', slug=partner.category.slug, partner_slug=partner.slug) }}" class="btn btn-secondary glass" target="_blank" rel="noopener">Apri pagina pubblica</a>
+      </div>
+    </form>
+  </section>
+</section>
+{% endblock %}
+
+{% block admin_scripts %}
+  {{ super() }}
+  <script nonce="{{ csp_nonce() }}">
+    (function() {
+      const select = document.querySelector('select[name="category_id"]');
+      if (!select) {
+        return;
+      }
+
+      const groups = document.querySelectorAll('[data-category-fields]');
+      const captureRequiredState = (control) => {
+        if (!control.dataset.originalRequired) {
+          control.dataset.originalRequired = control.required ? 'true' : 'false';
+        }
+      };
+
+      const setGroupState = (group, isActive) => {
+        group.hidden = !isActive;
+        const controls = group.querySelectorAll('input, select, textarea');
+        controls.forEach((control) => {
+          captureRequiredState(control);
+          const wasRequired = control.dataset.originalRequired === 'true';
+          control.disabled = !isActive;
+          control.required = isActive && wasRequired;
+        });
+      };
+
+      const toggleGroups = () => {
+        const slug = select.options[select.selectedIndex]?.dataset.slug;
+        groups.forEach((group) => {
+          const isActive = group.dataset.categoryFields === slug;
+          setGroupState(group, isActive);
+        });
+      };
+
+      select.addEventListener('change', toggleGroups);
+      toggleGroups();
+    })();
+
+    (function() {
+      const dropzone = document.querySelector('[data-dropzone]');
+      if (!dropzone) {
+        return;
+      }
+
+      const input = dropzone.querySelector('[data-dropzone-input]');
+      const preview = dropzone.querySelector('[data-dropzone-preview]');
+      const label = dropzone.querySelector('[data-dropzone-label]');
+      const defaultLabel = label ? label.textContent : '';
+
+      const preventDefaults = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      };
+
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((eventName) => {
+        dropzone.addEventListener(eventName, preventDefaults, false);
+      });
+
+      ['dragenter', 'dragover'].forEach((eventName) => {
+        dropzone.addEventListener(eventName, () => dropzone.classList.add('is-dragover'), false);
+      });
+
+      ['dragleave', 'drop'].forEach((eventName) => {
+        dropzone.addEventListener(eventName, () => dropzone.classList.remove('is-dragover'), false);
+      });
+
+      const updatePreview = (file) => {
+        if (!label || !preview) {
+          return;
+        }
+
+        if (!file) {
+          label.textContent = defaultLabel;
+          if (!preview.getAttribute('src')) {
+            preview.setAttribute('hidden', 'hidden');
+          }
+          return;
+        }
+
+        if (!(file.type || '').startsWith('image/')) {
+          label.textContent = 'Carica un file immagine (PNG, JPG, WebP o SVG).';
+          preview.setAttribute('hidden', 'hidden');
+          preview.removeAttribute('src');
+          return;
+        }
+
+        label.textContent = file.name;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (event.target?.result) {
+            preview.src = event.target.result;
+            preview.removeAttribute('hidden');
+          }
+        };
+        reader.readAsDataURL(file);
+      };
+
+      const assignFilesToInput = (files) => {
+        if (!input || !files || !files.length) {
+          return;
+        }
+        try {
+          const dataTransfer = new DataTransfer();
+          Array.from(files).forEach((file) => dataTransfer.items.add(file));
+          input.files = dataTransfer.files;
+        } catch (error) {
+          input.files = files;
+        }
+        updatePreview(files[0]);
+      };
+
+      dropzone.addEventListener('drop', (event) => {
+        const files = event.dataTransfer?.files;
+        if (files && files.length) {
+          assignFilesToInput(files);
+        }
+      });
+
+      dropzone.addEventListener('click', () => {
+        input?.click();
+      });
+
+      dropzone.addEventListener('keydown', (event) => {
+        if (event.key === ' ' || event.key === 'Enter') {
+          event.preventDefault();
+          input?.click();
+        }
+      });
+
+      input?.addEventListener('change', () => {
+        if (input.files && input.files.length) {
+          updatePreview(input.files[0]);
+        } else {
+          updatePreview(null);
+        }
+      });
+    })();
+  </script>
+{% endblock %}

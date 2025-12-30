@@ -120,7 +120,9 @@
             </div>
             <img data-dropzone-preview class="upload-dropzone__preview" alt="Anteprima logo" hidden />
           </div>
-          <small class="muted">Formati supportati: PNG, JPG, WebP e SVG.</small>
+          <small class="muted">
+            Formati supportati: PNG, JPG, WebP e SVG. Max {{ (max_upload_bytes / (1024 * 1024)) | round(1) }}MB.
+          </small>
         </div>
 
         {% for category in categories %}
@@ -172,6 +174,51 @@
 
   <section class="admin-card admin-card--wide">
     <h2>Partner registrati</h2>
+    <form method="get" class="admin-form">
+      <div class="form-grid">
+        <label class="admin-field">
+          <span class="admin-field__label">Ricerca</span>
+          <input type="search" name="q" class="admin-input" placeholder="Nome, email o sito" value="{{ filters.q }}" />
+        </label>
+        <label class="admin-field">
+          <span class="admin-field__label">Stato</span>
+          <select name="status" class="admin-input">
+            <option value="">Tutti</option>
+            <option value="active" {% if filters.status == 'active' %}selected{% endif %}>Attivi</option>
+            {% for status in ['draft', 'pending', 'approved', 'rejected', 'expired', 'disabled'] %}
+              <option value="{{ status }}" {% if filters.status == status %}selected{% endif %}>{{ status }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="admin-field">
+          <span class="admin-field__label">Categoria</span>
+          <select name="category" class="admin-input">
+            <option value="">Tutte</option>
+            {% for category in categories %}
+              <option value="{{ category.id }}" {% if filters.category|int == category.id %}selected{% endif %}>
+                {{ category.name }}
+              </option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="admin-field">
+          <span class="admin-field__label">Ordina</span>
+          <select name="order" class="admin-input">
+            <option value="created_desc" {% if filters.order == 'created_desc' %}selected{% endif %}>Più recenti</option>
+            <option value="created_asc" {% if filters.order == 'created_asc' %}selected{% endif %}>Più vecchi</option>
+            <option value="updated_desc" {% if filters.order == 'updated_desc' %}selected{% endif %}>Aggiornati di recente</option>
+            <option value="name_asc" {% if filters.order == 'name_asc' %}selected{% endif %}>Nome A-Z</option>
+            <option value="name_desc" {% if filters.order == 'name_desc' %}selected{% endif %}>Nome Z-A</option>
+            <option value="status" {% if filters.order == 'status' %}selected{% endif %}>Stato</option>
+            <option value="category" {% if filters.order == 'category' %}selected{% endif %}>Categoria</option>
+          </select>
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-secondary btn-sm">Filtra</button>
+        <a href="{{ url_for('admin.partners_dashboard') }}" class="btn btn-secondary glass btn-sm">Reset</a>
+      </div>
+    </form>
     <table class="admin-table admin-table--responsive">
       <thead>
         <tr>
@@ -204,6 +251,18 @@
               {% endif %}
             </td>
             <td>
+              <div class="partner-actions">
+                <a href="{{ url_for('admin.partners_edit', partner_id=partner.id) }}" class="btn btn-secondary glass btn-sm">
+                  Modifica
+                </a>
+                <form method="post" action="{{ url_for('admin.partners_toggle_active', partner_id=partner.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                  <button type="submit" class="btn btn-outline-info btn-sm">
+                    {{ 'Attiva' if partner.status == 'disabled' else 'Disattiva' }}
+                  </button>
+                </form>
+              </div>
+
               <form method="post" action="{{ url_for('admin.partners_update_status', partner_id=partner.id) }}" class="inline-form">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                 <select name="action" class="admin-select">
