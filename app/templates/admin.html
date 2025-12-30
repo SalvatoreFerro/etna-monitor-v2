@@ -3,6 +3,7 @@
 {% block head %}
   {{ super() }}
   <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
+  <script src="{{ url_for('static', filename='vendor/plotly.min.js') }}" nonce="{{ csp_nonce() }}"></script>
 {% endblock %}
 
 {% block content %}
@@ -74,6 +75,102 @@
       </div>
     </div>
     <p class="admin-caption">Aggiornamento automatico ogni 5 minuti.</p>
+  </section>
+
+  <section class="admin-card admin-card--user-analytics card-premium animate-premium-slide" aria-labelledby="admin-user-analytics-title" data-user-analytics>
+    <header class="admin-section-header admin-section-header--split">
+      <div>
+        <h2 id="admin-user-analytics-title"><i class="fas fa-chart-area"></i> Analytics utenti</h2>
+        <p>Analizza trend iscrizioni, attivazioni Telegram e segmentazione utenti.</p>
+      </div>
+      <div class="admin-analytics-meta">
+        <span class="admin-caption" data-user-analytics-updated>In attesa di aggiornamento…</span>
+        <p class="admin-analytics-error" data-user-analytics-error hidden>Analytics temporaneamente non disponibili.</p>
+      </div>
+    </header>
+
+    <div class="admin-analytics-filters" role="search">
+      <label class="admin-field">
+        <span class="admin-field__label">Periodo</span>
+        <select name="analytics_period" data-user-analytics-period>
+          <option value="7">Ultimi 7 giorni</option>
+          <option value="30" selected>Ultimi 30 giorni</option>
+          <option value="90">Ultimi 90 giorni</option>
+        </select>
+      </label>
+      <label class="admin-field">
+        <span class="admin-field__label">Telegram</span>
+        <select name="analytics_telegram" data-user-analytics-telegram>
+          <option value="all" selected>Tutti</option>
+          <option value="yes">Collegato</option>
+          <option value="no">Non collegato</option>
+        </select>
+      </label>
+      <label class="admin-field">
+        <span class="admin-field__label">Premium</span>
+        <select name="analytics_premium" data-user-analytics-premium>
+          <option value="all" selected>Tutti</option>
+          <option value="yes">Premium</option>
+          <option value="no">Free</option>
+        </select>
+      </label>
+      <button type="button" class="btn btn-secondary glass btn-sm" data-user-analytics-refresh>
+        <i class="fas fa-rotate"></i> Aggiorna
+      </button>
+    </div>
+
+    <div class="admin-analytics-grid admin-analytics-grid--expanded">
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">Utenti totali</span>
+        <span class="admin-analytics-value" data-user-analytics-total>—</span>
+        <span class="admin-analytics-note" data-user-analytics-premium-split>—</span>
+      </div>
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">Nuovi utenti (24h)</span>
+        <span class="admin-analytics-value" data-user-analytics-24h>—</span>
+        <span class="admin-analytics-note">Iscrizioni ultime 24 ore</span>
+      </div>
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">Nuovi utenti (7 giorni)</span>
+        <span class="admin-analytics-value" data-user-analytics-7d>—</span>
+        <span class="admin-analytics-note">Ultimi 7 giorni</span>
+      </div>
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">Nuovi utenti (30 giorni)</span>
+        <span class="admin-analytics-value" data-user-analytics-30d>—</span>
+        <span class="admin-analytics-note">Ultimi 30 giorni</span>
+      </div>
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">Telegram collegato</span>
+        <span class="admin-analytics-value" data-user-analytics-telegram-count>—</span>
+        <span class="admin-analytics-note" data-user-analytics-telegram-pct>—</span>
+      </div>
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">Attivazione Telegram (7 giorni)</span>
+        <span class="admin-analytics-value" data-user-analytics-telegram-recent>—</span>
+        <span class="admin-analytics-note">Su nuovi utenti recenti</span>
+      </div>
+    </div>
+
+    <div class="admin-analytics-chart" id="user-analytics-chart" aria-label="Trend iscrizioni ultimi 30 giorni"></div>
+    <p class="admin-caption" data-user-analytics-summary>Caricamento elenco utenti in corso…</p>
+
+    <div class="admin-table-wrapper admin-table-wrapper--analytics">
+      <table class="table table-premium admin-table admin-table--analytics">
+        <thead>
+          <tr>
+            <th scope="col"><button type="button" class="admin-sort" data-sort-key="email">Email</button></th>
+            <th scope="col"><button type="button" class="admin-sort" data-sort-key="created_at">Data creazione</button></th>
+            <th scope="col"><button type="button" class="admin-sort" data-sort-key="plan">Tipo account</button></th>
+            <th scope="col"><button type="button" class="admin-sort" data-sort-key="telegram_connected">Telegram</button></th>
+            <th scope="col"><button type="button" class="admin-sort" data-sort-key="threshold">Soglia</button></th>
+            <th scope="col"><button type="button" class="admin-sort" data-sort-key="last_access">Ultimo accesso</button></th>
+          </tr>
+        </thead>
+        <tbody data-user-analytics-table aria-live="polite"></tbody>
+      </table>
+      <p class="admin-empty" data-user-analytics-empty hidden>Nessun utente disponibile con i filtri selezionati.</p>
+    </div>
   </section>
 
   <div class="admin-card admin-card--table card-premium animate-premium-slide">
@@ -278,6 +375,7 @@
   const csrfToken = '{{ csrf_token() }}';
   const ADMIN_USERS_ENDPOINT = '{{ url_for('admin.users_list') }}';
   const ADMIN_ANALYTICS_ENDPOINT = '{{ url_for('admin_stats.get_admin_analytics') }}';
+  const USER_ANALYTICS_ENDPOINT = '{{ url_for('admin_stats.get_user_analytics') }}';
   const ADMIN_ACTIONS_ENDPOINT = '{{ url_for('admin_stats.get_admin_actions') }}';
   const ADMIN_AUDIT_ENDPOINT = '{{ url_for('admin_stats.get_audit_feed') }}';
   const ADMIN_GLOBAL_TEST_ENDPOINT = '{{ url_for('admin.test_alert') }}';
@@ -318,6 +416,26 @@
     const auditStatus = document.querySelector('[data-audit-status]');
     const globalTestButton = document.getElementById('admin-test-alert-button');
     const globalTestCaption = document.getElementById('admin-test-alert-caption');
+    const userAnalyticsSection = document.querySelector('[data-user-analytics]');
+    const userAnalyticsUpdated = document.querySelector('[data-user-analytics-updated]');
+    const userAnalyticsError = document.querySelector('[data-user-analytics-error]');
+    const userAnalyticsSummary = document.querySelector('[data-user-analytics-summary]');
+    const userAnalyticsTable = document.querySelector('[data-user-analytics-table]');
+    const userAnalyticsTableContainer = document.querySelector('.admin-table--analytics');
+    const userAnalyticsEmpty = document.querySelector('[data-user-analytics-empty]');
+    const userAnalyticsChart = document.getElementById('user-analytics-chart');
+    const userAnalyticsPeriod = document.querySelector('[data-user-analytics-period]');
+    const userAnalyticsTelegram = document.querySelector('[data-user-analytics-telegram]');
+    const userAnalyticsPremium = document.querySelector('[data-user-analytics-premium]');
+    const userAnalyticsRefresh = document.querySelector('[data-user-analytics-refresh]');
+    const userAnalyticsTotal = document.querySelector('[data-user-analytics-total]');
+    const userAnalytics24h = document.querySelector('[data-user-analytics-24h]');
+    const userAnalytics7d = document.querySelector('[data-user-analytics-7d]');
+    const userAnalytics30d = document.querySelector('[data-user-analytics-30d]');
+    const userAnalyticsPremiumSplit = document.querySelector('[data-user-analytics-premium-split]');
+    const userAnalyticsTelegramCount = document.querySelector('[data-user-analytics-telegram-count]');
+    const userAnalyticsTelegramPct = document.querySelector('[data-user-analytics-telegram-pct]');
+    const userAnalyticsTelegramRecent = document.querySelector('[data-user-analytics-telegram-recent]');
 
     let analyticsTimer = null;
     let adminActionsTimer = null;
@@ -619,6 +737,9 @@
       fetchUsers();
       loadAdminActions();
       refreshAnalytics();
+      if (userAnalyticsSection) {
+        loadUserAnalytics();
+      }
       if (typeof auditRefresher === 'function') {
         auditRefresher(true);
       }
@@ -853,6 +974,251 @@
       }
     }
 
+    const userAnalyticsState = {
+      items: [],
+      sortKey: 'created_at',
+      sortDirection: 'desc',
+    };
+
+    function formatNumber(value) {
+      if (value === null || value === undefined || Number.isNaN(Number(value))) {
+        return '—';
+      }
+      return new Intl.NumberFormat(navigator.language || 'it-IT').format(Number(value));
+    }
+
+    function formatPercent(value) {
+      if (value === null || value === undefined || Number.isNaN(Number(value))) {
+        return '—';
+      }
+      return `${Number(value).toFixed(1)}%`;
+    }
+
+    function getUserAnalyticsParams() {
+      return new URLSearchParams({
+        period: userAnalyticsPeriod?.value || '30',
+        telegram: userAnalyticsTelegram?.value || 'all',
+        premium: userAnalyticsPremium?.value || 'all',
+        limit: '100',
+      });
+    }
+
+    function renderUserAnalyticsTable() {
+      if (!userAnalyticsTable) {
+        return;
+      }
+      const items = Array.isArray(userAnalyticsState.items) ? userAnalyticsState.items : [];
+      if (items.length === 0) {
+        userAnalyticsTable.innerHTML = '';
+        if (userAnalyticsEmpty) {
+          userAnalyticsEmpty.hidden = false;
+        }
+        return;
+      }
+
+      const rows = items.map((user) => {
+        const createdAt = formatDateTime(user.created_at);
+        const lastAccess = formatDateTime(user.last_access);
+        const premiumLabel = user.has_premium ? 'Premium ⭐' : 'Gratuito';
+        const premiumClass = user.has_premium ? 'premium' : 'free';
+        const telegramLabel = user.telegram_connected ? 'Sì' : 'No';
+        const telegramClass = user.telegram_connected ? 'success' : 'warning';
+        let thresholdLabel = 'Predefinita (2.0 mV)';
+        if (typeof user.threshold === 'number' && !Number.isNaN(user.threshold)) {
+          thresholdLabel = `${user.threshold.toFixed(2)} mV`;
+        }
+
+        return `
+          <tr>
+            <td>${escapeHtml(user.email)}</td>
+            <td>${escapeHtml(createdAt)}</td>
+            <td><span class="badge ${premiumClass}">${premiumLabel}</span></td>
+            <td><span class="badge ${telegramClass}">${telegramLabel}</span></td>
+            <td>${escapeHtml(thresholdLabel)}</td>
+            <td>${escapeHtml(lastAccess)}</td>
+          </tr>
+        `;
+      }).join('');
+
+      userAnalyticsTable.innerHTML = rows;
+      if (userAnalyticsEmpty) {
+        userAnalyticsEmpty.hidden = true;
+      }
+    }
+
+    function sortUserAnalyticsItems() {
+      const { sortKey, sortDirection } = userAnalyticsState;
+      const multiplier = sortDirection === 'asc' ? 1 : -1;
+      const sorted = [...(userAnalyticsState.items || [])].sort((a, b) => {
+        const getValue = (item) => {
+          switch (sortKey) {
+            case 'email':
+              return (item.email || '').toLowerCase();
+            case 'plan':
+              return item.has_premium ? 'premium' : 'free';
+            case 'telegram_connected':
+              return item.telegram_connected ? 1 : 0;
+            case 'threshold':
+              return typeof item.threshold === 'number' ? item.threshold : -1;
+            case 'last_access':
+              return item.last_access ? new Date(item.last_access).getTime() : 0;
+            case 'created_at':
+            default:
+              return item.created_at ? new Date(item.created_at).getTime() : 0;
+          }
+        };
+        const valueA = getValue(a);
+        const valueB = getValue(b);
+        if (typeof valueA === 'number' && typeof valueB === 'number') {
+          return (valueA - valueB) * multiplier;
+        }
+        return String(valueA).localeCompare(String(valueB)) * multiplier;
+      });
+      userAnalyticsState.items = sorted;
+      renderUserAnalyticsTable();
+    }
+
+    function updateUserAnalyticsSortButtons() {
+      const buttons = Array.from(document.querySelectorAll('.admin-sort'));
+      buttons.forEach((button) => {
+        const key = button.dataset.sortKey;
+        const isActive = key === userAnalyticsState.sortKey;
+        button.classList.toggle('is-active', isActive);
+        button.setAttribute('aria-sort', isActive ? userAnalyticsState.sortDirection : 'none');
+      });
+    }
+
+    function renderUserAnalyticsChart(trend) {
+      if (!userAnalyticsChart || !window.Plotly) {
+        return;
+      }
+      const dates = (trend || []).map((entry) => entry.date);
+      const counts = (trend || []).map((entry) => entry.count);
+
+      const trace = {
+        x: dates,
+        y: counts,
+        type: 'scatter',
+        mode: 'lines+markers',
+        line: { color: '#38bdf8', width: 3 },
+        marker: { size: 6, color: '#38bdf8' },
+        hovertemplate: '%{x}<br>Iscrizioni: %{y}<extra></extra>',
+      };
+
+      const layout = {
+        margin: { t: 20, r: 20, b: 35, l: 40 },
+        paper_bgcolor: 'rgba(0,0,0,0)',
+        plot_bgcolor: 'rgba(0,0,0,0)',
+        font: { color: '#e2e8f0' },
+        xaxis: {
+          tickfont: { color: '#94a3b8' },
+          gridcolor: 'rgba(148,163,184,0.15)',
+        },
+        yaxis: {
+          tickfont: { color: '#94a3b8' },
+          gridcolor: 'rgba(148,163,184,0.15)',
+        },
+      };
+
+      window.Plotly.react(userAnalyticsChart, [trace], layout, { displayModeBar: false, responsive: true });
+    }
+
+    async function loadUserAnalytics(showToastOnError = false) {
+      if (!userAnalyticsSection) {
+        return;
+      }
+      if (userAnalyticsError) {
+        userAnalyticsError.hidden = true;
+      }
+      try {
+        const response = await fetch(`${USER_ANALYTICS_ENDPOINT}?${getUserAnalyticsParams().toString()}`, {
+          credentials: 'same-origin',
+          headers: { Accept: 'application/json' },
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) {
+          throw new Error(data.error || `HTTP ${response.status}`);
+        }
+
+        const metrics = data.metrics || {};
+        if (userAnalyticsTotal) {
+          userAnalyticsTotal.textContent = formatNumber(metrics.total_users);
+        }
+        if (userAnalytics24h) {
+          userAnalytics24h.textContent = formatNumber(metrics.new_users_24h);
+        }
+        if (userAnalytics7d) {
+          userAnalytics7d.textContent = formatNumber(metrics.new_users_7d);
+        }
+        if (userAnalytics30d) {
+          userAnalytics30d.textContent = formatNumber(metrics.new_users_30d);
+        }
+        if (userAnalyticsPremiumSplit) {
+          userAnalyticsPremiumSplit.textContent = `Premium: ${formatNumber(metrics.premium_users)} · Free: ${formatNumber(metrics.free_users)}`;
+        }
+        if (userAnalyticsTelegramCount) {
+          userAnalyticsTelegramCount.textContent = formatNumber(metrics.telegram_connected);
+        }
+        if (userAnalyticsTelegramPct) {
+          userAnalyticsTelegramPct.textContent = `${formatPercent(metrics.telegram_connected_pct)} del totale`;
+        }
+        if (userAnalyticsTelegramRecent) {
+          userAnalyticsTelegramRecent.textContent = formatPercent(metrics.telegram_recent_pct);
+        }
+
+        if (userAnalyticsUpdated) {
+          userAnalyticsUpdated.textContent = `Aggiornato alle ${formatDateTime(data.generated_at)}`;
+        }
+        if (userAnalyticsSummary) {
+          const total = data.filtered?.total ?? 0;
+          const periodLabel = userAnalyticsPeriod?.value || '30';
+          userAnalyticsSummary.textContent = `Utenti nel periodo: ${formatNumber(total)} (ultimi ${periodLabel} giorni).`;
+        }
+
+        userAnalyticsState.items = Array.isArray(data.users) ? data.users : [];
+        sortUserAnalyticsItems();
+        updateUserAnalyticsSortButtons();
+        renderUserAnalyticsChart(data.trend || []);
+      } catch (error) {
+        if (userAnalyticsError) {
+          userAnalyticsError.hidden = false;
+        }
+        if (userAnalyticsSummary) {
+          userAnalyticsSummary.textContent = 'Analytics temporaneamente non disponibili.';
+        }
+        if (showToastOnError) {
+          createToast(error.message || 'Errore nel caricamento delle analytics utenti.', 'error');
+        }
+      }
+    }
+
+    function handleUserAnalyticsSort(event) {
+      const button = event.target instanceof Element ? event.target.closest('.admin-sort') : null;
+      if (!button) {
+        return;
+      }
+      const key = button.dataset.sortKey;
+      if (!key) {
+        return;
+      }
+      if (userAnalyticsState.sortKey === key) {
+        userAnalyticsState.sortDirection = userAnalyticsState.sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        userAnalyticsState.sortKey = key;
+        userAnalyticsState.sortDirection = 'desc';
+      }
+      sortUserAnalyticsItems();
+      updateUserAnalyticsSortButtons();
+    }
+
+    if (userAnalyticsSection) {
+      userAnalyticsTableContainer?.addEventListener('click', handleUserAnalyticsSort);
+      userAnalyticsPeriod?.addEventListener('change', () => loadUserAnalytics());
+      userAnalyticsTelegram?.addEventListener('change', () => loadUserAnalytics());
+      userAnalyticsPremium?.addEventListener('change', () => loadUserAnalytics());
+      userAnalyticsRefresh?.addEventListener('click', () => loadUserAnalytics(true));
+    }
+
     function initAdminAudit() {
       const eventsList = document.getElementById('admin-audit-events');
       const alertsList = document.getElementById('admin-alert-feed');
@@ -996,6 +1362,7 @@
     updatePagination();
     loadAdminActions();
     refreshAnalytics();
+    loadUserAnalytics();
 
     analyticsTimer = window.setInterval(refreshAnalytics, 300000);
     adminActionsTimer = window.setInterval(loadAdminActions, 120000);
