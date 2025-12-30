@@ -14,7 +14,11 @@
       <div class="cta-alert monitor-cta">
         <h3>🔔 Vuoi ricevere un avviso quando il tremore dell’Etna aumenta?</h3>
         <p>Registrati GRATIS e ricevi la prima notifica via Telegram.</p>
-        <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Accedi / Registrati</a>
+        {% if current_user.is_authenticated %}
+          <a href="{{ url_for('dashboard.dashboard_home') }}" class="cta-button-primary">Vai alla Dashboard</a>
+        {% else %}
+          <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Accedi / Registrati</a>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -147,7 +151,11 @@
           <h3>Alert smart vicino al grafico</h3>
           <p>Ricevi avvisi Telegram e email quando il tremore supera le soglie personalizzabili.</p>
         </div>
-        <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Accedi / Registrati</a>
+        {% if current_user.is_authenticated %}
+          <a href="{{ url_for('dashboard.dashboard_home') }}" class="btn btn-primary">Apri Dashboard</a>
+        {% else %}
+          <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Accedi / Registrati</a>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -461,7 +469,11 @@
     <button class="popup-alert__close" type="button" aria-label="Chiudi" data-popup-close>&times;</button>
     <h3 id="popup-alert-title">🔔 Ricevi un avviso quando il tremore aumenta</h3>
     <p>La prima notifica è gratuita. Attiva ora EtnaBot.</p>
-    <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Registrati Gratis</a>
+    {% if current_user.is_authenticated %}
+      <a href="{{ url_for('dashboard.dashboard_home') }}" class="cta-button-primary">Gestisci dalla Dashboard</a>
+    {% else %}
+      <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Registrati Gratis</a>
+    {% endif %}
   </div>
 </div>
 {% endblock %}

@@ -510,6 +510,7 @@
     top: calc(100% + 0.5rem);
     left: 0;
     right: 0;
+    z-index: 1050;
     padding: var(--space-4);
     background: rgba(8, 13, 32, 0.98);
     border: 1px solid rgba(100, 116, 139, 0.25);
@@ -533,7 +534,7 @@
 
   .site-nav__links {
     display: grid;
-    gap: var(--space-2);
+    gap: var(--space-1);
     list-style: none;
     margin: 0;
     padding: 0;
@@ -551,7 +552,8 @@
     padding: 0.5rem 0.75rem;
     color: var(--color-text-muted);
     font-weight: 500;
-    font-size: 0.95rem;
+    font-size: 0.92rem;
+    line-height: 1.2;
     text-decoration: none;
     letter-spacing: 0.01em;
     transition: color 0.2s ease;
@@ -750,7 +752,7 @@
     position: absolute;
     top: calc(100% + 0.5rem);
     left: 0;
-    min-width: 220px;
+    min-width: 200px;
     background: rgba(11, 18, 34, 0.96);
     border-radius: var(--radius-lg);
     border: 1px solid rgba(100, 116, 139, 0.25);
@@ -924,7 +926,7 @@
       display: flex;
       align-items: center;
       justify-content: flex-start;
-      column-gap: var(--space-4);
+      column-gap: var(--space-3);
       row-gap: var(--space-2);
       padding-inline: var(--space-2);
       flex-wrap: wrap;

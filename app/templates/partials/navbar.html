@@ -1,20 +1,26 @@
-{% set current_destination = request.full_path.rstrip('?') if request.query_string else request.path %}
+{% set is_authenticated = current_user.is_authenticated if current_user is defined else session.user_id %}
+{% set data_links = [
+  {'label': 'Grafici', 'url': url_for('main.index'), 'endpoint': 'main.index'},
+  {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
+  {'label': 'Webcam Etna', 'url': url_for('main.webcam_etna'), 'endpoint': 'main.webcam_etna'}
+] %}
 {% set community_links = [
   {'label': 'Blog', 'url': url_for('community.blog_index'), 'endpoint': 'community.blog_index'},
   {'label': 'Forum', 'url': url_for('community.forum_home'), 'endpoint': 'community.forum_home'},
   {'label': 'Feedback', 'url': url_for('community.feedback_portal'), 'endpoint': 'community.feedback_portal'},
 ] %}
-{% set tools_links = [
-  {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
-  {'label': 'Webcam Etna', 'url': url_for('main.webcam_etna'), 'endpoint': 'main.webcam_etna'},
-  {'label': 'Notifiche EtnaBot', 'url': url_for('main.etna_bot'), 'endpoint': 'main.etna_bot'}
+{% set info_links = [
+  {'label': "Cos'è EtnaMonitor", 'url': url_for('main.about'), 'endpoint': 'main.about'},
+  {'label': 'Metodologia', 'url': url_for('main.tecnologia'), 'endpoint': 'main.tecnologia'},
+  {'label': 'Contatti', 'url': 'mailto:salvoferro16@gmail.com', 'endpoint': none}
 ] %}
 
 {% set nav_links = [
-  {'label': 'Strumenti', 'children': tools_links},
+  {'label': 'Dati', 'children': data_links},
   {'label': 'Community', 'children': community_links},
-  {'label': "Cos'è EtnaMonitor", 'url': url_for('main.about'), 'endpoint': 'main.about'},
+  {'label': 'Info', 'children': info_links},
 ] %}
+{% set dashboard_url = url_for('dashboard.dashboard_home') %}
 
 {% if config.PARTNER_DIRECTORY_ENABLED %}
   {% set experience_children = [
@@ -26,32 +32,8 @@
   {% set nav_links = [{'label': 'Etna Experience', 'children': experience_children}] + nav_links %}
 {% endif %}
 
-{% if not session.user_id %}
-  {% set nav_links = nav_links + [
-    {
-      'label': 'Accedi con Google',
-      'url': url_for('auth.auth_google', next=current_destination),
-      'endpoint': 'auth.auth_google',
-      'extra_class': 'site-nav__link--mobile-only site-nav__link--cta',
-      'icon_src': url_for('static', filename='images/google-g.svg')
-    }
-  ] %}
-{% else %}
-  {% set nav_links = nav_links + [
-    {
-      'label': 'Dashboard',
-      'url': url_for('dashboard.dashboard_home'),
-      'endpoint': 'dashboard.dashboard_home',
-      'extra_class': 'site-nav__link--mobile-only'
-    },
-    {
-      'label': 'Esci',
-      'url': url_for('auth.logout'),
-      'endpoint': 'auth.logout',
-      'extra_class': 'site-nav__link--mobile-only site-nav__link--danger',
-      'icon': 'fa-solid fa-right-from-bracket'
-    }
-  ] %}
+{% if is_authenticated %}
+  {% set nav_links = [{'label': 'Dashboard', 'url': dashboard_url, 'endpoint': 'dashboard.dashboard_home'}] + nav_links %}
 {% endif %}
 
 {% set ordered_links = nav_links %}
@@ -175,7 +157,7 @@
     </div>
 
     <div class="site-nav__actions">
-      {% if session.user_id %}
+      {% if is_authenticated %}
         {% set display_name = (current_user.name if current_user else None) or (current_user.email if current_user else None) or 'Utente' %}
         {% set user_initials = 'EM' %}
         {% if display_name %}

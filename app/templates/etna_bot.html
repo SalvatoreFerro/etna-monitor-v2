@@ -1,13 +1,50 @@
 {% extends "layout.html" %}
 
 {% block content %}
+{% set is_authenticated = current_user.is_authenticated %}
+{% set has_premium = is_authenticated and current_user.has_premium_access %}
+{% set has_telegram = is_authenticated and (current_user.telegram_chat_id or current_user.chat_id) %}
+{% if not is_authenticated %}
+  {% set cta_state = 'guest' %}
+  {% set cta_label = 'Attiva EtnaBot' %}
+  {% set cta_url = url_for('auth.login') %}
+  {% set cta_note = "Accedi o registrati per attivare EtnaBot e ricevere il primo alert gratuito." %}
+  {% set cta_alert_text = "Attiva EtnaBot, la prima notifica Telegram è GRATIS." %}
+  {% set cta_panel_text = "Imposta la tua soglia, ricevi il primo alert gratuito e resta sempre aggiornato." %}
+{% elif not has_premium %}
+  {% set cta_state = 'free' %}
+  {% set cta_label = 'Passa a Premium' %}
+  {% set cta_url = url_for('main.pricing') %}
+  {% set cta_note = "EtnaBot è incluso nei piani Premium: passa a Premium per attivarlo." %}
+  {% set cta_alert_text = "EtnaBot è disponibile solo con Premium: passa al piano Premium per sbloccarlo." %}
+  {% set cta_panel_text = "Upgrade a Premium per attivare EtnaBot e usare soglie personalizzate." %}
+{% elif not has_telegram %}
+  {% set cta_state = 'premium_no_telegram' %}
+  {% set cta_label = 'Collega Telegram' %}
+  {% set cta_url = url_for('dashboard.dashboard_home') ~ '#alert-settings' %}
+  {% set cta_note = "Hai Premium attivo: collega Telegram per iniziare a ricevere gli alert." %}
+  {% set cta_alert_text = "Collega Telegram per attivare EtnaBot e ricevere alert istantanei." %}
+  {% set cta_panel_text = "Collega Telegram in dashboard per completare l'attivazione di EtnaBot." %}
+{% else %}
+  {% set cta_state = 'active' %}
+  {% set cta_label = 'EtnaBot attivo' %}
+  {% set cta_url = none %}
+  {% set cta_note = "EtnaBot è già attivo e sincronizzato con Telegram." %}
+  {% set cta_alert_text = "EtnaBot è attivo: gli alert Telegram sono già sincronizzati." %}
+  {% set cta_panel_text = "EtnaBot è attivo e pronto: puoi gestire soglie e notifiche in dashboard." %}
+{% endif %}
 <section class="page etna-bot-page">
   <div class="container stack">
     <header class="page__header etna-bot-page__hero">
       <span class="eyebrow">Telegram Alerts</span>
       <h1>Il bot Telegram che ti avvisa quando il tremore dell’Etna aumenta</h1>
       <p class="page__lede">Alert automatici, soglia personalizzabile e prima notifica GRATIS.</p>
-      <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Attiva EtnaBot</a>
+      <p class="muted">{{ cta_note }}</p>
+      {% if cta_url %}
+        <a href="{{ cta_url }}" class="cta-button-primary">{{ cta_label }}</a>
+      {% else %}
+        <button type="button" class="cta-button-primary" disabled aria-disabled="true">{{ cta_label }}</button>
+      {% endif %}
     </header>
 
     <section class="bot-feature-grid" aria-label="Funzionalità EtnaBot">
@@ -20,7 +57,11 @@
           <li>Alert istantanei su Telegram con testo contestuale e link rapidi.</li>
         </ul>
         <div class="bot-feature-card__cta">
-          <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Attiva EtnaBot</a>
+          {% if cta_url %}
+            <a href="{{ cta_url }}" class="cta-button-primary">{{ cta_label }}</a>
+          {% else %}
+            <button type="button" class="cta-button-primary" disabled aria-disabled="true">{{ cta_label }}</button>
+          {% endif %}
         </div>
       </article>
       <article class="bot-demo-card" aria-labelledby="bot-demo-title">
@@ -38,8 +79,12 @@
 
     <section class="cta-alert">
       <h3>🔔 Vuoi ricevere un avviso quando il tremore dell’Etna aumenta?</h3>
-      <p>Attiva EtnaBot, la prima notifica Telegram è GRATIS.</p>
-      <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Accedi / Registrati</a>
+      <p>{{ cta_alert_text }}</p>
+      {% if cta_url %}
+        <a href="{{ cta_url }}" class="cta-button-primary">{{ cta_label }}</a>
+      {% else %}
+        <button type="button" class="cta-button-primary" disabled aria-disabled="true">{{ cta_label }}</button>
+      {% endif %}
     </section>
 
     <section class="bot-reasons" aria-labelledby="bot-reasons-title">
@@ -76,10 +121,14 @@
     <div class="cta-panel bot-cta-panel">
       <div>
         <h2>Attiva EtnaBot ora</h2>
-        <p>Imposta la tua soglia, ricevi il primo alert gratuito e resta sempre aggiornato.</p>
+        <p>{{ cta_panel_text }}</p>
       </div>
       <div class="cta-panel__actions">
-        <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Attiva EtnaBot</a>
+        {% if cta_url %}
+          <a href="{{ cta_url }}" class="cta-button-primary">{{ cta_label }}</a>
+        {% else %}
+          <button type="button" class="cta-button-primary" disabled aria-disabled="true">{{ cta_label }}</button>
+        {% endif %}
       </div>
     </div>
   </div>
