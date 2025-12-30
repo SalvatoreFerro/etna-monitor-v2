@@ -1,4 +1,5 @@
 {% set current_destination = request.full_path.rstrip('?') if request.query_string else request.path %}
+{% set is_authenticated = current_user.is_authenticated if current_user is defined else session.user_id %}
 {% set community_links = [
   {'label': 'Blog', 'url': url_for('community.blog_index'), 'endpoint': 'community.blog_index'},
   {'label': 'Forum', 'url': url_for('community.forum_home'), 'endpoint': 'community.forum_home'},
@@ -9,9 +10,22 @@
   {'label': 'Webcam Etna', 'url': url_for('main.webcam_etna'), 'endpoint': 'main.webcam_etna'},
   {'label': 'Notifiche EtnaBot', 'url': url_for('main.etna_bot'), 'endpoint': 'main.etna_bot'}
 ] %}
+{% set dashboard_url = url_for('dashboard.dashboard_home') %}
+{% set telegram_url = dashboard_url ~ '#alert-settings' %}
+{% set journey_links = [
+  {
+    'label': 'Login',
+    'url': url_for('auth.login') if not is_authenticated else dashboard_url,
+    'endpoint': 'auth.login'
+  },
+  {'label': 'Dashboard', 'url': dashboard_url, 'endpoint': 'dashboard.dashboard_home'},
+  {'label': 'Telegram', 'url': telegram_url, 'endpoint': 'dashboard.dashboard_home'},
+  {'label': 'Premium', 'url': url_for('main.pricing'), 'endpoint': 'main.pricing'},
+] %}
 
 {% set nav_links = [
   {'label': 'Strumenti', 'children': tools_links},
+  {'label': 'Percorso', 'children': journey_links},
   {'label': 'Community', 'children': community_links},
   {'label': "Cos'è EtnaMonitor", 'url': url_for('main.about'), 'endpoint': 'main.about'},
 ] %}
@@ -26,7 +40,11 @@
   {% set nav_links = [{'label': 'Etna Experience', 'children': experience_children}] + nav_links %}
 {% endif %}
 
-{% if not session.user_id %}
+{% if is_authenticated %}
+  {% set nav_links = [{'label': 'Dashboard', 'url': dashboard_url, 'endpoint': 'dashboard.dashboard_home'}] + nav_links %}
+{% endif %}
+
+{% if not is_authenticated %}
   {% set nav_links = nav_links + [
     {
       'label': 'Accedi con Google',
@@ -175,7 +193,7 @@
     </div>
 
     <div class="site-nav__actions">
-      {% if session.user_id %}
+      {% if is_authenticated %}
         {% set display_name = (current_user.name if current_user else None) or (current_user.email if current_user else None) or 'Utente' %}
         {% set user_initials = 'EM' %}
         {% if display_name %}
