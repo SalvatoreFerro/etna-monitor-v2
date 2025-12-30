@@ -1,4 +1,4 @@
-from flask import Flask, g, redirect, request, render_template, url_for, current_app
+from flask import Flask, g, redirect, request, render_template, url_for, current_app, session
 from flask_login import LoginManager
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -584,9 +584,10 @@ def create_app(config_overrides: dict | None = None):
                 "[BOOT] SECRET_KEY not provided; using development fallback. Do not use in production."
             )
 
-    app.config.setdefault("SESSION_COOKIE_SECURE", True)
+    app.config.setdefault("SESSION_COOKIE_SECURE", app_env == "production")
     app.config.setdefault("SESSION_COOKIE_HTTPONLY", True)
     app.config.setdefault("SESSION_COOKIE_SAMESITE", "Lax")
+    app.config.setdefault("PERMANENT_SESSION_LIFETIME", timedelta(days=30))
     app.config.setdefault("COMPRESS_ALGORITHM", ["br", "gzip"])
 
     app.config.setdefault("LAST_CSV_READ_AT", None)
@@ -862,7 +863,18 @@ def create_app(config_overrides: dict | None = None):
 
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
-    login_manager.session_protection = "strong"
+    login_manager.session_protection = "basic"
+
+    @login_manager.unauthorized_handler
+    def handle_unauthorized():  # pragma: no cover - glue for diagnostics
+        current_app.logger.info(
+            "[AUTH] Unauthorized access, redirecting to login. endpoint=%s path=%s user_id=%s flask_user_id=%s",
+            request.endpoint,
+            request.path,
+            session.get("user_id"),
+            session.get("_user_id"),
+        )
+        return redirect(url_for("auth.login", next=request.url))
 
     from .models.user import User  # imported lazily to avoid circular imports
 

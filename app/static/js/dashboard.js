@@ -34,6 +34,7 @@ class EtnaDashboard {
         this.autoRefreshInterval = null;
         this.refreshCountdown = null;
         this.plotData = null;
+        this.analyzeModeEnabled = false;
         
         this.init();
     }
@@ -91,6 +92,18 @@ class EtnaDashboard {
         if (exportPNG) {
             exportPNG.addEventListener('click', () => this.exportData('png'));
         }
+
+        const analyzeToggle = document.getElementById('dashboard-analyze-toggle');
+        if (analyzeToggle) {
+            analyzeToggle.addEventListener('click', () => this.toggleAnalyzeMode());
+        }
+
+        const resetView = document.getElementById('dashboard-reset-view');
+        if (resetView) {
+            resetView.addEventListener('click', () => this.resetPlotView());
+        }
+
+        this.updateAnalyzeUI();
     }
 
     getSelectedLimit() {
@@ -284,6 +297,7 @@ class EtnaDashboard {
             const layout = {
                 title: 'ECBD - RMS (UTC Time)',
                 title_font: { size: 14, color: 'black' },
+                dragmode: this.analyzeModeEnabled ? 'select' : 'pan',
                 xaxis: {
                     title: '',
                     showgrid: true,
@@ -335,7 +349,9 @@ class EtnaDashboard {
             const config = {
                 displayModeBar: false,
                 responsive: true,
-                staticPlot: false
+                staticPlot: false,
+                scrollZoom: false,
+                doubleClick: false
             };
 
             if (hasExistingPlot) {
@@ -343,6 +359,7 @@ class EtnaDashboard {
             } else {
                 Plotly.newPlot(plotDiv, [trace], layout, config);
             }
+            this.applyInteractionState(plotDiv);
             return;
         }
         const { line: lineColor, fill: fillColor, grid: gridColor, axis: axisLineColor, threshold: thresholdColor, hoverBg } = themeColors;
@@ -379,6 +396,7 @@ class EtnaDashboard {
         const layout = {
             margin: { l: 64, r: 32, t: 48, b: 56 },
             hovermode: 'x unified',
+            dragmode: this.analyzeModeEnabled ? 'select' : 'pan',
             plot_bgcolor: 'rgba(0,0,0,0)',
             paper_bgcolor: 'rgba(0,0,0,0)',
             font: { color: isDark ? '#e2e8f0' : '#0f172a' },
@@ -423,6 +441,8 @@ class EtnaDashboard {
             displaylogo: false,
             responsive: true,
             staticPlot: false,
+            scrollZoom: false,
+            doubleClick: false,
             modeBarButtonsToRemove: ['select2d', 'lasso2d']
         };
 
@@ -433,6 +453,7 @@ class EtnaDashboard {
         }
 
         plotDiv.classList.add('loaded');
+        this.applyInteractionState(plotDiv);
     }
     
     updateStats(data) {
@@ -461,6 +482,56 @@ class EtnaDashboard {
             const isAbove = data.above_threshold;
             statusIndicator.className = `status-indicator ${isAbove ? 'status-above' : 'status-below'}`;
             statusText.textContent = isAbove ? 'Sopra Soglia' : 'Sotto Soglia';
+        }
+    }
+
+    updateAnalyzeUI() {
+        const analyzeToggle = document.getElementById('dashboard-analyze-toggle');
+        const analyzeHint = document.getElementById('dashboard-analyze-hint');
+        if (analyzeToggle) {
+            analyzeToggle.classList.toggle('is-active', this.analyzeModeEnabled);
+            analyzeToggle.setAttribute('aria-pressed', this.analyzeModeEnabled ? 'true' : 'false');
+            analyzeToggle.textContent = this.analyzeModeEnabled ? 'Analizza: attivo' : 'Analizza';
+        }
+        if (analyzeHint) {
+            analyzeHint.textContent = this.analyzeModeEnabled
+                ? 'Trascina sul grafico per selezionare l’intervallo da analizzare.'
+                : 'Attiva Analizza per selezionare un intervallo da approfondire.';
+        }
+    }
+
+    applyInteractionState(plotDiv) {
+        if (!plotDiv) return;
+        plotDiv.classList.toggle('is-analyze-active', this.analyzeModeEnabled);
+        this.updateAnalyzeUI();
+    }
+
+    toggleAnalyzeMode() {
+        this.analyzeModeEnabled = !this.analyzeModeEnabled;
+        const plotDiv = document.getElementById('tremor-plot');
+        this.applyInteractionState(plotDiv);
+        if (plotDiv && window.Plotly && plotDiv.data) {
+            Plotly.relayout(plotDiv, {
+                dragmode: this.analyzeModeEnabled ? 'select' : 'pan'
+            });
+            if (!this.analyzeModeEnabled) {
+                Plotly.restyle(plotDiv, { selectedpoints: [null] });
+            }
+        }
+    }
+
+    resetPlotView() {
+        const plotDiv = document.getElementById('tremor-plot');
+        this.analyzeModeEnabled = false;
+        this.applyInteractionState(plotDiv);
+        if (plotDiv && window.Plotly && plotDiv.data) {
+            Plotly.relayout(plotDiv, {
+                'xaxis.autorange': true,
+                'yaxis.autorange': true,
+                dragmode: 'pan'
+            }).then(() => {
+                Plotly.restyle(plotDiv, { selectedpoints: [null] });
+            });
         }
     }
     

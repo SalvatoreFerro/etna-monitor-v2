@@ -121,8 +121,28 @@
               <button id="export-png" class="btn btn-secondary btn-sm glass" aria-label="Esporta grafico come immagine PNG">PNG</button>
             </div>
             {% endif %}
+            <div class="chart-interaction-controls" role="group" aria-label="Controlli analisi grafico">
+              <button
+                type="button"
+                id="dashboard-analyze-toggle"
+                class="btn btn-secondary btn-sm chart-interaction-toggle"
+                aria-pressed="false"
+              >
+                Analizza
+              </button>
+              <button
+                type="button"
+                id="dashboard-reset-view"
+                class="btn btn-ghost btn-sm chart-interaction-reset"
+              >
+                Reset vista
+              </button>
+            </div>
           </div>
         </div>
+        <p id="dashboard-analyze-hint" class="chart-interaction-hint">
+          Attiva Analizza per selezionare un intervallo da approfondire.
+        </p>
 
         <div id="tremor-plot" class="chart-container" role="img" aria-label="Grafico dati tremore vulcanico"></div>
 

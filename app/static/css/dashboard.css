@@ -359,11 +359,35 @@
   gap: var(--space-2);
 }
 
+.chart-interaction-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.chart-interaction-toggle.is-active {
+  background: var(--color-accent-primary);
+  color: var(--color-base);
+  border-color: transparent;
+}
+
+.chart-interaction-hint {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
 .chart-container {
   min-height: 420px;
   border-radius: var(--radius-xl);
   background: rgba(7, 11, 26, 0.45);
   border: 1px solid rgba(255, 255, 255, 0.08);
+  touch-action: pan-y;
+}
+
+.chart-container.is-analyze-active {
+  touch-action: none;
 }
 
 .chart-legend {
