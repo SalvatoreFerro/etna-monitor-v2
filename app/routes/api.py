@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 from flask import Blueprint, current_app, jsonify, request
 
-from ..utils.metrics import record_csv_error, record_csv_read
+from ..utils.metrics import record_csv_error, record_csv_read, record_csv_update
 from backend.utils.extract_png import process_png_to_csv
 from backend.utils.time import to_iso_utc
 
@@ -244,6 +244,7 @@ def force_update():
             if pd.notna(parsed):
                 last_ts_value = parsed.to_pydatetime()
         record_csv_read(int(result.get("rows", 0)), last_ts_value)
+        record_csv_update(int(result.get("rows", 0)), last_ts_value, error_message=None)
         current_app.logger.info("[API] Force update generated %s rows", result.get("rows"))
 
         return jsonify({
@@ -256,6 +257,7 @@ def force_update():
     except Exception as e:
         current_app.logger.exception("[API] Force update failed")
         record_csv_error(str(e))
+        record_csv_update(None, None, error_message=str(e))
         return jsonify({
             "ok": False,
             "error": str(e)
