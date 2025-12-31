@@ -77,6 +77,33 @@
     <p class="admin-caption">Aggiornamento automatico ogni 5 minuti.</p>
   </section>
 
+  <section class="admin-card admin-card--metrics card-premium animate-premium-slide" aria-labelledby="admin-system-health-title">
+    <header class="admin-section-header">
+      <div>
+        <h2 id="admin-system-health-title"><i class="fas fa-heartbeat"></i> System health</h2>
+        <p>Monitoraggio aggiornamento curva.csv e pipeline INGV.</p>
+      </div>
+    </header>
+    <div class="admin-analytics-grid">
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">Ultimo update CSV</span>
+        <span class="admin-analytics-value">{{ csv_metrics.last_update_at or '—' }}</span>
+      </div>
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">Row count ultimo update</span>
+        <span class="admin-analytics-value">{{ csv_metrics.last_update_row_count or '—' }}</span>
+      </div>
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">Timestamp ultimo dato</span>
+        <span class="admin-analytics-value">{{ csv_metrics.last_update_data_timestamp or '—' }}</span>
+      </div>
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">Ultimo errore</span>
+        <span class="admin-analytics-value">{{ csv_metrics.last_update_error or '—' }}</span>
+      </div>
+    </div>
+  </section>
+
   <section class="admin-card admin-card--user-analytics card-premium animate-premium-slide" aria-labelledby="admin-user-analytics-title" data-user-analytics>
     <header class="admin-section-header admin-section-header--split">
       <div>

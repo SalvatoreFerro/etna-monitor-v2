@@ -24,6 +24,7 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
 from ..utils.auth import admin_required
+from ..utils.metrics import get_csv_metrics
 from ..models import (
     db,
     BlogPost,
@@ -467,6 +468,8 @@ def admin_home():
         }
     )
 
+    csv_metrics = get_csv_metrics()
+
     return render_template(
         "admin.html",
         users=pagination.items,
@@ -484,6 +487,7 @@ def admin_home():
         soft_deleted_count=soft_deleted_count,
         moderators_count=moderators_count,
         admin_shortcuts=admin_shortcuts,
+        csv_metrics=csv_metrics,
     )
 
 
