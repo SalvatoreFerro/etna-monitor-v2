@@ -1,3 +1,5 @@
+import csv
+import json
 import os
 import time
 from datetime import datetime
@@ -5,7 +7,6 @@ from pathlib import Path
 
 from backend.utils.extract_png import process_png_to_csv
 from app.utils.logger import configure_logging, get_logger
-from app.utils.metrics import record_csv_update
 
 
 DEFAULT_INTERVAL_SECONDS = 3600
@@ -13,28 +14,58 @@ MAX_RETRIES = 3
 RETRY_BACKOFF_SECONDS = 30
 
 
-def _read_csv_last_timestamp(csv_path: Path) -> datetime | None:
-    try:
-        import pandas as pd
-    except ImportError:
-        return None
+def _resolve_csv_metrics_path() -> Path:
+    data_dir = os.getenv("DATA_DIR", "data")
+    return Path(os.getenv("CSV_METRICS_PATH", os.path.join(data_dir, "csv_metrics.json")))
 
+
+def _record_csv_update(
+    rows: int | None,
+    last_timestamp: datetime | None,
+    *,
+    error_message: str | None = None,
+) -> None:
+    payload = {
+        "last_update_at": datetime.utcnow().isoformat(),
+        "row_count": rows,
+        "last_data_timestamp": last_timestamp.isoformat() if last_timestamp else None,
+        "last_error": error_message,
+    }
+    path = _resolve_csv_metrics_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+
+
+def _read_csv_last_timestamp(csv_path: Path) -> datetime | None:
     if not csv_path.exists():
         return None
 
     try:
-        df = pd.read_csv(csv_path)
+        with csv_path.open("r", encoding="utf-8") as handle:
+            reader = csv.DictReader(handle)
+            last_ts = None
+            for row in reader:
+                ts = row.get("timestamp")
+                if not ts:
+                    continue
+                candidate = _parse_iso_timestamp(ts)
+                if candidate is not None:
+                    last_ts = candidate
+            return last_ts
     except Exception:
         return None
 
-    if "timestamp" not in df.columns or df.empty:
-        return None
 
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
-    df = df.dropna(subset=["timestamp"])
-    if df.empty:
+def _parse_iso_timestamp(value: str) -> datetime | None:
+    raw = value.strip()
+    if not raw:
         return None
-    return df["timestamp"].iloc[-1].to_pydatetime()
+    if raw.endswith("Z"):
+        raw = raw[:-1] + "+00:00"
+    try:
+        return datetime.fromisoformat(raw)
+    except ValueError:
+        return None
 
 
 def run_update(ingv_url: str, csv_path: Path) -> dict:
@@ -64,11 +95,11 @@ def update_with_retries(ingv_url: str, csv_path: Path) -> None:
             continue
 
         last_ts = _read_csv_last_timestamp(csv_path)
-        record_csv_update(result.get("rows"), last_ts)
+        _record_csv_update(result.get("rows"), last_ts)
         return
 
     last_ts = _read_csv_last_timestamp(csv_path)
-    record_csv_update(None, last_ts, error_message=last_error or "update_failed")
+    _record_csv_update(None, last_ts, error_message=last_error or "update_failed")
 
 
 def main() -> None:

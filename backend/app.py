@@ -8,6 +8,7 @@ sys.path.insert(0, str(project_root))
 
 from flask import Flask, jsonify, send_file
 from backend.utils.extract_png import process_png_to_csv
+from backend.utils.time import to_iso_utc
 from backend.utils.archive import ArchiveManager
 import pandas as pd
 import io
@@ -129,21 +130,22 @@ def get_archive_data(date_str):
         
         # Process PNG to extract data
         from backend.utils.extract_png import extract_green_curve_from_png
-        df = extract_green_curve_from_png(png_data, end_time=date)
-        
-        if df.empty:
+        data, _metadata = extract_green_curve_from_png(png_data, end_time=date)
+
+        if not data:
             return jsonify({
                 "ok": True,
                 "date": date_str,
                 "data": [],
                 "count": 0
             })
-        
+
         # Convert to JSON-friendly format
-        df_copy = df.copy()
-        df_copy['timestamp'] = df_copy['timestamp'].dt.strftime('%Y-%m-%dT%H:%M:%SZ')
-        data_list = df_copy.to_dict('records')
-        
+        data_list = [
+            {"timestamp": to_iso_utc(ts), "value": value}
+            for ts, value in data
+        ]
+
         return jsonify({
             "ok": True,
             "date": date_str,
