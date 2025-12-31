@@ -1,7 +1,7 @@
 {% extends "layout.html" %}
 
 {% block content %}
-{% set is_authenticated = current_user.is_authenticated %}
+{% set is_authenticated = current_user and current_user.is_authenticated %}
 {% set has_premium = is_authenticated and current_user.has_premium_access %}
 {% set has_telegram = is_authenticated and (current_user.telegram_chat_id or current_user.chat_id) %}
 {% if not is_authenticated %}

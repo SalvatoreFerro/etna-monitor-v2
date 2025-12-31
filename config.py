@@ -111,6 +111,9 @@ class Config:
     TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
     TELEGRAM_BOT_MODE = _resolve_telegram_bot_mode()
     PAYPAL_DONATION_LINK = os.getenv("PAYPAL_DONATION_LINK", "")
+    CSV_METRICS_PATH = os.getenv(
+        "CSV_METRICS_PATH", os.path.join(os.getenv("DATA_DIR", "data"), "csv_metrics.json")
+    )
 
     PRIVACY_POLICY_VERSION = os.getenv("PRIVACY_POLICY_VERSION", "2024-07")
 

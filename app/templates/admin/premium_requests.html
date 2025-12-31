@@ -1,0 +1,102 @@
+{% extends "layout.html" %}
+
+{% block head %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
+{% endblock %}
+
+{% block content %}
+<section class="admin-page admin-container" aria-labelledby="admin-premium-requests-title">
+  <header class="admin-card admin-card--hero card-premium animate-premium-fade admin-header" id="admin-premium-requests-title">
+    <div>
+      <h1><i class="fas fa-star"></i> Richieste Premium</h1>
+      <p>Gestisci le richieste Premium Lifetime inviate dagli utenti.</p>
+    </div>
+    <nav class="admin-actions" aria-label="Navigazione amministratore">
+      <a href="{{ url_for('admin.admin_home') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-arrow-left"></i> Torna al pannello admin</a>
+      <a href="{{ url_for('admin.donations') }}" class="btn btn-secondary glass btn-sm"><i class="fas fa-donate"></i> Donazioni</a>
+    </nav>
+  </header>
+
+  <article class="admin-card card-premium animate-premium-slide">
+    <form method="get" class="admin-analytics-filters" aria-label="Filtri richieste premium">
+      <label class="admin-field">
+        <span class="admin-field__label">Stato</span>
+        <select name="status">
+          <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+          <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+          <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+          <option value="all" {% if status_filter == 'all' %}selected{% endif %}>Tutti</option>
+        </select>
+      </label>
+      <label class="admin-field">
+        <span class="admin-field__label">Email</span>
+        <input type="text" name="email" value="{{ email_filter }}" placeholder="email@example.com">
+      </label>
+      <label class="admin-field">
+        <span class="admin-field__label">Da</span>
+        <input type="date" name="start_date" value="{{ start_date.isoformat() }}">
+      </label>
+      <label class="admin-field">
+        <span class="admin-field__label">A</span>
+        <input type="date" name="end_date" value="{{ end_date.isoformat() }}">
+      </label>
+      <button type="submit" class="btn btn-secondary glass btn-sm"><i class="fas fa-filter"></i> Filtra</button>
+    </form>
+  </article>
+
+  <article class="admin-card card-premium animate-premium-slide admin-highlight-card">
+    {% if requests %}
+      <div class="admin-table-wrapper">
+        <table class="table table-premium admin-table">
+          <thead>
+            <tr>
+              <th>Email</th>
+              <th>Transazione</th>
+              <th>Importo</th>
+              <th>Creato il</th>
+              <th>Stato</th>
+              <th>Azioni</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for request in requests %}
+              <tr>
+                <td>{{ request.email }}</td>
+                <td>{% if request.paypal_tx_id %}<code>{{ request.paypal_tx_id }}</code>{% else %}-{% endif %}</td>
+                <td>
+                  {% if request.amount_cents %}
+                    €{{ "%.2f"|format(request.amount_cents / 100) }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td>{{ request.created_at.strftime('%d/%m/%Y %H:%M') if request.created_at else '-' }}</td>
+                <td><span class="badge {{ 'warning' if request.status == 'pending' else 'success' if request.status == 'approved' else 'error' }}">{{ request.status }}</span></td>
+                <td>
+                  {% if request.status == 'pending' %}
+                    <form method="POST" action="{{ url_for('admin.approve_premium_request', request_id=request.id) }}" class="admin-inline-actions">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <input type="hidden" name="notes_admin" value="">
+                      <button type="submit" class="btn btn-premium btn-sm"><i class="fas fa-check"></i> Approva</button>
+                    </form>
+                    <form method="POST" action="{{ url_for('admin.reject_premium_request', request_id=request.id) }}" class="admin-inline-actions" onsubmit="return confirm('Rifiutare questa richiesta?');">
+                      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                      <input type="hidden" name="notes_admin" value="">
+                      <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-times"></i> Rifiuta</button>
+                    </form>
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="audit-list__empty">Non ci sono richieste premium per i filtri selezionati.</p>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

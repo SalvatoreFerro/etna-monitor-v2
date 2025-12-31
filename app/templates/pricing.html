@@ -1,6 +1,7 @@
 {% extends "layout.html" %}
 
 {% block content %}
+{% set is_authenticated = current_user and current_user.is_authenticated %}
 <section class="page">
   <div class="container stack">
     <header class="page__header">
@@ -40,7 +41,7 @@
           <li>Dashboard responsive e note tecniche</li>
         </ul>
         <div class="page__actions">
-          {% if not session.user_id %}
+          {% if not is_authenticated %}
             <a href="{{ url_for('auth.login') }}" class="btn btn-secondary">Accedi con Google</a>
           {% elif not current_user.has_premium_access %}
             <button class="btn btn-secondary" type="button" disabled aria-disabled="true">Piano attuale</button>
@@ -62,7 +63,7 @@
           <li>Supporto prioritario dal team</li>
         </ul>
         <div class="page__actions">
-          {% if not session.user_id %}
+          {% if not is_authenticated %}
             <a href="{{ url_for('auth.login', next=url_for('billing.donate')) }}" class="btn btn-primary">Accedi e richiedi</a>
           {% else %}
             <a href="{{ url_for('billing.donate') }}" class="btn btn-primary">Richiedi attivazione</a>
