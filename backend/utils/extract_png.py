@@ -1,3 +1,4 @@
+import csv
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -6,7 +7,6 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-import pandas as pd
 import requests
 
 from .time import to_iso_utc
@@ -88,37 +88,80 @@ def extract_green_curve_from_png(
         last_value = data[-1][1]
         data[-1] = (end_time, last_value)
 
-    df = pd.DataFrame(data, columns=["timestamp", "value"])
     interval_seconds = seconds_per_pixel if width else None
-    df.attrs["metadata"] = {
+    metadata = {
         "pixel_columns": width,
         "start_time": start_time,
         "end_time": end_time,
         "duration_seconds": total_seconds,
         "interval_seconds": interval_seconds,
     }
-    return df
+    return data, metadata
 
-def clean_and_save_data(df, output_path=None):
+def _to_datetime_utc(value):
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        dt = value
+    else:
+        raw = str(value).strip()
+        if not raw:
+            return None
+        if raw.endswith("Z"):
+            raw = raw[:-1] + "+00:00"
+        try:
+            dt = datetime.fromisoformat(raw)
+        except ValueError:
+            return None
+
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def _format_timestamp(dt: datetime) -> str:
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def clean_and_save_data(data, output_path=None):
     """Clean signal from noise/duplicates and save to CSV"""
     if output_path is None:
         DATA_DIR = os.getenv('DATA_DIR', 'data')
         output_path = os.path.join(DATA_DIR, 'curva.csv')
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
-    df_clean = df.copy()
-    df_clean.attrs = getattr(df, "attrs", {}).copy()
-    df_clean["timestamp"] = pd.to_datetime(df_clean["timestamp"], utc=True, errors="coerce")
-    df_clean = df_clean.dropna(subset=["timestamp"])
-    df_clean = df_clean.sort_values("timestamp").drop_duplicates("timestamp")
+    cleaned = []
+    seen = set()
 
-    df_clean = df_clean[(df_clean["value"] >= 0.01) & (df_clean["value"] <= 100)]
+    for item in data:
+        if not item or len(item) < 2:
+            continue
+        ts_raw, value = item[0], item[1]
+        dt = _to_datetime_utc(ts_raw)
+        if dt is None:
+            continue
+        try:
+            numeric = float(value)
+        except (TypeError, ValueError):
+            continue
+        if numeric < 0.01 or numeric > 100:
+            continue
+        key = dt.isoformat()
+        if key in seen:
+            continue
+        seen.add(key)
+        cleaned.append((dt, numeric))
 
-    df_to_save = df_clean.copy()
-    df_to_save["timestamp"] = df_to_save["timestamp"].dt.strftime("%Y-%m-%dT%H:%M:%SZ")
+    cleaned.sort(key=lambda row: row[0])
 
-    df_to_save.to_csv(output_path, index=False)
-    return output_path, df_clean
+    with open(output_path, "w", encoding="utf-8", newline="") as handle:
+        writer = csv.writer(handle)
+        writer.writerow(["timestamp", "value"])
+        for ts, val in cleaned:
+            writer.writerow([_format_timestamp(ts), f"{val}"])
+
+    return output_path, cleaned
 
 def process_png_to_csv(url="https://www.ct.ingv.it/RMS_Etna/2.png", output_path=None):
     """Complete pipeline: download PNG, extract curve, save CSV"""
@@ -126,27 +169,26 @@ def process_png_to_csv(url="https://www.ct.ingv.it/RMS_Etna/2.png", output_path=
     Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
 
     png_bytes, reference_time = download_png(url)
-    df = extract_green_curve_from_png(png_bytes, end_time=reference_time, duration=EXTRACTION_DURATION)
+    data, metadata = extract_green_curve_from_png(
+        png_bytes,
+        end_time=reference_time,
+        duration=EXTRACTION_DURATION,
+    )
 
     if output_path is None:
         output_path = os.path.join(DATA_DIR, 'curva.csv')
 
-    final_path, cleaned_df = clean_and_save_data(df, output_path)
+    final_path, cleaned_rows = clean_and_save_data(data, output_path)
 
-    last_ts = None
-    first_ts = None
-    if not cleaned_df.empty:
-        last_ts = cleaned_df['timestamp'].iloc[-1]
-        first_ts = cleaned_df['timestamp'].iloc[0]
-
-    metadata = cleaned_df.attrs.get("metadata", {}) if not cleaned_df.empty else {}
+    last_ts = cleaned_rows[-1][0] if cleaned_rows else None
+    first_ts = cleaned_rows[0][0] if cleaned_rows else None
     interval_minutes = None
     if metadata.get("interval_seconds"):
         interval_minutes = metadata["interval_seconds"] / 60
 
     logger.info(
         "Estratti %s punti INGV start_ref=%s end_ref=%s durata=%ss colonne=%s intervallo≈%smin first_ts=%s last_ts=%s",
-        len(cleaned_df),
+        len(cleaned_rows),
         to_iso_utc(metadata.get("start_time")),
         to_iso_utc(metadata.get("end_time")),
         metadata.get("duration_seconds"),
@@ -157,7 +199,7 @@ def process_png_to_csv(url="https://www.ct.ingv.it/RMS_Etna/2.png", output_path=
     )
 
     return {
-        "rows": len(cleaned_df),
+        "rows": len(cleaned_rows),
         "first_ts": to_iso_utc(first_ts),
         "last_ts": to_iso_utc(last_ts),
         "output_path": final_path,

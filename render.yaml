@@ -37,7 +37,7 @@ services:
     name: etnamonitor-csv-updater
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements.cron.txt
     schedule: "0 * * * *"
     command: python scripts/csv_updater.py
     envVars:
