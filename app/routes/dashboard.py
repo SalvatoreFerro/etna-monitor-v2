@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
 from ..utils.auth import login_required, get_current_user
 from ..utils.logger import get_logger
+from ..utils.csrf import validate_csrf_token
 from ..models import db
 from ..models.event import Event
 from ..utils.plot import make_tremor_figure
@@ -125,6 +126,11 @@ def settings():
 @login_required
 def connect_telegram():
     user = get_current_user()
+
+    csrf_token = request.form.get("csrf_token")
+    if not validate_csrf_token(csrf_token):
+        flash("Sessione scaduta, riprova.", "error")
+        return redirect(url_for('dashboard.dashboard_home'))
     
     raw_chat_id = request.form.get("chat_id")
     chat_id = None

@@ -33,3 +33,19 @@ services:
     envVars:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
+  - type: cron
+    name: etnamonitor-csv-updater
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    schedule: "0 * * * *"
+    command: python scripts/csv_updater.py
+    envVars:
+      - key: DATA_DIR
+        value: /data
+      - key: LOG_DIR
+        value: /data/log
+      - key: CSV_PATH
+        value: /data/curva.csv
+      - key: RUN_ONCE
+        value: "1"

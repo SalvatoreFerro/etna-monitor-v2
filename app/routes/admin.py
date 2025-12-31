@@ -1,5 +1,6 @@
 import csv
 import io
+import json
 from datetime import datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
@@ -23,7 +24,8 @@ from sqlalchemy.orm import joinedload
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
-from ..utils.auth import admin_required
+from ..utils.auth import admin_required, get_current_user
+from ..utils.metrics import get_csv_metrics
 from ..models import (
     db,
     BlogPost,
@@ -36,6 +38,8 @@ from ..models import (
 )
 from ..models.user import User
 from ..models.event import Event
+from ..models.billing import EventLog
+from ..models.premium_request import PremiumRequest
 from ..models.partner import (
     PARTNER_STATUSES,
     Partner,
@@ -355,6 +359,13 @@ def admin_home():
         or 0
     )
 
+    pending_premium_requests_count = (
+        db.session.query(func.count(PremiumRequest.id))
+        .filter(PremiumRequest.status == "pending")
+        .scalar()
+        or 0
+    )
+
     soft_deleted_count = (
         db.session.query(func.count(User.id))
         .filter(User.deleted_at.isnot(None), User.erased_at.is_(None))
@@ -423,6 +434,14 @@ def admin_home():
             "badge_label": "Da validare",
         },
         {
+            "label": "Richieste Premium",
+            "description": "Gestisci richieste Premium Lifetime e stato approvazioni.",
+            "icon": "fa-star",
+            "url": url_for("admin.premium_requests"),
+            "badge": pending_premium_requests_count,
+            "badge_label": "Pending",
+        },
+        {
             "label": "Partner Experience",
             "description": "Gestisci partner, offerte e visibilità.",
             "icon": "fa-handshake",
@@ -467,6 +486,8 @@ def admin_home():
         }
     )
 
+    csv_metrics = get_csv_metrics()
+
     return render_template(
         "admin.html",
         users=pagination.items,
@@ -484,6 +505,7 @@ def admin_home():
         soft_deleted_count=soft_deleted_count,
         moderators_count=moderators_count,
         admin_shortcuts=admin_shortcuts,
+        csv_metrics=csv_metrics,
     )
 
 
@@ -1292,6 +1314,161 @@ def donations():
         .all()
     )
     return render_template("admin/donations.html", users=pending_users)
+
+
+@bp.route("/premium-requests")
+@admin_required
+def premium_requests():
+    status_filter = (request.args.get("status") or "pending").strip().lower()
+    email_filter = (request.args.get("email") or "").strip().lower()
+    today = datetime.utcnow().date()
+    start_date = _parse_date_param(request.args.get("start_date"), today - timedelta(days=30))
+    end_date = _parse_date_param(request.args.get("end_date"), today)
+    if start_date > end_date:
+        start_date = end_date
+
+    start_dt = datetime.combine(start_date, datetime.min.time())
+    end_dt = datetime.combine(end_date, datetime.max.time())
+
+    query = PremiumRequest.query
+    if status_filter and status_filter != "all":
+        query = query.filter(PremiumRequest.status == status_filter)
+    if email_filter:
+        query = query.filter(PremiumRequest.email.ilike(f"%{email_filter}%"))
+    query = query.filter(PremiumRequest.created_at >= start_dt, PremiumRequest.created_at <= end_dt)
+
+    requests = query.order_by(PremiumRequest.created_at.desc()).all()
+    return render_template(
+        "admin/premium_requests.html",
+        requests=requests,
+        status_filter=status_filter,
+        email_filter=email_filter,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+
+@bp.route("/premium-requests/<int:request_id>/approve", methods=["POST"])
+@admin_required
+def approve_premium_request(request_id: int):
+    if not validate_csrf_token(request.form.get("csrf_token")):
+        flash("Token CSRF non valido.", "error")
+        return redirect(url_for("admin.premium_requests"))
+
+    premium_request = PremiumRequest.query.get_or_404(request_id)
+    if premium_request.status != "pending":
+        flash("Richiesta già gestita.", "warning")
+        return redirect(url_for("admin.premium_requests"))
+
+    admin_notes = (request.form.get("notes_admin") or "").strip() or None
+    admin_user = get_current_user()
+
+    user = premium_request.user
+    if user is None:
+        user = User.query.filter_by(email=premium_request.email).first()
+
+    if user is None:
+        error_message = f"Nessun utente trovato per {premium_request.email}"
+        premium_request.mark_reviewed(
+            "rejected", admin_user.id if admin_user else None, admin_notes or error_message
+        )
+        db.session.add(
+            EventLog(
+                user_id=None,
+                event_type="premium_request.approval_failed",
+                event_data=json.dumps(
+                    {"request_id": premium_request.id, "email": premium_request.email}
+                ),
+            )
+        )
+        db.session.commit()
+        _log_admin_action(
+            "premium_request_approve",
+            target_email=premium_request.email,
+            status="error",
+            message=error_message,
+            details={"request_id": premium_request.id},
+        )
+        flash(error_message, "error")
+        return redirect(url_for("admin.premium_requests"))
+
+    user.activate_premium_lifetime()
+    if premium_request.paypal_tx_id:
+        user.donation_tx = premium_request.paypal_tx_id
+
+    premium_request.user_id = user.id
+    premium_request.mark_reviewed(
+        "approved", admin_user.id if admin_user else None, admin_notes
+    )
+
+    db.session.add(
+        EventLog(
+            user_id=user.id,
+            event_type="premium_request.approved",
+            event_data=json.dumps(
+                {
+                    "request_id": premium_request.id,
+                    "email": premium_request.email,
+                    "admin_id": admin_user.id if admin_user else None,
+                }
+            ),
+        )
+    )
+    db.session.commit()
+
+    _log_admin_action(
+        "premium_request_approve",
+        target_user=user,
+        status="success",
+        message=f"Premium attivato per {premium_request.email}",
+        details={"request_id": premium_request.id},
+    )
+    flash("Premium attivato e richiesta approvata.", "success")
+    return redirect(url_for("admin.premium_requests"))
+
+
+@bp.route("/premium-requests/<int:request_id>/reject", methods=["POST"])
+@admin_required
+def reject_premium_request(request_id: int):
+    if not validate_csrf_token(request.form.get("csrf_token")):
+        flash("Token CSRF non valido.", "error")
+        return redirect(url_for("admin.premium_requests"))
+
+    premium_request = PremiumRequest.query.get_or_404(request_id)
+    if premium_request.status != "pending":
+        flash("Richiesta già gestita.", "warning")
+        return redirect(url_for("admin.premium_requests"))
+
+    admin_notes = (request.form.get("notes_admin") or "").strip() or None
+    admin_user = get_current_user()
+    premium_request.mark_reviewed(
+        "rejected", admin_user.id if admin_user else None, admin_notes
+    )
+
+    db.session.add(
+        EventLog(
+            user_id=premium_request.user_id,
+            event_type="premium_request.rejected",
+            event_data=json.dumps(
+                {
+                    "request_id": premium_request.id,
+                    "email": premium_request.email,
+                    "admin_id": admin_user.id if admin_user else None,
+                }
+            ),
+        )
+    )
+    db.session.commit()
+
+    _log_admin_action(
+        "premium_request_reject",
+        target_email=premium_request.email,
+        status="success",
+        message="Richiesta premium rifiutata",
+        details={"request_id": premium_request.id},
+    )
+    flash("Richiesta rifiutata.", "info")
+    return redirect(url_for("admin.premium_requests"))
 
 
 @bp.route("/partners", methods=["GET"])

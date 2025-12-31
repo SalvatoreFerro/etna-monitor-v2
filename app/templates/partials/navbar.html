@@ -1,4 +1,4 @@
-{% set is_authenticated = current_user.is_authenticated if current_user is defined else session.user_id %}
+{% set is_authenticated = current_user and current_user.is_authenticated %}
 {% set data_links = [
   {'label': 'Grafici', 'url': url_for('main.index'), 'endpoint': 'main.index'},
   {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},

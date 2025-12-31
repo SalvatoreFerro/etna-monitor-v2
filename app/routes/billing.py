@@ -7,6 +7,7 @@ from ..utils.auth import login_required, get_current_user
 from ..models import db
 from ..models.user import User
 from ..models.billing import Invoice, EventLog
+from ..models.premium_request import PremiumRequest
 from ..utils.csrf import validate_csrf_token
 from ..services.notifications import notify_admin_new_donation
 
@@ -173,6 +174,49 @@ def confirm_donation():
         return redirect(url_for('billing.donate'))
 
     user.donation_tx = tx_id
+    amount_cents = None
+    if amount:
+        try:
+            amount_cents = int(round(float(amount) * 100))
+        except ValueError:
+            amount_cents = None
+
+    payload = {
+        "tx_id": tx_id,
+        "amount": amount or None,
+        "user_email": user.email,
+        "submitted_at": datetime.utcnow().isoformat(),
+    }
+
+    pending_request = PremiumRequest.query.filter_by(email=user.email, status="pending").first()
+    if pending_request:
+        existing_payload = pending_request.raw_payload
+        payloads = existing_payload if isinstance(existing_payload, list) else ([existing_payload] if existing_payload else [])
+        payloads.append(payload)
+        pending_request.paypal_tx_id = tx_id
+        pending_request.amount_cents = amount_cents
+        pending_request.currency = "EUR" if amount_cents else pending_request.currency
+        pending_request.raw_payload = payloads
+        pending_request.created_at = datetime.utcnow()
+    else:
+        pending_request = PremiumRequest(
+            user_id=user.id,
+            email=user.email,
+            amount_cents=amount_cents,
+            currency="EUR" if amount_cents else None,
+            paypal_tx_id=tx_id,
+            status="pending",
+            source="paypal",
+            raw_payload=[payload],
+        )
+        db.session.add(pending_request)
+
+    event_log = EventLog(
+        user_id=user.id,
+        event_type="premium_request.submitted",
+        event_data=json.dumps(payload),
+    )
+    db.session.add(event_log)
     db.session.commit()
 
     if amount:
