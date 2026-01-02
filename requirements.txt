@@ -10,8 +10,8 @@ markdown2==2.4.12
 python-dotenv==1.0.1
 Flask-Migrate==4.0.7
 plotly==5.22.0
-pandas==2.2.2
-numpy==1.26.4
+pandas>=2.2.3
+numpy>=2.1.0
 requests==2.32.3
 Pillow==10.4.0
 cloudinary==1.40.0
