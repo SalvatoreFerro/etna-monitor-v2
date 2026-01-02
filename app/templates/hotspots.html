@@ -1,0 +1,205 @@
+{% extends "layout.html" %}
+
+{% block head_extra %}
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <style>
+    .hotspots-header {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      margin: var(--space-6) 0 var(--space-5);
+    }
+
+    .hotspots-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-4);
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-sm);
+    }
+
+    .hotspots-grid {
+      display: grid;
+      gap: var(--space-6);
+    }
+
+    .hotspots-panel {
+      background: var(--color-surface);
+      border-radius: var(--radius-xl);
+      padding: var(--space-5);
+      border: 1px solid rgba(148, 163, 184, 0.1);
+      box-shadow: var(--shadow-lg);
+    }
+
+    #hotspots-map {
+      width: 100%;
+      height: 420px;
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+    }
+
+    .hotspots-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .hotspots-table th,
+    .hotspots-table td {
+      padding: var(--space-3);
+      text-align: left;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+      font-size: var(--font-size-sm);
+    }
+
+    .hotspots-table th {
+      color: var(--color-text-secondary);
+      font-weight: var(--font-weight-semibold);
+    }
+
+    .hotspot-status {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2xs);
+      padding: 0.2rem 0.5rem;
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .hotspot-status--new {
+      background: rgba(34, 197, 94, 0.2);
+      color: #6ee7b7;
+    }
+
+    .hotspot-status--persistent {
+      background: rgba(234, 179, 8, 0.2);
+      color: #fcd34d;
+    }
+  </style>
+{% endblock %}
+
+{% block content %}
+  <section class="container container--wide">
+    <div class="hotspots-header">
+      <h1>Hotspot termici satellitari (Etna)</h1>
+      <p class="muted">
+        Dati NASA FIRMS aggiornati automaticamente per evidenziare hotspot termici nella zona Etna.
+      </p>
+      <div class="hotspots-meta">
+        <span><strong>Ultimo aggiornamento:</strong> {{ generated_at_display or 'Non disponibile' }}</span>
+        <span><strong>Hotspot ultime 24h:</strong> {{ hotspots.count or 0 }}</span>
+      </div>
+    </div>
+
+    {% if not hotspots.available %}
+      <div class="hotspots-panel">
+        <p class="muted">Dati non disponibili.</p>
+      </div>
+    {% else %}
+      <div class="hotspots-grid">
+        <div class="hotspots-panel">
+          <div id="hotspots-map" aria-label="Mappa hotspot termici Etna"></div>
+        </div>
+
+        <div class="hotspots-panel">
+          {% if items %}
+            <div class="table-responsive">
+              <table class="hotspots-table">
+                <thead>
+                  <tr>
+                    <th>Ora (UTC)</th>
+                    <th>Lat</th>
+                    <th>Lon</th>
+                    <th>Confidenza</th>
+                    <th>Intensità</th>
+                    <th>Stato</th>
+                    <th>Mappa</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in items %}
+                    <tr>
+                      <td>{{ item.time_utc }}</td>
+                      <td>{{ "%.4f"|format(item.lat) }}</td>
+                      <td>{{ "%.4f"|format(item.lon) }}</td>
+                      <td>{{ item.confidence }}</td>
+                      <td>
+                        {% if item.intensity.frp %}
+                          {{ item.intensity.frp }} MW
+                        {% elif item.intensity.brightness %}
+                          {{ item.intensity.brightness }} K
+                        {% else %}
+                          n/d
+                        {% endif %}
+                      </td>
+                      <td>
+                        <span class="hotspot-status hotspot-status--{{ item.status }}">{{ item.status }}</span>
+                      </td>
+                      <td><a href="{{ item.maps_url }}" target="_blank" rel="noopener">Apri</a></td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <p class="muted">Nessun hotspot rilevato nelle ultime 24 ore.</p>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+
+    <div class="hotspots-panel" style="margin-top: var(--space-6);">
+      <p class="muted">Disclaimer: Dati indicativi. Non è un sistema di previsione.</p>
+    </div>
+  </section>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script nonce="{{ csp_nonce() }}">
+    const hotspotItems = {{ items | tojson }};
+    const mapCenter = {{ map_center | tojson }};
+    const mapBounds = {{ map_bounds | tojson }};
+
+    const mapContainer = document.getElementById('hotspots-map');
+    if (window.L && mapContainer) {
+      const map = L.map('hotspots-map', { scrollWheelZoom: false }).setView(
+        [mapCenter.lat, mapCenter.lon],
+        11
+      );
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        maxZoom: 16,
+      }).addTo(map);
+      map.fitBounds(mapBounds, { padding: [20, 20] });
+
+      hotspotItems.forEach((item) => {
+        const marker = L.circleMarker([item.lat, item.lon], {
+          radius: item.status === 'new' ? 7 : 5,
+          color: item.status === 'new' ? '#34d399' : '#f59e0b',
+          fillOpacity: 0.7,
+        });
+        const details = [
+          `<strong>${item.time_utc}</strong>`,
+          `Confidenza: ${item.confidence}`,
+          item.intensity.frp ? `FRP: ${item.intensity.frp} MW` : null,
+          item.intensity.brightness ? `Brightness: ${item.intensity.brightness} K` : null,
+          `<a href="${item.maps_url}" target="_blank" rel="noopener">Apri su Maps</a>`,
+        ]
+          .filter(Boolean)
+          .join('<br>');
+        marker.bindPopup(details);
+        marker.addTo(map);
+      });
+    }
+  </script>
+{% endblock %}

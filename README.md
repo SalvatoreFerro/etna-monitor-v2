@@ -21,16 +21,17 @@ Obiettivi principali:
 6. [Setup Locale (Step-by-step)](#setup-locale-step-by-step)
 7. [Configurazione (.env.example)](#configurazione-envexample)
 8. [Pipeline Dati (PNG INGV → CSV → Grafico)](#pipeline-dati-png-ingv--csv--grafico)
-9. [Notifiche Telegram](#notifiche-telegram)
-10. [Gestione Utenti e Premium](#gestione-utenti-e-premium)
-11. [Logging & Monitoraggio](#logging--monitoraggio)
-12. [Deploy (Ambiente di Produzione)](#deploy-ambiente-di-produzione)
-13. [Sicurezza & Privacy](#sicurezza--privacy)
-14. [GA4 & CSP](#ga4--csp)
-15. [Troubleshooting (FAQ Tecnica)](#troubleshooting-faq-tecnica)
-16. [Roadmap](#roadmap)
-17. [Licenza & Note Legali](#licenza--note-legali)
-18. [Contatti](#contatti)
+9. [Hotspot FIRMS](#hotspot-firms)
+10. [Notifiche Telegram](#notifiche-telegram)
+11. [Gestione Utenti e Premium](#gestione-utenti-e-premium)
+12. [Logging & Monitoraggio](#logging--monitoraggio)
+13. [Deploy (Ambiente di Produzione)](#deploy-ambiente-di-produzione)
+14. [Sicurezza & Privacy](#sicurezza--privacy)
+15. [GA4 & CSP](#ga4--csp)
+16. [Troubleshooting (FAQ Tecnica)](#troubleshooting-faq-tecnica)
+17. [Roadmap](#roadmap)
+18. [Licenza & Note Legali](#licenza--note-legali)
+19. [Contatti](#contatti)
 
 ---
 
@@ -223,6 +224,33 @@ ALERT_THRESHOLD_DEFAULT=2.0
 4. **Persistenza**: salvataggio in CSV con schema `timestamp, valore_mV, media_mobile, note`. File archiviati in `data/` con rotazione giornaliera.
 5. **Rendering**: Plotly genera grafico linea verde su asse Y logaritmico, sovrappone soglia rossa e indicatori dell'ultimo valore.
 6. **Considerazioni**: gestione ritardi aggiornamento sorgente, retry con backoff esponenziale, notifiche di errore se il PNG non è aggiornato oltre una soglia temporale.
+
+## Hotspot FIRMS
+EtnaMonitor integra i dati NASA FIRMS per visualizzare hotspot termici satellitari in un canale indipendente dal tremore.
+
+### Variabili ambiente
+```env
+HOTSPOTS_ENABLED=false
+FIRMS_MAP_KEY=
+FIRMS_SOURCE=VIIRS_SNPP_NRT
+ETNA_BBOX=14.85,37.55,15.25,37.90
+HOTSPOTS_DAY_RANGE=1
+HOTSPOTS_CACHE_TTL_MIN=180
+HOTSPOTS_DEDUP_KM=1.0
+HOTSPOTS_DEDUP_HOURS=2
+HOTSPOTS_NEW_WINDOW_HOURS=12
+```
+
+### Aggiornamento cache
+```bash
+python backend/scripts/update_hotspots.py
+```
+
+### Test endpoint e pagina
+```bash
+curl http://127.0.0.1:5000/api/hotspots/latest
+open http://127.0.0.1:5000/hotspots
+```
 
 ## Notifiche Telegram
 - **Collegamento account**: l'utente fornisce il proprio `chat_id` tramite comando `/start`, che viene associato al profilo in dashboard.

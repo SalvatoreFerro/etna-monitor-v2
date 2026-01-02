@@ -4,6 +4,11 @@
   {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
   {'label': 'Webcam Etna', 'url': url_for('main.webcam_etna'), 'endpoint': 'main.webcam_etna'}
 ] %}
+{% if config.HOTSPOTS_ENABLED %}
+  {% set data_links = data_links + [
+    {'label': 'Hotspot', 'url': url_for('main.hotspots'), 'endpoint': 'main.hotspots'}
+  ] %}
+{% endif %}
 {% set community_links = [
   {'label': 'Blog', 'url': url_for('community.blog_index'), 'endpoint': 'community.blog_index'},
   {'label': 'Forum', 'url': url_for('community.forum_home'), 'endpoint': 'community.forum_home'},

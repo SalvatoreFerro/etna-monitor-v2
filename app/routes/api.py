@@ -7,6 +7,8 @@ from flask import Blueprint, current_app, jsonify, request
 from ..utils.metrics import record_csv_error, record_csv_read, record_csv_update
 from backend.utils.extract_png import process_png_to_csv
 from backend.utils.time import to_iso_utc
+from backend.services.hotspots.config import HotspotsConfig
+from backend.services.hotspots.storage import read_cache, unavailable_payload
 
 _RANGE_LIMITS: dict[str, int] = {
     "24h": 288,
@@ -229,6 +231,23 @@ def get_status():
             "ok": False,
             "error": str(e)
         }), 500
+
+
+@api_bp.get("/api/hotspots/latest")
+def get_hotspots_latest():
+    config = HotspotsConfig.from_env()
+    if not config.enabled:
+        cache = unavailable_payload("Dati non disponibili")
+    else:
+        cache = read_cache(config.cache_path)
+    if cache is None:
+        cache = unavailable_payload("Dati non disponibili")
+
+    response = jsonify(cache)
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 @api_bp.route("/api/force_update", methods=["GET", "POST"])
 def force_update():
