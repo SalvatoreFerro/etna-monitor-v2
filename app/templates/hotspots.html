@@ -11,12 +11,20 @@
     .hotspots-header {
       display: flex;
       flex-direction: column;
-      gap: var(--space-2);
+      gap: var(--space-3);
       margin: var(--space-6) 0 var(--space-5);
     }
 
     .hotspots-header h1 {
       margin-bottom: 0;
+      font-size: clamp(1.8rem, 1.2rem + 1.6vw, 2.6rem);
+      letter-spacing: -0.02em;
+    }
+
+    .hotspots-subtitle {
+      font-size: var(--font-size-md);
+      color: var(--color-text);
+      max-width: 720px;
     }
 
     .hotspots-meta {
@@ -27,11 +35,18 @@
       font-size: var(--font-size-sm);
     }
 
+    .hotspots-meta span {
+      padding: 0.2rem 0.65rem;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.55);
+    }
+
     .hotspots-note {
       display: flex;
       align-items: flex-start;
       gap: var(--space-3);
-      padding: var(--space-4);
+      padding: var(--space-4) var(--space-5);
       border-radius: var(--radius-lg);
       background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.7));
       border: 1px solid rgba(148, 163, 184, 0.15);
@@ -53,7 +68,7 @@
       border-radius: var(--radius-xl);
       padding: var(--space-5);
       border: 1px solid rgba(148, 163, 184, 0.1);
-      box-shadow: var(--shadow-lg);
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.35);
     }
 
     .hotspots-status {
@@ -71,11 +86,12 @@
     .hotspots-kpi {
       padding: var(--space-4);
       border-radius: var(--radius-lg);
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: linear-gradient(150deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.55));
+      border: 1px solid rgba(148, 163, 184, 0.25);
       display: flex;
       flex-direction: column;
       gap: var(--space-2);
+      min-height: 96px;
     }
 
     .hotspots-kpi span {
@@ -86,8 +102,9 @@
     }
 
     .hotspots-kpi strong {
-      font-size: var(--font-size-lg);
+      font-size: clamp(1.3rem, 1.1rem + 0.8vw, 2rem);
       font-weight: var(--font-weight-semibold);
+      color: #e2e8f0;
     }
 
     .hotspots-message {
@@ -112,6 +129,11 @@
 
     .hotspots-map-shell {
       position: relative;
+      padding: var(--space-2);
+      border-radius: calc(var(--radius-lg) + 6px);
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08);
     }
 
     #hotspots-map {
@@ -119,7 +141,8 @@
       height: 420px;
       border-radius: var(--radius-lg);
       overflow: hidden;
-      border: 1px solid rgba(148, 163, 184, 0.2);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      box-shadow: 0 16px 35px rgba(15, 23, 42, 0.45);
     }
 
     .hotspots-map-stack {
@@ -132,10 +155,16 @@
       gap: var(--space-2);
       font-size: var(--font-size-xs);
       color: var(--color-text-secondary);
-      background: rgba(15, 23, 42, 0.65);
+      background: rgba(15, 23, 42, 0.7);
       border-radius: var(--radius-md);
-      padding: var(--space-3);
+      padding: var(--space-4);
       border: 1px solid rgba(148, 163, 184, 0.15);
+    }
+
+    .hotspots-legend-title {
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
+      color: var(--color-text);
     }
 
     .legend-row {
@@ -206,11 +235,11 @@
 
     .hotspots-card {
       border-radius: var(--radius-lg);
-      background: rgba(15, 23, 42, 0.6);
+      background: linear-gradient(160deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.45));
       border: 1px solid rgba(148, 163, 184, 0.18);
-      padding: var(--space-4);
+      padding: var(--space-4) var(--space-4);
       display: grid;
-      gap: var(--space-3);
+      gap: var(--space-4);
       cursor: pointer;
       transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
     }
@@ -231,6 +260,12 @@
 
     .hotspots-card-title {
       font-size: var(--font-size-sm);
+      color: var(--color-text-secondary);
+    }
+
+    .hotspots-card-title strong {
+      display: block;
+      color: var(--color-text);
       font-weight: var(--font-weight-semibold);
     }
 
@@ -276,6 +311,23 @@
       font-size: var(--font-size-xs);
     }
 
+    .hotspots-cta {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2xs);
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      border: 1px solid rgba(56, 189, 248, 0.6);
+      background: rgba(14, 116, 144, 0.2);
+      font-weight: var(--font-weight-semibold);
+      transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    }
+
+    .hotspots-cta:hover {
+      background: rgba(56, 189, 248, 0.22);
+      border-color: rgba(125, 211, 252, 0.85);
+    }
+
     .hotspots-fade {
       opacity: 0;
       transform: translateY(6px);
@@ -302,6 +354,46 @@
       line-height: 1.6;
     }
 
+    .leaflet-interactive.hotspots-marker {
+      filter: drop-shadow(0 0 4px rgba(15, 23, 42, 0.9));
+    }
+
+    .leaflet-popup.hotspots-popup .leaflet-popup-content-wrapper {
+      background: rgba(15, 23, 42, 0.95);
+      color: var(--color-text);
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.6);
+    }
+
+    .leaflet-popup.hotspots-popup .leaflet-popup-tip {
+      background: rgba(15, 23, 42, 0.95);
+    }
+
+    .hotspots-popup {
+      font-size: var(--font-size-xs);
+      line-height: 1.5;
+    }
+
+    .hotspots-popup-title {
+      font-weight: var(--font-weight-semibold);
+      font-size: var(--font-size-sm);
+      margin-bottom: var(--space-2);
+    }
+
+    .hotspots-popup-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-2);
+      margin-bottom: var(--space-2);
+    }
+
+    .hotspots-popup-label {
+      color: var(--color-text-secondary);
+      display: block;
+      margin-bottom: 0.15rem;
+    }
+
     @media (max-width: 900px) {
       #hotspots-map {
         height: 340px;
@@ -324,13 +416,20 @@
 {% block content %}
   <section class="container container--wide">
     <div class="hotspots-header">
-      <h1>Anomalie termiche satellitari (Etna)</h1>
-      <p class="muted">Dati NASA FIRMS • aggiornamento automatico • segnale indipendente dal tremore</p>
+      <h1>Hotspot termici satellitari sull’Etna</h1>
+      <p class="hotspots-subtitle">
+        Monitoraggio immediato delle anomalie termiche rilevate dai satelliti NASA FIRMS nelle ultime 24 ore.
+      </p>
+      <div class="hotspots-meta">
+        <span>Fonte: NASA FIRMS</span>
+        <span>Aggiornamento automatico</span>
+        <span>Copertura 24h</span>
+      </div>
       <div class="hotspots-note">
-        <strong>Cosa significa</strong>
+        <strong>Cosa stai vedendo</strong>
         <span>
-          Un hotspot è un pixel satellitare con temperatura anomala. Non è una previsione e non identifica con
-          certezza una bocca eruttiva.
+          Ogni punto rappresenta un’anomalia termica rilevata dal satellite. È un segnale di attenzione, non una
+          previsione di eruzione.
         </span>
       </div>
     </div>
@@ -347,7 +446,7 @@
         </div>
       </div>
       <div class="hotspots-message hotspots-fade" id="hotspots-message" hidden>
-        Nessuna anomalia rilevata nelle ultime 24h.
+        Nessuna anomalia rilevata nelle ultime 24 ore. Situazione tranquilla.
       </div>
       <div class="hotspots-banner hotspots-fade" id="hotspots-error" hidden>
         Errore nel recupero dati satellitari.
@@ -360,15 +459,16 @@
           <div class="hotspots-map-shell">
             <div class="hotspots-loader" id="hotspots-loader">
               <div class="loader-ring" aria-hidden="true"></div>
-              <div class="muted">Aggiornamento dati satellitari in corso…</div>
+              <div class="muted">Stiamo sincronizzando i dati satellitari…</div>
             </div>
             <div id="hotspots-map" aria-label="Mappa hotspot termici Etna"></div>
           </div>
           <div class="hotspots-legend">
+            <div class="hotspots-legend-title">Legenda intensità</div>
             <div class="legend-row"><span class="legend-dot legend-dot--high"></span> Intensità alta</div>
             <div class="legend-row"><span class="legend-dot legend-dot--mid"></span> Intensità media</div>
             <div class="legend-row"><span class="legend-dot legend-dot--low"></span> Intensità bassa</div>
-            <div>Ogni punto = area (pixel) ~375 m</div>
+            <div>Ogni punto = area di circa 375 m</div>
           </div>
         </div>
       </div>
@@ -459,6 +559,33 @@
 
     const frpLabel = (frp) => (frp == null ? '—' : `${numberFormat.format(frp)} MW`);
 
+    const relativeTime = (dateString) => {
+      if (!dateString) {
+        return { label: 'Non disponibile', iso: '' };
+      }
+      const date = new Date(dateString);
+      if (Number.isNaN(date.getTime())) {
+        return { label: dateString, iso: dateString };
+      }
+      const diffMs = date.getTime() - Date.now();
+      const rtf = new Intl.RelativeTimeFormat('it', { numeric: 'auto' });
+      const diffSeconds = Math.round(diffMs / 1000);
+      const absSeconds = Math.abs(diffSeconds);
+      if (absSeconds < 60) {
+        return { label: rtf.format(diffSeconds, 'second'), iso: dateString };
+      }
+      const diffMinutes = Math.round(diffSeconds / 60);
+      if (Math.abs(diffMinutes) < 60) {
+        return { label: rtf.format(diffMinutes, 'minute'), iso: dateString };
+      }
+      const diffHours = Math.round(diffMinutes / 60);
+      if (Math.abs(diffHours) < 24) {
+        return { label: rtf.format(diffHours, 'hour'), iso: dateString };
+      }
+      const diffDays = Math.round(diffHours / 24);
+      return { label: rtf.format(diffDays, 'day'), iso: dateString };
+    };
+
     const clearList = () => {
       if (listEl) {
         listEl.innerHTML = '';
@@ -470,7 +597,7 @@
       if (listEl) {
         const empty = document.createElement('div');
         empty.className = 'hotspots-empty hotspots-fade is-visible';
-        empty.textContent = 'Nessuna anomalia rilevata nelle ultime 24h.';
+        empty.textContent = 'Nessuna anomalia rilevata nelle ultime 24 ore. Nessun segnale anomalo rilevante.';
         listEl.appendChild(empty);
       }
     };
@@ -487,11 +614,12 @@
         const brightness = item?.intensity?.brightness ?? null;
         const color = markerColor(brightness);
         const marker = L.circleMarker([item.lat, item.lon], {
-          radius: 7,
-          color,
+          radius: 7.5,
+          color: '#f8fafc',
           fillColor: color,
-          weight: 2,
-          fillOpacity: 0.8,
+          weight: 2.2,
+          fillOpacity: 0.85,
+          className: 'hotspots-marker',
         });
 
         const tooltip = `${intensityLabel(brightness, item?.intensity?.unit)} • ${frpLabel(
@@ -499,16 +627,40 @@
         )}`;
         marker.bindTooltip(tooltip, { direction: 'top', opacity: 0.9 });
 
-        const popup = [
-          `<strong>Intensità:</strong> ${intensityLabel(brightness, item?.intensity?.unit)}`,
-          `<strong>FRP:</strong> ${frpLabel(item?.intensity?.frp)}`,
-          `<strong>Confidence:</strong> ${item.confidence}`,
-          `<strong>Satellite:</strong> ${item.satellite}`,
-          `<strong>Status:</strong> ${item.status}`,
-          `<strong>Time UTC:</strong> ${item.time_utc}`,
-          `<a href="${item.maps_url}" target="_blank" rel="noopener">Apri su Google Maps</a>`,
-        ].join('<br>');
-        marker.bindPopup(popup);
+        const timeInfo = relativeTime(item.time_utc);
+        const popup = `
+          <div class="hotspots-popup">
+            <div class="hotspots-popup-title">Anomalia termica rilevata</div>
+            <div class="hotspots-popup-grid">
+              <div>
+                <span class="hotspots-popup-label">Intensità</span>
+                ${intensityLabel(brightness, item?.intensity?.unit)}
+              </div>
+              <div>
+                <span class="hotspots-popup-label">FRP</span>
+                ${frpLabel(item?.intensity?.frp)}
+              </div>
+              <div>
+                <span class="hotspots-popup-label">Confidence</span>
+                ${item.confidence}
+              </div>
+              <div>
+                <span class="hotspots-popup-label">Satellite</span>
+                ${item.satellite}
+              </div>
+              <div>
+                <span class="hotspots-popup-label">Status</span>
+                ${item.status}
+              </div>
+              <div>
+                <span class="hotspots-popup-label">Rilevato</span>
+                <span title="${timeInfo.iso}">${timeInfo.label}</span>
+              </div>
+            </div>
+            <a class="hotspots-cta" href="${item.maps_url}" target="_blank" rel="noopener">Apri su Google Maps</a>
+          </div>
+        `;
+        marker.bindPopup(popup, { className: 'hotspots-popup' });
         marker.addTo(markersLayer);
         markerMap.set(index, marker);
         bounds.push([item.lat, item.lon]);
@@ -535,10 +687,14 @@
         card.className = 'hotspots-card hotspots-fade';
         const colorClass = brightness >= 340 ? 'hotspots-pill--high' : brightness >= 325 ? 'hotspots-pill--mid' : '';
         const pillText = brightness >= 340 ? 'Alta' : brightness >= 325 ? 'Media' : 'Bassa';
+        const timeInfo = relativeTime(item.time_utc);
 
         card.innerHTML = `
           <div class="hotspots-card-header">
-            <div class="hotspots-card-title">${item.time_utc}</div>
+            <div class="hotspots-card-title">
+              Rilevato
+              <strong title="${timeInfo.iso}">${timeInfo.label}</strong>
+            </div>
             <span class="hotspots-pill ${colorClass}">${pillText}</span>
           </div>
           <div class="hotspots-card-grid">
@@ -564,7 +720,7 @@
             </div>
           </div>
           <div>
-            <a href="${item.maps_url}" target="_blank" rel="noopener">Apri su Google Maps</a>
+            <a class="hotspots-cta" href="${item.maps_url}" target="_blank" rel="noopener">Apri su Google Maps</a>
           </div>
         `;
 
@@ -620,7 +776,9 @@
         return brightnessB - brightnessA;
       });
 
-      updatedEl.textContent = data.updated_at || 'Non disponibile';
+      const updateInfo = relativeTime(data.updated_at);
+      updatedEl.textContent = updateInfo.label;
+      updatedEl.title = updateInfo.iso;
       countEl.textContent = numberFormat.format(data.count ?? sorted.length ?? 0);
 
       setFadeVisible(kpisEl, true);
