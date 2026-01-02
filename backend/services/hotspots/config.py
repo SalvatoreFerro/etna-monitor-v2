@@ -69,12 +69,14 @@ class HotspotsConfig:
     @classmethod
     def from_env(cls) -> "HotspotsConfig":
         enabled = _parse_bool(os.getenv("HOTSPOTS_ENABLED"), default=False)
-        map_key = os.getenv("FIRMS_MAP_KEY")
+        map_key = os.getenv("FIRMS_API_KEY") or os.getenv("FIRMS_MAP_KEY")
         source = os.getenv("FIRMS_SOURCE", "VIIRS_SNPP_NRT").strip()
         if source not in SUPPORTED_SOURCES:
             source = "VIIRS_SNPP_NRT"
 
-        bbox_raw, bbox_coords = _parse_bbox(os.getenv("ETNA_BBOX"))
+        bbox_raw, bbox_coords = _parse_bbox(
+            os.getenv("HOTSPOTS_BBOX") or os.getenv("ETNA_BBOX")
+        )
         day_range = _parse_int(os.getenv("HOTSPOTS_DAY_RANGE"), 1)
         cache_ttl_min = _parse_int(os.getenv("HOTSPOTS_CACHE_TTL_MIN"), 180)
         dedup_km = _parse_float(os.getenv("HOTSPOTS_DEDUP_KM"), 1.0)

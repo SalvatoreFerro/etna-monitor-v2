@@ -10,7 +10,6 @@ from ..models.hotspots_cache import HotspotsCache
 from backend.utils.extract_png import process_png_to_csv
 from backend.utils.time import to_iso_utc
 from backend.services.hotspots.config import HotspotsConfig
-from backend.services.hotspots.storage import unavailable_payload
 
 _RANGE_LIMITS: dict[str, int] = {
     "24h": 288,
@@ -239,7 +238,12 @@ def get_status():
 def get_hotspots_latest():
     config = HotspotsConfig.from_env()
     if not config.enabled:
-        cache_response = unavailable_payload("Dati non disponibili")
+        cache_response = {
+            "available": False,
+            "count": 0,
+            "updated_at": None,
+            "items": [],
+        }
     else:
         try:
             record = HotspotsCache.query.filter_by(key="etna_latest").one_or_none()
@@ -248,13 +252,25 @@ def get_hotspots_latest():
             record = None
 
         if record is None:
-            cache_response = unavailable_payload("Dati non disponibili")
-        else:
             cache_response = {
-                "available": True,
-                "payload": record.payload,
-                "count": record.count,
-                "generated_at": to_iso_utc(record.generated_at),
+                "available": False,
+                "count": 0,
+                "updated_at": None,
+                "items": [],
+            }
+        else:
+            payload = record.payload if isinstance(record.payload, dict) else {}
+            items = payload.get("items") if isinstance(payload.get("items"), list) else []
+            available = bool(payload.get("available", True))
+            count = payload.get("count")
+            if not isinstance(count, int):
+                count = record.count
+            updated_at_value = record.updated_at or record.generated_at
+            cache_response = {
+                "available": available,
+                "count": count,
+                "updated_at": to_iso_utc(updated_at_value),
+                "items": items,
             }
 
     response = jsonify(cache_response)

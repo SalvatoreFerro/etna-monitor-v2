@@ -95,7 +95,9 @@ def main() -> int:
         return 0
 
     if not config.map_key:
-        logger.warning("[HOTSPOTS] FIRMS_MAP_KEY missing, skipping update.")
+        logger.warning(
+            "[HOTSPOTS] FIRMS_API_KEY/FIRMS_MAP_KEY missing, skipping update."
+        )
         return 0
 
     engine = _build_engine()
