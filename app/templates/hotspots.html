@@ -56,9 +56,15 @@
       box-shadow: var(--shadow-lg);
     }
 
+    .hotspots-status {
+      display: grid;
+      gap: var(--space-4);
+      margin-bottom: var(--space-6);
+    }
+
     .hotspots-kpis {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
       gap: var(--space-4);
     }
 
@@ -84,32 +90,28 @@
       font-weight: var(--font-weight-semibold);
     }
 
-    .hotspots-status-badge {
-      display: inline-flex;
+    .hotspots-message {
+      padding: var(--space-4);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(30, 41, 59, 0.6);
+      color: var(--color-text-secondary);
+    }
+
+    .hotspots-banner {
+      display: flex;
       align-items: center;
-      gap: var(--space-2xs);
-      padding: 0.25rem 0.65rem;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-4);
       border-radius: var(--radius-md);
-      font-size: var(--font-size-xs);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      background: rgba(148, 163, 184, 0.2);
-      color: #e2e8f0;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      color: #fecaca;
+      font-size: var(--font-size-sm);
     }
 
-    .hotspots-status-badge--none {
-      background: rgba(148, 163, 184, 0.2);
-      color: #e2e8f0;
-    }
-
-    .hotspots-status-badge--localized {
-      background: rgba(34, 197, 94, 0.2);
-      color: #86efac;
-    }
-
-    .hotspots-status-badge--persistent {
-      background: rgba(234, 179, 8, 0.2);
-      color: #fde68a;
+    .hotspots-map-shell {
+      position: relative;
     }
 
     #hotspots-map {
@@ -149,120 +151,140 @@
       display: inline-block;
     }
 
-    .legend-dot--new {
-      background: #34d399;
+    .legend-dot--high {
+      background: #ef4444;
     }
 
-    .legend-dot--persistent {
-      background: #fbbf24;
+    .legend-dot--mid {
+      background: #f97316;
     }
 
-    .hotspots-controls {
+    .legend-dot--low {
+      background: #facc15;
+    }
+
+    .hotspots-loader {
+      position: absolute;
+      inset: 0;
       display: flex;
-      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
       gap: var(--space-3);
+      background: rgba(15, 23, 42, 0.75);
+      border-radius: var(--radius-lg);
+      z-index: 2;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .hotspots-loader.is-visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .loader-ring {
+      width: 42px;
+      height: 42px;
+      border-radius: 999px;
+      border: 3px solid rgba(148, 163, 184, 0.25);
+      border-top-color: #38bdf8;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .hotspots-list {
+      display: grid;
+      gap: var(--space-4);
+    }
+
+    .hotspots-card {
+      border-radius: var(--radius-lg);
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      padding: var(--space-4);
+      display: grid;
+      gap: var(--space-3);
+      cursor: pointer;
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .hotspots-card:hover,
+    .hotspots-card.is-active {
+      transform: translateY(-2px);
+      border-color: rgba(56, 189, 248, 0.5);
+      box-shadow: 0 12px 24px rgba(15, 23, 42, 0.4);
+    }
+
+    .hotspots-card-header {
+      display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: var(--space-4);
+      gap: var(--space-3);
     }
 
-    .hotspots-toggle {
-      display: inline-flex;
-      border-radius: var(--radius-md);
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      overflow: hidden;
-    }
-
-    .hotspots-toggle button {
-      border: none;
-      padding: 0.4rem 0.9rem;
-      background: transparent;
-      color: var(--color-text-secondary);
-      font-size: var(--font-size-xs);
-      cursor: pointer;
-    }
-
-    .hotspots-toggle button.active {
-      background: rgba(59, 130, 246, 0.2);
-      color: #bfdbfe;
-    }
-
-    .hotspots-filter select {
-      background: rgba(15, 23, 42, 0.6);
-      border: 1px solid rgba(148, 163, 184, 0.2);
-      color: var(--color-text);
-      padding: 0.45rem 0.6rem;
-      border-radius: var(--radius-md);
+    .hotspots-card-title {
       font-size: var(--font-size-sm);
-    }
-
-    .hotspots-table-wrapper {
-      overflow-x: auto;
-    }
-
-    .hotspots-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .hotspots-table th,
-    .hotspots-table td {
-      padding: var(--space-3);
-      text-align: left;
-      border-bottom: 1px solid rgba(148, 163, 184, 0.15);
-      font-size: var(--font-size-sm);
-    }
-
-    .hotspots-table th {
-      color: var(--color-text-secondary);
       font-weight: var(--font-weight-semibold);
-      position: sticky;
-      top: 0;
-      background: rgba(15, 23, 42, 0.9);
-      backdrop-filter: blur(6px);
-      z-index: 1;
     }
 
-    .hotspots-table tbody tr:nth-child(even) {
-      background: rgba(30, 41, 59, 0.35);
+    .hotspots-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2xs);
+      padding: 0.25rem 0.6rem;
+      border-radius: 999px;
+      font-size: var(--font-size-xs);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: #0f172a;
+      background: #facc15;
     }
 
-    .hotspots-table tbody tr:hover {
-      background: rgba(59, 130, 246, 0.12);
+    .hotspots-pill--mid {
+      background: #fb923c;
     }
 
-    .hotspots-table a.button-link {
-      padding: 0.3rem 0.6rem;
-      border-radius: var(--radius-sm);
-      background: rgba(59, 130, 246, 0.15);
-      color: #bfdbfe;
+    .hotspots-pill--high {
+      background: #f87171;
+      color: #0f172a;
+    }
+
+    .hotspots-card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: var(--space-3);
+      font-size: var(--font-size-sm);
+    }
+
+    .hotspots-card-grid span {
+      color: var(--color-text-secondary);
+      display: block;
+      font-size: var(--font-size-xs);
+      margin-bottom: 0.2rem;
+    }
+
+    .hotspots-card a {
+      color: #7dd3fc;
       text-decoration: none;
       font-size: var(--font-size-xs);
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-2xs);
     }
 
-    .hotspot-status {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-2xs);
-      padding: 0.2rem 0.5rem;
-      border-radius: var(--radius-md);
-      font-size: var(--font-size-xs);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+    .hotspots-fade {
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.35s ease, transform 0.35s ease;
     }
 
-    .hotspot-status--new {
-      background: rgba(34, 197, 94, 0.2);
-      color: #6ee7b7;
-    }
-
-    .hotspot-status--persistent {
-      background: rgba(234, 179, 8, 0.2);
-      color: #fcd34d;
+    .hotspots-fade.is-visible {
+      opacity: 1;
+      transform: translateY(0);
     }
 
     .hotspots-empty {
@@ -271,6 +293,7 @@
       background: rgba(15, 23, 42, 0.6);
       border: 1px solid rgba(148, 163, 184, 0.2);
       color: var(--color-text-secondary);
+      text-align: center;
     }
 
     .hotspots-disclaimer {
@@ -279,12 +302,18 @@
       line-height: 1.6;
     }
 
+    @media (max-width: 900px) {
+      #hotspots-map {
+        height: 340px;
+      }
+    }
+
     @media (max-width: 768px) {
       #hotspots-map {
-        height: 320px;
+        height: 300px;
       }
 
-      .hotspots-controls {
+      .hotspots-card-header {
         flex-direction: column;
         align-items: flex-start;
       }
@@ -306,118 +335,48 @@
       </div>
     </div>
 
-    {% if not hotspots.available %}
-      <div class="hotspots-panel hotspots-empty">
-        <p>In attesa del primo aggiornamento satellitare o dati temporaneamente non disponibili.</p>
-      </div>
-    {% else %}
-      <div class="hotspots-kpis" role="status">
+    <div class="hotspots-status">
+      <div class="hotspots-kpis hotspots-fade" id="hotspots-kpis">
         <div class="hotspots-kpi">
           <span>Ultimo aggiornamento</span>
-          <strong>{{ generated_at_display or 'Non disponibile' }}</strong>
+          <strong id="hotspots-updated">—</strong>
         </div>
         <div class="hotspots-kpi">
-          <span>Hotspot 24h</span>
-          <strong id="hotspots-count">{{ hotspots.count or 0 }}</strong>
-        </div>
-        <div class="hotspots-kpi">
-          <span>Stato</span>
-          <strong><span id="hotspots-state" class="hotspots-status-badge">—</span></strong>
+          <span>Hotspot rilevati</span>
+          <strong id="hotspots-count">—</strong>
         </div>
       </div>
+      <div class="hotspots-message hotspots-fade" id="hotspots-message" hidden>
+        Nessuna anomalia rilevata nelle ultime 24h.
+      </div>
+      <div class="hotspots-banner hotspots-fade" id="hotspots-error" hidden>
+        Errore nel recupero dati satellitari.
+      </div>
+    </div>
 
-      {% if hotspots.count == 0 %}
-        <div class="hotspots-panel hotspots-empty" style="margin-top: var(--space-5);">
-          <p>Nessuna anomalia termica rilevata nelle ultime 24h.</p>
-        </div>
-      {% endif %}
-
-      <div class="hotspots-grid">
-        <div class="hotspots-panel">
-          <div class="hotspots-map-stack">
-            <div id="hotspots-map" aria-label="Mappa hotspot termici Etna"></div>
-            <div class="hotspots-legend">
-              <div class="legend-row"><span class="legend-dot legend-dot--new"></span> New = hotspot recente</div>
-              <div class="legend-row">
-                <span class="legend-dot legend-dot--persistent"></span> Persistent = hotspot persistente
-              </div>
-              <div>Ogni punto = area (pixel) ~375 m</div>
-              <div>Confidence: low • nominal • high</div>
+    <div class="hotspots-grid">
+      <div class="hotspots-panel">
+        <div class="hotspots-map-stack">
+          <div class="hotspots-map-shell">
+            <div class="hotspots-loader" id="hotspots-loader">
+              <div class="loader-ring" aria-hidden="true"></div>
+              <div class="muted">Aggiornamento dati satellitari in corso…</div>
             </div>
+            <div id="hotspots-map" aria-label="Mappa hotspot termici Etna"></div>
+          </div>
+          <div class="hotspots-legend">
+            <div class="legend-row"><span class="legend-dot legend-dot--high"></span> Intensità alta</div>
+            <div class="legend-row"><span class="legend-dot legend-dot--mid"></span> Intensità media</div>
+            <div class="legend-row"><span class="legend-dot legend-dot--low"></span> Intensità bassa</div>
+            <div>Ogni punto = area (pixel) ~375 m</div>
           </div>
         </div>
-
-        <div class="hotspots-panel">
-          {% if items %}
-            <div class="hotspots-controls">
-              <div class="hotspots-toggle" role="group" aria-label="Filtro stato">
-                <button type="button" class="active" data-filter-status="all">Tutti</button>
-                <button type="button" data-filter-status="new">Solo nuovi</button>
-              </div>
-              <div class="hotspots-filter">
-                <label for="confidence-filter" class="muted">Confidenza</label>
-                <select id="confidence-filter">
-                  <option value="all">All</option>
-                  <option value="low">low</option>
-                  <option value="nominal">nominal</option>
-                  <option value="high">high</option>
-                </select>
-              </div>
-            </div>
-            <div class="hotspots-table-wrapper">
-              <table class="hotspots-table" id="hotspots-table">
-                <thead>
-                  <tr>
-                    <th>Ora (UTC)</th>
-                    <th>Confidenza</th>
-                    <th>FRP (MW)</th>
-                    <th>Brightness (K)</th>
-                    <th>Stato</th>
-                    <th>Mappa</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for item in items %}
-                    <tr
-                      data-status="{{ item.status }}"
-                      data-confidence="{{ item.confidence }}"
-                      data-time="{{ item.time_utc }}"
-                    >
-                      <td>{{ item.time_utc }}</td>
-                      <td>{{ item.confidence }}</td>
-                      <td>
-                        {% if item.intensity.frp %}
-                          {{ "%.2f"|format(item.intensity.frp) }}
-                        {% else %}
-                          —
-                        {% endif %}
-                      </td>
-                      <td>
-                        {% if item.intensity.brightness %}
-                          {{ "%.2f"|format(item.intensity.brightness) }}
-                        {% else %}
-                          —
-                        {% endif %}
-                      </td>
-                      <td>
-                        <span class="hotspot-status hotspot-status--{{ item.status }}">{{ item.status }}</span>
-                      </td>
-                      <td>
-                        <a class="button-link" href="{{ item.maps_url }}" target="_blank" rel="noopener">
-                          Apri su Maps
-                        </a>
-                      </td>
-                    </tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-          {% else %}
-            <p class="muted">Nessun hotspot disponibile al momento.</p>
-          {% endif %}
-        </div>
       </div>
-    {% endif %}
+
+      <div class="hotspots-panel">
+        <div class="hotspots-list" id="hotspots-list"></div>
+      </div>
+    </div>
 
     <div class="hotspots-panel" style="margin-top: var(--space-6);">
       <p class="hotspots-disclaimer">
@@ -433,107 +392,272 @@
     crossorigin=""
   ></script>
   <script nonce="{{ csp_nonce() }}">
-    const hotspotItems = {{ items | tojson }};
-    const mapCenter = {{ map_center | tojson }};
-    const mapBounds = {{ map_bounds | tojson }};
-    const totalCount = {{ hotspots.count or 0 }};
+    const mapCenter = { lat: 37.75, lon: 15.0 };
 
-    const mapContainer = document.getElementById('hotspots-map');
-    if (window.L && mapContainer) {
-      const map = L.map('hotspots-map', { scrollWheelZoom: false }).setView(
-        [mapCenter.lat, mapCenter.lon],
-        11
-      );
+    const loader = document.getElementById('hotspots-loader');
+    const message = document.getElementById('hotspots-message');
+    const errorBanner = document.getElementById('hotspots-error');
+    const updatedEl = document.getElementById('hotspots-updated');
+    const countEl = document.getElementById('hotspots-count');
+    const listEl = document.getElementById('hotspots-list');
+    const kpisEl = document.getElementById('hotspots-kpis');
+
+    const numberFormat = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 2 });
+
+    const map = window.L
+      ? L.map('hotspots-map', { scrollWheelZoom: false, zoomControl: true }).setView(
+          [mapCenter.lat, mapCenter.lon],
+          11
+        )
+      : null;
+
+    if (map) {
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap &copy; CARTO',
         maxZoom: 16,
       }).addTo(map);
-      map.fitBounds(mapBounds, { padding: [20, 20] });
+    }
 
-      hotspotItems.forEach((item) => {
+    const markersLayer = map ? L.layerGroup().addTo(map) : null;
+
+    const setLoaderVisible = (visible) => {
+      if (!loader) {
+        return;
+      }
+      loader.classList.toggle('is-visible', visible);
+    };
+
+    const setFadeVisible = (element, visible) => {
+      if (!element) {
+        return;
+      }
+      element.hidden = !visible;
+      requestAnimationFrame(() => {
+        element.classList.toggle('is-visible', visible);
+      });
+    };
+
+    const markerColor = (brightness) => {
+      if (brightness == null) {
+        return '#facc15';
+      }
+      if (brightness >= 340) {
+        return '#ef4444';
+      }
+      if (brightness >= 325) {
+        return '#f97316';
+      }
+      return '#facc15';
+    };
+
+    const intensityLabel = (brightness, unit) => {
+      if (brightness == null) {
+        return '—';
+      }
+      return `${numberFormat.format(brightness)} ${unit || ''}`.trim();
+    };
+
+    const frpLabel = (frp) => (frp == null ? '—' : `${numberFormat.format(frp)} MW`);
+
+    const clearList = () => {
+      if (listEl) {
+        listEl.innerHTML = '';
+      }
+    };
+
+    const setEmptyState = () => {
+      clearList();
+      if (listEl) {
+        const empty = document.createElement('div');
+        empty.className = 'hotspots-empty hotspots-fade is-visible';
+        empty.textContent = 'Nessuna anomalia rilevata nelle ultime 24h.';
+        listEl.appendChild(empty);
+      }
+    };
+
+    const updateMarkers = (items) => {
+      if (!markersLayer || !map) {
+        return { markerMap: new Map() };
+      }
+      markersLayer.clearLayers();
+      const markerMap = new Map();
+      const bounds = [];
+
+      items.forEach((item, index) => {
+        const brightness = item?.intensity?.brightness ?? null;
+        const color = markerColor(brightness);
         const marker = L.circleMarker([item.lat, item.lon], {
-          radius: item.status === 'new' ? 7 : 5,
-          color: item.status === 'new' ? '#34d399' : '#f59e0b',
-          fillOpacity: 0.7,
+          radius: 7,
+          color,
+          fillColor: color,
+          weight: 2,
+          fillOpacity: 0.8,
         });
-        const details = [
-          `<strong>${item.time_utc}</strong>`,
-          `Confidenza: ${item.confidence}`,
-          item.intensity.frp ? `FRP: ${item.intensity.frp} MW` : null,
-          item.intensity.brightness ? `Brightness: ${item.intensity.brightness} K` : null,
-          `<a href="${item.maps_url}" target="_blank" rel="noopener">Apri su Maps</a>`,
-        ]
-          .filter(Boolean)
-          .join('<br>');
-        marker.bindPopup(details);
-        marker.addTo(map);
-      });
-    }
 
-    const stateBadge = document.getElementById('hotspots-state');
-    if (stateBadge) {
-      let stateLabel = 'Nessuna anomalia';
-      let stateClass = 'hotspots-status-badge--none';
-      if (totalCount > 0) {
-        const hasPersistent = hotspotItems.some((item) => item.status === 'persistent');
-        if (hasPersistent) {
-          stateLabel = 'Anomalia persistente';
-          stateClass = 'hotspots-status-badge--persistent';
-        } else {
-          stateLabel = 'Anomalia localizzata';
-          stateClass = 'hotspots-status-badge--localized';
+        const tooltip = `${intensityLabel(brightness, item?.intensity?.unit)} • ${frpLabel(
+          item?.intensity?.frp
+        )}`;
+        marker.bindTooltip(tooltip, { direction: 'top', opacity: 0.9 });
+
+        const popup = [
+          `<strong>Intensità:</strong> ${intensityLabel(brightness, item?.intensity?.unit)}`,
+          `<strong>FRP:</strong> ${frpLabel(item?.intensity?.frp)}`,
+          `<strong>Confidence:</strong> ${item.confidence}`,
+          `<strong>Satellite:</strong> ${item.satellite}`,
+          `<strong>Status:</strong> ${item.status}`,
+          `<strong>Time UTC:</strong> ${item.time_utc}`,
+          `<a href="${item.maps_url}" target="_blank" rel="noopener">Apri su Google Maps</a>`,
+        ].join('<br>');
+        marker.bindPopup(popup);
+        marker.addTo(markersLayer);
+        markerMap.set(index, marker);
+        bounds.push([item.lat, item.lon]);
+      });
+
+      if (bounds.length > 0) {
+        map.fitBounds(bounds, { padding: [24, 24] });
+      } else {
+        map.setView([mapCenter.lat, mapCenter.lon], 11, { animate: false });
+      }
+
+      return { markerMap };
+    };
+
+    const renderList = (items, markerMap) => {
+      if (!listEl) {
+        return;
+      }
+      listEl.innerHTML = '';
+
+      items.forEach((item, index) => {
+        const brightness = item?.intensity?.brightness ?? null;
+        const card = document.createElement('div');
+        card.className = 'hotspots-card hotspots-fade';
+        const colorClass = brightness >= 340 ? 'hotspots-pill--high' : brightness >= 325 ? 'hotspots-pill--mid' : '';
+        const pillText = brightness >= 340 ? 'Alta' : brightness >= 325 ? 'Media' : 'Bassa';
+
+        card.innerHTML = `
+          <div class="hotspots-card-header">
+            <div class="hotspots-card-title">${item.time_utc}</div>
+            <span class="hotspots-pill ${colorClass}">${pillText}</span>
+          </div>
+          <div class="hotspots-card-grid">
+            <div>
+              <span>Intensità</span>
+              ${intensityLabel(brightness, item?.intensity?.unit)}
+            </div>
+            <div>
+              <span>FRP</span>
+              ${frpLabel(item?.intensity?.frp)}
+            </div>
+            <div>
+              <span>Confidence</span>
+              ${item.confidence}
+            </div>
+            <div>
+              <span>Satellite</span>
+              ${item.satellite}
+            </div>
+            <div>
+              <span>Status</span>
+              ${item.status}
+            </div>
+          </div>
+          <div>
+            <a href="${item.maps_url}" target="_blank" rel="noopener">Apri su Google Maps</a>
+          </div>
+        `;
+
+        const marker = markerMap.get(index);
+        const defaultStyle = marker
+          ? {
+              radius: marker.options.radius,
+              weight: marker.options.weight,
+              fillOpacity: marker.options.fillOpacity,
+            }
+          : null;
+
+        const highlightMarker = () => {
+          if (!marker) {
+            return;
+          }
+          marker.setStyle({ radius: 10, weight: 3, fillOpacity: 1 });
+          card.classList.add('is-active');
+        };
+
+        const resetMarker = () => {
+          if (!marker || !defaultStyle) {
+            return;
+          }
+          marker.setStyle(defaultStyle);
+          card.classList.remove('is-active');
+        };
+
+        card.addEventListener('mouseenter', highlightMarker);
+        card.addEventListener('mouseleave', resetMarker);
+        card.addEventListener('click', (event) => {
+          if (event.target.closest('a')) {
+            return;
+          }
+          if (marker && map) {
+            map.setView([item.lat, item.lon], 13, { animate: true });
+            marker.openPopup();
+          }
+        });
+
+        listEl.appendChild(card);
+        requestAnimationFrame(() => {
+          card.classList.add('is-visible');
+        });
+      });
+    };
+
+    const applyData = (data) => {
+      const items = Array.isArray(data.items) ? data.items : [];
+      const sorted = [...items].sort((a, b) => {
+        const brightnessA = a?.intensity?.brightness ?? 0;
+        const brightnessB = b?.intensity?.brightness ?? 0;
+        return brightnessB - brightnessA;
+      });
+
+      updatedEl.textContent = data.updated_at || 'Non disponibile';
+      countEl.textContent = numberFormat.format(data.count ?? sorted.length ?? 0);
+
+      setFadeVisible(kpisEl, true);
+
+      if (!data.available || sorted.length === 0) {
+        setFadeVisible(message, true);
+        setEmptyState();
+        if (markersLayer) {
+          markersLayer.clearLayers();
         }
-      }
-      stateBadge.textContent = stateLabel;
-      stateBadge.classList.add(stateClass);
-    }
-
-    const table = document.getElementById('hotspots-table');
-    if (table) {
-      const tbody = table.querySelector('tbody');
-      const rows = Array.from(tbody.querySelectorAll('tr'));
-      const statusButtons = document.querySelectorAll('[data-filter-status]');
-      const confidenceFilter = document.getElementById('confidence-filter');
-
-      let currentStatus = 'all';
-      let currentConfidence = 'all';
-
-      const applyFilters = () => {
-        const filtered = rows.filter((row) => {
-          const status = row.dataset.status;
-          const confidence = row.dataset.confidence;
-          const statusMatch = currentStatus === 'all' || status === currentStatus;
-          const confidenceMatch = currentConfidence === 'all' || confidence === currentConfidence;
-          return statusMatch && confidenceMatch;
-        });
-
-        const sorted = filtered.sort((a, b) => {
-          const timeA = a.dataset.time;
-          const timeB = b.dataset.time;
-          return timeB.localeCompare(timeA);
-        });
-
-        tbody.innerHTML = '';
-        sorted.forEach((row) => tbody.appendChild(row));
-      };
-
-      statusButtons.forEach((button) => {
-        button.addEventListener('click', () => {
-          statusButtons.forEach((btn) => btn.classList.remove('active'));
-          button.classList.add('active');
-          currentStatus = button.dataset.filterStatus;
-          applyFilters();
-        });
-      });
-
-      if (confidenceFilter) {
-        confidenceFilter.addEventListener('change', (event) => {
-          currentConfidence = event.target.value;
-          applyFilters();
-        });
+        return;
       }
 
-      applyFilters();
-    }
+      setFadeVisible(message, false);
+
+      const { markerMap } = updateMarkers(sorted);
+      renderList(sorted, markerMap);
+    };
+
+    const fetchHotspots = async () => {
+      setLoaderVisible(true);
+      setFadeVisible(errorBanner, false);
+      try {
+        const response = await fetch('/api/hotspots/latest', { headers: { Accept: 'application/json' } });
+        if (!response.ok) {
+          throw new Error('Errore risposta');
+        }
+        const data = await response.json();
+        applyData(data);
+      } catch (error) {
+        setFadeVisible(errorBanner, true);
+        setEmptyState();
+      } finally {
+        setLoaderVisible(false);
+      }
+    };
+
+    fetchHotspots();
   </script>
 {% endblock %}
