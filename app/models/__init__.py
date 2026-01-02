@@ -23,6 +23,7 @@ from .feedback import UserFeedback, FeedbackVote
 from .gamification import UserGamificationProfile, UserBadge
 from .media_asset import MediaAsset
 from .premium_request import PremiumRequest
+from .hotspots_cache import HotspotsCache
 
 try:
     from .sponsor_banner import (
@@ -57,6 +58,7 @@ __all__ = [
     'ModerationAction',
     'MediaAsset',
     'PremiumRequest',
+    'HotspotsCache',
 ]
 
 if SponsorBanner is not None:

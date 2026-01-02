@@ -3,12 +3,14 @@ from pathlib import Path
 
 import pandas as pd
 from flask import Blueprint, current_app, jsonify, request
+from sqlalchemy.exc import SQLAlchemyError
 
 from ..utils.metrics import record_csv_error, record_csv_read, record_csv_update
+from ..models.hotspots_cache import HotspotsCache
 from backend.utils.extract_png import process_png_to_csv
 from backend.utils.time import to_iso_utc
 from backend.services.hotspots.config import HotspotsConfig
-from backend.services.hotspots.storage import read_cache, unavailable_payload
+from backend.services.hotspots.storage import unavailable_payload
 
 _RANGE_LIMITS: dict[str, int] = {
     "24h": 288,
@@ -237,13 +239,25 @@ def get_status():
 def get_hotspots_latest():
     config = HotspotsConfig.from_env()
     if not config.enabled:
-        cache = unavailable_payload("Dati non disponibili")
+        cache_response = unavailable_payload("Dati non disponibili")
     else:
-        cache = read_cache(config.cache_path)
-    if cache is None:
-        cache = unavailable_payload("Dati non disponibili")
+        try:
+            record = HotspotsCache.query.filter_by(key="etna_latest").one_or_none()
+        except SQLAlchemyError:
+            current_app.logger.exception("[API] Hotspots cache lookup failed")
+            record = None
 
-    response = jsonify(cache)
+        if record is None:
+            cache_response = unavailable_payload("Dati non disponibili")
+        else:
+            cache_response = {
+                "available": True,
+                "payload": record.payload,
+                "count": record.count,
+                "generated_at": to_iso_utc(record.generated_at),
+            }
+
+    response = jsonify(cache_response)
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
