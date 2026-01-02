@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 import copy
 import json
 import os
@@ -10,6 +10,7 @@ from flask import (
     Blueprint,
     current_app,
     jsonify,
+    abort,
     redirect,
     render_template,
     render_template_string,
@@ -31,6 +32,8 @@ from ..extensions import cache
 from ..utils.metrics import get_csv_metrics, record_csv_error, record_csv_read
 from app.security import BASE_CSP, apply_csp_headers, serialize_csp, talisman
 from backend.utils.time import to_iso_utc
+from backend.services.hotspots.config import HotspotsConfig
+from backend.services.hotspots.storage import read_cache, unavailable_payload
 from config import DEFAULT_GA_MEASUREMENT_ID
 
 bp = Blueprint("main", __name__)
@@ -102,6 +105,19 @@ def _format_weather_timestamp(value: str | None) -> tuple[str | None, str | None
         return None, value
 
     return dt.strftime("%d/%m/%Y %H:%M"), dt.isoformat()
+
+
+def _format_hotspots_timestamp(value: str | None) -> str | None:
+    if not value:
+        return None
+    normalized = value.replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return value
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
 
 
 def _describe_weather_code(code: int | None) -> str | None:
@@ -707,6 +723,35 @@ def webcam_etna():
         weather_preview=weather_preview,
         weather_error=weather_error,
         page_structured_data=page_structured_data,
+    )
+
+
+@bp.route("/hotspots")
+def hotspots():
+    config = HotspotsConfig.from_env()
+    if not config.enabled:
+        return abort(404)
+
+    cache = read_cache(config.cache_path)
+    if cache is None:
+        cache = unavailable_payload("Dati non disponibili")
+
+    items = cache.get("items", []) if cache.get("available") else []
+    generated_at_display = _format_hotspots_timestamp(cache.get("generated_at"))
+
+    west, south, east, north = config.bbox_coords
+    map_center = {"lat": (south + north) / 2, "lon": (west + east) / 2}
+    map_bounds = [[south, west], [north, east]]
+
+    return render_template(
+        "hotspots.html",
+        page_title="Hotspot termici satellitari (Etna)",
+        page_description="Hotspot termici satellitari sull'Etna da NASA FIRMS: ultimi passaggi VIIRS/MODIS con coordinate, intensità e stato.",
+        hotspots=cache,
+        items=items,
+        generated_at_display=generated_at_display,
+        map_center=map_center,
+        map_bounds=map_bounds,
     )
 
 

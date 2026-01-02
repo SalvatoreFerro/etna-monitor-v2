@@ -1,0 +1,2 @@
+"""Hotspot FIRMS integration services."""
+

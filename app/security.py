@@ -51,6 +51,7 @@ IMG_TRACKING_ENDPOINTS = [
 STYLE_CDNS = [
     "https://fonts.googleapis.com",
     "https://cdnjs.cloudflare.com",
+    "https://unpkg.com",
 ]
 
 FONT_CDNS = [
@@ -80,7 +81,7 @@ def _unique(values: Iterable[str]) -> List[str]:
     return unique_values
 
 
-_SCRIPT_SOURCES = _unique(["'self'", *GOOGLE_SCRIPT_SOURCES])
+_SCRIPT_SOURCES = _unique(["'self'", *GOOGLE_SCRIPT_SOURCES, "https://unpkg.com"])
 _STYLE_SOURCES = _unique(["'self'", "'unsafe-inline'", *STYLE_CDNS])
 _FONT_SOURCES = _unique(["'self'", *FONT_CDNS])
 _CONNECT_SOURCES = _unique(["'self'", *CONNECT_ENDPOINTS])

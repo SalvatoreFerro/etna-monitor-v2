@@ -172,6 +172,10 @@ class Config:
         os.getenv("PARTNER_DIRECTORY_ENABLED", "1").strip().lower()
         not in {"0", "false", "no"}
     )
+    HOTSPOTS_ENABLED = (
+        os.getenv("HOTSPOTS_ENABLED", "false").strip().lower()
+        in {"1", "true", "yes"}
+    )
     PARTNER_DEFAULT_MAX_SLOTS = int(
         os.getenv("PARTNER_DEFAULT_MAX_SLOTS", "10")
     )
