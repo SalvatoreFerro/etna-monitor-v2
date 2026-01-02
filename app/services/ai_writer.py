@@ -18,13 +18,15 @@ from openai import OpenAI
 # Configure the OpenAI client using the environment variable.
 # You can swap the model (e.g. ``gpt-5.1`` or ``gpt-4.1-mini``) by
 # editing the ``model`` parameter inside ``generate_ai_article``.
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-print("[AI_WRITER] OPENAI_API_KEY presente? ->", bool(OPENAI_API_KEY))
-if OPENAI_API_KEY:
-    print("[AI_WRITER] OPENAI_API_KEY prefix:", OPENAI_API_KEY[:7])
-else:
-    print("[AI_WRITER] OPENAI_API_KEY NON trovata negli env")
-client = OpenAI(api_key=OPENAI_API_KEY)
+
+
+def get_openai_client() -> OpenAI:
+    """Return an OpenAI client configured from environment variables."""
+
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("Configura OPENAI_API_KEY nelle variabili d'ambiente.")
+    return OpenAI(api_key=api_key)
 
 
 def _extract_meta_fields(markdown_text: str) -> tuple[str | None, str | None]:
@@ -74,10 +76,8 @@ def generate_ai_article(topic: str, main_keyword: str, target_length: str, tone:
     can surface a user-friendly message.
     """
 
-    if not OPENAI_API_KEY:
-        raise RuntimeError("OPENAI_API_KEY not configured")
-    if not OPENAI_API_KEY or not OPENAI_API_KEY.strip():
-        raise RuntimeError("Configura OPENAI_API_KEY nelle variabili d'ambiente.")
+    client = get_openai_client()
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
 
     system_prompt = (
         "Sei un redattore scientifico per EtnaMonitor.it. Scrivi in italiano, tono chiaro, "
@@ -111,7 +111,7 @@ def generate_ai_article(topic: str, main_keyword: str, target_length: str, tone:
         else:  # pragma: no cover - legacy SDK compatibility
             import openai as legacy_openai
 
-            legacy_openai.api_key = OPENAI_API_KEY
+            legacy_openai.api_key = api_key
             completion = legacy_openai.ChatCompletion.create(
                 model="gpt-3.5-turbo",
                 messages=[
