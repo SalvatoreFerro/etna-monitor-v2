@@ -27,6 +27,20 @@
       max-width: 720px;
     }
 
+    .hotspots-source {
+      font-size: var(--font-size-sm);
+      color: var(--color-text-secondary);
+    }
+
+    .hotspots-source a {
+      color: #7dd3fc;
+      text-decoration: none;
+    }
+
+    .hotspots-source a:hover {
+      text-decoration: underline;
+    }
+
     .hotspots-meta {
       display: flex;
       flex-wrap: wrap;
@@ -143,6 +157,35 @@
       overflow: hidden;
       border: 1px solid rgba(148, 163, 184, 0.25);
       box-shadow: 0 16px 35px rgba(15, 23, 42, 0.45);
+    }
+
+    .hotspots-firms-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: rgba(15, 23, 42, 0.7);
+      color: #e2e8f0;
+      font-size: 0.7rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      text-decoration: none;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.45);
+    }
+
+    .hotspots-firms-badge img {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: #0f172a;
+    }
+
+    .hotspots-firms-control {
+      margin: 0.4rem;
     }
 
     .hotspots-map-stack {
@@ -355,7 +398,15 @@
     }
 
     .leaflet-interactive.hotspots-marker {
-      filter: drop-shadow(0 0 4px rgba(15, 23, 42, 0.9));
+      filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.65));
+    }
+
+    .leaflet-interactive.hotspots-marker--mid {
+      filter: drop-shadow(0 0 6px rgba(249, 115, 22, 0.7));
+    }
+
+    .leaflet-interactive.hotspots-marker--high {
+      filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.7));
     }
 
     .leaflet-popup.hotspots-popup .leaflet-popup-content-wrapper {
@@ -371,7 +422,8 @@
     }
 
     .hotspots-popup {
-      font-size: var(--font-size-xs);
+      font-size: var(--font-size-sm);
+      padding: var(--space-2);
       line-height: 1.5;
     }
 
@@ -394,6 +446,28 @@
       margin-bottom: 0.15rem;
     }
 
+    .hotspots-popup .hotspots-cta {
+      margin-top: var(--space-2);
+      font-size: var(--font-size-xs);
+    }
+
+    .hotspots-seo {
+      display: grid;
+      gap: var(--space-4);
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      font-size: var(--font-size-sm);
+      color: var(--color-text-secondary);
+      line-height: 1.6;
+    }
+
+    .hotspots-seo h3 {
+      margin-bottom: var(--space-2);
+      color: var(--color-text);
+      font-size: var(--font-size-sm);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
     @media (max-width: 900px) {
       #hotspots-map {
         height: 340px;
@@ -402,7 +476,7 @@
 
     @media (max-width: 768px) {
       #hotspots-map {
-        height: 300px;
+        height: 280px;
       }
 
       .hotspots-card-header {
@@ -419,6 +493,9 @@
       <h1>Hotspot termici satellitari sull’Etna</h1>
       <p class="hotspots-subtitle">
         Monitoraggio immediato delle anomalie termiche rilevate dai satelliti NASA FIRMS nelle ultime 24 ore.
+      </p>
+      <p class="hotspots-source">
+        Fonte: <a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noopener">NASA FIRMS (VIIRS)</a>
       </p>
       <div class="hotspots-meta">
         <span>Fonte: NASA FIRMS</span>
@@ -479,6 +556,32 @@
     </div>
 
     <div class="hotspots-panel" style="margin-top: var(--space-6);">
+      <div class="hotspots-seo">
+        <div>
+          <h3>Cosa sono gli hotspot</h3>
+          <p>
+            Gli hotspot FIRMS indicano anomalie termiche individuate dai satelliti VIIRS: sono segnali rapidi e utili
+            per monitorare l’evoluzione dell’attività superficiale sull’Etna.
+          </p>
+        </div>
+        <div>
+          <h3>Limiti del dato</h3>
+          <p>
+            Le rilevazioni possono essere influenzate da nuvolosità, angolo di vista e riflessi. Non sostituiscono le
+            analisi scientifiche ufficiali ma aiutano a seguire le variazioni nel tempo.
+          </p>
+        </div>
+        <div>
+          <h3>Frequenza aggiornamento</h3>
+          <p>
+            I dati vengono aggiornati automaticamente a ogni nuovo passaggio satellitare, con disponibilità tipica ogni
+            poche ore.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="hotspots-panel" style="margin-top: var(--space-6);">
       <p class="hotspots-disclaimer">
         Disclaimer: i dati FIRMS sono indicativi e servono per monitoraggio ambientale. Non rappresentano una
         previsione né una conferma certa di attività eruttiva.
@@ -492,7 +595,8 @@
     crossorigin=""
   ></script>
   <script nonce="{{ csp_nonce() }}">
-    const mapCenter = { lat: 37.75, lon: 15.0 };
+    const mapCenter = { lat: {{ map_center.lat }}, lon: {{ map_center.lon }} };
+    const mapBounds = {{ map_bounds | tojson }};
 
     const loader = document.getElementById('hotspots-loader');
     const message = document.getElementById('hotspots-message');
@@ -505,17 +609,45 @@
     const numberFormat = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 2 });
 
     const map = window.L
-      ? L.map('hotspots-map', { scrollWheelZoom: false, zoomControl: true }).setView(
-          [mapCenter.lat, mapCenter.lon],
-          11
-        )
+      ? L.map('hotspots-map', {
+          scrollWheelZoom: false,
+          zoomControl: true,
+          minZoom: 9,
+          maxZoom: 16,
+        })
       : null;
+
+    const baseBounds = map ? L.latLngBounds(mapBounds) : null;
 
     if (map) {
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap &copy; CARTO',
         maxZoom: 16,
       }).addTo(map);
+
+      if (baseBounds) {
+        map.fitBounds(baseBounds, { padding: [30, 30], maxZoom: 12, animate: false });
+      }
+
+      const firmsControl = L.control({ position: 'topleft' });
+      firmsControl.onAdd = () => {
+        const container = L.DomUtil.create('div', 'hotspots-firms-control');
+        container.innerHTML = `
+          <a
+            class="hotspots-firms-badge"
+            href="https://firms.modaps.eosdis.nasa.gov/"
+            target="_blank"
+            rel="noopener"
+            title="Fonte dati: NASA FIRMS"
+          >
+            <img src="https://upload.wikimedia.org/wikipedia/commons/e/e5/NASA_logo.svg" alt="NASA" />
+            NASA FIRMS
+          </a>
+        `;
+        L.DomEvent.disableClickPropagation(container);
+        return container;
+      };
+      firmsControl.addTo(map);
     }
 
     const markersLayer = map ? L.layerGroup().addTo(map) : null;
@@ -548,6 +680,19 @@
         return '#f97316';
       }
       return '#facc15';
+    };
+
+    const markerClass = (brightness) => {
+      if (brightness == null) {
+        return 'hotspots-marker';
+      }
+      if (brightness >= 340) {
+        return 'hotspots-marker hotspots-marker--high';
+      }
+      if (brightness >= 325) {
+        return 'hotspots-marker hotspots-marker--mid';
+      }
+      return 'hotspots-marker';
     };
 
     const intensityLabel = (brightness, unit) => {
@@ -608,18 +753,18 @@
       }
       markersLayer.clearLayers();
       const markerMap = new Map();
-      const bounds = [];
+      const bounds = baseBounds ? L.latLngBounds(baseBounds) : null;
 
       items.forEach((item, index) => {
         const brightness = item?.intensity?.brightness ?? null;
         const color = markerColor(brightness);
         const marker = L.circleMarker([item.lat, item.lon], {
-          radius: 7.5,
+          radius: 8,
           color: '#f8fafc',
           fillColor: color,
           weight: 2.2,
           fillOpacity: 0.85,
-          className: 'hotspots-marker',
+          className: markerClass(brightness),
         });
 
         const tooltip = `${intensityLabel(brightness, item?.intensity?.unit)} • ${frpLabel(
@@ -663,13 +808,13 @@
         marker.bindPopup(popup, { className: 'hotspots-popup' });
         marker.addTo(markersLayer);
         markerMap.set(index, marker);
-        bounds.push([item.lat, item.lon]);
+        if (bounds) {
+          bounds.extend([item.lat, item.lon]);
+        }
       });
 
-      if (bounds.length > 0) {
-        map.fitBounds(bounds, { padding: [24, 24] });
-      } else {
-        map.setView([mapCenter.lat, mapCenter.lon], 11, { animate: false });
+      if (bounds) {
+        map.fitBounds(bounds, { padding: [28, 28], maxZoom: 13 });
       }
 
       return { markerMap };
@@ -788,6 +933,9 @@
         setEmptyState();
         if (markersLayer) {
           markersLayer.clearLayers();
+        }
+        if (map && baseBounds) {
+          map.fitBounds(baseBounds, { padding: [30, 30], maxZoom: 12, animate: false });
         }
         return;
       }
