@@ -745,10 +745,10 @@ def hotspots():
 
     return render_template(
         "hotspots.html",
-        page_title="Hotspot termici satellitari (Etna)",
-        page_description="Hotspot termici satellitari sull'Etna da NASA FIRMS: ultimi passaggi VIIRS/MODIS con coordinate, intensità e stato.",
-        page_og_title="Hotspot termici satellitari sull'Etna – NASA FIRMS",
-        page_og_description="Mappa aggiornata degli hotspot termici rilevati da NASA FIRMS sull'Etna con intensità, stato e coordinate.",
+        page_title="Hotspot Etna oggi: anomalie termiche satellitari | EtnaMonitor",
+        page_description="Mappa aggiornata degli hotspot termici satellitari sull'Etna (NASA FIRMS) con intensità, stato e coordinate nelle ultime 24 ore.",
+        page_og_title="Hotspot termici satellitari sull'Etna",
+        page_og_description="Consulta gli hotspot termici rilevati da NASA FIRMS sull'Etna con intensità, stato e coordinate aggiornate.",
         canonical_url=url_for("main.hotspots", _external=True),
         hotspots=cache,
         items=items,

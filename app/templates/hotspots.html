@@ -106,6 +106,14 @@
       flex-direction: column;
       gap: var(--space-2);
       min-height: 96px;
+      opacity: 0;
+      transform: translateY(6px);
+      transition: opacity 0.35s ease, transform 0.35s ease, box-shadow 0.35s ease;
+    }
+
+    .hotspots-kpi.is-visible {
+      opacity: 1;
+      transform: translateY(0);
     }
 
     .hotspots-kpi span {
@@ -119,6 +127,12 @@
       font-size: clamp(1.3rem, 1.1rem + 0.8vw, 2rem);
       font-weight: var(--font-weight-semibold);
       color: #e2e8f0;
+    }
+
+    .hotspots-kpi-note {
+      font-size: var(--font-size-xs);
+      color: var(--color-text-secondary);
+      line-height: 1.5;
     }
 
     .hotspots-message {
@@ -148,6 +162,28 @@
       background: rgba(15, 23, 42, 0.7);
       border: 1px solid rgba(148, 163, 184, 0.2);
       box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.08);
+    }
+
+    .hotspots-map-label {
+      position: absolute;
+      bottom: var(--space-4);
+      left: var(--space-4);
+      z-index: 3;
+      padding: 0.35rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-xs);
+      letter-spacing: 0.02em;
+      opacity: 0;
+      transform: translateY(4px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+
+    .hotspots-map-label.is-visible {
+      opacity: 1;
+      transform: translateY(0);
     }
 
     #hotspots-map {
@@ -276,6 +312,27 @@
       gap: var(--space-4);
     }
 
+    .hotspots-filter {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--space-3);
+      margin-bottom: var(--space-4);
+      font-size: var(--font-size-xs);
+      color: var(--color-text-secondary);
+    }
+
+    .hotspots-filter label {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
+      cursor: pointer;
+    }
+
+    .hotspots-filter input {
+      accent-color: #38bdf8;
+    }
+
     .hotspots-card {
       border-radius: var(--radius-lg);
       background: linear-gradient(160deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.45));
@@ -284,7 +341,7 @@
       display: grid;
       gap: var(--space-4);
       cursor: pointer;
-      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
     }
 
     .hotspots-card:hover,
@@ -292,6 +349,11 @@
       transform: translateY(-2px);
       border-color: rgba(56, 189, 248, 0.5);
       box-shadow: 0 12px 24px rgba(15, 23, 42, 0.4);
+    }
+
+    .hotspots-card--peak {
+      border-color: rgba(248, 113, 113, 0.6);
+      box-shadow: 0 18px 32px rgba(15, 23, 42, 0.5), 0 0 0 1px rgba(248, 113, 113, 0.15);
     }
 
     .hotspots-card-header {
@@ -453,11 +515,22 @@
 
     .hotspots-seo {
       display: grid;
-      gap: var(--space-4);
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: var(--space-5);
       font-size: var(--font-size-sm);
       color: var(--color-text-secondary);
       line-height: 1.6;
+    }
+
+    .hotspots-seo h2 {
+      margin-bottom: var(--space-2);
+      color: var(--color-text);
+      font-size: clamp(1.2rem, 1rem + 0.6vw, 1.5rem);
+    }
+
+    .hotspots-seo-grid {
+      display: grid;
+      gap: var(--space-4);
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     }
 
     .hotspots-seo h3 {
@@ -520,10 +593,11 @@
         <div class="hotspots-kpi">
           <span>Hotspot rilevati</span>
           <strong id="hotspots-count">—</strong>
+          <div class="hotspots-kpi-note" id="hotspots-count-note"></div>
         </div>
       </div>
       <div class="hotspots-message hotspots-fade" id="hotspots-message" hidden>
-        Nessuna anomalia rilevata nelle ultime 24 ore. Situazione tranquilla.
+        Nessuna anomalia termica significativa nelle ultime 24 ore.
       </div>
       <div class="hotspots-banner hotspots-fade" id="hotspots-error" hidden>
         Errore nel recupero dati satellitari.
@@ -539,6 +613,9 @@
               <div class="muted">Stiamo sincronizzando i dati satellitari…</div>
             </div>
             <div id="hotspots-map" aria-label="Mappa hotspot termici Etna"></div>
+            <div class="hotspots-map-label" id="hotspots-map-label">
+              Concentrazione di anomalie termiche nell’area sommitale dell’Etna
+            </div>
           </div>
           <div class="hotspots-legend">
             <div class="hotspots-legend-title">Legenda intensità</div>
@@ -551,6 +628,13 @@
       </div>
 
       <div class="hotspots-panel">
+        <div class="hotspots-filter">
+          <label for="hotspots-filter-main">
+            <input type="checkbox" id="hotspots-filter-main" />
+            Mostra solo hotspot principali
+          </label>
+          <span>Filtro per intensità medio-alta.</span>
+        </div>
         <div class="hotspots-list" id="hotspots-list"></div>
       </div>
     </div>
@@ -558,25 +642,44 @@
     <div class="hotspots-panel" style="margin-top: var(--space-6);">
       <div class="hotspots-seo">
         <div>
-          <h3>Cosa sono gli hotspot</h3>
+          <h2>Hotspot termici satellitari sull’Etna</h2>
           <p>
-            Gli hotspot FIRMS indicano anomalie termiche individuate dai satelliti VIIRS: sono segnali rapidi e utili
-            per monitorare l’evoluzione dell’attività superficiale sull’Etna.
+            Gli hotspot termici sono punti in cui i satelliti rilevano temperature superficiali più elevate del
+            contesto circostante. I dati NASA FIRMS aiutano a osservare in modo oggettivo le anomalie termiche sull’Etna
+            e a seguire l’evoluzione dell’attività nel tempo.
+          </p>
+          <p>
+            Queste informazioni sono uno strumento di monitoraggio rapido: indicano possibili aree calde, ma non
+            costituiscono una previsione di eventi eruttivi né sostituiscono le comunicazioni ufficiali degli enti
+            scientifici.
+          </p>
+          <p>
+            La pagina aggiorna automaticamente le rilevazioni satellitari più recenti, offrendo un quadro sintetico
+            delle anomalie termiche dell’Etna oggi.
           </p>
         </div>
-        <div>
-          <h3>Limiti del dato</h3>
-          <p>
-            Le rilevazioni possono essere influenzate da nuvolosità, angolo di vista e riflessi. Non sostituiscono le
-            analisi scientifiche ufficiali ma aiutano a seguire le variazioni nel tempo.
-          </p>
-        </div>
-        <div>
-          <h3>Frequenza aggiornamento</h3>
-          <p>
-            I dati vengono aggiornati automaticamente a ogni nuovo passaggio satellitare, con disponibilità tipica ogni
-            poche ore.
-          </p>
+        <div class="hotspots-seo-grid">
+          <div>
+            <h3>Cos’è un hotspot FIRMS</h3>
+            <p>
+              FIRMS (Fire Information for Resource Management System) combina osservazioni satellitari VIIRS e MODIS
+              per individuare anomalie termiche. Un hotspot indica un segnale rilevato, non un evento confermato.
+            </p>
+          </div>
+          <div>
+            <h3>Ogni quanto vengono aggiornati i dati satellitari</h3>
+            <p>
+              I passaggi dei satelliti consentono aggiornamenti più volte al giorno. La disponibilità dipende
+              dall’orbita e dalle condizioni atmosferiche.
+            </p>
+          </div>
+          <div>
+            <h3>Limiti dell’osservazione satellitare</h3>
+            <p>
+              Copertura nuvolosa, fumo o angolo di osservazione possono ridurre la sensibilità. I dati vanno letti come
+              indicatori di tendenza e non come conferme definitive.
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -596,17 +699,24 @@
   ></script>
   <script nonce="{{ csp_nonce() }}">
     const mapCenter = { lat: {{ map_center.lat }}, lon: {{ map_center.lon }} };
-    const mapBounds = {{ map_bounds | tojson }};
 
     const loader = document.getElementById('hotspots-loader');
     const message = document.getElementById('hotspots-message');
     const errorBanner = document.getElementById('hotspots-error');
     const updatedEl = document.getElementById('hotspots-updated');
     const countEl = document.getElementById('hotspots-count');
+    const countNoteEl = document.getElementById('hotspots-count-note');
     const listEl = document.getElementById('hotspots-list');
     const kpisEl = document.getElementById('hotspots-kpis');
+    const mapLabel = document.getElementById('hotspots-map-label');
+    const filterToggle = document.getElementById('hotspots-filter-main');
+
+    const kpiCards = document.querySelectorAll('.hotspots-kpi');
 
     const numberFormat = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 2 });
+    const neutralZoom = 10;
+
+    let allItems = [];
 
     const map = window.L
       ? L.map('hotspots-map', {
@@ -617,17 +727,13 @@
         })
       : null;
 
-    const baseBounds = map ? L.latLngBounds(mapBounds) : null;
-
     if (map) {
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         attribution: '&copy; OpenStreetMap &copy; CARTO',
         maxZoom: 16,
       }).addTo(map);
 
-      if (baseBounds) {
-        map.fitBounds(baseBounds, { padding: [30, 30], maxZoom: 12, animate: false });
-      }
+      map.setView([mapCenter.lat, mapCenter.lon], neutralZoom, { animate: false });
 
       const firmsControl = L.control({ position: 'topleft' });
       firmsControl.onAdd = () => {
@@ -667,6 +773,13 @@
       requestAnimationFrame(() => {
         element.classList.toggle('is-visible', visible);
       });
+    };
+
+    const setMapLabelVisible = (visible) => {
+      if (!mapLabel) {
+        return;
+      }
+      mapLabel.classList.toggle('is-visible', visible);
     };
 
     const markerColor = (brightness) => {
@@ -737,12 +850,12 @@
       }
     };
 
-    const setEmptyState = () => {
+    const setEmptyState = (text) => {
       clearList();
       if (listEl) {
         const empty = document.createElement('div');
         empty.className = 'hotspots-empty hotspots-fade is-visible';
-        empty.textContent = 'Nessuna anomalia rilevata nelle ultime 24 ore. Nessun segnale anomalo rilevante.';
+        empty.textContent = text || 'Nessuna anomalia rilevata nelle ultime 24 ore. Nessun segnale anomalo rilevante.';
         listEl.appendChild(empty);
       }
     };
@@ -753,7 +866,8 @@
       }
       markersLayer.clearLayers();
       const markerMap = new Map();
-      const bounds = baseBounds ? L.latLngBounds(baseBounds) : null;
+      const bounds = L.latLngBounds([]);
+      let hasPoints = false;
 
       items.forEach((item, index) => {
         const brightness = item?.intensity?.brightness ?? null;
@@ -808,30 +922,36 @@
         marker.bindPopup(popup, { className: 'hotspots-popup' });
         marker.addTo(markersLayer);
         markerMap.set(index, marker);
-        if (bounds) {
-          bounds.extend([item.lat, item.lon]);
-        }
+        bounds.extend([item.lat, item.lon]);
+        hasPoints = true;
       });
 
-      if (bounds) {
-        map.fitBounds(bounds, { padding: [28, 28], maxZoom: 13 });
+      if (hasPoints) {
+        map.fitBounds(bounds, { padding: [28, 28], maxZoom: 13, animate: false });
       }
 
       return { markerMap };
     };
 
-    const renderList = (items, markerMap) => {
+    const renderList = (items, markerMap, maxBrightness) => {
       if (!listEl) {
         return;
       }
       listEl.innerHTML = '';
 
+      if (items.length === 0) {
+        setEmptyState('Nessun hotspot principale nelle ultime 24 ore.');
+        return;
+      }
+
       items.forEach((item, index) => {
         const brightness = item?.intensity?.brightness ?? null;
         const card = document.createElement('div');
-        card.className = 'hotspots-card hotspots-fade';
+        const isPeak = maxBrightness != null && brightness === maxBrightness;
+        card.className = `hotspots-card hotspots-fade${isPeak ? ' hotspots-card--peak' : ''}`;
         const colorClass = brightness >= 340 ? 'hotspots-pill--high' : brightness >= 325 ? 'hotspots-pill--mid' : '';
         const pillText = brightness >= 340 ? 'Alta' : brightness >= 325 ? 'Media' : 'Bassa';
+        const pillTitle = `Intensità ${pillText.toLowerCase()}`;
         const timeInfo = relativeTime(item.time_utc);
 
         card.innerHTML = `
@@ -840,7 +960,7 @@
               Rilevato
               <strong title="${timeInfo.iso}">${timeInfo.label}</strong>
             </div>
-            <span class="hotspots-pill ${colorClass}">${pillText}</span>
+            <span class="hotspots-pill ${colorClass}" title="${pillTitle}" aria-label="${pillTitle}">${pillText}</span>
           </div>
           <div class="hotspots-card-grid">
             <div>
@@ -913,6 +1033,23 @@
       });
     };
 
+    const filteredItems = () => {
+      if (filterToggle && filterToggle.checked) {
+        return allItems.filter((item) => (item?.intensity?.brightness ?? 0) >= 325);
+      }
+      return allItems;
+    };
+
+    const renderHotspots = () => {
+      const filtered = filteredItems();
+      const maxBrightness = allItems.reduce((max, item) => {
+        const brightness = item?.intensity?.brightness ?? 0;
+        return brightness > max ? brightness : max;
+      }, 0);
+      const { markerMap } = updateMarkers(filtered);
+      renderList(filtered, markerMap, maxBrightness || null);
+    };
+
     const applyData = (data) => {
       const items = Array.isArray(data.items) ? data.items : [];
       const sorted = [...items].sort((a, b) => {
@@ -924,26 +1061,44 @@
       const updateInfo = relativeTime(data.updated_at);
       updatedEl.textContent = updateInfo.label;
       updatedEl.title = updateInfo.iso;
-      countEl.textContent = numberFormat.format(data.count ?? sorted.length ?? 0);
+      const totalCount = data.count ?? sorted.length ?? 0;
+      countEl.textContent = numberFormat.format(totalCount);
+      if (countNoteEl) {
+        countNoteEl.textContent =
+          totalCount > 0
+            ? 'Attività termica superficiale rilevata dai satelliti.'
+            : 'Nessuna anomalia termica significativa nelle ultime 24 ore.';
+      }
+      if (filterToggle) {
+        filterToggle.disabled = totalCount === 0;
+        if (totalCount === 0) {
+          filterToggle.checked = false;
+        }
+      }
 
       setFadeVisible(kpisEl, true);
+      kpiCards.forEach((card, index) => {
+        setTimeout(() => card.classList.add('is-visible'), 60 * index);
+      });
+
+      allItems = sorted;
+      setMapLabelVisible(totalCount > 0);
 
       if (!data.available || sorted.length === 0) {
         setFadeVisible(message, true);
-        setEmptyState();
+        setEmptyState('Nessuna anomalia termica significativa nelle ultime 24 ore.');
         if (markersLayer) {
           markersLayer.clearLayers();
         }
-        if (map && baseBounds) {
-          map.fitBounds(baseBounds, { padding: [30, 30], maxZoom: 12, animate: false });
+        if (map) {
+          map.setView([mapCenter.lat, mapCenter.lon], neutralZoom, { animate: false });
         }
         return;
       }
 
       setFadeVisible(message, false);
 
-      const { markerMap } = updateMarkers(sorted);
-      renderList(sorted, markerMap);
+      renderHotspots();
     };
 
     const fetchHotspots = async () => {
@@ -959,11 +1114,62 @@
       } catch (error) {
         setFadeVisible(errorBanner, true);
         setEmptyState();
+        setMapLabelVisible(false);
+        if (filterToggle) {
+          filterToggle.disabled = true;
+          filterToggle.checked = false;
+        }
       } finally {
         setLoaderVisible(false);
       }
     };
 
+    if (filterToggle) {
+      filterToggle.addEventListener('change', () => {
+        renderHotspots();
+      });
+    }
+
     fetchHotspots();
+  </script>
+  <script type="application/ld+json" nonce="{{ csp_nonce() }}">
+    {
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "Cos’è un hotspot termico?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "È un’anomalia termica rilevata dai satelliti che segnala una possibile area più calda del contesto circostante."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Gli hotspot indicano un’eruzione imminente?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Gli hotspot sono indicatori di attività superficiale e non costituiscono una previsione di eventi eruttivi."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Ogni quanto vengono aggiornati i dati?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "I dati FIRMS si aggiornano a ogni nuovo passaggio satellitare, tipicamente più volte al giorno."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Qual è la fonte dei dati?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Le rilevazioni provengono dal sistema NASA FIRMS, basato su osservazioni satellitari VIIRS e MODIS."
+          }
+        }
+      ]
+    }
   </script>
 {% endblock %}
