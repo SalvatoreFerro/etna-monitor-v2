@@ -11,7 +11,7 @@ from sqlalchemy.engine.url import URL, make_url
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 from backend.services.hotspots.config import HotspotsConfig
-from backend.services.hotspots.firms_provider import fetch_firms_records
+from backend.services.hotspots.firms_provider import FirmsFetchResult, fetch_firms_records
 from backend.services.hotspots.normalize import normalize_records
 from backend.services.hotspots.scoring import apply_status, deduplicate_items
 from backend.services.hotspots.storage import is_cache_valid
@@ -76,7 +76,7 @@ def _parse_time_utc(value: str | None) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
-def _records_from_items(items: list[dict], source: str) -> list[dict]:
+def _records_from_items(items: list[dict]) -> list[dict]:
     records: list[dict] = []
     for item in items:
         fingerprint = item.get("id")
@@ -89,7 +89,7 @@ def _records_from_items(items: list[dict], source: str) -> list[dict]:
         records.append(
             {
                 "fingerprint": fingerprint,
-                "source": source,
+                "source": item.get("source") or "UNKNOWN",
                 "satellite": item.get("satellite") or "UNKNOWN",
                 "lat": float(item.get("lat")),
                 "lon": float(item.get("lon")),
@@ -244,6 +244,49 @@ def _build_engine() -> Engine:
     return create_engine(url, pool_pre_ping=True)
 
 
+def _build_sources(config: HotspotsConfig) -> tuple[list[str], list[str]]:
+    sources: list[str] = []
+    platforms: list[str] = []
+    if config.dataset == "VIIRS":
+        if config.include_platforms:
+            platform_map = {
+                "SNPP": "VIIRS_SNPP_NRT",
+                "NOAA20": "VIIRS_NOAA20_NRT",
+                "NOAA21": "VIIRS_NOAA21_NRT",
+            }
+            for platform in config.include_platforms:
+                source = platform_map.get(platform)
+                if source:
+                    platforms.append(platform)
+                    sources.append(source)
+        if not sources:
+            sources.append(config.source)
+    else:
+        sources.append(config.source)
+
+    if config.include_modis and "MODIS_NRT" not in sources:
+        sources.append("MODIS_NRT")
+        platforms.append("MODIS")
+
+    return sources, platforms
+
+
+def _log_fetch_summary(
+    logger: logging.Logger,
+    dataset: str,
+    platforms: list[str],
+    downloaded: int,
+    inserted: int,
+) -> None:
+    logger.info(
+        "FIRMS ingest: dataset=%s platforms=%s downloaded=%s inserted=%s",
+        dataset,
+        platforms,
+        downloaded,
+        inserted,
+    )
+
+
 def main() -> int:
     logging.basicConfig(level=logging.INFO)
     logger = logging.getLogger("hotspots")
@@ -269,9 +312,50 @@ def main() -> int:
         last_nonzero_at = previous_cache.get("last_nonzero_at") if previous_cache else None
 
         try:
-            raw_records = fetch_firms_records(config, logger)
-            raw_count = len(raw_records)
-            normalized = normalize_records(raw_records, config)
+            sources, platforms = _build_sources(config)
+            logger.info(
+                "[HOTSPOTS] FIRMS ingest datasets=%s platforms=%s include_modis=%s",
+                sources,
+                platforms,
+                config.include_modis,
+            )
+
+            results: list[FirmsFetchResult] = []
+            for source in sources:
+                results.append(
+                    fetch_firms_records(
+                        config,
+                        logger,
+                        source=source,
+                        bbox=config.bbox_raw,
+                    )
+                )
+
+            raw_count = 0
+            for result in results:
+                if not result.records:
+                    logger.info(
+                        "[HOTSPOTS] FIRMS zero records status=%s body=%s dataset=%s platforms=%s url=%s",
+                        result.status_code,
+                        result.body_preview,
+                        config.dataset,
+                        platforms,
+                        result.url_public,
+                    )
+                    continue
+                logger.info(
+                    "[HOTSPOTS] FIRMS request url=%s",
+                    result.url_public,
+                )
+                raw_count += len(result.records)
+            normalized: list[dict] = []
+            for result in results:
+                if not result.records:
+                    continue
+                normalized.extend(
+                    normalize_records(result.records, result.source, config)
+                )
+
             geo_filtered = _filter_geo(normalized, config.bbox_coords)
             scored = apply_status(
                 geo_filtered,
@@ -290,7 +374,26 @@ def main() -> int:
             significant_count = len(deduped_significant)
             if all_count > 0:
                 last_nonzero_at = generated_at_dt.isoformat().replace("+00:00", "Z")
-            records = _records_from_items(scored, config.source)
+
+            acq_times = [
+                _parse_time_utc(item.get("time_utc")) for item in normalized
+            ]
+            acq_times = [t for t in acq_times if t is not None]
+            if acq_times:
+                logger.info(
+                    "[HOTSPOTS] FIRMS acquisition range min=%s max=%s",
+                    min(acq_times).isoformat().replace("+00:00", "Z"),
+                    max(acq_times).isoformat().replace("+00:00", "Z"),
+                )
+
+            window_start = generated_at_dt - timedelta(days=config.day_range)
+            logger.info(
+                "[HOTSPOTS] FIRMS window now_utc=%s window_start_utc=%s",
+                generated_at_dt.isoformat().replace("+00:00", "Z"),
+                window_start.isoformat().replace("+00:00", "Z"),
+            )
+
+            records = _records_from_items(scored)
             inserted_count = _insert_records(session, engine, records)
             cleanup_cutoff = generated_at_dt - timedelta(hours=48)
             _cleanup_records(session, cleanup_cutoff)
@@ -302,7 +405,9 @@ def main() -> int:
                 "last_nonzero_at": last_nonzero_at,
                 "source": {
                     "provider": "NASA_FIRMS",
-                    "dataset": config.source,
+                    "dataset": config.dataset,
+                    "sources": sources,
+                    "platforms": platforms,
                     "bbox": config.bbox,
                     "bbox_raw": config.bbox_raw,
                     "bbox_padding_deg": config.bbox_padding_deg,
@@ -315,15 +420,22 @@ def main() -> int:
             _upsert_cache(session, payload, generated_at_dt)
             session.commit()
             logger.info(
-                "[HOTSPOTS] FIRMS fetch bbox=%s (raw=%s, pad=%.3f) source=%s raw_count=%s geo_count=%s all_count=%s significant_count=%s inserted_count=%s",
+                "[HOTSPOTS] FIRMS fetch bbox=%s (raw=%s, pad=%.3f) sources=%s raw_count=%s geo_count=%s all_count=%s significant_count=%s inserted_count=%s",
                 config.bbox,
                 config.bbox_raw,
                 config.bbox_padding_deg,
-                config.source,
+                sources,
                 raw_count,
                 len(geo_filtered),
                 all_count,
                 significant_count,
+                inserted_count,
+            )
+            _log_fetch_summary(
+                logger,
+                config.dataset,
+                platforms,
+                raw_count,
                 inserted_count,
             )
             return 0
