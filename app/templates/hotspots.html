@@ -313,24 +313,56 @@
     }
 
     .hotspots-filter {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: var(--space-3);
+      display: grid;
+      gap: var(--space-2);
       margin-bottom: var(--space-4);
+      padding: var(--space-3);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(148, 163, 184, 0.18);
+      background: rgba(15, 23, 42, 0.7);
       font-size: var(--font-size-xs);
       color: var(--color-text-secondary);
     }
 
-    .hotspots-filter label {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--space-2);
-      cursor: pointer;
+    .hotspots-filter-label {
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-size: 0.65rem;
+      color: rgba(148, 163, 184, 0.9);
     }
 
-    .hotspots-filter input {
-      accent-color: #38bdf8;
+    .hotspots-toggle {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: var(--space-2);
+    }
+
+    .hotspots-toggle-button {
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+      background: rgba(15, 23, 42, 0.4);
+      color: #e2e8f0;
+      padding: var(--space-2) var(--space-3);
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .hotspots-toggle-button:hover {
+      border-color: rgba(248, 250, 252, 0.6);
+      background: rgba(30, 41, 59, 0.6);
+    }
+
+    .hotspots-toggle-button.is-active {
+      background: rgba(14, 116, 144, 0.85);
+      border-color: rgba(34, 211, 238, 0.9);
+      color: #fff;
+    }
+
+    .hotspots-toggle-button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
     }
 
     .hotspots-card {
@@ -591,9 +623,14 @@
           <strong id="hotspots-updated">—</strong>
         </div>
         <div class="hotspots-kpi">
-          <span>Hotspot rilevati</span>
-          <strong id="hotspots-count">—</strong>
+          <span>Hotspot FIRMS (24h)</span>
+          <strong id="hotspots-count-all">—</strong>
           <div class="hotspots-kpi-note" id="hotspots-count-note"></div>
+        </div>
+        <div class="hotspots-kpi">
+          <span>Hotspot significativi</span>
+          <strong id="hotspots-count-significant">—</strong>
+          <div class="hotspots-kpi-note">Filtro EtnaMonitor (intensità medio-alta).</div>
         </div>
       </div>
       <div class="hotspots-message hotspots-fade" id="hotspots-message" hidden>
@@ -629,11 +666,16 @@
 
       <div class="hotspots-panel">
         <div class="hotspots-filter">
-          <label for="hotspots-filter-main">
-            <input type="checkbox" id="hotspots-filter-main" />
-            Mostra solo hotspot principali
-          </label>
-          <span>Filtro per intensità medio-alta.</span>
+          <div class="hotspots-filter-label">Visualizzazione</div>
+          <div class="hotspots-toggle" role="group" aria-label="Filtro hotspot">
+            <button type="button" class="hotspots-toggle-button is-active" data-mode="all">
+              Tutti (FIRMS)
+            </button>
+            <button type="button" class="hotspots-toggle-button" data-mode="significant">
+              Significativi
+            </button>
+          </div>
+          <span>Confronta i punti FIRMS con il filtro EtnaMonitor.</span>
         </div>
         <div class="hotspots-list" id="hotspots-list"></div>
       </div>
@@ -704,12 +746,13 @@
     const message = document.getElementById('hotspots-message');
     const errorBanner = document.getElementById('hotspots-error');
     const updatedEl = document.getElementById('hotspots-updated');
-    const countEl = document.getElementById('hotspots-count');
+    const countAllEl = document.getElementById('hotspots-count-all');
+    const countSignificantEl = document.getElementById('hotspots-count-significant');
     const countNoteEl = document.getElementById('hotspots-count-note');
     const listEl = document.getElementById('hotspots-list');
     const kpisEl = document.getElementById('hotspots-kpis');
     const mapLabel = document.getElementById('hotspots-map-label');
-    const filterToggle = document.getElementById('hotspots-filter-main');
+    const toggleButtons = document.querySelectorAll('.hotspots-toggle-button');
 
     const kpiCards = document.querySelectorAll('.hotspots-kpi');
 
@@ -717,6 +760,7 @@
     const neutralZoom = 10;
 
     let allItems = [];
+    let activeMode = 'all';
 
     const map = window.L
       ? L.map('hotspots-map', {
@@ -940,7 +984,11 @@
       listEl.innerHTML = '';
 
       if (items.length === 0) {
-        setEmptyState('Nessun hotspot principale nelle ultime 24 ore.');
+        const emptyText =
+          activeMode === 'significant'
+            ? 'Nessun hotspot significativo nelle ultime 24 ore.'
+            : 'Nessun hotspot FIRMS nelle ultime 24 ore.';
+        setEmptyState(emptyText);
         return;
       }
 
@@ -1033,15 +1081,8 @@
       });
     };
 
-    const filteredItems = () => {
-      if (filterToggle && filterToggle.checked) {
-        return allItems.filter((item) => (item?.intensity?.brightness ?? 0) >= 325);
-      }
-      return allItems;
-    };
-
     const renderHotspots = () => {
-      const filtered = filteredItems();
+      const filtered = allItems;
       const maxBrightness = allItems.reduce((max, item) => {
         const brightness = item?.intensity?.brightness ?? 0;
         return brightness > max ? brightness : max;
@@ -1051,7 +1092,7 @@
     };
 
     const applyData = (data) => {
-      const items = Array.isArray(data.items_24h) ? data.items_24h : [];
+      const items = Array.isArray(data.items) ? data.items : [];
       const sorted = [...items].sort((a, b) => {
         const brightnessA = a?.intensity?.brightness ?? 0;
         const brightnessB = b?.intensity?.brightness ?? 0;
@@ -1061,30 +1102,32 @@
       const updateInfo = relativeTime(data.last_fetch_at);
       updatedEl.textContent = updateInfo.label;
       updatedEl.title = updateInfo.iso;
-      const totalCount = data.count_24h ?? sorted.length ?? 0;
+      const totalCount = data.count_all ?? data.count_24h ?? sorted.length ?? 0;
+      const significantCount = data.count_significant ?? 0;
       const lastFetchCount = data.last_fetch_count ?? 0;
-      countEl.textContent = numberFormat.format(totalCount);
+      countAllEl.textContent = numberFormat.format(totalCount);
+      countSignificantEl.textContent = numberFormat.format(significantCount);
       if (countNoteEl) {
         if (totalCount > 0) {
           if (lastFetchCount === 0 && data.last_nonzero_at) {
             const lastNonzero = relativeTime(data.last_nonzero_at);
             countNoteEl.textContent = `Ultimo passaggio satellitare: 0 hotspot — ultimo hotspot rilevato: ${lastNonzero.label}`;
             countNoteEl.title = lastNonzero.iso || '';
+          } else if (significantCount === 0) {
+            countNoteEl.textContent = 'Hotspot deboli o poco significativi presenti.';
+            countNoteEl.title = '';
           } else {
             countNoteEl.textContent = 'Attività termica superficiale rilevata dai satelliti.';
             countNoteEl.title = '';
           }
         } else {
-          countNoteEl.textContent = 'Nessuna anomalia termica significativa nelle ultime 24 ore.';
+          countNoteEl.textContent = 'Nessuna anomalia termica nelle ultime 24 ore.';
           countNoteEl.title = '';
         }
       }
-      if (filterToggle) {
-        filterToggle.disabled = totalCount === 0;
-        if (totalCount === 0) {
-          filterToggle.checked = false;
-        }
-      }
+      toggleButtons.forEach((button) => {
+        button.disabled = totalCount === 0 && button.dataset.mode === 'significant';
+      });
 
       setFadeVisible(kpisEl, true);
       kpiCards.forEach((card, index) => {
@@ -1096,7 +1139,13 @@
 
       if (!data.available || totalCount === 0 || sorted.length === 0) {
         setFadeVisible(message, true);
-        setEmptyState('Nessuna anomalia termica significativa nelle ultime 24 ore.');
+        if (totalCount === 0) {
+          setEmptyState('Nessuna anomalia termica nelle ultime 24 ore.');
+        } else if (activeMode === 'significant') {
+          setEmptyState('Hotspot deboli o poco significativi presenti.');
+        } else {
+          setEmptyState('Nessuna anomalia termica nelle ultime 24 ore.');
+        }
         if (markersLayer) {
           markersLayer.clearLayers();
         }
@@ -1115,7 +1164,7 @@
       setLoaderVisible(true);
       setFadeVisible(errorBanner, false);
       try {
-        const response = await fetch('/api/hotspots/latest', { headers: { Accept: 'application/json' } });
+        const response = await fetch(`/api/hotspots/latest?mode=${activeMode}`, { headers: { Accept: 'application/json' } });
         if (!response.ok) {
           throw new Error('Errore risposta');
         }
@@ -1125,20 +1174,25 @@
         setFadeVisible(errorBanner, true);
         setEmptyState();
         setMapLabelVisible(false);
-        if (filterToggle) {
-          filterToggle.disabled = true;
-          filterToggle.checked = false;
-        }
+        toggleButtons.forEach((button) => {
+          button.disabled = true;
+        });
       } finally {
         setLoaderVisible(false);
       }
     };
 
-    if (filterToggle) {
-      filterToggle.addEventListener('change', () => {
-        renderHotspots();
+    toggleButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        if (button.disabled) {
+          return;
+        }
+        toggleButtons.forEach((btn) => btn.classList.remove('is-active'));
+        button.classList.add('is-active');
+        activeMode = button.dataset.mode || 'all';
+        fetchHotspots();
       });
-    }
+    });
 
     fetchHotspots();
   </script>

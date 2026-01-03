@@ -28,6 +28,32 @@ _MAX_LIMIT = 4032
 api_bp = Blueprint("api", __name__)
 
 
+def _normalize_confidence(value: str | None) -> str:
+    if not value:
+        return "unknown"
+    raw = value.strip().lower()
+    if raw in {"low", "l"}:
+        return "low"
+    if raw in {"nominal", "n", "medium", "med"}:
+        return "nominal"
+    if raw in {"high", "h"}:
+        return "high"
+    return raw
+
+
+def _confidence_rank(value: str | None) -> int:
+    normalized = _normalize_confidence(value)
+    return {"low": 0, "nominal": 1, "high": 2}.get(normalized, -1)
+
+
+def _is_significant_hotspot(record: HotspotsRecord, config: HotspotsConfig) -> bool:
+    if _confidence_rank(record.confidence) < _confidence_rank(config.significant_confidence_min):
+        return False
+    brightness_ok = record.brightness is not None and record.brightness >= config.significant_brightness_min
+    frp_ok = record.frp is not None and record.frp >= config.significant_frp_min
+    return brightness_ok or frp_ok
+
+
 def _prepare_tremor_dataframe(raw_df: pd.DataFrame) -> tuple[pd.DataFrame, str | None]:
     """Normalise timestamp typing and detect empty datasets."""
     if "timestamp" not in raw_df.columns:
@@ -239,14 +265,21 @@ def get_status():
 @api_bp.get("/api/hotspots/latest")
 def get_hotspots_latest():
     config = HotspotsConfig.from_env()
+    mode = request.args.get("mode", "all").strip().lower()
+    if mode not in {"all", "significant"}:
+        mode = "all"
     if not config.enabled:
         cache_response = {
             "available": False,
             "last_fetch_at": None,
             "last_fetch_count": 0,
             "count_24h": 0,
+            "count_all": 0,
+            "count_significant": 0,
             "last_nonzero_at": None,
             "items_24h": [],
+            "items": [],
+            "mode": mode,
         }
     else:
         try:
@@ -259,6 +292,7 @@ def get_hotspots_latest():
         last_fetch_at = payload.get("last_fetch_at")
         last_fetch_count = payload.get("last_fetch_count")
         last_nonzero_at = payload.get("last_nonzero_at")
+        count_significant_cache = payload.get("count_significant")
         if not isinstance(last_fetch_count, int):
             last_fetch_count = record.count if record else 0
         if not last_fetch_at and record:
@@ -269,19 +303,19 @@ def get_hotspots_latest():
 
         window_start = datetime.now(timezone.utc) - timedelta(hours=24)
         try:
-            count_24h = (
+            count_all = (
                 HotspotsRecord.query.filter(HotspotsRecord.acq_datetime >= window_start)
                 .count()
             )
             items = (
                 HotspotsRecord.query.filter(HotspotsRecord.acq_datetime >= window_start)
                 .order_by(HotspotsRecord.acq_datetime.desc())
-                .limit(200)
+                .limit(500)
                 .all()
             )
         except SQLAlchemyError:
             current_app.logger.exception("[API] Hotspots records lookup failed")
-            count_24h = 0
+            count_all = 0
             items = []
 
         items_payload = [
@@ -304,13 +338,51 @@ def get_hotspots_latest():
             for item in items
         ]
 
+        if mode == "significant":
+            filtered_items = [
+                item
+                for item in items
+                if _is_significant_hotspot(item, config)
+            ]
+        else:
+            filtered_items = items
+
+        filtered_payload = [
+            {
+                "id": item.fingerprint,
+                "time_utc": to_iso_utc(item.acq_datetime),
+                "lat": item.lat,
+                "lon": item.lon,
+                "source": item.source,
+                "satellite": item.satellite,
+                "confidence": item.confidence,
+                "intensity": {
+                    "frp": item.frp,
+                    "brightness": item.brightness,
+                    "unit": item.intensity_unit or "unknown",
+                },
+                "status": item.status or "unknown",
+                "maps_url": f"https://www.google.com/maps?q={item.lat},{item.lon}",
+            }
+            for item in filtered_items
+        ]
+
+        if isinstance(count_significant_cache, int):
+            count_significant = count_significant_cache
+        else:
+            count_significant = len([item for item in items if _is_significant_hotspot(item, config)])
+
         cache_response = {
             "available": True if config.enabled else False,
             "last_fetch_at": last_fetch_at,
             "last_fetch_count": last_fetch_count,
-            "count_24h": count_24h,
+            "count_24h": count_all,
+            "count_all": count_all,
+            "count_significant": count_significant,
             "last_nonzero_at": last_nonzero_at,
             "items_24h": items_payload,
+            "items": filtered_payload,
+            "mode": mode,
         }
 
     response = jsonify(cache_response)

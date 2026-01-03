@@ -51,6 +51,26 @@ def _parse_bbox(value: str | None) -> tuple[str, tuple[float, float, float, floa
     return raw, coords  # type: ignore[return-value]
 
 
+def _pad_bbox(
+    coords: tuple[float, float, float, float],
+    padding: float,
+) -> tuple[float, float, float, float]:
+    west, south, east, north = coords
+    if padding <= 0:
+        return coords
+    return (
+        max(-180.0, west - padding),
+        max(-90.0, south - padding),
+        min(180.0, east + padding),
+        min(90.0, north + padding),
+    )
+
+
+def _bbox_to_string(coords: tuple[float, float, float, float]) -> str:
+    west, south, east, north = coords
+    return f"{west:.5f},{south:.5f},{east:.5f},{north:.5f}"
+
+
 @dataclass(frozen=True)
 class HotspotsConfig:
     enabled: bool
@@ -58,11 +78,17 @@ class HotspotsConfig:
     source: str
     bbox: str
     bbox_coords: tuple[float, float, float, float]
+    bbox_raw: str
+    bbox_coords_raw: tuple[float, float, float, float]
+    bbox_padding_deg: float
     day_range: int
     cache_ttl_min: int
     dedup_km: float
     dedup_hours: float
     new_window_hours: float
+    significant_confidence_min: str
+    significant_brightness_min: float
+    significant_frp_min: float
     data_dir: str
     cache_path: str
 
@@ -74,14 +100,31 @@ class HotspotsConfig:
         if source not in SUPPORTED_SOURCES:
             source = "VIIRS_SNPP_NRT"
 
-        bbox_raw, bbox_coords = _parse_bbox(
+        bbox_raw, bbox_coords_raw = _parse_bbox(
             os.getenv("HOTSPOTS_BBOX") or os.getenv("ETNA_BBOX")
         )
+        bbox_padding_deg = _parse_float(
+            os.getenv("HOTSPOTS_BBOX_PADDING_DEG") or os.getenv("ETNA_BBOX_PADDING_DEG"),
+            0.02,
+        )
+        bbox_coords = _pad_bbox(bbox_coords_raw, bbox_padding_deg)
+        bbox = _bbox_to_string(bbox_coords)
         day_range = _parse_int(os.getenv("HOTSPOTS_DAY_RANGE"), 1)
         cache_ttl_min = _parse_int(os.getenv("HOTSPOTS_CACHE_TTL_MIN"), 180)
         dedup_km = _parse_float(os.getenv("HOTSPOTS_DEDUP_KM"), 1.0)
         dedup_hours = _parse_float(os.getenv("HOTSPOTS_DEDUP_HOURS"), 2.0)
         new_window_hours = _parse_float(os.getenv("HOTSPOTS_NEW_WINDOW_HOURS"), 12.0)
+        significant_confidence_min = (
+            os.getenv("HOTSPOTS_SIGNIFICANT_CONFIDENCE_MIN", "nominal").strip().lower()
+        )
+        significant_brightness_min = _parse_float(
+            os.getenv("HOTSPOTS_SIGNIFICANT_BRIGHTNESS_MIN"),
+            325.0,
+        )
+        significant_frp_min = _parse_float(
+            os.getenv("HOTSPOTS_SIGNIFICANT_FRP_MIN"),
+            10.0,
+        )
         data_dir = os.getenv("DATA_DIR", "data")
         cache_path = os.path.join(data_dir, "hotspots_latest.json")
 
@@ -89,13 +132,19 @@ class HotspotsConfig:
             enabled=enabled,
             map_key=map_key,
             source=source,
-            bbox=bbox_raw,
+            bbox=bbox,
             bbox_coords=bbox_coords,
+            bbox_raw=bbox_raw,
+            bbox_coords_raw=bbox_coords_raw,
+            bbox_padding_deg=bbox_padding_deg,
             day_range=day_range,
             cache_ttl_min=cache_ttl_min,
             dedup_km=dedup_km,
             dedup_hours=dedup_hours,
             new_window_hours=new_window_hours,
+            significant_confidence_min=significant_confidence_min,
+            significant_brightness_min=significant_brightness_min,
+            significant_frp_min=significant_frp_min,
             data_dir=data_dir,
             cache_path=cache_path,
         )
