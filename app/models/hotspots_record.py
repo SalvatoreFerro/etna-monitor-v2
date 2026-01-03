@@ -19,13 +19,18 @@ class HotspotsRecord(db.Model):
     fingerprint: Mapped[str] = mapped_column(db.String(64), unique=True, nullable=False)
     source: Mapped[str] = mapped_column(db.String(32), nullable=False)
     satellite: Mapped[str] = mapped_column(db.String(16), nullable=False)
+    instrument: Mapped[str | None] = mapped_column(db.String(16))
     lat: Mapped[float] = mapped_column(db.Float, nullable=False)
     lon: Mapped[float] = mapped_column(db.Float, nullable=False)
     acq_datetime: Mapped[datetime] = mapped_column(db.DateTime(timezone=True), nullable=False)
     confidence: Mapped[str | None] = mapped_column(db.String(16))
     brightness: Mapped[float | None] = mapped_column(db.Float)
+    bright_ti4: Mapped[float | None] = mapped_column(db.Float)
+    bright_ti5: Mapped[float | None] = mapped_column(db.Float)
     frp: Mapped[float | None] = mapped_column(db.Float)
     intensity_unit: Mapped[str | None] = mapped_column(db.String(8))
+    daynight: Mapped[str | None] = mapped_column(db.String(8))
+    version: Mapped[str | None] = mapped_column(db.String(16))
     status: Mapped[str | None] = mapped_column(db.String(16))
     created_at: Mapped[datetime] = mapped_column(
         db.DateTime(timezone=True),
@@ -35,4 +40,3 @@ class HotspotsRecord(db.Model):
 
     def __repr__(self) -> str:  # pragma: no cover
         return f"<HotspotsRecord fingerprint={self.fingerprint} acq_datetime={self.acq_datetime}>"
-

@@ -14,6 +14,7 @@ from backend.utils.extract_png import process_png_to_csv
 from backend.utils.time import to_iso_utc
 from backend.services.hotspots.config import HotspotsConfig
 from backend.services.hotspots.diagnostics import diagnose_firms
+from backend.services.hotspots.significance import is_significant_record
 
 _RANGE_LIMITS: dict[str, int] = {
     "24h": 288,
@@ -35,30 +36,42 @@ def _require_admin_user() -> bool:
     return bool(user and user.is_admin)
 
 
-def _normalize_confidence(value: str | None) -> str:
-    if not value:
-        return "unknown"
-    raw = value.strip().lower()
-    if raw in {"low", "l"}:
-        return "low"
-    if raw in {"nominal", "n", "medium", "med"}:
-        return "nominal"
-    if raw in {"high", "h"}:
-        return "high"
-    return raw
-
-
-def _confidence_rank(value: str | None) -> int:
-    normalized = _normalize_confidence(value)
-    return {"low": 0, "nominal": 1, "high": 2}.get(normalized, -1)
-
-
-def _is_significant_hotspot(record: HotspotsRecord, config: HotspotsConfig) -> bool:
-    if _confidence_rank(record.confidence) < _confidence_rank(config.significant_confidence_min):
-        return False
-    brightness_ok = record.brightness is not None and record.brightness >= config.significant_brightness_min
-    frp_ok = record.frp is not None and record.frp >= config.significant_frp_min
-    return brightness_ok or frp_ok
+def _hotspot_payload(item: HotspotsRecord) -> dict:
+    brightness = item.bright_ti4
+    if brightness is None:
+        brightness = item.brightness
+    if brightness is None:
+        brightness = item.bright_ti5
+    unit = item.intensity_unit
+    if not unit:
+        if item.frp is not None:
+            unit = "MW"
+        elif brightness is not None:
+            unit = "K"
+        else:
+            unit = "unknown"
+    return {
+        "id": item.fingerprint,
+        "time_utc": to_iso_utc(item.acq_datetime),
+        "lat": item.lat,
+        "lon": item.lon,
+        "source": item.source,
+        "satellite": item.satellite,
+        "instrument": item.instrument,
+        "confidence": item.confidence,
+        "bright_ti4": item.bright_ti4,
+        "bright_ti5": item.bright_ti5,
+        "frp": item.frp,
+        "daynight": item.daynight,
+        "version": item.version,
+        "intensity": {
+            "frp": item.frp,
+            "brightness": brightness,
+            "unit": unit,
+        },
+        "status": item.status or "unknown",
+        "maps_url": f"https://www.google.com/maps?q={item.lat},{item.lon}",
+    }
 
 
 def _prepare_tremor_dataframe(raw_df: pd.DataFrame) -> tuple[pd.DataFrame, str | None]:
@@ -281,10 +294,14 @@ def get_hotspots_latest():
             "last_fetch_at": None,
             "last_fetch_count": 0,
             "count_24h": 0,
+            "count_24h_raw": 0,
+            "count_24h_significant": 0,
             "count_all": 0,
             "count_significant": 0,
             "last_nonzero_at": None,
             "items_24h": [],
+            "items_24h_raw": [],
+            "items_24h_significant": [],
             "items": [],
             "mode": mode,
         }
@@ -310,85 +327,49 @@ def get_hotspots_latest():
 
         window_start = datetime.now(timezone.utc) - timedelta(hours=24)
         try:
-            count_all = (
-                HotspotsRecord.query.filter(HotspotsRecord.acq_datetime >= window_start)
-                .count()
-            )
-            items = (
-                HotspotsRecord.query.filter(HotspotsRecord.acq_datetime >= window_start)
-                .order_by(HotspotsRecord.acq_datetime.desc())
+            raw_query = HotspotsRecord.query.filter(HotspotsRecord.acq_datetime >= window_start)
+            count_raw = raw_query.count()
+            items_raw = (
+                raw_query.order_by(HotspotsRecord.acq_datetime.desc())
                 .limit(500)
                 .all()
             )
+            records_all = raw_query.all()
         except SQLAlchemyError:
             current_app.logger.exception("[API] Hotspots records lookup failed")
-            count_all = 0
-            items = []
+            count_raw = 0
+            items_raw = []
+            records_all = []
 
-        items_payload = [
-            {
-                "id": item.fingerprint,
-                "time_utc": to_iso_utc(item.acq_datetime),
-                "lat": item.lat,
-                "lon": item.lon,
-                "source": item.source,
-                "satellite": item.satellite,
-                "confidence": item.confidence,
-                "intensity": {
-                    "frp": item.frp,
-                    "brightness": item.brightness,
-                    "unit": item.intensity_unit or "unknown",
-                },
-                "status": item.status or "unknown",
-                "maps_url": f"https://www.google.com/maps?q={item.lat},{item.lon}",
-            }
-            for item in items
-        ]
-
-        if mode == "significant":
-            filtered_items = [
-                item
-                for item in items
-                if _is_significant_hotspot(item, config)
-            ]
-        else:
-            filtered_items = items
-
-        filtered_payload = [
-            {
-                "id": item.fingerprint,
-                "time_utc": to_iso_utc(item.acq_datetime),
-                "lat": item.lat,
-                "lon": item.lon,
-                "source": item.source,
-                "satellite": item.satellite,
-                "confidence": item.confidence,
-                "intensity": {
-                    "frp": item.frp,
-                    "brightness": item.brightness,
-                    "unit": item.intensity_unit or "unknown",
-                },
-                "status": item.status or "unknown",
-                "maps_url": f"https://www.google.com/maps?q={item.lat},{item.lon}",
-            }
-            for item in filtered_items
-        ]
+        items_significant = [item for item in items_raw if is_significant_record(item, config)]
 
         if isinstance(count_significant_cache, int):
             count_significant = count_significant_cache
         else:
-            count_significant = len([item for item in items if _is_significant_hotspot(item, config)])
+            count_significant = len([item for item in records_all if is_significant_record(item, config)])
+
+        items_payload_raw = [_hotspot_payload(item) for item in items_raw]
+        items_payload_significant = [_hotspot_payload(item) for item in items_significant]
+
+        if mode == "significant":
+            items_payload = items_payload_significant
+        else:
+            items_payload = items_payload_raw
 
         cache_response = {
             "available": True if config.enabled else False,
             "last_fetch_at": last_fetch_at,
             "last_fetch_count": last_fetch_count,
-            "count_24h": count_all,
-            "count_all": count_all,
+            "count_24h": count_raw,
+            "count_all": count_raw,
+            "count_24h_raw": count_raw,
+            "count_24h_significant": count_significant,
             "count_significant": count_significant,
             "last_nonzero_at": last_nonzero_at,
             "items_24h": items_payload,
-            "items": filtered_payload,
+            "items": items_payload,
+            "items_24h_raw": items_payload_raw,
+            "items_24h_significant": items_payload_significant,
             "mode": mode,
         }
 

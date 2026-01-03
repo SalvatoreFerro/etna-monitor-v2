@@ -14,6 +14,7 @@ from backend.services.hotspots.config import HotspotsConfig
 from backend.services.hotspots.firms_provider import FirmsFetchResult, fetch_firms_records
 from backend.services.hotspots.normalize import normalize_records
 from backend.services.hotspots.scoring import apply_status, deduplicate_items
+from backend.services.hotspots.significance import is_significant_item
 from backend.services.hotspots.storage import is_cache_valid
 from backend.services.hotspots.sources import build_sources
 
@@ -49,13 +50,18 @@ class HotspotRecord(Base):
     fingerprint: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
     source: Mapped[str] = mapped_column(String(32), nullable=False)
     satellite: Mapped[str] = mapped_column(String(16), nullable=False)
+    instrument: Mapped[str | None] = mapped_column(String(16))
     lat: Mapped[float] = mapped_column(Float, nullable=False)
     lon: Mapped[float] = mapped_column(Float, nullable=False)
     acq_datetime: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     confidence: Mapped[str | None] = mapped_column(String(16))
     brightness: Mapped[float | None] = mapped_column(Float)
+    bright_ti4: Mapped[float | None] = mapped_column(Float)
+    bright_ti5: Mapped[float | None] = mapped_column(Float)
     frp: Mapped[float | None] = mapped_column(Float)
     intensity_unit: Mapped[str | None] = mapped_column(String(8))
+    daynight: Mapped[str | None] = mapped_column(String(8))
+    version: Mapped[str | None] = mapped_column(String(16))
     status: Mapped[str | None] = mapped_column(String(16))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -77,7 +83,10 @@ def _parse_time_utc(value: str | None) -> datetime | None:
     return parsed.astimezone(timezone.utc)
 
 
-def _records_from_items(items: list[dict]) -> list[dict]:
+def _records_from_items(
+    items: list[dict],
+    status_by_id: dict[str, str | None] | None = None,
+) -> list[dict]:
     records: list[dict] = []
     for item in items:
         fingerprint = item.get("id")
@@ -87,19 +96,27 @@ def _records_from_items(items: list[dict]) -> list[dict]:
         if acq_time is None:
             continue
         intensity = item.get("intensity") or {}
+        status = None
+        if status_by_id is not None:
+            status = status_by_id.get(fingerprint)
         records.append(
             {
                 "fingerprint": fingerprint,
                 "source": item.get("source") or "UNKNOWN",
                 "satellite": item.get("satellite") or "UNKNOWN",
+                "instrument": item.get("instrument"),
                 "lat": float(item.get("lat")),
                 "lon": float(item.get("lon")),
                 "acq_datetime": acq_time,
                 "confidence": item.get("confidence"),
                 "brightness": intensity.get("brightness"),
+                "bright_ti4": item.get("bright_ti4"),
+                "bright_ti5": item.get("bright_ti5"),
                 "frp": intensity.get("frp"),
                 "intensity_unit": intensity.get("unit"),
-                "status": item.get("status"),
+                "daynight": item.get("daynight"),
+                "version": item.get("version"),
+                "status": status or item.get("status"),
             }
         )
     return records
@@ -170,44 +187,6 @@ def _filter_recent(items: list[dict], now_utc: datetime, window_hours: float) ->
         if acq_time is None:
             continue
         if window_start <= acq_time <= now_utc:
-            filtered.append(item)
-    return filtered
-
-
-def _normalize_confidence(value: str | None) -> str:
-    if not value:
-        return "unknown"
-    raw = value.strip().lower()
-    if raw in {"low", "l"}:
-        return "low"
-    if raw in {"nominal", "n", "medium", "med"}:
-        return "nominal"
-    if raw in {"high", "h"}:
-        return "high"
-    return raw
-
-
-def _confidence_rank(value: str | None) -> int:
-    normalized = _normalize_confidence(value)
-    return {"low": 0, "nominal": 1, "high": 2}.get(normalized, -1)
-
-
-def _meets_significant_confidence(value: str | None, minimum: str) -> bool:
-    return _confidence_rank(value) >= _confidence_rank(minimum)
-
-
-def _filter_significant(items: list[dict], config: HotspotsConfig) -> list[dict]:
-    filtered: list[dict] = []
-    for item in items:
-        confidence = item.get("confidence")
-        if not _meets_significant_confidence(confidence, config.significant_confidence_min):
-            continue
-        intensity = item.get("intensity") or {}
-        brightness = intensity.get("brightness")
-        frp = intensity.get("frp")
-        meets_brightness = brightness is not None and float(brightness) >= config.significant_brightness_min
-        meets_frp = frp is not None and float(frp) >= config.significant_frp_min
-        if meets_brightness or meets_frp:
             filtered.append(item)
     return filtered
 
@@ -351,15 +330,15 @@ def main() -> int:
                 config.dedup_km,
                 config.new_window_hours,
             )
-            significant_items = _filter_significant(scored, config)
+            significant_items = [item for item in scored if is_significant_item(item, config)]
             deduped_significant = deduplicate_items(
                 significant_items,
                 config.dedup_km,
                 config.dedup_hours,
             )
-            all_count = len(scored)
+            raw_24h_count = len(scored)
             significant_count = len(deduped_significant)
-            if all_count > 0:
+            if raw_24h_count > 0:
                 last_nonzero_at = generated_at_dt.isoformat().replace("+00:00", "Z")
 
             acq_times = [
@@ -380,7 +359,12 @@ def main() -> int:
                 window_start.isoformat().replace("+00:00", "Z"),
             )
 
-            records = _records_from_items(scored)
+            status_by_id = {
+                item.get("id"): item.get("status")
+                for item in scored
+                if item.get("id")
+            }
+            records = _records_from_items(normalized, status_by_id)
             inserted_count = _insert_records(session, engine, records)
             cleanup_cutoff = generated_at_dt - timedelta(hours=48)
             _cleanup_records(session, cleanup_cutoff)
@@ -388,7 +372,7 @@ def main() -> int:
                 "available": True,
                 "generated_at": generated_at_dt.isoformat().replace("+00:00", "Z"),
                 "last_fetch_at": generated_at_dt.isoformat().replace("+00:00", "Z"),
-                "last_fetch_count": all_count,
+                "last_fetch_count": raw_count,
                 "last_nonzero_at": last_nonzero_at,
                 "source": {
                     "provider": "NASA_FIRMS",
@@ -403,9 +387,13 @@ def main() -> int:
                     "day_range": config.day_range,
                     "products": list(config.products),
                 },
-                "count": all_count,
+                "count": raw_24h_count,
+                "count_24h_raw": raw_24h_count,
+                "count_24h_significant": significant_count,
                 "count_significant": significant_count,
                 "items": scored,
+                "items_24h_raw": scored,
+                "items_24h_significant": deduped_significant,
             }
             _upsert_cache(session, payload, generated_at_dt)
             session.commit()
@@ -418,7 +406,7 @@ def main() -> int:
                 sources,
                 raw_count,
                 len(geo_filtered),
-                all_count,
+                raw_24h_count,
                 significant_count,
                 inserted_count,
             )
