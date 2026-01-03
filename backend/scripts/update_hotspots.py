@@ -142,6 +142,63 @@ def _cleanup_records(session: Session, cutoff: datetime) -> int:
     return result.rowcount or 0
 
 
+def _is_in_bbox(
+    lat: float,
+    lon: float,
+    bbox_coords: tuple[float, float, float, float],
+) -> bool:
+    west, south, east, north = bbox_coords
+    return west <= lon <= east and south <= lat <= north
+
+
+def _filter_geo(items: list[dict], bbox_coords: tuple[float, float, float, float]) -> list[dict]:
+    return [
+        item
+        for item in items
+        if item.get("lat") is not None
+        and item.get("lon") is not None
+        and _is_in_bbox(float(item["lat"]), float(item["lon"]), bbox_coords)
+    ]
+
+
+def _normalize_confidence(value: str | None) -> str:
+    if not value:
+        return "unknown"
+    raw = value.strip().lower()
+    if raw in {"low", "l"}:
+        return "low"
+    if raw in {"nominal", "n", "medium", "med"}:
+        return "nominal"
+    if raw in {"high", "h"}:
+        return "high"
+    return raw
+
+
+def _confidence_rank(value: str | None) -> int:
+    normalized = _normalize_confidence(value)
+    return {"low": 0, "nominal": 1, "high": 2}.get(normalized, -1)
+
+
+def _meets_significant_confidence(value: str | None, minimum: str) -> bool:
+    return _confidence_rank(value) >= _confidence_rank(minimum)
+
+
+def _filter_significant(items: list[dict], config: HotspotsConfig) -> list[dict]:
+    filtered: list[dict] = []
+    for item in items:
+        confidence = item.get("confidence")
+        if not _meets_significant_confidence(confidence, config.significant_confidence_min):
+            continue
+        intensity = item.get("intensity") or {}
+        brightness = intensity.get("brightness")
+        frp = intensity.get("frp")
+        meets_brightness = brightness is not None and float(brightness) >= config.significant_brightness_min
+        meets_frp = frp is not None and float(frp) >= config.significant_frp_min
+        if meets_brightness or meets_frp:
+            filtered.append(item)
+    return filtered
+
+
 def _load_previous_cache(session: Session) -> dict | None:
     record = session.execute(
         select(HotspotsCache).where(HotspotsCache.key == "etna_latest")
@@ -215,16 +272,23 @@ def main() -> int:
             raw_records = fetch_firms_records(config, logger)
             raw_count = len(raw_records)
             normalized = normalize_records(raw_records, config)
-            deduped = deduplicate_items(normalized, config.dedup_km, config.dedup_hours)
+            geo_filtered = _filter_geo(normalized, config.bbox_coords)
             scored = apply_status(
-                deduped,
+                geo_filtered,
                 previous_items,
                 config.dedup_km,
                 config.new_window_hours,
             )
+            significant_items = _filter_significant(scored, config)
+            deduped_significant = deduplicate_items(
+                significant_items,
+                config.dedup_km,
+                config.dedup_hours,
+            )
             generated_at_dt = datetime.now(timezone.utc)
-            filtered_count = len(scored)
-            if filtered_count > 0:
+            all_count = len(scored)
+            significant_count = len(deduped_significant)
+            if all_count > 0:
                 last_nonzero_at = generated_at_dt.isoformat().replace("+00:00", "Z")
             records = _records_from_items(scored, config.source)
             inserted_count = _insert_records(session, engine, records)
@@ -234,27 +298,33 @@ def main() -> int:
                 "available": True,
                 "generated_at": generated_at_dt.isoformat().replace("+00:00", "Z"),
                 "last_fetch_at": generated_at_dt.isoformat().replace("+00:00", "Z"),
-                "last_fetch_count": filtered_count,
+                "last_fetch_count": all_count,
                 "last_nonzero_at": last_nonzero_at,
                 "source": {
                     "provider": "NASA_FIRMS",
                     "dataset": config.source,
                     "bbox": config.bbox,
+                    "bbox_raw": config.bbox_raw,
+                    "bbox_padding_deg": config.bbox_padding_deg,
                     "day_range": config.day_range,
                 },
-                "count": filtered_count,
+                "count": all_count,
+                "count_significant": significant_count,
                 "items": scored,
             }
             _upsert_cache(session, payload, generated_at_dt)
             session.commit()
             logger.info(
-                "[HOTSPOTS] FIRMS fetch bbox=%s source=%s raw_count=%s filtered_count=%s inserted_count=%s last_fetch_at=%s",
+                "[HOTSPOTS] FIRMS fetch bbox=%s (raw=%s, pad=%.3f) source=%s raw_count=%s geo_count=%s all_count=%s significant_count=%s inserted_count=%s",
                 config.bbox,
+                config.bbox_raw,
+                config.bbox_padding_deg,
                 config.source,
                 raw_count,
-                filtered_count,
+                len(geo_filtered),
+                all_count,
+                significant_count,
                 inserted_count,
-                generated_at_dt.isoformat().replace("+00:00", "Z"),
             )
             return 0
         except Exception as exc:
