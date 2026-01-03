@@ -46,9 +46,26 @@ def dashboard_home():
             empty_df.to_csv(curva_file, index=False)
             df = empty_df
         
-        threshold = user.threshold if user.has_premium_access and user.threshold else Config.ALERT_THRESHOLD_DEFAULT
-        
+        debug_alerts_enabled = os.getenv("ETNAMONITOR_DEBUG_ALERTS") == "1"
+        if user.has_premium_access:
+            if user.threshold:
+                threshold = user.threshold
+                threshold_source = "user/custom"
+            else:
+                threshold = Config.PREMIUM_DEFAULT_THRESHOLD
+                threshold_source = "default"
+        else:
+            threshold = Config.ALERT_THRESHOLD_DEFAULT
+            threshold_source = "default"
+
         fig = make_tremor_figure(df['timestamp'], df['value'], threshold)
+        if debug_alerts_enabled:
+            logger.debug(
+                "plot_threshold=%.2f source=%s user_id=%s",
+                float(threshold),
+                threshold_source,
+                user.id,
+            )
         fig.update_layout(
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
@@ -59,12 +76,22 @@ def dashboard_home():
         
         latest_value = df['value'].iloc[-1] if not df.empty else 0
         status = 'above' if latest_value > threshold else 'below'
+        if debug_alerts_enabled:
+            logger.debug(
+                "badge_threshold=%.2f source=%s current=%.2f user_id=%s",
+                float(threshold),
+                threshold_source,
+                float(latest_value),
+                user.id,
+            )
         
     except Exception as e:
         graph_json = None
         latest_value = 0
         status = 'unknown'
+        debug_alerts_enabled = os.getenv("ETNAMONITOR_DEBUG_ALERTS") == "1"
         threshold = Config.ALERT_THRESHOLD_DEFAULT
+        threshold_source = "default"
         record_csv_error(str(e))
         logger.exception("Dashboard data preparation failed")
     
@@ -79,6 +106,9 @@ def dashboard_home():
                          graph_json=graph_json,
                          latest_value=latest_value,
                          threshold=threshold,
+                         active_threshold=threshold,
+                         threshold_source=threshold_source,
+                         debug_alerts_enabled=debug_alerts_enabled,
                          status=status,
                          recent_events=recent_events,
                          page_title="Dashboard tremore Etna – EtnaMonitor",
