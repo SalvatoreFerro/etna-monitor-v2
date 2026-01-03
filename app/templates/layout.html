@@ -217,6 +217,7 @@
       </div>
     </footer>
 
+    <script src="{{ url_for('static', filename='js/analytics.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ csp_nonce() }}" defer></script>
     <script src="{{ url_for('static', filename='js/nav.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ csp_nonce() }}" defer></script>
 
     <script nonce="{{ csp_nonce() }}">

@@ -1033,6 +1033,12 @@
     gap: clamp(var(--space-4), 3vw, var(--space-5));
   }
 
+  .monitor-hero-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
   .monitor-hero__title {
     margin: 0;
     font-size: clamp(2rem, 3.4vw, 3.1rem);
@@ -1051,6 +1057,45 @@
   .monitor-graph-section {
     padding-block: 0;
     margin-top: clamp(var(--space-3), 3vw, var(--space-5));
+  }
+
+  .pill--hotspots {
+    border-color: rgba(56, 189, 248, 0.35);
+    color: #bae6fd;
+    background: rgba(14, 116, 144, 0.2);
+  }
+
+  .home-telegram-banner {
+    margin: var(--space-4) auto var(--space-6);
+  }
+
+  .home-telegram-banner__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-4) var(--space-5);
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(251, 191, 36, 0.25);
+    background: rgba(30, 41, 59, 0.65);
+  }
+
+  .home-telegram-banner__copy {
+    margin: 0;
+    color: var(--color-text-secondary);
+    font-size: var(--font-size-md);
+  }
+
+  @media (max-width: 768px) {
+    .home-telegram-banner__inner {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .home-telegram-banner__inner .btn {
+      width: 100%;
+      text-align: center;
+    }
   }
 
   .monitor-graph-layout {
