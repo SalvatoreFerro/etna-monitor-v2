@@ -71,10 +71,12 @@ class EtnaDashboard {
         if (thresholdSlider && thresholdInput) {
             thresholdSlider.addEventListener('input', (e) => {
                 thresholdInput.value = e.target.value;
+                this.updateActiveThresholdDisplay(parseFloat(e.target.value), 'user/custom');
             });
             
             thresholdInput.addEventListener('input', (e) => {
                 thresholdSlider.value = e.target.value;
+                this.updateActiveThresholdDisplay(parseFloat(e.target.value), 'user/custom');
             });
         }
         
@@ -135,6 +137,60 @@ class EtnaDashboard {
             threshold: this.getCssVariable('--chart-threshold-color', defaults.threshold),
             hoverBg: this.getCssVariable('--chart-hover-bg', defaults.hoverBg)
         };
+    }
+
+    getActiveThresholdData() {
+        const thresholdElement = document.getElementById('active-threshold');
+        if (!thresholdElement) {
+            return { threshold: 2.0, source: 'default', debug: false };
+        }
+        const thresholdValue = parseFloat(thresholdElement.dataset.threshold);
+        return {
+            threshold: Number.isFinite(thresholdValue) ? thresholdValue : 2.0,
+            source: thresholdElement.dataset.source || 'default',
+            debug: thresholdElement.dataset.debug === '1'
+        };
+    }
+
+    getActiveThreshold() {
+        const thresholdSlider = document.getElementById('threshold-slider');
+        if (thresholdSlider) {
+            const sliderValue = parseFloat(thresholdSlider.value);
+            if (Number.isFinite(sliderValue)) {
+                return sliderValue;
+            }
+        }
+        return this.getActiveThresholdData().threshold;
+    }
+
+    updateActiveThresholdDisplay(thresholdValue, sourceOverride) {
+        const thresholdElement = document.getElementById('active-threshold');
+        if (!thresholdElement) {
+            return;
+        }
+        const { source } = this.getActiveThresholdData();
+        const resolvedSource = sourceOverride || source || 'default';
+        const normalizedValue = Number.isFinite(thresholdValue)
+            ? thresholdValue
+            : this.getActiveThresholdData().threshold;
+        thresholdElement.dataset.threshold = normalizedValue.toFixed(2);
+        thresholdElement.dataset.source = resolvedSource;
+        const label = resolvedSource === 'user/custom' ? 'personalizzata' : 'default';
+        thresholdElement.textContent = `Soglia attiva: ${normalizedValue.toFixed(2)} mV (${label})`;
+    }
+
+    updateDebugThresholdLabel(currentValue, thresholdValue, source) {
+        const { debug } = this.getActiveThresholdData();
+        if (!debug) {
+            return;
+        }
+        const debugLabel = document.getElementById('debug-threshold');
+        if (!debugLabel) {
+            return;
+        }
+        const safeCurrent = Number.isFinite(currentValue) ? currentValue.toFixed(2) : '--';
+        const safeThreshold = Number.isFinite(thresholdValue) ? thresholdValue.toFixed(2) : '--';
+        debugLabel.textContent = `DEBUG: threshold_used_for_badge=${safeThreshold} | source=${source} | current=${safeCurrent}`;
     }
 
     setupThemeToggle() {
@@ -283,10 +339,10 @@ class EtnaDashboard {
         const values = normalized.map((row) => row.value);
         const clampedValues = values.map((value) => (value >= LOG_SCALE_MIN ? value : LOG_SCALE_MIN));
 
-        const thresholdSlider = document.getElementById('threshold-slider');
-        let threshold = parseFloat(thresholdSlider?.value || 2.0);
-        if (!Number.isFinite(threshold)) {
-            threshold = 2.0;
+        const threshold = this.getActiveThreshold();
+        const { source, debug } = this.getActiveThresholdData();
+        if (debug) {
+            console.info(`plot_threshold=${threshold.toFixed(2)} source=${source}`);
         }
 
         const hasExistingPlot = Boolean(plotDiv.data && plotDiv.data.length);
@@ -474,14 +530,18 @@ class EtnaDashboard {
         const statusIndicator = document.getElementById('status-indicator');
         const statusText = document.getElementById('status-text');
         
-        if (currentValue && data.current_value !== undefined) {
+        if (currentValue && data.current_value !== undefined && data.current_value !== null) {
             currentValue.textContent = data.current_value.toFixed(2);
         }
         
         if (statusIndicator && statusText) {
-            const isAbove = data.above_threshold;
+            const threshold = this.getActiveThreshold();
+            const source = this.getActiveThresholdData().source;
+            const isAbove = Number.isFinite(data.current_value) ? data.current_value > threshold : false;
             statusIndicator.className = `status-indicator ${isAbove ? 'status-above' : 'status-below'}`;
             statusText.textContent = isAbove ? 'Sopra Soglia' : 'Sotto Soglia';
+            this.updateActiveThresholdDisplay(threshold, source);
+            this.updateDebugThresholdLabel(data.current_value, threshold, source);
         }
     }
 
@@ -590,6 +650,7 @@ class EtnaDashboard {
 
             if (response.ok) {
                 this.showToast('Soglia salvata con successo', 'success');
+                this.updateActiveThresholdDisplay(threshold, 'user/custom');
                 if (this.plotData) {
                     this.renderPlot(this.plotData);
                 }

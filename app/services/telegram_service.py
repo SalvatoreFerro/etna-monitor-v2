@@ -25,6 +25,42 @@ class TelegramService:
     RATE_LIMIT = timedelta(hours=2)
     UPSELL_COOLDOWN = timedelta(hours=24)
 
+    def _alerts_debug_enabled(self) -> bool:
+        return os.getenv("ETNAMONITOR_DEBUG_ALERTS") == "1"
+
+    def _log_alert_decision(
+        self,
+        user: User,
+        chat_id_present: bool,
+        threshold: float,
+        current_value: float,
+        moving_avg: float,
+        window_size: Optional[int],
+        state_prev: str,
+        state_new: str,
+        sent: bool,
+        reason: str,
+    ) -> None:
+        if not self._alerts_debug_enabled():
+            return
+        logger.debug(
+            "alert_debug user_id=%s email=%s is_premium=%s chat_id_present=%s "
+            "threshold=%.2f current=%.2f avg=%.2f window=%s state_prev=%s state_new=%s "
+            "sent=%s reason=%s",
+            user.id,
+            user.email,
+            user.has_premium_access,
+            chat_id_present,
+            float(threshold),
+            float(current_value),
+            float(moving_avg),
+            window_size if window_size is not None else "n/a",
+            state_prev,
+            state_new,
+            sent,
+            reason,
+        )
+
     def send_message(self, chat_id: int | str | None, text: str) -> bool:
         """Send Telegram message to user"""
         token = self._resolve_bot_token()
@@ -119,14 +155,15 @@ class TelegramService:
 
             recent_data = dataset.tail(10)
             current_value = recent_data['value'].iloc[-1]
-            moving_avg = self.calculate_moving_average(recent_data['value'].tolist())
+            window_size = 5
+            moving_avg = self.calculate_moving_average(recent_data['value'].tolist(), window_size=window_size)
 
             timestamp = recent_data['timestamp'].iloc[-1]
             event_ts = timestamp.to_pydatetime() if hasattr(timestamp, "to_pydatetime") else timestamp
             event_id = self._compute_event_id(event_ts, moving_avg)
             now = datetime.utcnow()
 
-            self._dispatch_alerts(event_id, current_value, moving_avg, now)
+            self._dispatch_alerts(event_id, current_value, moving_avg, now, window_size=window_size)
             db.session.commit()
         except Exception as exc:  # pragma: no cover - defensive logging
             db.session.rollback()
@@ -176,7 +213,7 @@ class TelegramService:
         try:
             ts_label = ts.isoformat() if isinstance(ts, datetime) else str(ts)
             logger.info("Manual alert dispatch triggered event_id=%s at %s", event_id, ts_label)
-            self._dispatch_alerts(event_id, value_mv, value_mv, now)
+            self._dispatch_alerts(event_id, value_mv, value_mv, now, window_size=None)
             db.session.commit()
         except Exception as exc:  # pragma: no cover - defensive logging
             db.session.rollback()
@@ -202,6 +239,7 @@ class TelegramService:
         current_value: float,
         moving_avg: float,
         now: datetime,
+        window_size: Optional[int],
     ) -> None:
         users = self._get_subscribed_users()
         if not users:
@@ -213,10 +251,39 @@ class TelegramService:
             last_alert = self._get_last_alert_event(user)
             self._register_hysteresis_release(user, threshold, moving_avg, now, last_alert)
 
+            state_prev = "above" if last_alert and last_alert.value is not None and last_alert.value >= threshold else "below"
+            state_new = "above" if moving_avg >= threshold else "below"
+
             if moving_avg < threshold:
+                self._log_alert_decision(
+                    user,
+                    bool(user.telegram_chat_id or user.chat_id),
+                    threshold,
+                    current_value,
+                    moving_avg,
+                    window_size,
+                    state_prev,
+                    state_new,
+                    False,
+                    "below_threshold",
+                )
                 continue
 
             chat_id = user.telegram_chat_id or user.chat_id
+            if not chat_id:
+                self._log_alert_decision(
+                    user,
+                    False,
+                    threshold,
+                    current_value,
+                    moving_avg,
+                    window_size,
+                    state_prev,
+                    state_new,
+                    False,
+                    "no_chat_id",
+                )
+                continue
 
             if user.has_premium_access:
                 self._process_premium_user(
@@ -228,6 +295,9 @@ class TelegramService:
                     now,
                     last_alert,
                     chat_id,
+                    window_size,
+                    state_prev,
+                    state_new,
                 )
             else:
                 self._process_free_user(
@@ -238,6 +308,9 @@ class TelegramService:
                     threshold,
                     now,
                     chat_id,
+                    window_size,
+                    state_prev,
+                    state_new,
                 )
 
     def _resolve_threshold(self, user: User) -> float:
@@ -301,13 +374,40 @@ class TelegramService:
         now: datetime,
         last_alert: Optional[Event],
         chat_id: Optional[int],
+        window_size: Optional[int],
+        state_prev: str,
+        state_new: str,
     ) -> None:
         if self._is_rate_limited(user, now):
             logger.debug("Rate limit active for %s", user.email)
+            self._log_alert_decision(
+                user,
+                bool(chat_id),
+                threshold,
+                current_value,
+                moving_avg,
+                window_size,
+                state_prev,
+                state_new,
+                False,
+                "cooldown",
+            )
             return
 
         if not self._passed_hysteresis(user, threshold, moving_avg, last_alert):
             logger.debug("Hysteresis gate blocked alert for %s", user.email)
+            self._log_alert_decision(
+                user,
+                bool(chat_id),
+                threshold,
+                current_value,
+                moving_avg,
+                window_size,
+                state_prev,
+                state_new,
+                False,
+                "no_state_change",
+            )
             return
 
         message = self._build_premium_message(current_value, moving_avg, threshold)
@@ -323,8 +423,32 @@ class TelegramService:
             db.session.add(alert_event)
             self._update_alert_counters(user, now)
             logger.info("Premium alert delivered to %s", user.email)
+            self._log_alert_decision(
+                user,
+                bool(chat_id),
+                threshold,
+                current_value,
+                moving_avg,
+                window_size,
+                state_prev,
+                state_new,
+                True,
+                "sent",
+            )
         else:
             logger.error("Failed to deliver premium alert to %s", user.email)
+            self._log_alert_decision(
+                user,
+                bool(chat_id),
+                threshold,
+                current_value,
+                moving_avg,
+                window_size,
+                state_prev,
+                state_new,
+                False,
+                "send_failed",
+            )
 
     def _process_free_user(
         self,
@@ -335,6 +459,9 @@ class TelegramService:
         threshold: float,
         now: datetime,
         chat_id: Optional[int],
+        window_size: Optional[int],
+        state_prev: str,
+        state_new: str,
     ) -> None:
         if (user.free_alert_consumed or 0) == 0 and user.free_alert_event_id != event_id:
             message = self._build_free_trial_message(current_value, moving_avg, threshold)
@@ -361,10 +488,46 @@ class TelegramService:
                 )
                 self._update_alert_counters(user, now)
                 logger.info("Free trial alert delivered to %s", user.email)
+                self._log_alert_decision(
+                    user,
+                    bool(chat_id),
+                    threshold,
+                    current_value,
+                    moving_avg,
+                    window_size,
+                    state_prev,
+                    state_new,
+                    True,
+                    "sent_free_trial",
+                )
             else:
                 logger.error("Failed to deliver free trial alert to %s", user.email)
+                self._log_alert_decision(
+                    user,
+                    bool(chat_id),
+                    threshold,
+                    current_value,
+                    moving_avg,
+                    window_size,
+                    state_prev,
+                    state_new,
+                    False,
+                    "send_failed",
+                )
             return
 
+        self._log_alert_decision(
+            user,
+            bool(chat_id),
+            threshold,
+            current_value,
+            moving_avg,
+            window_size,
+            state_prev,
+            state_new,
+            False,
+            "free_alert_consumed",
+        )
         self._send_upsell(user, now, chat_id)
 
     def _send_upsell(self, user: User, now: datetime, chat_id: Optional[int]) -> None:
