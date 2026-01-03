@@ -63,6 +63,7 @@ def fetch_firms_records(
     *,
     source: str | None = None,
     bbox: str | None = None,
+    allow_error: bool = False,
 ) -> FirmsFetchResult:
     final_source = source or config.source
     final_bbox = bbox or config.bbox
@@ -85,6 +86,16 @@ def fetch_firms_records(
             response.status_code,
             body_preview,
         )
+        if allow_error:
+            return FirmsFetchResult(
+                source=final_source,
+                url_public=build_firms_url_public(
+                    config, source=final_source, bbox=final_bbox
+                ),
+                status_code=response.status_code,
+                body_preview=body_preview,
+                records=[],
+            )
         raise
 
     text = response.content.decode("utf-8-sig", errors="replace")

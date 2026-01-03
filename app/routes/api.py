@@ -7,11 +7,13 @@ from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy.exc import SQLAlchemyError
 
 from ..utils.metrics import record_csv_error, record_csv_read, record_csv_update
+from ..utils.auth import get_current_user
 from ..models.hotspots_cache import HotspotsCache
 from ..models.hotspots_record import HotspotsRecord
 from backend.utils.extract_png import process_png_to_csv
 from backend.utils.time import to_iso_utc
 from backend.services.hotspots.config import HotspotsConfig
+from backend.services.hotspots.diagnostics import diagnose_firms
 
 _RANGE_LIMITS: dict[str, int] = {
     "24h": 288,
@@ -26,6 +28,11 @@ _MIN_LIMIT = 1
 _MAX_LIMIT = 4032
 
 api_bp = Blueprint("api", __name__)
+
+
+def _require_admin_user() -> bool:
+    user = get_current_user()
+    return bool(user and user.is_admin)
 
 
 def _normalize_confidence(value: str | None) -> str:
@@ -386,6 +393,20 @@ def get_hotspots_latest():
         }
 
     response = jsonify(cache_response)
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
+
+@api_bp.get("/api/hotspots/diagnose")
+def get_hotspots_diagnose():
+    if not _require_admin_user():
+        return jsonify({"ok": False, "error": "Admin access required"}), 403
+    config = HotspotsConfig.from_env()
+    payload = diagnose_firms(config, current_app.logger)
+    payload["ok"] = True
+    response = jsonify(payload)
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"

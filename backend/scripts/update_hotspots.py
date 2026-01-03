@@ -15,6 +15,7 @@ from backend.services.hotspots.firms_provider import FirmsFetchResult, fetch_fir
 from backend.services.hotspots.normalize import normalize_records
 from backend.services.hotspots.scoring import apply_status, deduplicate_items
 from backend.services.hotspots.storage import is_cache_valid
+from backend.services.hotspots.sources import build_sources
 
 
 def _json_type() -> JSON:
@@ -244,33 +245,6 @@ def _build_engine() -> Engine:
     return create_engine(url, pool_pre_ping=True)
 
 
-def _build_sources(config: HotspotsConfig) -> tuple[list[str], list[str]]:
-    sources: list[str] = []
-    platforms: list[str] = []
-    if config.dataset == "VIIRS":
-        if config.include_platforms:
-            platform_map = {
-                "SNPP": "VIIRS_SNPP_NRT",
-                "NOAA20": "VIIRS_NOAA20_NRT",
-                "NOAA21": "VIIRS_NOAA21_NRT",
-            }
-            for platform in config.include_platforms:
-                source = platform_map.get(platform)
-                if source:
-                    platforms.append(platform)
-                    sources.append(source)
-        if not sources:
-            sources.append(config.source)
-    else:
-        sources.append(config.source)
-
-    if config.include_modis and "MODIS_NRT" not in sources:
-        sources.append("MODIS_NRT")
-        platforms.append("MODIS")
-
-    return sources, platforms
-
-
 def _log_fetch_summary(
     logger: logging.Logger,
     dataset: str,
@@ -312,7 +286,7 @@ def main() -> int:
         last_nonzero_at = previous_cache.get("last_nonzero_at") if previous_cache else None
 
         try:
-            sources, platforms = _build_sources(config)
+            sources, platforms = build_sources(config)
             logger.info(
                 "[HOTSPOTS] FIRMS ingest datasets=%s platforms=%s include_modis=%s",
                 sources,
