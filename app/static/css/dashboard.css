@@ -463,6 +463,78 @@
   gap: var(--space-4);
 }
 
+.telegram-status-card,
+.premium-offer-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-6);
+}
+
+.telegram-status-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.telegram-badge {
+  align-self: flex-start;
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(251, 191, 36, 0.18);
+  color: #fde68a;
+}
+
+.telegram-badge--connected {
+  background: rgba(16, 185, 129, 0.18);
+  color: #bbf7d0;
+}
+
+.telegram-badge--disconnected {
+  background: rgba(248, 113, 113, 0.18);
+  color: #fecaca;
+}
+
+.premium-offer-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.premium-offer-grid div {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+.premium-offer-label {
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+}
+
+.premium-offer-price {
+  margin: 0;
+  font-size: clamp(1.2rem, 1rem + 0.6vw, 1.6rem);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.premium-offer-note {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
 .card-header {
   display: flex;
   flex-direction: column;

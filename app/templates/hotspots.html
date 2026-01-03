@@ -1,4 +1,6 @@
 {% extends "layout.html" %}
+{% set is_authenticated = current_user and current_user.is_authenticated %}
+{% set has_telegram = is_authenticated and (current_user.telegram_chat_id or current_user.chat_id) and current_user.telegram_opt_in %}
 
 {% block head_extra %}
   <link
@@ -19,6 +21,18 @@
       margin-bottom: 0;
       font-size: clamp(1.8rem, 1.2rem + 1.6vw, 2.6rem);
       letter-spacing: -0.02em;
+    }
+
+    .hotspots-new-badge {
+      align-self: flex-start;
+      padding: 0.35rem 0.9rem;
+      border-radius: 999px;
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      background: rgba(14, 116, 144, 0.2);
+      color: #bae6fd;
+      font-size: 0.75rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
     }
 
     .hotspots-subtitle {
@@ -70,6 +84,37 @@
 
     .hotspots-note strong {
       color: var(--color-text);
+    }
+
+    .hotspots-callouts {
+      display: grid;
+      gap: var(--space-3);
+      margin-top: var(--space-3);
+    }
+
+    .hotspots-callout {
+      padding: var(--space-4);
+      border-radius: var(--radius-lg);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      background: rgba(15, 23, 42, 0.45);
+      display: grid;
+      gap: var(--space-2);
+      color: var(--color-text-secondary);
+      font-size: var(--font-size-sm);
+    }
+
+    .hotspots-callout strong {
+      color: var(--color-text);
+    }
+
+    .hotspots-telegram-cta {
+      color: #7dd3fc;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .hotspots-telegram-cta:hover {
+      text-decoration: underline;
     }
 
     .hotspots-grid {
@@ -596,6 +641,7 @@
   <section class="container container--wide">
     <div class="hotspots-header">
       <h1>Hotspot termici satellitari sull’Etna</h1>
+      <span class="hotspots-new-badge">🛰️ Nuovo: hotspot satellitari in tempo quasi reale</span>
       <p class="hotspots-subtitle">
         Monitoraggio immediato delle anomalie termiche rilevate dai satelliti NASA FIRMS nelle ultime 24 ore.
       </p>
@@ -610,9 +656,38 @@
       <div class="hotspots-note">
         <strong>Cosa stai vedendo</strong>
         <span>
-          Ogni punto rappresenta un’anomalia termica rilevata dal satellite. È un segnale di attenzione, non una
-          previsione di eruzione.
+          Gli hotspot indicano anomalie termiche viste da satellite. Non sono previsioni di eruzione, ma segnali di
+          possibile attività superficiale.
         </span>
+      </div>
+      <div class="hotspots-callouts">
+        <div class="hotspots-callout">
+          <strong>Avvisi Telegram</strong>
+          <span>Gli utenti con Telegram collegato ricevono notifiche in caso di variazioni rilevanti.</span>
+          {% if has_telegram %}
+            <span>Notifiche hotspot attive via Telegram.</span>
+          {% else %}
+            {% if is_authenticated %}
+              <a
+                class="hotspots-telegram-cta"
+                href="{{ url_for('dashboard.dashboard_home') }}#alert-settings"
+                data-track-event="click_collega_telegram_from_hotspot"
+                data-track-location="hotspots"
+              >Collega Telegram per non perderti gli aggiornamenti</a>
+            {% else %}
+              <a
+                class="hotspots-telegram-cta"
+                href="{{ url_for('auth.login') }}"
+                data-track-event="click_collega_telegram_from_hotspot"
+                data-track-location="hotspots"
+              >Collega Telegram per non perderti gli aggiornamenti</a>
+            {% endif %}
+          {% endif %}
+          <span
+            data-track-view="premium_cta_view_from_hotspot"
+            data-track-location="hotspots"
+          >Con Premium ricevi alert illimitati anche su variazioni hotspot.</span>
+        </div>
       </div>
     </div>
 
@@ -740,6 +815,10 @@
     crossorigin=""
   ></script>
   <script nonce="{{ csp_nonce() }}">
+    if (window.etnaTrackEvent) {
+      window.etnaTrackEvent('hotspot_page_view', { location: 'hotspots' });
+    }
+
     const mapCenter = { lat: {{ map_center.lat }}, lon: {{ map_center.lon }} };
 
     const loader = document.getElementById('hotspots-loader');

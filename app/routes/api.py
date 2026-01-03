@@ -229,6 +229,13 @@ def get_status():
     csv_path_setting = current_app.config.get("CURVA_CSV_PATH") or current_app.config.get("CSV_PATH") or "/var/tmp/curva.csv"
     csv_path = Path(csv_path_setting)
     threshold = float(os.getenv("ALERT_THRESHOLD_DEFAULT", "2.0"))
+    track_event = request.args.get("track")
+    if track_event:
+        location = request.args.get("location")
+        if location:
+            current_app.logger.info("[TRACK] %s | %s", track_event, location)
+        else:
+            current_app.logger.info("[TRACK] %s", track_event)
     
     try:
         if csv_path.exists():

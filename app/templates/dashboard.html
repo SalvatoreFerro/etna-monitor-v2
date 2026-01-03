@@ -193,6 +193,62 @@
             {% endif %}
           </div>
         </article>
+        <article class="card-premium telegram-status-card" aria-label="Stato Telegram">
+          <header class="card-header">
+            <h2>Telegram Status</h2>
+            <p class="muted">Assicurati di ricevere avvisi in tempo reale sul tuo telefono.</p>
+          </header>
+          {% if telegram_connected %}
+            <div class="telegram-status-body">
+              <span class="telegram-badge telegram-badge--connected">Telegram collegato</span>
+              <p class="muted">Alert attivi via Telegram.</p>
+            </div>
+          {% else %}
+            <div class="telegram-status-body">
+              <span class="telegram-badge telegram-badge--disconnected">Telegram non collegato</span>
+              <p class="muted">Collega Telegram per ricevere avvisi immediati sulle variazioni importanti.</p>
+              <a
+                class="btn btn-secondary glass btn-sm"
+                href="{{ url_for('dashboard.dashboard_home') }}#alert-settings"
+                data-track-event="click_collega_telegram"
+                data-track-location="dashboard"
+              >Collega Telegram</a>
+            </div>
+          {% endif %}
+        </article>
+        <article
+          class="card-premium premium-offer-card"
+          aria-label="Promemoria Premium"
+          data-track-view="premium_info_view"
+          data-track-location="dashboard"
+        >
+          <header class="card-header">
+            <h2>Premium</h2>
+            <p class="muted">Sblocca il monitoraggio completo e gli alert illimitati.</p>
+          </header>
+          <div class="premium-offer-grid">
+            <div>
+              <span class="premium-offer-label">Free</span>
+              <strong>1 alert</strong>
+            </div>
+            <div>
+              <span class="premium-offer-label">Premium</span>
+              <strong>alert illimitati</strong>
+            </div>
+          </div>
+          <p class="premium-offer-price">€10 a vita</p>
+          <p class="premium-offer-note">Promo early users: €10 a vita (tempo limitato).</p>
+          {% if user.has_premium_access %}
+            <span class="telegram-badge telegram-badge--connected">Premium attivo</span>
+          {% else %}
+            <a
+              class="btn btn-premium btn-sm"
+              href="{{ url_for('main.pricing') }}"
+              data-track-event="click_attiva_premium"
+              data-track-location="dashboard"
+            >Attiva Premium</a>
+          {% endif %}
+        </article>
         <article class="card-premium account-status-card" aria-label="Stato account">
           <header class="account-status-card__header">
             <h2>Stato account</h2>

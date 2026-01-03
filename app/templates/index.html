@@ -8,6 +8,9 @@
   <div class="container container--wide hero__layout">
     <div class="hero__content monitor-hero__content">
       <span class="eyebrow hero__eyebrow">Monitoraggio in tempo reale</span>
+      <div class="monitor-hero-badges">
+        <span class="pill pill--hotspots">🛰️ Nuovo: hotspot satellitari in tempo quasi reale</span>
+      </div>
       <h1 class="monitor-hero__title">Monitoraggio in tempo reale del tremore vulcanico dell’Etna (grafico INGV)</h1>
       <p class="lead hero__lead monitor-hero__subtitle">
         Il grafico storico torna al centro con colori sobri e lettura immediata per controllare l'attività vulcanica in pochi secondi.
@@ -22,6 +25,19 @@
         {% endif %}
       </div>
     </div>
+  </div>
+</section>
+
+<section class="home-telegram-banner" aria-label="Avviso Telegram">
+  <div class="container container--wide home-telegram-banner__inner">
+    <p class="home-telegram-banner__copy">
+      Senza Telegram non ricevi avvisi in tempo reale.
+    </p>
+    {% if is_authenticated %}
+      <a href="{{ url_for('dashboard.dashboard_home') }}#alert-settings" class="btn btn-secondary">Gestisci Telegram</a>
+    {% else %}
+      <a href="{{ url_for('auth.login') }}" class="btn btn-secondary">Accedi / Registrati</a>
+    {% endif %}
   </div>
 </section>
 

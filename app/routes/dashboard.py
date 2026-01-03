@@ -162,6 +162,7 @@ def connect_telegram():
         )
         db.session.add(event)
         db.session.commit()
+        logger.info("[TRACK] telegram_collegato_success")
 
         if user.has_premium_access:
             flash("Telegram collegato. Riceverai gli alert Premium.", "success")
