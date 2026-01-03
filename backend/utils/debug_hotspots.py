@@ -8,32 +8,7 @@ from sqlalchemy.orm import Session
 
 from backend.scripts.update_hotspots import HotspotRecord, HotspotsCache, _build_engine
 from backend.services.hotspots.config import HotspotsConfig
-
-
-def _normalize_confidence(value: str | None) -> str:
-    if not value:
-        return "unknown"
-    raw = value.strip().lower()
-    if raw in {"low", "l"}:
-        return "low"
-    if raw in {"nominal", "n", "medium", "med"}:
-        return "nominal"
-    if raw in {"high", "h"}:
-        return "high"
-    return raw
-
-
-def _confidence_rank(value: str | None) -> int:
-    normalized = _normalize_confidence(value)
-    return {"low": 0, "nominal": 1, "high": 2}.get(normalized, -1)
-
-
-def _is_significant(record: HotspotRecord, config: HotspotsConfig) -> bool:
-    if _confidence_rank(record.confidence) < _confidence_rank(config.significant_confidence_min):
-        return False
-    brightness_ok = record.brightness is not None and record.brightness >= config.significant_brightness_min
-    frp_ok = record.frp is not None and record.frp >= config.significant_frp_min
-    return brightness_ok or frp_ok
+from backend.services.hotspots.significance import is_significant_record
 
 
 def main() -> int:
@@ -80,7 +55,9 @@ def main() -> int:
         geo_records_list = list(geo_records)
         logger.info("[HOTSPOTS] records in bbox: %s", len(geo_records_list))
 
-        significant_records = [record for record in geo_records_list if _is_significant(record, config)]
+        significant_records = [
+            record for record in geo_records_list if is_significant_record(record, config)
+        ]
         logger.info(
             "[HOTSPOTS] significant records (confidence>=%s, brightness>=%s, frp>=%s): %s",
             config.significant_confidence_min,

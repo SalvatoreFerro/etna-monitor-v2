@@ -759,6 +759,8 @@
     const numberFormat = new Intl.NumberFormat('it-IT', { maximumFractionDigits: 2 });
     const neutralZoom = 10;
 
+    let rawItems = [];
+    let significantItems = [];
     let allItems = [];
     let activeMode = 'all';
 
@@ -1092,8 +1094,10 @@
     };
 
     const applyData = (data) => {
-      const items = Array.isArray(data.items) ? data.items : [];
-      const sorted = [...items].sort((a, b) => {
+      const raw = Array.isArray(data.items_24h_raw) ? data.items_24h_raw : Array.isArray(data.items) ? data.items : [];
+      const significant = Array.isArray(data.items_24h_significant) ? data.items_24h_significant : raw;
+      const activeItems = activeMode === 'significant' ? significant : raw;
+      const sorted = [...activeItems].sort((a, b) => {
         const brightnessA = a?.intensity?.brightness ?? 0;
         const brightnessB = b?.intensity?.brightness ?? 0;
         return brightnessB - brightnessA;
@@ -1102,8 +1106,8 @@
       const updateInfo = relativeTime(data.last_fetch_at);
       updatedEl.textContent = updateInfo.label;
       updatedEl.title = updateInfo.iso;
-      const totalCount = data.count_all ?? data.count_24h ?? sorted.length ?? 0;
-      const significantCount = data.count_significant ?? 0;
+      const totalCount = data.count_24h_raw ?? data.count_all ?? data.count_24h ?? raw.length ?? 0;
+      const significantCount = data.count_24h_significant ?? data.count_significant ?? significant.length ?? 0;
       const lastFetchCount = data.last_fetch_count ?? 0;
       countAllEl.textContent = numberFormat.format(totalCount);
       countSignificantEl.textContent = numberFormat.format(significantCount);
@@ -1134,6 +1138,8 @@
         setTimeout(() => card.classList.add('is-visible'), 60 * index);
       });
 
+      rawItems = raw;
+      significantItems = significant;
       allItems = sorted;
       setMapLabelVisible(totalCount > 0);
 

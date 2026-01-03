@@ -102,12 +102,18 @@ def normalize_records(
 
         confidence = _normalize_confidence(record.get("confidence"))
 
+        instrument = (record.get("instrument") or "").strip().upper() or None
+        daynight = (record.get("daynight") or "").strip().upper() or None
+        version = (record.get("version") or "").strip() or None
+
         frp = _parse_float(record.get("frp"))
-        brightness = (
-            _parse_float(record.get("brightness"))
-            or _parse_float(record.get("bright_ti4"))
-            or _parse_float(record.get("bright_ti5"))
-        )
+        bright_ti4 = _parse_float(record.get("bright_ti4"))
+        bright_ti5 = _parse_float(record.get("bright_ti5"))
+        brightness = _parse_float(record.get("brightness"))
+        if bright_ti4 is not None:
+            brightness = bright_ti4
+        elif brightness is None:
+            brightness = bright_ti5
         if frp is not None:
             unit = "MW"
         elif brightness is not None:
@@ -121,6 +127,7 @@ def normalize_records(
             "lat": lat,
             "lon": lon,
             "satellite": satellite if satellite else "UNKNOWN",
+            "instrument": instrument,
             "source": source,
             "confidence": confidence,
             "intensity": {
@@ -128,6 +135,10 @@ def normalize_records(
                 "brightness": brightness,
                 "unit": unit,
             },
+            "bright_ti4": bright_ti4,
+            "bright_ti5": bright_ti5,
+            "daynight": daynight,
+            "version": version,
             "status": "new",
             "maps_url": f"https://www.google.com/maps?q={lat},{lon}",
         }
