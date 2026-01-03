@@ -4,11 +4,27 @@ from dataclasses import dataclass
 import os
 
 
+DEFAULT_AGGREGATED_PRODUCTS = [
+    "VIIRS_SNPP_NRT",
+    "VIIRS_NOAA20_NRT",
+    "VIIRS_NOAA21_NRT",
+    "VIIRS_SNPP",
+    "VIIRS_NOAA20",
+    "VIIRS_NOAA21",
+    "MODIS_TERRA",
+    "MODIS_AQUA",
+]
+
 SUPPORTED_SOURCES = {
     "VIIRS_SNPP_NRT",
     "MODIS_NRT",
     "VIIRS_NOAA20_NRT",
     "VIIRS_NOAA21_NRT",
+    "VIIRS_SNPP",
+    "VIIRS_NOAA20",
+    "VIIRS_NOAA21",
+    "MODIS_TERRA",
+    "MODIS_AQUA",
 }
 
 
@@ -95,8 +111,10 @@ def _bbox_to_string(coords: tuple[float, float, float, float]) -> str:
 class HotspotsConfig:
     enabled: bool
     map_key: str | None
+    mode: str
     source: str
     dataset: str
+    products: tuple[str, ...]
     include_platforms: tuple[str, ...]
     include_modis: bool
     bbox: str
@@ -104,6 +122,8 @@ class HotspotsConfig:
     bbox_raw: str
     bbox_coords_raw: tuple[float, float, float, float]
     bbox_padding_deg: float
+    fetch_bbox: str
+    fetch_bbox_coords: tuple[float, float, float, float]
     day_range: int
     cache_ttl_min: int
     dedup_km: float
@@ -119,10 +139,19 @@ class HotspotsConfig:
     def from_env(cls) -> "HotspotsConfig":
         enabled = _parse_bool(os.getenv("HOTSPOTS_ENABLED"), default=False)
         map_key = os.getenv("FIRMS_API_KEY") or os.getenv("FIRMS_MAP_KEY")
+        mode = os.getenv("FIRMS_MODE", "STANDARD").strip().upper()
         source = os.getenv("FIRMS_SOURCE", "VIIRS_SNPP_NRT").strip()
         if source not in SUPPORTED_SOURCES:
             source = "VIIRS_SNPP_NRT"
-        dataset = _dataset_from_source(source)
+        dataset = "FIRMS_AGGREGATED_24H" if mode == "FIRMS_AGGREGATED_24H" else _dataset_from_source(source)
+        products_raw = _parse_list(os.getenv("FIRMS_PRODUCTS"))
+        if products_raw:
+            products = [product.strip().upper() for product in products_raw if product.strip()]
+        elif mode == "FIRMS_AGGREGATED_24H":
+            products = DEFAULT_AGGREGATED_PRODUCTS.copy()
+        else:
+            products = []
+        products = [product for product in products if product in SUPPORTED_SOURCES]
         include_platforms_raw = _parse_list(os.getenv("HOTSPOTS_INCLUDE_PLATFORMS"))
         include_platforms = (
             [p.upper() for p in include_platforms_raw]
@@ -140,6 +169,11 @@ class HotspotsConfig:
         )
         bbox_coords = _pad_bbox(bbox_coords_raw, bbox_padding_deg)
         bbox = _bbox_to_string(bbox_coords)
+        fetch_bbox_raw = os.getenv("HOTSPOTS_FETCH_BBOX") or os.getenv("FIRMS_FETCH_BBOX")
+        if not fetch_bbox_raw and mode == "FIRMS_AGGREGATED_24H":
+            fetch_bbox_raw = "-180,-90,180,90"
+        fetch_bbox_raw, fetch_bbox_coords = _parse_bbox(fetch_bbox_raw)
+        fetch_bbox = _bbox_to_string(fetch_bbox_coords)
         day_range = _parse_int(os.getenv("HOTSPOTS_DAY_RANGE"), 1)
         cache_ttl_min = _parse_int(os.getenv("HOTSPOTS_CACHE_TTL_MIN"), 180)
         dedup_km = _parse_float(os.getenv("HOTSPOTS_DEDUP_KM"), 1.0)
@@ -162,8 +196,10 @@ class HotspotsConfig:
         return cls(
             enabled=enabled,
             map_key=map_key,
+            mode=mode,
             source=source,
             dataset=dataset,
+            products=tuple(products),
             include_platforms=tuple(include_platforms),
             include_modis=include_modis,
             bbox=bbox,
@@ -171,6 +207,8 @@ class HotspotsConfig:
             bbox_raw=bbox_raw,
             bbox_coords_raw=bbox_coords_raw,
             bbox_padding_deg=bbox_padding_deg,
+            fetch_bbox=fetch_bbox,
+            fetch_bbox_coords=fetch_bbox_coords,
             day_range=day_range,
             cache_ttl_min=cache_ttl_min,
             dedup_km=dedup_km,
