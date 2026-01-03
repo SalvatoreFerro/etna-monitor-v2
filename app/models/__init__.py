@@ -24,6 +24,7 @@ from .gamification import UserGamificationProfile, UserBadge
 from .media_asset import MediaAsset
 from .premium_request import PremiumRequest
 from .hotspots_cache import HotspotsCache
+from .hotspots_record import HotspotsRecord
 
 try:
     from .sponsor_banner import (
@@ -59,6 +60,7 @@ __all__ = [
     'MediaAsset',
     'PremiumRequest',
     'HotspotsCache',
+    'HotspotsRecord',
 ]
 
 if SponsorBanner is not None:

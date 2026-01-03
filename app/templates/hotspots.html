@@ -1051,23 +1051,33 @@
     };
 
     const applyData = (data) => {
-      const items = Array.isArray(data.items) ? data.items : [];
+      const items = Array.isArray(data.items_24h) ? data.items_24h : [];
       const sorted = [...items].sort((a, b) => {
         const brightnessA = a?.intensity?.brightness ?? 0;
         const brightnessB = b?.intensity?.brightness ?? 0;
         return brightnessB - brightnessA;
       });
 
-      const updateInfo = relativeTime(data.updated_at);
+      const updateInfo = relativeTime(data.last_fetch_at);
       updatedEl.textContent = updateInfo.label;
       updatedEl.title = updateInfo.iso;
-      const totalCount = data.count ?? sorted.length ?? 0;
+      const totalCount = data.count_24h ?? sorted.length ?? 0;
+      const lastFetchCount = data.last_fetch_count ?? 0;
       countEl.textContent = numberFormat.format(totalCount);
       if (countNoteEl) {
-        countNoteEl.textContent =
-          totalCount > 0
-            ? 'Attività termica superficiale rilevata dai satelliti.'
-            : 'Nessuna anomalia termica significativa nelle ultime 24 ore.';
+        if (totalCount > 0) {
+          if (lastFetchCount === 0 && data.last_nonzero_at) {
+            const lastNonzero = relativeTime(data.last_nonzero_at);
+            countNoteEl.textContent = `Ultimo passaggio satellitare: 0 hotspot — ultimo hotspot rilevato: ${lastNonzero.label}`;
+            countNoteEl.title = lastNonzero.iso || '';
+          } else {
+            countNoteEl.textContent = 'Attività termica superficiale rilevata dai satelliti.';
+            countNoteEl.title = '';
+          }
+        } else {
+          countNoteEl.textContent = 'Nessuna anomalia termica significativa nelle ultime 24 ore.';
+          countNoteEl.title = '';
+        }
       }
       if (filterToggle) {
         filterToggle.disabled = totalCount === 0;
@@ -1084,7 +1094,7 @@
       allItems = sorted;
       setMapLabelVisible(totalCount > 0);
 
-      if (!data.available || sorted.length === 0) {
+      if (!data.available || totalCount === 0 || sorted.length === 0) {
         setFadeVisible(message, true);
         setEmptyState('Nessuna anomalia termica significativa nelle ultime 24 ore.');
         if (markersLayer) {

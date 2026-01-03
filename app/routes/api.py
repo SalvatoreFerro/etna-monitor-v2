@@ -1,4 +1,5 @@
 import os
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pandas as pd
@@ -7,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from ..utils.metrics import record_csv_error, record_csv_read, record_csv_update
 from ..models.hotspots_cache import HotspotsCache
+from ..models.hotspots_record import HotspotsRecord
 from backend.utils.extract_png import process_png_to_csv
 from backend.utils.time import to_iso_utc
 from backend.services.hotspots.config import HotspotsConfig
@@ -240,9 +242,11 @@ def get_hotspots_latest():
     if not config.enabled:
         cache_response = {
             "available": False,
-            "count": 0,
-            "updated_at": None,
-            "items": [],
+            "last_fetch_at": None,
+            "last_fetch_count": 0,
+            "count_24h": 0,
+            "last_nonzero_at": None,
+            "items_24h": [],
         }
     else:
         try:
@@ -251,27 +255,63 @@ def get_hotspots_latest():
             current_app.logger.exception("[API] Hotspots cache lookup failed")
             record = None
 
-        if record is None:
-            cache_response = {
-                "available": False,
-                "count": 0,
-                "updated_at": None,
-                "items": [],
-            }
+        payload = record.payload if record and isinstance(record.payload, dict) else {}
+        last_fetch_at = payload.get("last_fetch_at")
+        last_fetch_count = payload.get("last_fetch_count")
+        last_nonzero_at = payload.get("last_nonzero_at")
+        if not isinstance(last_fetch_count, int):
+            last_fetch_count = record.count if record else 0
+        if not last_fetch_at and record:
+            last_fetch_at = to_iso_utc(record.generated_at)
         else:
-            payload = record.payload if isinstance(record.payload, dict) else {}
-            items = payload.get("items") if isinstance(payload.get("items"), list) else []
-            available = bool(payload.get("available", True))
-            count = payload.get("count")
-            if not isinstance(count, int):
-                count = record.count
-            updated_at_value = record.updated_at or record.generated_at
-            cache_response = {
-                "available": available,
-                "count": count,
-                "updated_at": to_iso_utc(updated_at_value),
-                "items": items,
+            last_fetch_at = to_iso_utc(last_fetch_at)
+        last_nonzero_at = to_iso_utc(last_nonzero_at)
+
+        window_start = datetime.now(timezone.utc) - timedelta(hours=24)
+        try:
+            count_24h = (
+                HotspotsRecord.query.filter(HotspotsRecord.acq_datetime >= window_start)
+                .count()
+            )
+            items = (
+                HotspotsRecord.query.filter(HotspotsRecord.acq_datetime >= window_start)
+                .order_by(HotspotsRecord.acq_datetime.desc())
+                .limit(200)
+                .all()
+            )
+        except SQLAlchemyError:
+            current_app.logger.exception("[API] Hotspots records lookup failed")
+            count_24h = 0
+            items = []
+
+        items_payload = [
+            {
+                "id": item.fingerprint,
+                "time_utc": to_iso_utc(item.acq_datetime),
+                "lat": item.lat,
+                "lon": item.lon,
+                "source": item.source,
+                "satellite": item.satellite,
+                "confidence": item.confidence,
+                "intensity": {
+                    "frp": item.frp,
+                    "brightness": item.brightness,
+                    "unit": item.intensity_unit or "unknown",
+                },
+                "status": item.status or "unknown",
+                "maps_url": f"https://www.google.com/maps?q={item.lat},{item.lon}",
             }
+            for item in items
+        ]
+
+        cache_response = {
+            "available": True if config.enabled else False,
+            "last_fetch_at": last_fetch_at,
+            "last_fetch_count": last_fetch_count,
+            "count_24h": count_24h,
+            "last_nonzero_at": last_nonzero_at,
+            "items_24h": items_payload,
+        }
 
     response = jsonify(cache_response)
     response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
