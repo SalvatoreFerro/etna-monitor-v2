@@ -36,6 +36,26 @@ def _parse_float(value: str | None, default: float) -> float:
         return default
 
 
+def _parse_list(value: str | None) -> list[str]:
+    if not value:
+        return []
+    items: list[str] = []
+    for raw in value.replace(";", ",").split(","):
+        cleaned = raw.strip()
+        if cleaned:
+            items.append(cleaned)
+    return items
+
+
+def _dataset_from_source(source: str) -> str:
+    upper = source.upper()
+    if "MODIS" in upper:
+        return "MODIS"
+    if "VIIRS" in upper:
+        return "VIIRS"
+    return "UNKNOWN"
+
+
 def _parse_bbox(value: str | None) -> tuple[str, tuple[float, float, float, float]]:
     default_bbox = "14.85,37.55,15.25,37.90"
     raw = value or default_bbox
@@ -76,6 +96,9 @@ class HotspotsConfig:
     enabled: bool
     map_key: str | None
     source: str
+    dataset: str
+    include_platforms: tuple[str, ...]
+    include_modis: bool
     bbox: str
     bbox_coords: tuple[float, float, float, float]
     bbox_raw: str
@@ -99,6 +122,14 @@ class HotspotsConfig:
         source = os.getenv("FIRMS_SOURCE", "VIIRS_SNPP_NRT").strip()
         if source not in SUPPORTED_SOURCES:
             source = "VIIRS_SNPP_NRT"
+        dataset = _dataset_from_source(source)
+        include_platforms_raw = _parse_list(os.getenv("HOTSPOTS_INCLUDE_PLATFORMS"))
+        include_platforms = (
+            [p.upper() for p in include_platforms_raw]
+            if include_platforms_raw
+            else (["SNPP", "NOAA20", "NOAA21"] if dataset == "VIIRS" else [])
+        )
+        include_modis = _parse_bool(os.getenv("HOTSPOTS_INCLUDE_MODIS"), default=False)
 
         bbox_raw, bbox_coords_raw = _parse_bbox(
             os.getenv("HOTSPOTS_BBOX") or os.getenv("ETNA_BBOX")
@@ -132,6 +163,9 @@ class HotspotsConfig:
             enabled=enabled,
             map_key=map_key,
             source=source,
+            dataset=dataset,
+            include_platforms=tuple(include_platforms),
+            include_modis=include_modis,
             bbox=bbox,
             bbox_coords=bbox_coords,
             bbox_raw=bbox_raw,

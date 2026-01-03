@@ -82,6 +82,7 @@ def _build_stable_id(lat: float, lon: float, time_utc: datetime, satellite: str,
 
 def normalize_records(
     raw_records: list[dict[str, Any]],
+    source: str,
     config: HotspotsConfig,
 ) -> list[dict[str, Any]]:
     items: list[dict[str, Any]] = []
@@ -97,7 +98,7 @@ def normalize_records(
 
         satellite = (record.get("satellite") or "").strip().upper()
         if not satellite:
-            satellite = _satellite_from_source(config.source)
+            satellite = _satellite_from_source(source)
 
         confidence = _normalize_confidence(record.get("confidence"))
 
@@ -115,11 +116,12 @@ def normalize_records(
             unit = "unknown"
 
         item = {
-            "id": _build_stable_id(lat, lon, timestamp, satellite, config.source),
+            "id": _build_stable_id(lat, lon, timestamp, satellite, source),
             "time_utc": to_iso_utc(timestamp),
             "lat": lat,
             "lon": lon,
             "satellite": satellite if satellite else "UNKNOWN",
+            "source": source,
             "confidence": confidence,
             "intensity": {
                 "frp": frp,

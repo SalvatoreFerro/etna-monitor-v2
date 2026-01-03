@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import logging
+from dataclasses import dataclass
 from typing import Any
 
 import requests
@@ -15,32 +16,93 @@ def _mask_key(key: str) -> str:
     return f"{key[:3]}***{key[-3:]}"
 
 
-def build_firms_url(config: HotspotsConfig) -> str:
+def build_firms_url(
+    config: HotspotsConfig,
+    *,
+    source: str | None = None,
+    bbox: str | None = None,
+) -> str:
     if not config.map_key:
         raise ValueError("Missing FIRMS_MAP_KEY")
+    final_source = source or config.source
+    final_bbox = bbox or config.bbox
     return (
         "https://firms.modaps.eosdis.nasa.gov/api/area/csv/"
-        f"{config.map_key}/{config.source}/{config.bbox}/{config.day_range}"
+        f"{config.map_key}/{final_source}/{final_bbox}/{config.day_range}"
     )
 
 
-def fetch_firms_records(config: HotspotsConfig, logger: logging.Logger) -> list[dict[str, Any]]:
-    url = build_firms_url(config)
+def build_firms_url_public(
+    config: HotspotsConfig,
+    *,
+    source: str | None = None,
+    bbox: str | None = None,
+) -> str:
+    if not config.map_key:
+        raise ValueError("Missing FIRMS_MAP_KEY")
+    final_source = source or config.source
+    final_bbox = bbox or config.bbox
+    return (
+        "https://firms.modaps.eosdis.nasa.gov/api/area/csv/"
+        f"REDACTED/{final_source}/{final_bbox}/{config.day_range}"
+    )
+
+
+@dataclass(frozen=True)
+class FirmsFetchResult:
+    source: str
+    url_public: str
+    status_code: int
+    body_preview: str
+    records: list[dict[str, Any]]
+
+
+def fetch_firms_records(
+    config: HotspotsConfig,
+    logger: logging.Logger,
+    *,
+    source: str | None = None,
+    bbox: str | None = None,
+) -> FirmsFetchResult:
+    final_source = source or config.source
+    final_bbox = bbox or config.bbox
+    url = build_firms_url(config, source=final_source, bbox=final_bbox)
     masked_key = _mask_key(config.map_key or "")
     logger.info(
         "[HOTSPOTS] Fetching FIRMS data (dataset=%s, bbox=%s, day_range=%s, key=%s)",
-        config.source,
-        config.bbox,
+        final_source,
+        final_bbox,
         config.day_range,
         masked_key,
     )
     response = requests.get(url, timeout=30)
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except requests.HTTPError:
+        body_preview = response.text[:500] if response.text else ""
+        logger.warning(
+            "[HOTSPOTS] FIRMS request failed status=%s body=%s",
+            response.status_code,
+            body_preview,
+        )
+        raise
 
     text = response.content.decode("utf-8-sig", errors="replace")
     lines = [line for line in text.splitlines() if line.strip()]
     if not lines:
-        return []
+        body_preview = text[:500]
+        logger.info(
+            "[HOTSPOTS] FIRMS response empty status=%s body=%s",
+            response.status_code,
+            body_preview,
+        )
+        return FirmsFetchResult(
+            source=final_source,
+            url_public=build_firms_url_public(config, source=final_source, bbox=final_bbox),
+            status_code=response.status_code,
+            body_preview=body_preview,
+            records=[],
+        )
 
     reader = csv.DictReader(lines)
     records: list[dict[str, Any]] = []
@@ -62,7 +124,13 @@ def fetch_firms_records(config: HotspotsConfig, logger: logging.Logger) -> list[
             cleaned[cleaned_key] = cleaned_value
         if has_value:
             records.append(cleaned)
-    return records
+    return FirmsFetchResult(
+        source=final_source,
+        url_public=build_firms_url_public(config, source=final_source, bbox=final_bbox),
+        status_code=response.status_code,
+        body_preview=text[:500],
+        records=records,
+    )
 
 
-__all__ = ["fetch_firms_records", "build_firms_url"]
+__all__ = ["fetch_firms_records", "build_firms_url", "build_firms_url_public", "FirmsFetchResult"]
