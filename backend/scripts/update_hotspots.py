@@ -162,6 +162,18 @@ def _filter_geo(items: list[dict], bbox_coords: tuple[float, float, float, float
     ]
 
 
+def _filter_recent(items: list[dict], now_utc: datetime, window_hours: float) -> list[dict]:
+    window_start = now_utc - timedelta(hours=window_hours)
+    filtered: list[dict] = []
+    for item in items:
+        acq_time = _parse_time_utc(item.get("time_utc"))
+        if acq_time is None:
+            continue
+        if window_start <= acq_time <= now_utc:
+            filtered.append(item)
+    return filtered
+
+
 def _normalize_confidence(value: str | None) -> str:
     if not value:
         return "unknown"
@@ -301,7 +313,7 @@ def main() -> int:
                         config,
                         logger,
                         source=source,
-                        bbox=config.bbox_raw,
+                        bbox=config.fetch_bbox,
                     )
                 )
 
@@ -330,7 +342,9 @@ def main() -> int:
                     normalize_records(result.records, result.source, config)
                 )
 
-            geo_filtered = _filter_geo(normalized, config.bbox_coords)
+            generated_at_dt = datetime.now(timezone.utc)
+            recent_filtered = _filter_recent(normalized, generated_at_dt, 24.0)
+            geo_filtered = _filter_geo(recent_filtered, config.bbox_coords)
             scored = apply_status(
                 geo_filtered,
                 previous_items,
@@ -343,7 +357,6 @@ def main() -> int:
                 config.dedup_km,
                 config.dedup_hours,
             )
-            generated_at_dt = datetime.now(timezone.utc)
             all_count = len(scored)
             significant_count = len(deduped_significant)
             if all_count > 0:
@@ -360,7 +373,7 @@ def main() -> int:
                     max(acq_times).isoformat().replace("+00:00", "Z"),
                 )
 
-            window_start = generated_at_dt - timedelta(days=config.day_range)
+            window_start = generated_at_dt - timedelta(hours=24)
             logger.info(
                 "[HOTSPOTS] FIRMS window now_utc=%s window_start_utc=%s",
                 generated_at_dt.isoformat().replace("+00:00", "Z"),
@@ -379,13 +392,16 @@ def main() -> int:
                 "last_nonzero_at": last_nonzero_at,
                 "source": {
                     "provider": "NASA_FIRMS",
+                    "mode": config.mode,
                     "dataset": config.dataset,
                     "sources": sources,
                     "platforms": platforms,
                     "bbox": config.bbox,
                     "bbox_raw": config.bbox_raw,
                     "bbox_padding_deg": config.bbox_padding_deg,
+                    "fetch_bbox": config.fetch_bbox,
                     "day_range": config.day_range,
+                    "products": list(config.products),
                 },
                 "count": all_count,
                 "count_significant": significant_count,
@@ -394,10 +410,11 @@ def main() -> int:
             _upsert_cache(session, payload, generated_at_dt)
             session.commit()
             logger.info(
-                "[HOTSPOTS] FIRMS fetch bbox=%s (raw=%s, pad=%.3f) sources=%s raw_count=%s geo_count=%s all_count=%s significant_count=%s inserted_count=%s",
+                "[HOTSPOTS] FIRMS fetch bbox=%s (raw=%s, pad=%.3f, fetch=%s) sources=%s raw_count=%s geo_count=%s all_count=%s significant_count=%s inserted_count=%s",
                 config.bbox,
                 config.bbox_raw,
                 config.bbox_padding_deg,
+                config.fetch_bbox,
                 sources,
                 raw_count,
                 len(geo_filtered),
