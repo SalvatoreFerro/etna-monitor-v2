@@ -225,6 +225,113 @@
   margin-top: 1rem;
 }
 
+.admin-card--alert-monitor {
+  gap: clamp(1rem, 2vw, 1.5rem);
+}
+
+.admin-table-wrapper--cron {
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.admin-table--cron tbody tr {
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.admin-table--cron tbody tr:hover {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.admin-pagination--cron {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.admin-modal {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 2000;
+}
+
+.admin-modal[hidden] {
+  display: none;
+}
+
+.admin-modal__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 11, 20, 0.78);
+  backdrop-filter: blur(6px);
+}
+
+.admin-modal__panel {
+  position: relative;
+  z-index: 1;
+  width: min(900px, 92vw);
+  max-height: 85vh;
+  overflow: hidden;
+  display: grid;
+  gap: var(--space-4);
+  background: rgba(15, 23, 42, 0.95);
+  border-radius: var(--radius-2xl);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  padding: var(--space-6);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.45);
+}
+
+.admin-modal__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.admin-modal__body {
+  display: grid;
+  gap: var(--space-4);
+  overflow-y: auto;
+  padding-right: var(--space-2);
+}
+
+.admin-modal__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.admin-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--space-3);
+  padding: var(--space-3);
+  background: rgba(148, 163, 184, 0.08);
+  border-radius: var(--radius-lg);
+}
+
+.admin-modal__label {
+  display: block;
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-tertiary);
+}
+
+.admin-modal__json pre,
+.admin-modal__json pre[data-cron-modal-json] {
+  background: rgba(8, 12, 24, 0.7);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3);
+  color: var(--color-text-secondary);
+  font-size: 0.85rem;
+  max-height: 300px;
+  overflow: auto;
+}
+
 .admin-sort {
   display: inline-flex;
   align-items: center;
