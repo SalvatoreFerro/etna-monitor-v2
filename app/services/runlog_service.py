@@ -43,12 +43,20 @@ def _purge_old_runs(executor: Connection | Any) -> None:
     if retention_days <= 0:
         return
     cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
-    stmt = CronRun.__table__.delete().where(CronRun.created_at < cutoff)
+    stmt = CronRun.__table__.delete().where(CronRun.started_at < cutoff)
     executor.execute(stmt)
 
 
 def log_cron_run(payload: dict, *, commit: bool = True) -> CronRun | None:
     """Persist a cron run using the Flask SQLAlchemy session."""
+    if payload.get("started_at") is None:
+        payload["started_at"] = datetime.now(timezone.utc)
+    if payload.get("finished_at") is None:
+        payload["finished_at"] = payload.get("started_at")
+    if payload.get("status") is None and payload.get("ok") is not None:
+        payload["status"] = "success" if payload.get("ok") else "error"
+    if payload.get("diagnostic_json") is None and payload.get("payload") is not None:
+        payload["diagnostic_json"] = payload.get("payload")
     run = CronRun(**payload)
     try:
         db.session.add(run)
@@ -64,6 +72,14 @@ def log_cron_run(payload: dict, *, commit: bool = True) -> CronRun | None:
 
 def log_cron_run_external(payload: dict, *, database_uri: str | None = None) -> None:
     """Persist a cron run without needing a Flask app context."""
+    if payload.get("started_at") is None:
+        payload["started_at"] = datetime.now(timezone.utc)
+    if payload.get("finished_at") is None:
+        payload["finished_at"] = payload.get("started_at")
+    if payload.get("status") is None and payload.get("ok") is not None:
+        payload["status"] = "success" if payload.get("ok") else "error"
+    if payload.get("diagnostic_json") is None and payload.get("payload") is not None:
+        payload["diagnostic_json"] = payload.get("payload")
     engine = create_engine(database_uri or _resolve_database_uri())
     with engine.begin() as connection:
         connection.execute(CronRun.__table__.insert().values(**payload))

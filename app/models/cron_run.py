@@ -4,6 +4,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from sqlalchemy.dialects.postgresql import JSONB
+
 from . import db
 
 
@@ -11,6 +13,14 @@ class CronRun(db.Model):
     __tablename__ = "cron_runs"
 
     id = db.Column(db.Integer, primary_key=True)
+    started_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
+        server_default=db.func.now(),
+    )
+    finished_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    status = db.Column(db.String(16), nullable=True, index=True)
     created_at = db.Column(
         db.DateTime(timezone=True),
         nullable=False,
@@ -41,10 +51,15 @@ class CronRun(db.Model):
 
     request_id = db.Column(db.String(128), nullable=True)
     payload = db.Column(db.JSON, nullable=True)
+    diagnostic_json = db.Column(JSONB().with_variant(db.JSON, "sqlite"), nullable=True)
 
     def serialize(self, *, include_payload: bool = False) -> dict[str, Any]:
+        started_at = self.started_at or self.created_at
         data = {
             "id": self.id,
+            "started_at": started_at.isoformat() if started_at else None,
+            "finished_at": self.finished_at.isoformat() if self.finished_at else None,
+            "status": self.status,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "pipeline_id": self.pipeline_id,
             "job_type": self.job_type,
@@ -65,6 +80,7 @@ class CronRun(db.Model):
             "error_message": self.error_message,
             "traceback": self.traceback,
             "request_id": self.request_id,
+            "diagnostic_json": self.diagnostic_json,
         }
         if include_payload:
             data["payload"] = self.payload

@@ -14,7 +14,7 @@ import pandas as pd
 from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy import or_, text
 
-from app.models import db
+from app.models import CronRun, db
 from app.models.user import User
 from app.services.runlog_service import log_cron_run
 from app.services.telegram_service import TelegramService
@@ -275,6 +275,20 @@ def cron_check_alerts():
     error_message = None
     error_traceback = None
 
+    cron_run = CronRun(
+        pipeline_id=pipeline_id,
+        job_type="check_alerts",
+        started_at=now,
+        status=None,
+        request_id=request_id,
+    )
+    try:
+        db.session.add(cron_run)
+        db.session.commit()
+    except Exception:  # pragma: no cover - defensive logging
+        db.session.rollback()
+        current_app.logger.exception("[CRON] Failed to insert cron run start row")
+
     try:
         if not authorized:
             status_code = 401
@@ -401,9 +415,10 @@ def cron_check_alerts():
                 diagnostic_snapshot["skipped_by_reason"] = normalized_reasons
                 diagnostic_snapshot["premium_samples"] = premium_samples
                 response_payload["diagnostic"] = diagnostic_snapshot
+        if error_message is None and response_payload and not response_payload.get("ok"):
+            error_message = response_payload.get("error")
+        cron_status = "success" if response_payload and response_payload.get("ok") else "error"
         cron_run_payload = {
-            "pipeline_id": pipeline_id,
-            "job_type": "check_alerts",
             "ok": bool(response_payload and response_payload.get("ok")),
             "reason": reason,
             "duration_ms": round(duration_ms, 1),
@@ -420,13 +435,32 @@ def cron_check_alerts():
             "error_type": error_type,
             "error_message": error_message,
             "traceback": error_traceback,
-            "request_id": request_id,
             "payload": response_payload,
+            "diagnostic_json": diagnostic_snapshot or None,
+            "finished_at": datetime.now(timezone.utc),
+            "status": cron_status,
         }
-        try:
-            log_cron_run(cron_run_payload)
-        except Exception as exc:  # pragma: no cover - defensive log
-            current_app.logger.exception("[CRON] Failed to store cron run log: %s", exc)
+        if cron_run.id:
+            try:
+                for key, value in cron_run_payload.items():
+                    setattr(cron_run, key, value)
+                db.session.commit()
+            except Exception as exc:  # pragma: no cover - defensive log
+                db.session.rollback()
+                current_app.logger.exception("[CRON] Failed to update cron run log: %s", exc)
+        else:
+            cron_run_payload.update(
+                {
+                    "pipeline_id": pipeline_id,
+                    "job_type": "check_alerts",
+                    "started_at": now,
+                    "request_id": request_id,
+                }
+            )
+            try:
+                log_cron_run(cron_run_payload)
+            except Exception as exc:  # pragma: no cover - defensive log
+                current_app.logger.exception("[CRON] Failed to store cron run log: %s", exc)
         current_app.logger.info(
             "[CRON] check-alerts finished request_id=%s sent=%s skipped=%s reason=%s duration_ms=%.1f",
             request_id,

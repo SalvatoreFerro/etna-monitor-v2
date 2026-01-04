@@ -5,7 +5,7 @@ import os
 import sys
 import time
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from time import perf_counter
 from uuid import uuid4
@@ -136,20 +136,20 @@ def update_with_retries(ingv_url: str, csv_path: Path) -> bool:
     last_ts = _read_csv_last_timestamp(csv_path)
     _record_csv_update(None, last_ts, error_message=last_error or "update_failed")
     log.error("[CSV] update failed after %s attempts", MAX_RETRIES)
-        _log_cron_run(
-            csv_path,
-            ok=False,
-            reason="update_failed",
-            duration_ms=(perf_counter() - started_at) * 1000,
-            pipeline_id=pipeline_id,
-            error=last_exception,
-            error_traceback=last_traceback,
-            payload={
-                "ingv_url": ingv_url,
-                "attempts": MAX_RETRIES,
-                "error": last_error or "update_failed",
-            },
-        )
+    _log_cron_run(
+        csv_path,
+        ok=False,
+        reason="update_failed",
+        duration_ms=(perf_counter() - started_at) * 1000,
+        pipeline_id=pipeline_id,
+        error=last_exception,
+        error_traceback=last_traceback,
+        payload={
+            "ingv_url": ingv_url,
+            "attempts": MAX_RETRIES,
+            "error": last_error or "update_failed",
+        },
+    )
     return False
 
 
@@ -176,17 +176,23 @@ def _log_cron_run(
     if payload and payload.get("last_ts"):
         last_point_ts = _parse_iso_timestamp(payload.get("last_ts", ""))
 
+    finished_at = datetime.now(timezone.utc)
+    started_at = finished_at - timedelta(milliseconds=duration_ms)
     cron_payload = {
         "pipeline_id": pipeline_id,
         "job_type": "csv_updater",
         "ok": bool(ok),
+        "status": "success" if ok else "error",
         "reason": reason,
+        "started_at": started_at,
+        "finished_at": finished_at,
         "duration_ms": round(duration_ms, 1),
         "csv_path": str(csv_path),
         "csv_mtime": csv_mtime,
         "csv_size_bytes": csv_size_bytes,
         "last_point_ts": last_point_ts,
         "payload": payload,
+        "diagnostic_json": payload,
         "error_type": type(error).__name__ if error else None,
         "error_message": str(error) if error else None,
         "traceback": error_traceback,
