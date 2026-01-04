@@ -2652,6 +2652,74 @@ def monitor_system():
     return render_template("admin/monitor.html")
 
 
+@bp.route("/cron/summary")
+@admin_required
+def cron_summary():
+    now = datetime.now(timezone.utc)
+    window = timedelta(hours=24)
+    start_dt = now - window
+
+    base_query = CronRun.query.filter(CronRun.job_type == "check_alerts")
+    last_run = base_query.order_by(CronRun.started_at.desc()).first()
+
+    runs_24h = base_query.filter(CronRun.started_at >= start_dt).count()
+    errors_24h = (
+        base_query.filter(
+            CronRun.started_at >= start_dt,
+            CronRun.status == "error",
+        ).count()
+    )
+    sent_24h = (
+        db.session.query(func.coalesce(func.sum(CronRun.sent_count), 0))
+        .filter(
+            CronRun.job_type == "check_alerts",
+            CronRun.started_at >= start_dt,
+        )
+        .scalar()
+        or 0
+    )
+    skipped_24h = (
+        db.session.query(func.coalesce(func.sum(CronRun.skipped_count), 0))
+        .filter(
+            CronRun.job_type == "check_alerts",
+            CronRun.started_at >= start_dt,
+        )
+        .scalar()
+        or 0
+    )
+
+    return jsonify(
+        {
+            "last_run": last_run.serialize() if last_run else None,
+            "runs_24h": runs_24h,
+            "errors_24h": errors_24h,
+            "sent_24h": int(sent_24h),
+            "skipped_24h": int(skipped_24h),
+        }
+    )
+
+
+@bp.route("/cron/runs")
+@admin_required
+def cron_runs():
+    limit = _coerce_positive_int(request.args.get("limit"), default=50)
+    range_param = request.args.get("range")
+    job_type = (request.args.get("job_type") or "check_alerts").strip().lower()
+
+    query = CronRun.query
+    if job_type:
+        query = query.filter(CronRun.job_type == job_type)
+
+    if range_param:
+        window = _parse_range_window(range_param)
+        end_dt = datetime.now(timezone.utc)
+        start_dt = end_dt - window
+        query = query.filter(CronRun.started_at >= start_dt, CronRun.started_at <= end_dt)
+
+    runs = query.order_by(CronRun.started_at.desc()).limit(min(limit, 250)).all()
+    return jsonify({"runs": [run.serialize() for run in runs]})
+
+
 def _apply_cron_run_filters(query):
     job_type = (request.args.get("job_type") or "").strip().lower()
     ok_param = (request.args.get("ok") or "").strip().lower()

@@ -51,7 +51,11 @@ def test_check_alerts_persists_cron_run(app_with_db, monkeypatch):
         run = CronRun.query.filter_by(job_type="check_alerts").first()
         assert run is not None
         assert run.ok is True
+        assert run.status == "success"
         assert run.reason == "completed"
         assert run.duration_ms is not None
         assert run.csv_path
         assert isinstance(run.created_at, datetime)
+        assert isinstance(run.started_at, datetime)
+        assert isinstance(run.finished_at, datetime)
+        assert isinstance(run.diagnostic_json, dict)

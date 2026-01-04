@@ -4,30 +4,20 @@
     kpiMap.set(el.dataset.kpi, el);
   });
 
-  const healthMap = new Map();
-  document.querySelectorAll("[data-health]").forEach((el) => {
-    healthMap.set(el.dataset.health, el);
-  });
-
   const runsBody = document.getElementById("monitor-runs-body");
-  const filtersForm = document.getElementById("monitor-filters");
   const refreshButton = document.querySelector("[data-action='refresh-runs']");
   const rangeButtons = document.querySelectorAll(".monitor-range-toggle [data-range]");
 
   const drawer = document.getElementById("monitor-drawer");
   const drawerSubtitle = document.getElementById("drawer-subtitle");
   const drawerJson = document.getElementById("drawer-json");
-  const drawerSkipped = document.getElementById("drawer-skipped");
-  const drawerError = document.getElementById("drawer-error");
-  const drawerErrorType = document.getElementById("drawer-error-type");
-  const drawerErrorMessage = document.getElementById("drawer-error-message");
-  const drawerErrorTrace = document.getElementById("drawer-error-trace");
 
+  const chartRuns = document.getElementById("chart-runs");
   const chartSent = document.getElementById("chart-sent");
-  const chartFailures = document.getElementById("chart-failures");
-  const chartDuration = document.getElementById("chart-duration");
+  const chartErrors = document.getElementById("chart-errors");
 
   let currentRange = "24h";
+  let runsById = new Map();
 
   const formatDateTime = (value) => {
     if (!value) return "--";
@@ -44,107 +34,94 @@
     return `${value.toFixed(1)} ms`;
   };
 
-  const setStatusBadge = (value) => {
+  const setStatusBadge = (value, hint) => {
     const statusEl = kpiMap.get("status");
     const hintEl = kpiMap.get("status_hint");
     if (!statusEl) return;
     statusEl.classList.remove("monitor-status--ok", "monitor-status--degraded", "monitor-status--down");
-    if (value === "OK") {
+    if (value === "GREEN") {
       statusEl.classList.add("monitor-status--ok");
-      hintEl.textContent = "Ultimi run stabili";
-    } else if (value === "DEGRADED") {
+      hintEl.textContent = hint || "Cron attivo nelle ultime 2 ore";
+    } else if (value === "YELLOW") {
       statusEl.classList.add("monitor-status--degraded");
-      hintEl.textContent = "Errori recenti ma cron attivo";
+      hintEl.textContent = hint || "Ultimo run oltre 2 ore fa";
     } else {
       statusEl.classList.add("monitor-status--down");
-      hintEl.textContent = "Possibile interruzione cron";
+      hintEl.textContent = hint || "Ultimo run oltre 4 ore fa o con errore";
     }
     statusEl.textContent = value || "--";
   };
 
-  const renderHealthChecks = (checks) => {
-    if (!checks) return;
-    const dbEl = healthMap.get("db_reachable");
-    const csvEl = healthMap.get("csv_exists");
-    const csvMtimeEl = healthMap.get("csv_mtime");
-    const telegramEl = healthMap.get("telegram_configured");
-    const premiumEl = healthMap.get("premium_chat_users");
-
-    if (dbEl) dbEl.textContent = checks.db_reachable ? "OK" : "DOWN";
-    if (csvEl) csvEl.textContent = checks.csv_exists ? "OK" : "MISSING";
-    if (csvMtimeEl) csvMtimeEl.textContent = checks.csv_mtime ? formatDateTime(checks.csv_mtime) : "--";
-    if (telegramEl) telegramEl.textContent = checks.telegram_configured ? "CONFIGURATO" : "ASSENTE";
-    if (premiumEl) premiumEl.textContent = checks.premium_chat_users ?? "--";
-  };
-
   const updateKpis = async () => {
-    const response = await fetch(`/admin/api/monitor/kpis?range=${currentRange}`);
+    const response = await fetch("/admin/cron/summary");
     if (!response.ok) return;
     const data = await response.json();
 
-    setStatusBadge(data.status);
-    if (kpiMap.get("last_run")) {
-      kpiMap.get("last_run").textContent = data.last_run?.created_at
-        ? formatDateTime(data.last_run.created_at)
+    const lastRun = data.last_run;
+    const lastRunTimestamp = lastRun?.started_at || lastRun?.created_at;
+    const lastRunDate = lastRunTimestamp ? new Date(lastRunTimestamp) : null;
+    const now = new Date();
+    const ageHours = lastRunDate ? (now - lastRunDate) / 36e5 : null;
+    let statusValue = "RED";
+    if (lastRunDate && lastRun?.status !== "error") {
+      if (ageHours < 2) {
+        statusValue = "GREEN";
+      } else if (ageHours < 4) {
+        statusValue = "YELLOW";
+      }
+    }
+    setStatusBadge(statusValue);
+
+    if (kpiMap.get("last_run_time")) {
+      kpiMap.get("last_run_time").textContent = lastRunTimestamp
+        ? formatDateTime(lastRunTimestamp)
         : "--";
     }
     if (kpiMap.get("last_run_hint")) {
-      const lastRunOk = data.last_run?.ok;
-      kpiMap.get("last_run_hint").textContent = lastRunOk === undefined ? "--" : (lastRunOk ? "OK" : "FAILED");
+      if (!lastRunDate) {
+        kpiMap.get("last_run_hint").textContent = "--";
+      } else if (lastRun?.status === "error") {
+        kpiMap.get("last_run_hint").textContent = "Ultimo run con errore";
+      } else {
+        kpiMap.get("last_run_hint").textContent = `Ultimo run ${Math.round(ageHours * 10) / 10}h fa`;
+      }
     }
-    if (kpiMap.get("runs_total")) {
-      kpiMap.get("runs_total").textContent = data.runs_total ?? "--";
+    if (kpiMap.get("runs_24h")) {
+      kpiMap.get("runs_24h").textContent = data.runs_24h ?? "--";
     }
-    if (kpiMap.get("failures_count")) {
-      kpiMap.get("failures_count").textContent = `Errori: ${data.failures_count ?? "--"}`;
+    if (kpiMap.get("errors_24h")) {
+      kpiMap.get("errors_24h").textContent = `Errori: ${data.errors_24h ?? "--"}`;
     }
-    if (kpiMap.get("sent_total")) {
-      kpiMap.get("sent_total").textContent = data.sent_total ?? "--";
+    if (kpiMap.get("sent_24h")) {
+      kpiMap.get("sent_24h").textContent = data.sent_24h ?? "--";
     }
-    if (kpiMap.get("skipped_total")) {
-      kpiMap.get("skipped_total").textContent = data.skipped_total ?? "--";
+    if (kpiMap.get("skipped_24h")) {
+      kpiMap.get("skipped_24h").textContent = data.skipped_24h ?? "--";
     }
-    if (kpiMap.get("csv_update")) {
-      kpiMap.get("csv_update").textContent = data.last_csv_update?.csv_mtime
-        ? formatDateTime(data.last_csv_update.csv_mtime)
-        : "--";
-    }
-    if (kpiMap.get("csv_size")) {
-      const size = data.last_csv_update?.csv_size_bytes;
-      kpiMap.get("csv_size").textContent = size ? `${(size / 1024).toFixed(1)} KB` : "--";
-    }
-    if (kpiMap.get("last_point")) {
-      kpiMap.get("last_point").textContent = data.last_point?.last_point_ts
-        ? formatDateTime(data.last_point.last_point_ts)
-        : "--";
-    }
-    if (kpiMap.get("moving_avg")) {
-      const moving = data.last_point?.moving_avg;
-      kpiMap.get("moving_avg").textContent = moving ? `Moving avg: ${moving.toFixed(2)}` : "--";
-    }
-
-    renderHealthChecks(data.health_checks);
   };
 
   const renderRuns = (runs) => {
     if (!runsBody) return;
+    runsById = new Map();
+    runs.forEach((run) => runsById.set(String(run.id), run));
     if (!runs || runs.length === 0) {
-      runsBody.innerHTML = `<tr><td colspan="8" class="admin-empty">Nessun run trovato.</td></tr>`;
+      runsBody.innerHTML = `<tr><td colspan="6" class="admin-empty">Nessun run trovato.</td></tr>`;
       return;
     }
     runsBody.innerHTML = runs
       .map((run) => {
-        const okBadge = run.ok ? "<span class='monitor-badge monitor-badge--ok'>OK</span>" : "<span class='monitor-badge monitor-badge--fail'>FAIL</span>";
+        const statusBadge =
+          run.status === "success"
+            ? "<span class='monitor-badge monitor-badge--ok'>OK</span>"
+            : "<span class='monitor-badge monitor-badge--fail'>ERROR</span>";
         return `
           <tr data-run-id="${run.id}">
-            <td>${formatDateTime(run.created_at)}</td>
-            <td>${run.job_type}</td>
-            <td>${okBadge}</td>
+            <td>${formatDateTime(run.started_at || run.created_at)}</td>
+            <td>${statusBadge}</td>
             <td>${formatDuration(run.duration_ms)}</td>
             <td>${run.sent_count ?? "--"}</td>
             <td>${run.skipped_count ?? "--"}</td>
-            <td>${run.reason ?? "--"}</td>
-            <td>${formatDateTime(run.last_point_ts)}</td>
+            <td><button class="btn btn-ghost" type="button" data-action="view-diagnostic">Apri</button></td>
           </tr>
         `;
       })
@@ -152,54 +129,19 @@
   };
 
   const fetchRuns = async () => {
-    const params = new URLSearchParams();
-    if (filtersForm) {
-      const formData = new FormData(filtersForm);
-      formData.forEach((value, key) => {
-        if (value) {
-          params.set(key, value.toString());
-        }
-      });
-    }
-    params.set("limit", "100");
-    const response = await fetch(`/admin/api/monitor/runs?${params.toString()}`);
+    const response = await fetch("/admin/cron/runs?limit=50");
     if (!response.ok) return;
     const data = await response.json();
     renderRuns(data.runs || []);
   };
 
-  const openDrawer = async (runId) => {
-    const response = await fetch(`/admin/api/monitor/runs/${runId}`);
-    if (!response.ok) return;
-    const run = await response.json();
-    drawerSubtitle.textContent = `${run.job_type} • ${formatDateTime(run.created_at)}`;
-    drawerJson.textContent = JSON.stringify(run.payload || run, null, 2);
-
-    drawerSkipped.innerHTML = "";
-    const skipped = run.skipped_by_reason || {};
-    const skippedEntries = Object.entries(skipped);
-    if (skippedEntries.length === 0) {
-      drawerSkipped.innerHTML = "<p class='muted'>Nessun dato</p>";
-    } else {
-      skippedEntries.forEach(([reason, count]) => {
-        const card = document.createElement("div");
-        card.className = "monitor-skipped-card";
-        card.innerHTML = `<span>${reason}</span><strong>${count}</strong>`;
-        drawerSkipped.appendChild(card);
-      });
-    }
-
-    if (run.error_type || run.error_message || run.traceback) {
-      drawerError.open = true;
-      drawerErrorType.textContent = run.error_type || "Errore";
-      drawerErrorMessage.textContent = run.error_message || "--";
-      drawerErrorTrace.textContent = run.traceback || "--";
-    } else {
-      drawerError.open = false;
-      drawerErrorType.textContent = "--";
-      drawerErrorMessage.textContent = "--";
-      drawerErrorTrace.textContent = "--";
-    }
+  const openDrawer = (runId) => {
+    const run = runsById.get(String(runId));
+    if (!run) return;
+    const jobLabel = run.job_type || "check-alerts";
+    drawerSubtitle.textContent = `${jobLabel} • ${formatDateTime(run.started_at || run.created_at)}`;
+    const diagnostic = run.diagnostic_json || {};
+    drawerJson.textContent = JSON.stringify(diagnostic, null, 2);
 
     if (typeof drawer.showModal === "function") {
       drawer.showModal();
@@ -210,15 +152,34 @@
 
   const loadCharts = async () => {
     if (!chartSent || !window.Plotly) return;
-    const response = await fetch(`/admin/api/monitor/runs?job_type=check_alerts&range=${currentRange}&limit=250`);
+    const response = await fetch(`/admin/cron/runs?range=${currentRange}&limit=250`);
     if (!response.ok) return;
     const data = await response.json();
     const runs = data.runs || [];
-    const timestamps = runs.map((run) => run.created_at).reverse();
+    const bucketMs = currentRange === "7d" ? 24 * 60 * 60 * 1000 : 60 * 60 * 1000;
+    const buckets = new Map();
 
-    const sentValues = runs.map((run) => run.sent_count || 0).reverse();
-    const durationValues = runs.map((run) => run.duration_ms || 0).reverse();
-    const failureValues = runs.map((run) => (run.ok ? 0 : 1)).reverse();
+    runs.forEach((run) => {
+      const timestamp = run.started_at || run.created_at;
+      if (!timestamp) return;
+      const date = new Date(timestamp);
+      const bucketTime = new Date(Math.floor(date.getTime() / bucketMs) * bucketMs).toISOString();
+      if (!buckets.has(bucketTime)) {
+        buckets.set(bucketTime, { runs: 0, sent: 0, errors: 0 });
+      }
+      const bucket = buckets.get(bucketTime);
+      bucket.runs += 1;
+      bucket.sent += run.sent_count || 0;
+      if (run.status === "error") {
+        bucket.errors += 1;
+      }
+    });
+
+    const sortedKeys = Array.from(buckets.keys()).sort();
+    const timestamps = sortedKeys.map((key) => new Date(key));
+    const runValues = sortedKeys.map((key) => buckets.get(key).runs);
+    const sentValues = sortedKeys.map((key) => buckets.get(key).sent);
+    const errorValues = sortedKeys.map((key) => buckets.get(key).errors);
 
     const layoutBase = {
       paper_bgcolor: "rgba(0,0,0,0)",
@@ -229,21 +190,25 @@
       margin: { l: 40, r: 20, t: 30, b: 40 },
     };
 
+    if (chartRuns) {
+      window.Plotly.react(
+        chartRuns,
+        [{ x: timestamps, y: runValues, type: "scatter", mode: "lines+markers", name: "Runs" }],
+        { ...layoutBase, title: "Runs over time" }
+      );
+    }
     window.Plotly.react(
       chartSent,
       [{ x: timestamps, y: sentValues, type: "scatter", mode: "lines+markers", name: "Sent" }],
-      { ...layoutBase, title: "Notifiche inviate" }
+      { ...layoutBase, title: "Alerts sent" }
     );
-    window.Plotly.react(
-      chartFailures,
-      [{ x: timestamps, y: failureValues, type: "bar", name: "Failed runs" }],
-      { ...layoutBase, title: "Run falliti" }
-    );
-    window.Plotly.react(
-      chartDuration,
-      [{ x: timestamps, y: durationValues, type: "scatter", mode: "lines+markers", name: "Duration (ms)" }],
-      { ...layoutBase, title: "Durata (ms)" }
-    );
+    if (chartErrors) {
+      window.Plotly.react(
+        chartErrors,
+        [{ x: timestamps, y: errorValues, type: "bar", name: "Errors" }],
+        { ...layoutBase, title: "Errors" }
+      );
+    }
   };
 
   if (refreshButton) {
@@ -253,17 +218,13 @@
     });
   }
 
-  if (filtersForm) {
-    filtersForm.addEventListener("change", () => {
-      fetchRuns();
-    });
-  }
-
   if (runsBody) {
     runsBody.addEventListener("click", (event) => {
       const row = event.target.closest("tr[data-run-id]");
       if (!row) return;
-      openDrawer(row.dataset.runId);
+      if (event.target.matches("[data-action='view-diagnostic']")) {
+        openDrawer(row.dataset.runId);
+      }
     });
   }
 
