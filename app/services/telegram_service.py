@@ -36,6 +36,7 @@ class TelegramService:
         user: User,
         chat_id_present: bool,
         threshold: float,
+        threshold_fallback_used: bool,
         current_value: float,
         moving_avg: float,
         window_size: Optional[int],
@@ -48,13 +49,14 @@ class TelegramService:
             return
         logger.debug(
             "alert_debug user_id=%s email=%s is_premium=%s chat_id_present=%s "
-            "threshold=%.2f current=%.2f avg=%.2f window=%s state_prev=%s state_new=%s "
-            "sent=%s reason=%s",
+            "threshold=%.2f threshold_fallback_used=%s current=%.2f avg=%.2f window=%s "
+            "state_prev=%s state_new=%s sent=%s reason=%s",
             user.id,
             user.email,
             user.has_premium_access,
             chat_id_present,
             float(threshold),
+            threshold_fallback_used,
             float(current_value),
             float(moving_avg),
             window_size if window_size is not None else "n/a",
@@ -258,7 +260,14 @@ class TelegramService:
         try:
             ts_label = ts.isoformat() if isinstance(ts, datetime) else str(ts)
             logger.info("Manual alert dispatch triggered event_id=%s at %s", event_id, ts_label)
-            self._dispatch_alerts(event_id, value_mv, value_mv, now, window_size=None)
+            self._dispatch_alerts(
+                event_id,
+                value_mv,
+                value_mv,
+                now,
+                window_size=None,
+                allow_free=True,
+            )
             db.session.commit()
         except Exception as exc:  # pragma: no cover - defensive logging
             db.session.rollback()
@@ -285,6 +294,8 @@ class TelegramService:
         moving_avg: float,
         now: datetime,
         window_size: Optional[int],
+        *,
+        allow_free: bool = False,
     ) -> dict:
         users = self._get_candidate_users()
         if not users:
@@ -300,6 +311,7 @@ class TelegramService:
         sent = 0
         skipped = 0
         skipped_by_reason: dict[str, int] = {}
+        premium_samples: list[dict] = []
 
         for user in users:
             if not user.telegram_opt_in:
@@ -307,6 +319,7 @@ class TelegramService:
                     user,
                     bool(user.telegram_chat_id or user.chat_id),
                     0,
+                    False,
                     current_value,
                     moving_avg,
                     window_size,
@@ -325,21 +338,42 @@ class TelegramService:
                     user,
                     False,
                     0,
+                    False,
                     current_value,
                     moving_avg,
                     window_size,
                     "n/a",
                     "n/a",
                     False,
-                    "missing_chat_id",
+                    "no_chat_id",
                 )
                 skipped += 1
-                skipped_by_reason["missing_chat_id"] = (
-                    skipped_by_reason.get("missing_chat_id", 0) + 1
+                skipped_by_reason["no_chat_id"] = (
+                    skipped_by_reason.get("no_chat_id", 0) + 1
                 )
                 continue
 
-            threshold = self._resolve_threshold(user)
+            if not user.has_premium_access and not allow_free:
+                self._log_alert_decision(
+                    user,
+                    bool(chat_id),
+                    0,
+                    False,
+                    current_value,
+                    moving_avg,
+                    window_size,
+                    "n/a",
+                    "n/a",
+                    False,
+                    "not_premium",
+                )
+                skipped += 1
+                skipped_by_reason["not_premium"] = (
+                    skipped_by_reason.get("not_premium", 0) + 1
+                )
+                continue
+
+            threshold, threshold_fallback_used = self._resolve_threshold(user)
             last_alert = self._get_last_alert_event(user)
             self._register_hysteresis_release(user, threshold, moving_avg, now, last_alert)
 
@@ -351,6 +385,7 @@ class TelegramService:
                     user,
                     bool(chat_id),
                     threshold,
+                    threshold_fallback_used,
                     current_value,
                     moving_avg,
                     window_size,
@@ -363,6 +398,15 @@ class TelegramService:
                 skipped_by_reason["below_threshold"] = (
                     skipped_by_reason.get("below_threshold", 0) + 1
                 )
+                self._record_premium_sample(
+                    premium_samples,
+                    user,
+                    threshold,
+                    threshold_fallback_used,
+                    moving_avg,
+                    False,
+                    "below_threshold",
+                )
                 continue
 
             if user.has_premium_access:
@@ -372,6 +416,7 @@ class TelegramService:
                     current_value,
                     moving_avg,
                     threshold,
+                    threshold_fallback_used,
                     now,
                     last_alert,
                     chat_id,
@@ -394,24 +439,74 @@ class TelegramService:
                 )
             if sent_alert:
                 sent += 1
+                self._record_premium_sample(
+                    premium_samples,
+                    user,
+                    threshold,
+                    threshold_fallback_used,
+                    moving_avg,
+                    True,
+                    "sent",
+                )
             else:
                 skipped += 1
                 if skip_reason is None:
-                    skip_reason = "exception"
+                    skip_reason = "error"
                 skipped_by_reason[skip_reason] = skipped_by_reason.get(skip_reason, 0) + 1
+                self._record_premium_sample(
+                    premium_samples,
+                    user,
+                    threshold,
+                    threshold_fallback_used,
+                    moving_avg,
+                    False,
+                    skip_reason,
+                )
 
         return {
             "sent": sent,
             "skipped": skipped,
             "cooldown_skipped": self._cooldown_skipped_count,
             "skipped_by_reason": skipped_by_reason,
+            "premium_samples": premium_samples,
             "reason": "completed",
         }
 
-    def _resolve_threshold(self, user: User) -> float:
+    def _resolve_threshold(self, user: User) -> tuple[float, bool]:
         if user.has_premium_access:
-            return user.threshold if user.threshold is not None else Config.ALERT_THRESHOLD_DEFAULT
-        return Config.ALERT_THRESHOLD_DEFAULT
+            if user.threshold is not None:
+                return float(user.threshold), False
+            logger.info(
+                "threshold_fallback_used=true user_id=%s email=%s",
+                user.id,
+                user.email,
+            )
+            return float(Config.ALERT_THRESHOLD_DEFAULT), True
+        return float(Config.ALERT_THRESHOLD_DEFAULT), False
+
+    @staticmethod
+    def _record_premium_sample(
+        samples: list[dict],
+        user: User,
+        threshold: float,
+        threshold_fallback_used: bool,
+        moving_avg: float,
+        will_send: bool,
+        reason: str,
+    ) -> None:
+        if len(samples) >= 5:
+            return
+        samples.append(
+            {
+                "email": user.email,
+                "threshold": float(threshold),
+                "threshold_fallback_used": threshold_fallback_used,
+                "threshold_source": "fallback_default" if threshold_fallback_used else "user",
+                "moving_avg": float(moving_avg),
+                "will_send": will_send,
+                "reason": reason,
+            }
+        )
 
     def _resolve_effective_chat_id(
         self,
@@ -480,6 +575,7 @@ class TelegramService:
         current_value: float,
         moving_avg: float,
         threshold: float,
+        threshold_fallback_used: bool,
         now: datetime,
         last_alert: Optional[Event],
         chat_id: Optional[int],
@@ -494,6 +590,7 @@ class TelegramService:
                 user,
                 bool(chat_id),
                 threshold,
+                threshold_fallback_used,
                 current_value,
                 moving_avg,
                 window_size,
@@ -510,6 +607,7 @@ class TelegramService:
                 user,
                 bool(chat_id),
                 threshold,
+                threshold_fallback_used,
                 current_value,
                 moving_avg,
                 window_size,
@@ -537,6 +635,7 @@ class TelegramService:
                 user,
                 bool(chat_id),
                 threshold,
+                threshold_fallback_used,
                 current_value,
                 moving_avg,
                 window_size,
@@ -552,15 +651,16 @@ class TelegramService:
                 user,
                 bool(chat_id),
                 threshold,
+                threshold_fallback_used,
                 current_value,
                 moving_avg,
                 window_size,
                 state_prev,
                 state_new,
                 False,
-                "exception",
+                "error",
             )
-            return False, "exception"
+            return False, "error"
 
     def _process_free_user(
         self,
@@ -604,6 +704,7 @@ class TelegramService:
                     user,
                     bool(chat_id),
                     threshold,
+                    False,
                     current_value,
                     moving_avg,
                     window_size,
@@ -619,20 +720,22 @@ class TelegramService:
                     user,
                     bool(chat_id),
                     threshold,
+                    False,
                     current_value,
                     moving_avg,
                     window_size,
                     state_prev,
                     state_new,
                     False,
-                    "exception",
+                    "error",
                 )
-                return False, "exception"
+                return False, "error"
 
         self._log_alert_decision(
             user,
             bool(chat_id),
             threshold,
+            False,
             current_value,
             moving_avg,
             window_size,
