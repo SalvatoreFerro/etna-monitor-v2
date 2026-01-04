@@ -1,0 +1,199 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Monitor Sistema{% endblock %}
+
+{% block head_extra %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
+{% endblock %}
+
+{% block admin_content %}
+<section class="admin-page admin-container monitor-page">
+  <header class="admin-header">
+    <h1>Monitor Sistema</h1>
+    <p>Panoramica operativa dei run cron, notifiche e salute del sistema.</p>
+    <div class="admin-actions">
+      <span class="monitor-pill">Ultime <strong>24 ore</strong></span>
+      <span class="monitor-pill monitor-pill--subtle">CSV updater + check-alerts</span>
+    </div>
+  </header>
+
+  <section class="admin-card admin-card--hero">
+    <div class="monitor-kpis">
+      <article class="monitor-kpi">
+        <span class="monitor-kpi__label">Stato cron</span>
+        <div class="monitor-kpi__value">
+          <span class="monitor-status" data-kpi="status">--</span>
+        </div>
+        <span class="monitor-kpi__hint" data-kpi="status_hint">In attesa...</span>
+      </article>
+      <article class="monitor-kpi">
+        <span class="monitor-kpi__label">Ultimo run</span>
+        <div class="monitor-kpi__value" data-kpi="last_run">--</div>
+        <span class="monitor-kpi__hint" data-kpi="last_run_hint">--</span>
+      </article>
+      <article class="monitor-kpi">
+        <span class="monitor-kpi__label">Runs 24h</span>
+        <div class="monitor-kpi__value" data-kpi="runs_total">--</div>
+        <span class="monitor-kpi__hint" data-kpi="failures_count">--</span>
+      </article>
+      <article class="monitor-kpi">
+        <span class="monitor-kpi__label">Notifiche inviate</span>
+        <div class="monitor-kpi__value" data-kpi="sent_total">--</div>
+        <span class="monitor-kpi__hint">Ultime 24h</span>
+      </article>
+      <article class="monitor-kpi">
+        <span class="monitor-kpi__label">Skipped</span>
+        <div class="monitor-kpi__value" data-kpi="skipped_total">--</div>
+        <span class="monitor-kpi__hint">Ultime 24h</span>
+      </article>
+      <article class="monitor-kpi">
+        <span class="monitor-kpi__label">Last CSV update</span>
+        <div class="monitor-kpi__value" data-kpi="csv_update">--</div>
+        <span class="monitor-kpi__hint" data-kpi="csv_size">--</span>
+      </article>
+      <article class="monitor-kpi">
+        <span class="monitor-kpi__label">Last point + moving avg</span>
+        <div class="monitor-kpi__value" data-kpi="last_point">--</div>
+        <span class="monitor-kpi__hint" data-kpi="moving_avg">--</span>
+      </article>
+    </div>
+  </section>
+
+  <section class="admin-card">
+    <div class="admin-section-header admin-section-header--split">
+      <div>
+        <h2>Timeline run</h2>
+        <p>Ultimi 100 run con filtri rapidi.</p>
+      </div>
+      <div class="admin-actions">
+        <button class="btn btn-premium" type="button" data-action="refresh-runs">Aggiorna</button>
+      </div>
+    </div>
+    <form class="monitor-filters" id="monitor-filters">
+      <label class="admin-field">
+        <span class="admin-field__label">Job type</span>
+        <select name="job_type" class="admin-input admin-select--sm">
+          <option value="">Tutti</option>
+          <option value="check_alerts">check_alerts</option>
+          <option value="csv_updater">csv_updater</option>
+          <option value="cron_pipeline">cron_pipeline</option>
+        </select>
+      </label>
+      <label class="admin-field">
+        <span class="admin-field__label">Esito</span>
+        <select name="ok" class="admin-input admin-select--sm">
+          <option value="">Tutti</option>
+          <option value="true">OK</option>
+          <option value="false">Failed</option>
+        </select>
+      </label>
+      <label class="admin-field">
+        <span class="admin-field__label">Da</span>
+        <input type="date" name="start" class="admin-input admin-input--sm">
+      </label>
+      <label class="admin-field">
+        <span class="admin-field__label">A</span>
+        <input type="date" name="end" class="admin-input admin-input--sm">
+      </label>
+    </form>
+    <div class="admin-table-wrapper monitor-table-wrapper">
+      <table class="admin-table monitor-table">
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Job</th>
+            <th>OK</th>
+            <th>Durata</th>
+            <th>Sent</th>
+            <th>Skipped</th>
+            <th>Reason</th>
+            <th>Last point</th>
+          </tr>
+        </thead>
+        <tbody id="monitor-runs-body">
+          <tr><td colspan="8" class="admin-empty">Caricamento...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="admin-card">
+    <div class="admin-section-header admin-section-header--split">
+      <div>
+        <h2>Trend &amp; performance</h2>
+        <p>Grafici delle ultime 24h e 7d.</p>
+      </div>
+      <div class="monitor-range-toggle">
+        <button class="btn btn-ghost is-active" type="button" data-range="24h">24h</button>
+        <button class="btn btn-ghost" type="button" data-range="7d">7d</button>
+      </div>
+    </div>
+    <div class="monitor-charts">
+      <div class="monitor-chart" id="chart-sent"></div>
+      <div class="monitor-chart" id="chart-failures"></div>
+      <div class="monitor-chart" id="chart-duration"></div>
+    </div>
+  </section>
+
+  <section class="admin-card">
+    <div class="admin-section-header">
+      <h2>Health checks</h2>
+      <p>Indicatori veloci di configurazione e reachability.</p>
+    </div>
+    <div class="monitor-health" id="monitor-health">
+      <article class="monitor-health-card">
+        <span>DB reachable</span>
+        <strong data-health="db_reachable">--</strong>
+      </article>
+      <article class="monitor-health-card">
+        <span>CSV</span>
+        <strong data-health="csv_exists">--</strong>
+        <small data-health="csv_mtime">--</small>
+      </article>
+      <article class="monitor-health-card">
+        <span>Telegram token</span>
+        <strong data-health="telegram_configured">--</strong>
+      </article>
+      <article class="monitor-health-card">
+        <span>Premium con chat_id</span>
+        <strong data-health="premium_chat_users">--</strong>
+      </article>
+    </div>
+  </section>
+</section>
+
+<dialog class="monitor-drawer" id="monitor-drawer">
+  <div class="monitor-drawer__header">
+    <div>
+      <h3>Dettaglio run</h3>
+      <p id="drawer-subtitle">--</p>
+    </div>
+    <button class="btn btn-ghost" type="button" data-action="close-drawer">Chiudi</button>
+  </div>
+  <div class="monitor-drawer__content">
+    <section>
+      <h4>Diagnostica</h4>
+      <pre class="monitor-json" id="drawer-json">{}</pre>
+    </section>
+    <section>
+      <h4>Skipped by reason</h4>
+      <div class="monitor-skipped" id="drawer-skipped"></div>
+    </section>
+    <section>
+      <details class="monitor-error" id="drawer-error">
+        <summary>Errori</summary>
+        <div class="monitor-error__body">
+          <p><strong id="drawer-error-type">--</strong></p>
+          <p id="drawer-error-message">--</p>
+          <pre class="monitor-json" id="drawer-error-trace">--</pre>
+        </div>
+      </details>
+    </section>
+  </div>
+</dialog>
+{% endblock %}
+
+{% block admin_scripts %}
+  <script src="{{ url_for('static', filename='js/plotly.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/monitor.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
+{% endblock %}

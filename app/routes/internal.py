@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import traceback as tb
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Lock
@@ -15,6 +16,7 @@ from sqlalchemy import or_, text
 
 from app.models import db
 from app.models.user import User
+from app.services.runlog_service import log_cron_run
 from app.services.telegram_service import TelegramService
 from config import Config
 
@@ -30,6 +32,16 @@ def _get_request_id() -> str | None:
         if value:
             return value
     return None
+
+
+def _resolve_pipeline_id() -> str | None:
+    pipeline_id = (
+        request.headers.get("X-Pipeline-Id")
+        or request.headers.get("X-PIPELINE-ID")
+        or request.args.get("pipeline_id")
+        or ""
+    ).strip()
+    return pipeline_id or None
 
 
 def _get_client_ip() -> str | None:
@@ -115,6 +127,23 @@ def _collect_csv_diagnostics() -> tuple[dict, pd.DataFrame | None, str | None]:
     diagnostics["threshold_source"] = "default"
 
     return diagnostics, df, None
+
+
+def _parse_optional_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    raw = value.strip()
+    if not raw:
+        return None
+    if raw.endswith("Z"):
+        raw = raw[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(raw)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
 
 
 def _collect_db_diagnostics() -> tuple[dict, bool]:
@@ -212,6 +241,7 @@ def cron_check_alerts():
     started_at = perf_counter()
     now = datetime.now(timezone.utc)
     request_id = _get_request_id()
+    pipeline_id = _resolve_pipeline_id()
     client_ip = _get_client_ip()
     query_string = request.query_string.decode("utf-8")
     current_app.logger.info(
@@ -240,6 +270,10 @@ def cron_check_alerts():
     response_payload: dict | None = None
     diagnostic_snapshot: dict = {}
     premium_samples: list[dict] = []
+
+    error_type = None
+    error_message = None
+    error_traceback = None
 
     try:
         if not authorized:
@@ -333,6 +367,9 @@ def cron_check_alerts():
     except Exception as exc:  # pragma: no cover - defensive guard
         reason = "exception"
         skipped_by_reason["exception"] = skipped_by_reason.get("exception", 0) + 1
+        error_type = type(exc).__name__
+        error_message = str(exc)
+        error_traceback = tb.format_exc()
         current_app.logger.exception(
             "[CRON] check-alerts failed request_id=%s: %s", request_id, exc
         )
@@ -364,6 +401,32 @@ def cron_check_alerts():
                 diagnostic_snapshot["skipped_by_reason"] = normalized_reasons
                 diagnostic_snapshot["premium_samples"] = premium_samples
                 response_payload["diagnostic"] = diagnostic_snapshot
+        cron_run_payload = {
+            "pipeline_id": pipeline_id,
+            "job_type": "check_alerts",
+            "ok": bool(response_payload and response_payload.get("ok")),
+            "reason": reason,
+            "duration_ms": round(duration_ms, 1),
+            "csv_path": diagnostic_snapshot.get("csv_path"),
+            "csv_mtime": _parse_optional_datetime(diagnostic_snapshot.get("csv_mtime")),
+            "csv_size_bytes": diagnostic_snapshot.get("csv_size_bytes"),
+            "last_point_ts": _parse_optional_datetime(diagnostic_snapshot.get("last_point_ts")),
+            "moving_avg": diagnostic_snapshot.get("moving_avg"),
+            "users_subscribed_count": diagnostic_snapshot.get("users_subscribed_count"),
+            "premium_subscribed_count": diagnostic_snapshot.get("premium_subscribed_count"),
+            "sent_count": diagnostic_snapshot.get("sent_count"),
+            "skipped_count": diagnostic_snapshot.get("skipped_count"),
+            "skipped_by_reason": diagnostic_snapshot.get("skipped_by_reason") or skipped_by_reason,
+            "error_type": error_type,
+            "error_message": error_message,
+            "traceback": error_traceback,
+            "request_id": request_id,
+            "payload": response_payload,
+        }
+        try:
+            log_cron_run(cron_run_payload)
+        except Exception as exc:  # pragma: no cover - defensive log
+            current_app.logger.exception("[CRON] Failed to store cron run log: %s", exc)
         current_app.logger.info(
             "[CRON] check-alerts finished request_id=%s sent=%s skipped=%s reason=%s duration_ms=%.1f",
             request_id,

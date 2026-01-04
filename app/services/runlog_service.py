@@ -1,0 +1,70 @@
+"""Helpers for persisting cron run logs both inside and outside Flask."""
+from __future__ import annotations
+
+import os
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Connection
+
+from app.models import db
+from app.models.cron_run import CronRun
+from config import Config, get_database_uri_from_env
+
+
+def _resolve_database_uri() -> str:
+    uri, _ = get_database_uri_from_env(Config.SQLALCHEMY_DATABASE_URI)
+    return uri or Config.SQLALCHEMY_DATABASE_URI
+
+
+def _resolve_retention_days() -> int:
+    try:
+        from flask import current_app
+
+        if current_app:
+            value = current_app.config.get("CRON_RUN_RETENTION_DAYS")
+            if value is not None:
+                return int(value)
+    except Exception:
+        pass
+
+    env_value = os.getenv("CRON_RUN_RETENTION_DAYS")
+    if env_value:
+        try:
+            return int(env_value)
+        except ValueError:
+            return 30
+    return getattr(Config, "CRON_RUN_RETENTION_DAYS", 30)
+
+
+def _purge_old_runs(executor: Connection | Any) -> None:
+    retention_days = _resolve_retention_days()
+    if retention_days <= 0:
+        return
+    cutoff = datetime.now(timezone.utc) - timedelta(days=retention_days)
+    stmt = CronRun.__table__.delete().where(CronRun.created_at < cutoff)
+    executor.execute(stmt)
+
+
+def log_cron_run(payload: dict, *, commit: bool = True) -> CronRun | None:
+    """Persist a cron run using the Flask SQLAlchemy session."""
+    run = CronRun(**payload)
+    try:
+        db.session.add(run)
+        if commit:
+            db.session.commit()
+            _purge_old_runs(db.session)
+            db.session.commit()
+        return run
+    except Exception:
+        db.session.rollback()
+        raise
+
+
+def log_cron_run_external(payload: dict, *, database_uri: str | None = None) -> None:
+    """Persist a cron run without needing a Flask app context."""
+    engine = create_engine(database_uri or _resolve_database_uri())
+    with engine.begin() as connection:
+        connection.execute(CronRun.__table__.insert().values(**payload))
+        _purge_old_runs(connection)
