@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation
 from numbers import Integral
 from typing import Optional
@@ -141,7 +141,15 @@ class TelegramService:
             return None
 
         return str(value)
-    
+
+    @staticmethod
+    def _utc(value: datetime | None) -> datetime | None:
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value
+
     def calculate_moving_average(self, values, window_size=5):
         """Calculate moving average to avoid false positives"""
         if len(values) < window_size:
@@ -177,8 +185,9 @@ class TelegramService:
 
             timestamp = recent_data['timestamp'].iloc[-1]
             event_ts = timestamp.to_pydatetime() if hasattr(timestamp, "to_pydatetime") else timestamp
+            event_ts = self._utc(event_ts)
             event_id = self._compute_event_id(event_ts, moving_avg)
-            now = datetime.utcnow()
+            now = datetime.now(timezone.utc)
 
             result = self._dispatch_alerts(
                 event_id,
@@ -228,6 +237,7 @@ class TelegramService:
             return None
 
         last_ts = df['timestamp'].iloc[-1].to_pydatetime()
+        last_ts = self._utc(last_ts)
         record_csv_read(len(df), last_ts)
 
         return df
@@ -241,7 +251,7 @@ class TelegramService:
     def send_alert(self, event_id: str, value_mv: float, ts: datetime) -> None:
         """Dispatch a pre-computed alert using the freemium rules."""
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         try:
             ts_label = ts.isoformat() if isinstance(ts, datetime) else str(ts)
             logger.info("Manual alert dispatch triggered event_id=%s at %s", event_id, ts_label)
@@ -594,7 +604,8 @@ class TelegramService:
             .order_by(Event.timestamp.desc())
             .first()
         )
-        if last_upsell and now - last_upsell.timestamp < self.UPSELL_COOLDOWN:
+        last_upsell_ts = self._utc(last_upsell.timestamp) if last_upsell else None
+        if last_upsell_ts and now - last_upsell_ts < self.UPSELL_COOLDOWN:
             logger.debug("Upsell cooldown active for %s", user.email)
             return
 
@@ -614,7 +625,10 @@ class TelegramService:
     def _is_rate_limited(self, user: User, now: datetime) -> bool:
         if not user.last_alert_sent_at:
             return False
-        return now - user.last_alert_sent_at < self.RATE_LIMIT
+        last_alert = self._utc(user.last_alert_sent_at)
+        if not last_alert:
+            return False
+        return now - last_alert < self.RATE_LIMIT
 
     def _passed_hysteresis(
         self,

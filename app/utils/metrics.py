@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -41,7 +41,7 @@ def record_csv_read(rows: int, last_timestamp: Optional[datetime]) -> None:
     if not current_app:
         return
 
-    current_app.config["LAST_CSV_READ_AT"] = datetime.utcnow()
+    current_app.config["LAST_CSV_READ_AT"] = datetime.now(timezone.utc)
     current_app.config["LAST_CSV_ROW_COUNT"] = rows
     current_app.config["LAST_CSV_LAST_TS"] = last_timestamp
     current_app.config["LAST_CSV_ERROR"] = None
@@ -53,7 +53,7 @@ def record_csv_error(error_message: str) -> None:
     if not current_app:
         return
 
-    current_app.config["LAST_CSV_READ_AT"] = datetime.utcnow()
+    current_app.config["LAST_CSV_READ_AT"] = datetime.now(timezone.utc)
     current_app.config["LAST_CSV_ERROR"] = error_message
 
 
@@ -64,7 +64,7 @@ def record_csv_update(
     error_message: str | None = None,
 ) -> None:
     payload = {
-        "last_update_at": datetime.utcnow().isoformat(),
+        "last_update_at": datetime.now(timezone.utc).isoformat(),
         "row_count": rows,
         "last_data_timestamp": last_timestamp.isoformat() if last_timestamp else None,
         "last_error": error_message,
