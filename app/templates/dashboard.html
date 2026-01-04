@@ -173,6 +173,62 @@
       </article>
 
       <div class="side-grid">
+        {% set alert_reason = alert_status.reason %}
+        {% set alert_status_class = 'status-ok' if alert_reason in ['send', 'send_free_trial'] else 'status-warn' if alert_reason in ['below_threshold', 'cooldown', 'already_sent'] else 'status-error' %}
+        {% set alert_reason_label = 'Alert pronto' if alert_reason == 'send' else 'Alert di prova pronto' if alert_reason == 'send_free_trial' else 'Sotto soglia' if alert_reason == 'below_threshold' else 'In cooldown' if alert_reason == 'cooldown' else 'Già inviato (isteresi)' if alert_reason == 'already_sent' else 'Telegram non collegato' if alert_reason in ['opt_in_false', 'missing_chat_id'] else 'Premium richiesto' if alert_reason == 'not_premium' else 'Dati non disponibili' if alert_reason == 'dataset_invalid' else 'In attesa' %}
+        <article class="card-premium alert-status-card animate-premium-slide" aria-label="Stato alert">
+          <header class="card-header">
+            <h2>Stato Alert</h2>
+            <p class="muted">Controllo smart dello stato notifiche in tempo reale.</p>
+          </header>
+          <div class="alert-status-summary {{ alert_status_class }}">
+            <span class="alert-status-dot" aria-hidden="true"></span>
+            <div>
+              <span class="alert-status-title">{{ alert_reason_label }}</span>
+              <span class="alert-status-subtitle">Motivo: {{ alert_reason }}</span>
+            </div>
+          </div>
+          <div class="alert-status-grid">
+            <div>
+              <span class="status-label">Telegram collegato</span>
+              <span class="status-value">{{ 'Sì' if alert_status.telegram_connected else 'No' }}</span>
+            </div>
+            <div>
+              <span class="status-label">Premium attivo</span>
+              <span class="status-value">{{ 'Sì' if user.has_premium_access else 'No' }}</span>
+            </div>
+            <div>
+              <span class="status-label">Soglia attiva</span>
+              <span class="status-value">{{ "%.2f"|format(alert_status.threshold_used) }} mV</span>
+            </div>
+            <div>
+              <span class="status-label">Ultimo controllo</span>
+              <span class="status-value">{{ last_cron_run.created_at.strftime('%d/%m %H:%M') if last_cron_run else '—' }}</span>
+            </div>
+            <div>
+              <span class="status-label">Ultimo alert</span>
+              <span class="status-value">{{ last_alert_event.timestamp.strftime('%d/%m %H:%M') if last_alert_event else '—' }}</span>
+            </div>
+            <div>
+              <span class="status-label">Ultimo punto</span>
+              <span class="status-value">{{ alert_status.last_point_ts or '—' }}</span>
+            </div>
+          </div>
+          {% if alert_status.cooldown_seconds_remaining %}
+          <p class="alert-status-note">Cooldown residuo: {{ alert_status.cooldown_seconds_remaining }}s.</p>
+          {% endif %}
+          <div class="alert-status-cta">
+            <p class="muted">Come funziona: monitoriamo la media mobile, valutiamo la soglia e inviamo alert quando supera i limiti.</p>
+            {% if alert_status.telegram_connected %}
+            <form method="post" action="{{ url_for('dashboard.test_telegram_alert') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-secondary glass btn-sm">Testa Telegram</button>
+            </form>
+            {% else %}
+              <a class="btn btn-secondary glass btn-sm" href="{{ url_for('dashboard.dashboard_home') }}#alert-settings">Collega Telegram</a>
+            {% endif %}
+          </div>
+        </article>
         {% set telegram_connected = (user.telegram_chat_id or user.chat_id) and user.telegram_opt_in %}
         {% set threshold_configured = user.has_premium_access and user.threshold is not none %}
         <article class="card-premium setup-card" aria-label="Setup progress">
@@ -423,21 +479,39 @@
       <article class="card-premium events-card animate-premium-fade">
         <header class="card-header">
           <h3>Eventi recenti</h3>
-          <p>Ultimi eventi sismici rilevati dalla piattaforma.</p>
+          <p>Ultimi 10 run del cron alert con stato sintetico.</p>
         </header>
         <div class="events-list" id="events-list">
-          {% for event in recent_events %}
-            <div class="event-item">
-              <span class="event-time">{{ event.timestamp.strftime('%d/%m %H:%M') }}</span>
-              <span class="event-type">{{ event.event_type.replace('_', ' ').title() }}</span>
-              {% if event.value %}
-                <span class="event-value">{{ "%.2f"|format(event.value) }} mV</span>
-              {% endif %}
-              <p class="event-message">{{ event.message }}</p>
-            </div>
-          {% else %}
-            <p class="no-events">Nessun evento sismico significativo nelle ultime 24 ore.</p>
-          {% endfor %}
+          <table class="events-table">
+            <thead>
+              <tr>
+                <th>Run</th>
+                <th>Esito</th>
+                <th>Sent</th>
+                <th>Skipped</th>
+                <th>Durata</th>
+                <th>Stato utente</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for run in recent_cron_runs %}
+                <tr>
+                  <td>{{ run.created_at.strftime('%d/%m %H:%M') if run.created_at else '—' }}</td>
+                  <td>
+                    <span class="badge {{ 'success' if run.ok else 'danger' }}">{{ 'OK' if run.ok else 'ERROR' }}</span>
+                  </td>
+                  <td>{{ run.sent }}</td>
+                  <td>{{ run.skipped }}</td>
+                  <td>{{ "%.0f"|format(run.duration_ms or 0) }} ms</td>
+                  <td>{{ alert_reason_label }}</td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="6" class="no-events">Nessun run registrato.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
       </article>
       {% else %}
