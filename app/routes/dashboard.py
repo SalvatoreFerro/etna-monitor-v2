@@ -3,18 +3,104 @@ from ..utils.auth import login_required, get_current_user
 from ..utils.logger import get_logger
 from ..utils.csrf import validate_csrf_token
 from ..models import db
+from ..models.cron_run_log import CronRunLog
 from ..models.event import Event
+from ..services.telegram_service import TelegramService
 from ..utils.plot import make_tremor_figure
 from ..utils.metrics import record_csv_error, record_csv_read
 from config import Config
 import json
 import os
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 logger = get_logger(__name__)
 
 bp = Blueprint("dashboard", __name__)
+
+
+def _serialize_dt(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc).isoformat()
+    return value.astimezone(timezone.utc).isoformat()
+
+
+def _build_alert_status(user) -> dict:
+    telegram_service = TelegramService()
+    dataset = telegram_service._load_dataset()
+    now = datetime.now(timezone.utc)
+    moving_avg = None
+    last_point_value = None
+    last_point_ts = None
+    reason = None
+    will_send = False
+    event_id = None
+
+    if dataset is None or dataset.empty:
+        reason = "dataset_invalid"
+    else:
+        recent_data = dataset.tail(10)
+        last_point_value = float(recent_data["value"].iloc[-1])
+        moving_avg = float(
+            telegram_service.calculate_moving_average(recent_data["value"].tolist(), window_size=5)
+        )
+        timestamp = recent_data["timestamp"].iloc[-1]
+        event_ts = timestamp.to_pydatetime() if hasattr(timestamp, "to_pydatetime") else timestamp
+        event_ts = telegram_service._utc(event_ts)
+        last_point_ts = _serialize_dt(event_ts)
+        event_id = telegram_service._compute_event_id(event_ts, moving_avg) if event_ts else None
+
+    threshold_used = telegram_service._resolve_threshold(user)
+    effective_chat_id = telegram_service._resolve_effective_chat_id(user, allow_update=False)
+    last_alert_sent_at = telegram_service._utc(user.last_alert_sent_at)
+
+    cooldown_seconds_remaining = 0
+    if last_alert_sent_at:
+        cooldown_remaining = telegram_service.RATE_LIMIT - (now - last_alert_sent_at)
+        if cooldown_remaining.total_seconds() > 0:
+            cooldown_seconds_remaining = int(cooldown_remaining.total_seconds())
+
+    if reason is None:
+        if not user.telegram_opt_in:
+            reason = "opt_in_false"
+        elif not effective_chat_id:
+            reason = "missing_chat_id"
+        elif moving_avg is None or moving_avg < threshold_used:
+            reason = "below_threshold"
+        elif user.has_premium_access:
+            if telegram_service._is_rate_limited(user, now):
+                reason = "cooldown"
+            else:
+                last_alert = telegram_service._get_last_alert_event(user)
+                if not telegram_service._passed_hysteresis(user, threshold_used, moving_avg, last_alert):
+                    reason = "already_sent"
+                else:
+                    reason = "send"
+                    will_send = True
+        else:
+            if (
+                event_id
+                and (user.free_alert_consumed or 0) == 0
+                and user.free_alert_event_id != event_id
+            ):
+                reason = "send_free_trial"
+                will_send = True
+            else:
+                reason = "not_premium"
+
+    return {
+        "telegram_connected": bool(effective_chat_id) and bool(user.telegram_opt_in),
+        "threshold_used": float(threshold_used),
+        "moving_avg": moving_avg,
+        "last_point_value": last_point_value,
+        "last_point_ts": last_point_ts,
+        "last_alert_sent_at": _serialize_dt(last_alert_sent_at),
+        "cooldown_seconds_remaining": cooldown_seconds_remaining,
+        "reason": reason,
+        "will_send": will_send,
+    }
 
 @bp.route("/")
 @login_required
@@ -97,22 +183,42 @@ def dashboard_home():
     
     recent_events = []
     if user.has_premium_access:
-        recent_events = Event.query.filter_by(user_id=user.id)\
-                                 .order_by(Event.timestamp.desc())\
-                                 .limit(10).all()
-    
-    return render_template("dashboard.html",
-                         user=user,
-                         graph_json=graph_json,
-                         latest_value=latest_value,
-                         threshold=threshold,
-                         active_threshold=threshold,
-                         threshold_source=threshold_source,
-                         debug_alerts_enabled=debug_alerts_enabled,
-                         status=status,
-                         recent_events=recent_events,
-                         page_title="Dashboard tremore Etna – EtnaMonitor",
-                         page_description="Grafico del tremore vulcanico dell'Etna, soglie personalizzate e storico eventi per utenti Premium.")
+        recent_events = (
+            Event.query.filter_by(user_id=user.id)
+            .order_by(Event.timestamp.desc())
+            .limit(10)
+            .all()
+        )
+
+    last_cron_run = CronRunLog.query.order_by(CronRunLog.created_at.desc()).first()
+    recent_cron_runs = (
+        CronRunLog.query.order_by(CronRunLog.created_at.desc()).limit(10).all()
+    )
+    last_alert_event = (
+        Event.query.filter_by(user_id=user.id, event_type="alert")
+        .order_by(Event.timestamp.desc())
+        .first()
+    )
+    alert_status = _build_alert_status(user)
+
+    return render_template(
+        "dashboard.html",
+        user=user,
+        graph_json=graph_json,
+        latest_value=latest_value,
+        threshold=threshold,
+        active_threshold=threshold,
+        threshold_source=threshold_source,
+        debug_alerts_enabled=debug_alerts_enabled,
+        status=status,
+        recent_events=recent_events,
+        last_cron_run=last_cron_run,
+        recent_cron_runs=recent_cron_runs,
+        last_alert_event=last_alert_event,
+        alert_status=alert_status,
+        page_title="Dashboard tremore Etna – EtnaMonitor",
+        page_description="Grafico del tremore vulcanico dell'Etna, soglie personalizzate e storico eventi per utenti Premium.",
+    )
 
 @bp.route("/settings", methods=["GET", "POST"])
 @login_required
@@ -225,6 +331,42 @@ def disconnect_telegram():
     
     flash("Telegram disconnected", "info")
     return redirect(url_for('dashboard.dashboard_home'))
+
+
+@bp.route("/telegram/test", methods=["POST"])
+@login_required
+def test_telegram_alert():
+    user = get_current_user()
+    csrf_token = request.form.get("csrf_token")
+    if not validate_csrf_token(csrf_token):
+        flash("Sessione scaduta, riprova.", "error")
+        return redirect(url_for("dashboard.dashboard_home"))
+
+    chat_id = user.telegram_chat_id or user.chat_id
+    if not chat_id:
+        flash("Collega Telegram per inviare un test.", "warning")
+        return redirect(url_for("dashboard.dashboard_home"))
+
+    telegram_service = TelegramService()
+    if not telegram_service.is_configured():
+        flash("Bot Telegram non configurato. Riprova più tardi.", "error")
+        return redirect(url_for("dashboard.dashboard_home"))
+
+    try:
+        sent = telegram_service.send_message(
+            chat_id,
+            "🔔 Test alert EtnaMonitor\nQuesto messaggio conferma il collegamento Telegram.",
+        )
+    except Exception as exc:  # pragma: no cover - external service safeguard
+        logger.exception("Telegram test alert failed for user %s", user.id)
+        flash(f"Errore durante l'invio del test: {exc}", "error")
+        return redirect(url_for("dashboard.dashboard_home"))
+
+    if sent:
+        flash("Alert di test inviato su Telegram.", "success")
+    else:
+        flash("Telegram ha rifiutato il messaggio di test.", "error")
+    return redirect(url_for("dashboard.dashboard_home"))
 
 @bp.route("/alerts/toggle", methods=["POST"])
 @login_required

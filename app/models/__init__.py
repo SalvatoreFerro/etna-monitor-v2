@@ -25,6 +25,7 @@ from .media_asset import MediaAsset
 from .premium_request import PremiumRequest
 from .hotspots_cache import HotspotsCache
 from .hotspots_record import HotspotsRecord
+from .cron_run_log import CronRunLog
 
 try:
     from .sponsor_banner import (
@@ -61,6 +62,7 @@ __all__ = [
     'PremiumRequest',
     'HotspotsCache',
     'HotspotsRecord',
+    'CronRunLog',
 ]
 
 if SponsorBanner is not None:

@@ -1,7 +1,7 @@
 import csv
 import io
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
@@ -35,6 +35,7 @@ from ..models import (
     CommunityPost,
     ForumThread,
     ForumReply,
+    CronRunLog,
 )
 from ..models.user import User
 from ..models.event import Event
@@ -141,6 +142,25 @@ def _normalize_day(value):
         except ValueError:
             return None
     return value
+
+
+def _coerce_int(value, *, default: int, minimum: int = 0, maximum: int = 500) -> int:
+    try:
+        parsed = int(value) if value is not None else default
+    except (TypeError, ValueError):
+        return default
+    return max(minimum, min(parsed, maximum))
+
+
+def _coerce_bool_param(value: str | None) -> bool | None:
+    if value is None:
+        return None
+    normalized = value.strip().lower()
+    if normalized in {"true", "1", "yes"}:
+        return True
+    if normalized in {"false", "0", "no"}:
+        return False
+    return None
 
 
 def _serialize_partner(partner: Partner) -> dict:
@@ -2575,6 +2595,96 @@ def theme_manager():
     return render_template(
         "admin/theme_manager.html", current_theme=current_theme, stats=stats
     )
+
+
+@bp.get("/api/cron-runs")
+@admin_required
+def get_cron_runs():
+    limit = _coerce_int(request.args.get("limit"), default=50, minimum=1, maximum=200)
+    offset = _coerce_int(request.args.get("offset"), default=0, minimum=0, maximum=5000)
+    ok_filter = _coerce_bool_param(request.args.get("ok"))
+    sent_gt = _coerce_int(request.args.get("sent_gt"), default=0, minimum=0, maximum=100000)
+    period = (request.args.get("period") or "").strip().lower()
+
+    query = CronRunLog.query
+    if ok_filter is not None:
+        query = query.filter(CronRunLog.ok.is_(ok_filter))
+    if sent_gt:
+        query = query.filter(CronRunLog.sent > sent_gt)
+    if period in {"24h", "7d"}:
+        now = datetime.now(timezone.utc)
+        hours = 24 if period == "24h" else 24 * 7
+        query = query.filter(CronRunLog.created_at >= now - timedelta(hours=hours))
+
+    total = query.with_entities(func.count(CronRunLog.id)).scalar() or 0
+    items = (
+        query.order_by(CronRunLog.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    payload = {
+        "ok": True,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "limit": limit,
+        "offset": offset,
+        "total": int(total),
+        "items": [entry.serialize_summary() for entry in items],
+    }
+
+    if (request.args.get("include_metrics") or "").strip() == "1":
+        now = datetime.now(timezone.utc)
+        window_start = now - timedelta(hours=24)
+        last_run = (
+            CronRunLog.query.order_by(CronRunLog.created_at.desc()).limit(1).one_or_none()
+        )
+        total_24h = (
+            CronRunLog.query.filter(CronRunLog.created_at >= window_start)
+            .with_entities(func.count(CronRunLog.id))
+            .scalar()
+            or 0
+        )
+        ok_24h = (
+            CronRunLog.query.filter(
+                CronRunLog.created_at >= window_start, CronRunLog.ok.is_(True)
+            )
+            .with_entities(func.count(CronRunLog.id))
+            .scalar()
+            or 0
+        )
+        errors_24h = (
+            CronRunLog.query.filter(
+                CronRunLog.created_at >= window_start, CronRunLog.ok.is_(False)
+            )
+            .with_entities(func.count(CronRunLog.id))
+            .scalar()
+            or 0
+        )
+        sent_24h = (
+            CronRunLog.query.filter(CronRunLog.created_at >= window_start)
+            .with_entities(func.coalesce(func.sum(CronRunLog.sent), 0))
+            .scalar()
+            or 0
+        )
+        ok_rate = (ok_24h / total_24h * 100) if total_24h else None
+        payload["metrics"] = {
+            "last_run_at": last_run.created_at.isoformat() if last_run else None,
+            "last_run_ok": bool(last_run.ok) if last_run else None,
+            "ok_rate_24h": round(ok_rate, 1) if ok_rate is not None else None,
+            "sent_24h": int(sent_24h),
+            "errors_24h": int(errors_24h),
+            "total_24h": int(total_24h),
+        }
+
+    return jsonify(payload)
+
+
+@bp.get("/api/cron-runs/<int:run_id>")
+@admin_required
+def get_cron_run_detail(run_id: int):
+    entry = CronRunLog.query.get_or_404(run_id)
+    return jsonify({"ok": True, "entry": entry.serialize_detail()})
 
 
 @bp.route("/set_theme", methods=["POST"])

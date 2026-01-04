@@ -88,6 +88,8 @@ curl -sS -X POST "https://your-app.onrender.com/internal/cron/check-alerts?key=$
 
 Assicurati che `CRON_SECRET` sia configurato sia nel web service (per validare la richiesta) sia nel cron job (per firmare la chiamata). L'endpoint cron esegue solo la logica di invio alert Telegram e non dipende da tabelle/admin audit.
 
+Ogni esecuzione del cron salva un record su `cron_run_logs` con il JSON diagnostico completo, utilizzato dalla dashboard admin.
+
 ## Health Check Configuration
 
 Set the health check path in Render to: `/healthz`. For the worker service you can use `/internal/worker/health` (solo per chiamate interne) per verificare l'heartbeat salvato in `DATA_DIR/worker-heartbeat.json`.
@@ -131,6 +133,17 @@ After deployment, verify these items:
    * Running on http://127.0.0.1:5000
    * Debug mode: on
    ```
+
+7. **Cron alert + audit dashboard**:
+   - Test manuale cron:
+     ```
+     curl -sS -X POST "https://your-app.onrender.com/internal/cron/check-alerts?key=$CRON_SECRET"
+     ```
+   - API admin cron runs (necessita sessione admin autenticata):
+     ```
+     curl -sS "https://your-app.onrender.com/admin/api/cron-runs?limit=5"
+     ```
+   - In dashboard admin controlla la sezione **Monitoraggio Alert**: KPI 24h, ultimo run e dettaglio JSON aprendo una riga.
 
 ## Troubleshooting
 

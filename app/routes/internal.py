@@ -14,6 +14,7 @@ from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy import or_, text
 
 from app.models import db
+from app.models.cron_run_log import CronRunLog
 from app.models.user import User
 from app.services.telegram_service import TelegramService
 from config import Config
@@ -158,6 +159,18 @@ def _collect_db_diagnostics() -> tuple[dict, bool]:
     diagnostics["users_subscribed_count"] = int(users_count or 0)
     diagnostics["premium_subscribed_count"] = int(premium_count or 0)
     return diagnostics, True
+
+
+def _parse_iso_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
 
 
 @internal_bp.route("/worker/health", methods=["GET"])
@@ -343,6 +356,39 @@ def cron_check_alerts():
                 diagnostic_snapshot["cooldown_skipped_count"] = cooldown_skipped
                 diagnostic_snapshot["skipped_by_reason"] = skipped_by_reason
                 response_payload["diagnostic"] = diagnostic_snapshot
+        try:
+            log_payload = response_payload or {}
+            log_ok = bool(log_payload.get("ok"))
+            diagnostic_payload = log_payload.get("diagnostic") or diagnostic_snapshot or None
+            log_entry = CronRunLog(
+                duration_ms=round(duration_ms, 1),
+                ok=log_ok,
+                sent=sent,
+                skipped=skipped,
+                cooldown_skipped_count=cooldown_skipped,
+                users_subscribed_count=diagnostic_snapshot.get("users_subscribed_count"),
+                premium_subscribed_count=diagnostic_snapshot.get("premium_subscribed_count"),
+                moving_avg=diagnostic_snapshot.get("moving_avg"),
+                threshold_used=diagnostic_snapshot.get("threshold_used"),
+                last_point_ts=_parse_iso_datetime(diagnostic_snapshot.get("last_point_ts")),
+                error=None if log_ok else log_payload.get("error"),
+                exception_type=None if log_ok else log_payload.get("exception_type"),
+                message=None if log_ok else log_payload.get("message"),
+                request_id=request_id,
+                ip_address=client_ip,
+                user_agent=request.headers.get("User-Agent"),
+                diagnostic_json=diagnostic_payload,
+                skipped_by_reason=log_payload.get("skipped_by_reason") or skipped_by_reason,
+            )
+            db.session.add(log_entry)
+            db.session.commit()
+        except Exception as exc:  # pragma: no cover - defensive logging
+            db.session.rollback()
+            current_app.logger.warning(
+                "[CRON] Unable to persist cron_run_logs entry request_id=%s: %s",
+                request_id,
+                exc,
+            )
         current_app.logger.info(
             "[CRON] check-alerts finished request_id=%s sent=%s skipped=%s reason=%s duration_ms=%.1f",
             request_id,

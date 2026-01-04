@@ -319,6 +319,90 @@
     </footer>
   </div>
 
+  <section class="admin-card admin-card--alert-monitor card-premium animate-premium-slide" aria-labelledby="admin-alert-monitor-title">
+    <header class="admin-section-header admin-section-header--split">
+      <div>
+        <h2 id="admin-alert-monitor-title"><i class="fas fa-satellite-dish"></i> Monitoraggio Alert</h2>
+        <p>Dashboard operativa sulle esecuzioni del cron alert e sugli invii Telegram.</p>
+      </div>
+      <span class="admin-caption" data-cron-monitor-updated>In attesa di aggiornamento…</span>
+    </header>
+
+    <div class="admin-analytics-grid admin-analytics-grid--expanded">
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">Ultimo run</span>
+        <span class="admin-analytics-value" data-cron-kpi-last-run>—</span>
+      </div>
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">OK rate 24h</span>
+        <span class="admin-analytics-value" data-cron-kpi-ok-rate>—</span>
+      </div>
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">Sent 24h</span>
+        <span class="admin-analytics-value" data-cron-kpi-sent>—</span>
+      </div>
+      <div class="admin-analytics-metric">
+        <span class="admin-analytics-label">Errori 24h</span>
+        <span class="admin-analytics-value" data-cron-kpi-errors>—</span>
+      </div>
+    </div>
+
+    <div class="admin-analytics-filters admin-analytics-filters--cron">
+      <label class="admin-field">
+        <span class="admin-field__label">Periodo</span>
+        <select data-cron-period>
+          <option value="24h">Ultime 24h</option>
+          <option value="7d">Ultimi 7 giorni</option>
+          <option value="all">Sempre</option>
+        </select>
+      </label>
+      <label class="admin-field">
+        <span class="admin-field__label">Esito</span>
+        <select data-cron-ok>
+          <option value="">Tutti</option>
+          <option value="true">OK</option>
+          <option value="false">Error</option>
+        </select>
+      </label>
+      <label class="admin-field">
+        <span class="admin-field__label">Solo invii</span>
+        <select data-cron-sent>
+          <option value="0">Tutti</option>
+          <option value="1">Sent &gt; 0</option>
+        </select>
+      </label>
+      <button type="button" class="btn btn-secondary glass btn-sm" data-cron-refresh>
+        <i class="fas fa-rotate"></i> Aggiorna
+      </button>
+    </div>
+
+    <div class="admin-table-wrapper admin-table-wrapper--cron">
+      <table class="table table-premium admin-table admin-table--cron">
+        <thead>
+          <tr>
+            <th scope="col">Timestamp</th>
+            <th scope="col">Esito</th>
+            <th scope="col">Sent</th>
+            <th scope="col">Skipped</th>
+            <th scope="col">Durata</th>
+          </tr>
+        </thead>
+        <tbody data-cron-runs-body aria-live="polite"></tbody>
+      </table>
+      <p class="admin-empty" data-cron-empty hidden>Nessun run disponibile con i filtri selezionati.</p>
+    </div>
+
+    <footer class="admin-pagination admin-pagination--cron">
+      <button type="button" class="btn btn-secondary glass btn-sm" data-cron-page="prev">
+        <i class="fas fa-angle-left"></i> Precedente
+      </button>
+      <span class="admin-caption" data-cron-pagination-label>Pagina 1</span>
+      <button type="button" class="btn btn-secondary glass btn-sm" data-cron-page="next">
+        Successiva <i class="fas fa-angle-right"></i>
+      </button>
+    </footer>
+  </section>
+
   <section class="admin-grid admin-grid--columns admin-grid--activity" aria-label="Monitoraggio amministratore">
     <article class="admin-card card-premium animate-premium-fade" id="account-lifecycle">
       <header class="admin-section-header">
@@ -396,6 +480,49 @@
   </section>
 </section>
 
+<div class="admin-modal" id="cron-detail-modal" hidden>
+  <div class="admin-modal__backdrop" data-cron-modal-close></div>
+  <div class="admin-modal__panel" role="dialog" aria-modal="true" aria-labelledby="cron-detail-title">
+    <header class="admin-modal__header">
+      <div>
+        <h3 id="cron-detail-title">Dettaglio run cron</h3>
+        <p class="admin-caption" data-cron-modal-subtitle>Caricamento…</p>
+      </div>
+      <button type="button" class="btn btn-secondary glass btn-sm" data-cron-modal-close>
+        <i class="fas fa-xmark"></i>
+      </button>
+    </header>
+    <div class="admin-modal__body">
+      <div class="admin-modal__meta">
+        <span class="badge" data-cron-modal-status>—</span>
+        <span class="admin-caption" data-cron-modal-timing>—</span>
+      </div>
+      <div class="admin-modal__grid">
+        <div>
+          <span class="admin-modal__label">Errore</span>
+          <span data-cron-modal-error>—</span>
+        </div>
+        <div>
+          <span class="admin-modal__label">Exception</span>
+          <span data-cron-modal-exception>—</span>
+        </div>
+        <div>
+          <span class="admin-modal__label">Sent</span>
+          <span data-cron-modal-sent>—</span>
+        </div>
+        <div>
+          <span class="admin-modal__label">Skipped</span>
+          <span data-cron-modal-skipped>—</span>
+        </div>
+      </div>
+      <div class="admin-modal__json">
+        <h4>Diagnostic JSON</h4>
+        <pre data-cron-modal-json>{}</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="audit-status" data-audit-status aria-live="polite"></div>
 <div id="toast-container" class="toast-container" aria-live="assertive" aria-atomic="true"></div>
 
@@ -407,6 +534,7 @@
   const ADMIN_ACTIONS_ENDPOINT = '{{ url_for('admin_stats.get_admin_actions') }}';
   const ADMIN_AUDIT_ENDPOINT = '{{ url_for('admin_stats.get_audit_feed') }}';
   const ADMIN_GLOBAL_TEST_ENDPOINT = '{{ url_for('admin.test_alert') }}';
+  const ADMIN_CRON_RUNS_ENDPOINT = '{{ url_for('admin.get_cron_runs') }}';
 
   const initialUsers = {{ initial_users|tojson }};
   const initialState = {
@@ -422,6 +550,14 @@
     'use strict';
 
     const state = { ...initialState, items: Array.isArray(initialUsers) ? initialUsers : [] };
+    const cronState = {
+      limit: 20,
+      offset: 0,
+      ok: '',
+      sentGt: 0,
+      period: '24h',
+      total: 0,
+    };
 
     const tableBody = document.querySelector('[data-users-table]');
     const emptyState = document.querySelector('[data-users-empty]');
@@ -464,6 +600,30 @@
     const userAnalyticsTelegramCount = document.querySelector('[data-user-analytics-telegram-count]');
     const userAnalyticsTelegramPct = document.querySelector('[data-user-analytics-telegram-pct]');
     const userAnalyticsTelegramRecent = document.querySelector('[data-user-analytics-telegram-recent]');
+    const cronUpdatedLabel = document.querySelector('[data-cron-monitor-updated]');
+    const cronKpiLastRun = document.querySelector('[data-cron-kpi-last-run]');
+    const cronKpiOkRate = document.querySelector('[data-cron-kpi-ok-rate]');
+    const cronKpiSent = document.querySelector('[data-cron-kpi-sent]');
+    const cronKpiErrors = document.querySelector('[data-cron-kpi-errors]');
+    const cronPeriodSelect = document.querySelector('[data-cron-period]');
+    const cronOkSelect = document.querySelector('[data-cron-ok]');
+    const cronSentSelect = document.querySelector('[data-cron-sent]');
+    const cronRefreshButton = document.querySelector('[data-cron-refresh]');
+    const cronTableBody = document.querySelector('[data-cron-runs-body]');
+    const cronEmpty = document.querySelector('[data-cron-empty]');
+    const cronPaginationLabel = document.querySelector('[data-cron-pagination-label]');
+    const cronPrevButton = document.querySelector('[data-cron-page=\"prev\"]');
+    const cronNextButton = document.querySelector('[data-cron-page=\"next\"]');
+    const cronModal = document.getElementById('cron-detail-modal');
+    const cronModalSubtitle = document.querySelector('[data-cron-modal-subtitle]');
+    const cronModalStatus = document.querySelector('[data-cron-modal-status]');
+    const cronModalTiming = document.querySelector('[data-cron-modal-timing]');
+    const cronModalError = document.querySelector('[data-cron-modal-error]');
+    const cronModalException = document.querySelector('[data-cron-modal-exception]');
+    const cronModalSent = document.querySelector('[data-cron-modal-sent]');
+    const cronModalSkipped = document.querySelector('[data-cron-modal-skipped]');
+    const cronModalJson = document.querySelector('[data-cron-modal-json]');
+    const cronModalClose = document.querySelectorAll('[data-cron-modal-close]');
 
     let analyticsTimer = null;
     let adminActionsTimer = null;
@@ -537,6 +697,181 @@
 
       toast.querySelector('.toast-dismiss')?.addEventListener('click', removeToast, { once: true });
       window.setTimeout(removeToast, 4500);
+    }
+
+    function formatDuration(value) {
+      if (!value && value !== 0) {
+        return '—';
+      }
+      const ms = Number(value);
+      if (Number.isNaN(ms)) {
+        return '—';
+      }
+      if (ms < 1000) {
+        return `${Math.round(ms)} ms`;
+      }
+      return `${(ms / 1000).toFixed(2)} s`;
+    }
+
+    function updateCronMetrics(metrics) {
+      if (!metrics) {
+        return;
+      }
+      if (cronKpiLastRun) {
+        cronKpiLastRun.textContent = metrics.last_run_at ? formatDateTime(metrics.last_run_at) : '—';
+      }
+      if (cronKpiOkRate) {
+        cronKpiOkRate.textContent = metrics.ok_rate_24h !== null && metrics.ok_rate_24h !== undefined
+          ? `${metrics.ok_rate_24h}%`
+          : '—';
+      }
+      if (cronKpiSent) {
+        cronKpiSent.textContent = metrics.sent_24h ?? '—';
+      }
+      if (cronKpiErrors) {
+        cronKpiErrors.textContent = metrics.errors_24h ?? '—';
+      }
+    }
+
+    function renderCronRows(items) {
+      if (!cronTableBody) {
+        return;
+      }
+      cronTableBody.innerHTML = '';
+      if (!items || items.length === 0) {
+        if (cronEmpty) {
+          cronEmpty.hidden = false;
+        }
+        return;
+      }
+      if (cronEmpty) {
+        cronEmpty.hidden = true;
+      }
+      const rows = items.map((entry) => {
+        const statusLabel = entry.ok ? 'OK' : 'ERROR';
+        const statusClass = entry.ok ? 'success' : 'danger';
+        return `
+          <tr data-cron-row="${entry.id}">
+            <td>${formatDateTime(entry.created_at)}</td>
+            <td><span class="badge ${statusClass}">${statusLabel}</span></td>
+            <td>${entry.sent ?? 0}</td>
+            <td>${entry.skipped ?? 0}</td>
+            <td>${formatDuration(entry.duration_ms)}</td>
+          </tr>
+        `;
+      });
+      cronTableBody.innerHTML = rows.join('');
+    }
+
+    async function loadCronRuns({ resetOffset = false } = {}) {
+      if (!ADMIN_CRON_RUNS_ENDPOINT || !cronTableBody) {
+        return;
+      }
+      if (resetOffset) {
+        cronState.offset = 0;
+      }
+      const params = new URLSearchParams({
+        limit: cronState.limit,
+        offset: cronState.offset,
+        include_metrics: '1',
+      });
+      if (cronState.ok) {
+        params.set('ok', cronState.ok);
+      }
+      if (cronState.sentGt) {
+        params.set('sent_gt', cronState.sentGt);
+      }
+      if (cronState.period && cronState.period !== 'all') {
+        params.set('period', cronState.period);
+      }
+      cronTableBody.setAttribute('aria-busy', 'true');
+      try {
+        const response = await fetch(`${ADMIN_CRON_RUNS_ENDPOINT}?${params.toString()}`);
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || 'Errore caricamento cron');
+        }
+        cronState.total = payload.total || 0;
+        renderCronRows(payload.items || []);
+        updateCronMetrics(payload.metrics);
+        if (cronPaginationLabel) {
+          const currentPage = Math.floor(cronState.offset / cronState.limit) + 1;
+          const totalPages = Math.max(1, Math.ceil((payload.total || 0) / cronState.limit));
+          cronPaginationLabel.textContent = `Pagina ${currentPage} di ${totalPages}`;
+        }
+        if (cronUpdatedLabel) {
+          cronUpdatedLabel.textContent = `Aggiornato ${formatDateTime(payload.generated_at || new Date().toISOString())}`;
+        }
+        if (cronPrevButton) {
+          cronPrevButton.disabled = cronState.offset <= 0;
+        }
+        if (cronNextButton) {
+          cronNextButton.disabled = cronState.offset + cronState.limit >= cronState.total;
+        }
+      } catch (error) {
+        if (cronEmpty) {
+          cronEmpty.hidden = false;
+          cronEmpty.textContent = 'Impossibile caricare i run cron.';
+        }
+      } finally {
+        cronTableBody.removeAttribute('aria-busy');
+      }
+    }
+
+    async function openCronModal(entryId) {
+      if (!cronModal) {
+        return;
+      }
+      cronModal.hidden = false;
+      cronModal.setAttribute('aria-hidden', 'false');
+      if (cronModalSubtitle) {
+        cronModalSubtitle.textContent = 'Caricamento dettagli…';
+      }
+      try {
+        const response = await fetch(`${ADMIN_CRON_RUNS_ENDPOINT}/${entryId}`);
+        const payload = await response.json();
+        if (!response.ok || !payload.ok) {
+          throw new Error(payload.error || 'Errore dettaglio cron');
+        }
+        const entry = payload.entry;
+        if (cronModalSubtitle) {
+          cronModalSubtitle.textContent = formatDateTime(entry.created_at);
+        }
+        if (cronModalStatus) {
+          cronModalStatus.className = `badge ${entry.ok ? 'success' : 'danger'}`;
+          cronModalStatus.textContent = entry.ok ? 'OK' : 'ERROR';
+        }
+        if (cronModalTiming) {
+          cronModalTiming.textContent = `Durata ${formatDuration(entry.duration_ms)}`;
+        }
+        if (cronModalError) {
+          cronModalError.textContent = entry.error || '—';
+        }
+        if (cronModalException) {
+          cronModalException.textContent = entry.exception_type || '—';
+        }
+        if (cronModalSent) {
+          cronModalSent.textContent = entry.sent ?? 0;
+        }
+        if (cronModalSkipped) {
+          cronModalSkipped.textContent = entry.skipped ?? 0;
+        }
+        if (cronModalJson) {
+          cronModalJson.textContent = JSON.stringify(entry.diagnostic_json || {}, null, 2);
+        }
+      } catch (error) {
+        if (cronModalSubtitle) {
+          cronModalSubtitle.textContent = 'Errore nel caricamento dei dettagli.';
+        }
+      }
+    }
+
+    function closeCronModal() {
+      if (!cronModal) {
+        return;
+      }
+      cronModal.hidden = true;
+      cronModal.setAttribute('aria-hidden', 'true');
     }
 
     function setButtonBusy(button, isBusy, label) {
@@ -1247,6 +1582,51 @@
       userAnalyticsRefresh?.addEventListener('click', () => loadUserAnalytics(true));
     }
 
+    if (cronPeriodSelect) {
+      cronState.period = cronPeriodSelect.value;
+      cronState.ok = cronOkSelect?.value || '';
+      cronState.sentGt = Number(cronSentSelect?.value || 0);
+      cronPeriodSelect.addEventListener('change', () => {
+        cronState.period = cronPeriodSelect.value;
+        loadCronRuns({ resetOffset: true });
+      });
+      cronOkSelect?.addEventListener('change', () => {
+        cronState.ok = cronOkSelect.value;
+        loadCronRuns({ resetOffset: true });
+      });
+      cronSentSelect?.addEventListener('change', () => {
+        cronState.sentGt = Number(cronSentSelect.value || 0);
+        loadCronRuns({ resetOffset: true });
+      });
+      cronRefreshButton?.addEventListener('click', () => loadCronRuns({ resetOffset: true }));
+      cronPrevButton?.addEventListener('click', () => {
+        cronState.offset = Math.max(0, cronState.offset - cronState.limit);
+        loadCronRuns();
+      });
+      cronNextButton?.addEventListener('click', () => {
+        if (cronState.offset + cronState.limit < cronState.total) {
+          cronState.offset += cronState.limit;
+          loadCronRuns();
+        }
+      });
+      cronTableBody?.addEventListener('click', (event) => {
+        const row = event.target instanceof Element ? event.target.closest('[data-cron-row]') : null;
+        if (!row) {
+          return;
+        }
+        const entryId = row.getAttribute('data-cron-row');
+        if (entryId) {
+          openCronModal(entryId);
+        }
+      });
+      cronModalClose?.forEach((button) => button.addEventListener('click', closeCronModal));
+      cronModal?.addEventListener('click', (event) => {
+        if (event.target === cronModal) {
+          closeCronModal();
+        }
+      });
+    }
+
     function initAdminAudit() {
       const eventsList = document.getElementById('admin-audit-events');
       const alertsList = document.getElementById('admin-alert-feed');
@@ -1391,6 +1771,7 @@
     loadAdminActions();
     refreshAnalytics();
     loadUserAnalytics();
+    loadCronRuns();
 
     analyticsTimer = window.setInterval(refreshAnalytics, 300000);
     adminActionsTimer = window.setInterval(loadAdminActions, 120000);
