@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from threading import Lock
 
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint, current_app, jsonify, request
 
+from app.services.telegram_service import TelegramService
 
 internal_bp = Blueprint("internal", __name__, url_prefix="/internal")
+_CRON_COOLDOWN = timedelta(minutes=5)
+_cron_lock = Lock()
+_last_cron_run: datetime | None = None
 
 
 @internal_bp.route("/worker/health", methods=["GET"])
@@ -55,3 +60,56 @@ def worker_health():
         status_code,
     )
 
+
+@internal_bp.route("/cron/check-alerts", methods=["POST"])
+def cron_check_alerts():
+    global _last_cron_run
+    secret = (current_app.config.get("CRON_SECRET") or "").strip()
+    provided_key = (request.args.get("key") or "").strip()
+    if not provided_key:
+        provided_key = (request.headers.get("X-Cron-Key") or "").strip()
+
+    if not secret or provided_key != secret:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+    now = datetime.now(timezone.utc)
+    with _cron_lock:
+        if _last_cron_run and now - _last_cron_run < _CRON_COOLDOWN:
+            return (
+                jsonify(
+                    {
+                        "ok": False,
+                        "error": "cooldown",
+                        "ts": now.isoformat(),
+                    }
+                ),
+                429,
+            )
+        _last_cron_run = now
+
+    current_app.logger.info("[CRON] check-alerts started")
+    try:
+        telegram_service = TelegramService()
+        result = telegram_service.check_and_send_alerts(raise_on_error=True)
+        payload = {
+            "ok": True,
+            "sent": int(result.get("sent", 0)),
+            "skipped": int(result.get("skipped", 0)),
+            "reason": result.get("reason", "completed"),
+            "ts": datetime.now(timezone.utc).isoformat(),
+        }
+        return jsonify(payload)
+    except Exception as exc:  # pragma: no cover - defensive guard
+        current_app.logger.exception("[CRON] check-alerts failed: %s", exc)
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": str(exc),
+                    "ts": datetime.now(timezone.utc).isoformat(),
+                }
+            ),
+            500,
+        )
+    finally:
+        current_app.logger.info("[CRON] check-alerts finished")
