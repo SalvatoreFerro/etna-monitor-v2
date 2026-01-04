@@ -39,6 +39,23 @@ def _get_client_ip() -> str | None:
     return request.remote_addr
 
 
+def _resolve_cron_key() -> str:
+    provided_key = (request.args.get("key") or "").strip()
+    if provided_key:
+        return provided_key
+    return (
+        request.headers.get("X-CRON-KEY")
+        or request.headers.get("X-Cron-Key")
+        or ""
+    ).strip()
+
+
+def _is_authorized_cron() -> bool:
+    secret = (current_app.config.get("CRON_SECRET") or "").strip()
+    provided_key = _resolve_cron_key()
+    return bool(secret and provided_key == secret)
+
+
 def _collect_csv_diagnostics() -> tuple[dict, pd.DataFrame | None, str | None]:
     data_dir = os.getenv("DATA_DIR", "data")
     csv_path = Path(data_dir) / "curva.csv"
@@ -203,21 +220,13 @@ def cron_check_alerts():
         query_string,
     )
 
-    secret = (current_app.config.get("CRON_SECRET") or "").strip()
-    provided_key = (request.args.get("key") or "").strip()
-    if not provided_key:
-        provided_key = (
-            request.headers.get("X-CRON-KEY")
-            or request.headers.get("X-Cron-Key")
-            or ""
-        ).strip()
-
-    authorized = bool(secret and provided_key == secret)
+    authorized = _is_authorized_cron()
     status_code = 200
     sent = 0
     skipped = 0
     cooldown_skipped = 0
     reason = "unknown"
+    skipped_by_reason: dict[str, int] = {}
     response_payload: dict | None = None
     diagnostic_snapshot: dict = {}
 
@@ -237,11 +246,13 @@ def cron_check_alerts():
             with _cron_lock:
                 if _last_cron_run and now - _last_cron_run < _CRON_COOLDOWN:
                     reason = "cooldown"
+                    skipped_by_reason["cooldown"] = 1
                     response_payload = {
                         "ok": True,
                         "sent": sent,
                         "skipped": skipped,
                         "reason": reason,
+                        "skipped_by_reason": skipped_by_reason,
                         "ts": now.isoformat(),
                     }
                 else:
@@ -250,37 +261,45 @@ def cron_check_alerts():
             if response_payload is None:
                 if not telegram_service.is_configured():
                     reason = "no_token_configured"
+                    skipped_by_reason["exception"] = 1
                     response_payload = {
                         "ok": True,
                         "skipped": True,
                         "reason": reason,
+                        "skipped_by_reason": skipped_by_reason,
                         "ts": now.isoformat(),
                     }
 
             if response_payload is None and csv_reason:
                 reason = csv_reason
+                skipped_by_reason["dataset_invalid"] = 1
                 response_payload = {
                     "ok": True,
                     "skipped": True,
                     "reason": reason,
+                    "skipped_by_reason": skipped_by_reason,
                     "ts": now.isoformat(),
                 }
 
             if response_payload is None and (dataset is None or dataset.empty):
                 reason = "dataset_invalid"
+                skipped_by_reason["dataset_invalid"] = 1
                 response_payload = {
                     "ok": True,
                     "skipped": True,
                     "reason": reason,
+                    "skipped_by_reason": skipped_by_reason,
                     "ts": now.isoformat(),
                 }
 
             if response_payload is None and not db_ok:
                 reason = "db_unavailable"
+                skipped_by_reason["exception"] = 1
                 response_payload = {
                     "ok": True,
                     "skipped": True,
                     "reason": reason,
+                    "skipped_by_reason": skipped_by_reason,
                     "ts": now.isoformat(),
                 }
 
@@ -289,16 +308,19 @@ def cron_check_alerts():
                 sent = int(result.get("sent", 0))
                 skipped = int(result.get("skipped", 0))
                 cooldown_skipped = int(result.get("cooldown_skipped", 0))
+                skipped_by_reason = result.get("skipped_by_reason") or {}
                 reason = result.get("reason") or "completed"
                 response_payload = {
                     "ok": True,
                     "sent": sent,
                     "skipped": skipped,
                     "reason": reason,
+                    "skipped_by_reason": skipped_by_reason,
                     "ts": datetime.now(timezone.utc).isoformat(),
                 }
     except Exception as exc:  # pragma: no cover - defensive guard
         reason = "exception"
+        skipped_by_reason["exception"] = skipped_by_reason.get("exception", 0) + 1
         current_app.logger.exception(
             "[CRON] check-alerts failed request_id=%s: %s", request_id, exc
         )
@@ -307,6 +329,7 @@ def cron_check_alerts():
             "error": "exception",
             "exception_type": type(exc).__name__,
             "message": str(exc),
+            "skipped_by_reason": skipped_by_reason,
             "ts": datetime.now(timezone.utc).isoformat(),
         }
     finally:
@@ -318,6 +341,7 @@ def cron_check_alerts():
                 diagnostic_snapshot["sent_count"] = sent
                 diagnostic_snapshot["skipped_count"] = skipped
                 diagnostic_snapshot["cooldown_skipped_count"] = cooldown_skipped
+                diagnostic_snapshot["skipped_by_reason"] = skipped_by_reason
                 response_payload["diagnostic"] = diagnostic_snapshot
         current_app.logger.info(
             "[CRON] check-alerts finished request_id=%s sent=%s skipped=%s reason=%s duration_ms=%.1f",
@@ -328,3 +352,113 @@ def cron_check_alerts():
             duration_ms,
         )
     return jsonify(response_payload), status_code
+
+
+@internal_bp.route("/cron/debug-user", methods=["GET"])
+def cron_debug_user():
+    if not _is_authorized_cron():
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+    email = (request.args.get("email") or "").strip().lower()
+    if not email:
+        return jsonify({"ok": False, "error": "missing_email"}), 400
+
+    user = User.query.filter(User.email == email).first()
+    if not user:
+        return jsonify({"ok": False, "error": "user_not_found"}), 404
+
+    telegram_service = TelegramService()
+    dataset = telegram_service._load_dataset()
+    now = datetime.now(timezone.utc)
+    last_point_value = None
+    last_point_ts = None
+    moving_avg = None
+    reason = None
+    window_size = 5
+    event_id = None
+
+    if dataset is None or dataset.empty:
+        reason = "dataset_invalid"
+    else:
+        recent_data = dataset.tail(10)
+        last_point_value = float(recent_data["value"].iloc[-1])
+        moving_avg = float(
+            telegram_service.calculate_moving_average(
+                recent_data["value"].tolist(), window_size=window_size
+            )
+        )
+        timestamp = recent_data["timestamp"].iloc[-1]
+        event_ts = timestamp.to_pydatetime() if hasattr(timestamp, "to_pydatetime") else timestamp
+        event_ts = telegram_service._utc(event_ts)
+        last_point_ts = event_ts.isoformat() if event_ts else str(timestamp)
+        event_id = telegram_service._compute_event_id(event_ts, moving_avg)
+
+    fallback_threshold = float(Config.ALERT_THRESHOLD_DEFAULT)
+    threshold_used = telegram_service._resolve_threshold(user)
+    effective_chat_id = telegram_service._resolve_effective_chat_id(user, allow_update=False)
+    last_alert_sent_at = telegram_service._utc(user.last_alert_sent_at)
+    cooldown_seconds_remaining = 0
+    if last_alert_sent_at:
+        cooldown_remaining = telegram_service.RATE_LIMIT - (now - last_alert_sent_at)
+        if cooldown_remaining.total_seconds() > 0:
+            cooldown_seconds_remaining = int(cooldown_remaining.total_seconds())
+
+    will_send = False
+    if reason is None:
+        if not user.telegram_opt_in:
+            reason = "opt_in_false"
+        elif not effective_chat_id:
+            reason = "missing_chat_id"
+        elif moving_avg is None or moving_avg < threshold_used:
+            reason = "below_threshold"
+        elif user.has_premium_access:
+            if telegram_service._is_rate_limited(user, now):
+                reason = "cooldown"
+            else:
+                last_alert = telegram_service._get_last_alert_event(user)
+                if not telegram_service._passed_hysteresis(
+                    user,
+                    threshold_used,
+                    moving_avg,
+                    last_alert,
+                ):
+                    reason = "already_sent"
+                else:
+                    will_send = True
+                    reason = "send"
+        else:
+            if (
+                event_id
+                and (user.free_alert_consumed or 0) == 0
+                and user.free_alert_event_id != event_id
+            ):
+                will_send = True
+                reason = "send_free_trial"
+            else:
+                reason = "not_premium"
+
+    payload = {
+        "email": user.email,
+        "user_id": user.id,
+        "is_premium": bool(user.is_premium),
+        "premium": bool(user.premium),
+        "premium_lifetime": bool(user.premium_lifetime),
+        "plan_type": user.plan_type,
+        "role": user.role,
+        "telegram_opt_in": bool(user.telegram_opt_in),
+        "chat_id": user.chat_id,
+        "telegram_chat_id": user.telegram_chat_id,
+        "effective_chat_id": effective_chat_id,
+        "threshold": user.threshold,
+        "fallback_threshold": fallback_threshold,
+        "threshold_used": threshold_used,
+        "last_alert_sent_at": last_alert_sent_at.isoformat() if last_alert_sent_at else None,
+        "now_utc": now.isoformat(),
+        "cooldown_seconds_remaining": cooldown_seconds_remaining,
+        "moving_avg": moving_avg,
+        "last_point_value": last_point_value,
+        "last_point_ts": last_point_ts,
+        "will_send": will_send,
+        "reason": reason,
+    }
+    return jsonify(payload)
