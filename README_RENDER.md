@@ -24,6 +24,7 @@ DATA_DIR=/data
 CSV_PATH=/data/curva.csv
 FLASK_ENV=production
 SECRET_KEY=your-production-secret-key
+CRON_SECRET=your-cron-secret
 DATABASE_URL=sqlite:////data/etna_monitor.db
 STATIC_ASSET_VERSION=$(git rev-parse --short HEAD)
 WORKER_HEARTBEAT_INTERVAL=30
@@ -70,6 +71,22 @@ python -m app.worker
 ```
 
 L'applicazione verifica lo stato delle migrazioni Alembic durante la creazione dell'app Flask (sia nel processo web che nel worker). In produzione il bootstrap fallisce se lo schema non è aggiornato a `head`; con lo script di pre-deploy e `startup.py` le migrazioni vengono applicate automaticamente evitando errori di multi-head. Il worker (`python -m app.worker`) si occupa di Telegram bot e scheduler APScheduler applicando un advisory lock Postgres per evitare istanze duplicate.
+
+## Render Cron: aggiornamento CSV + alert batch
+
+Per gli alert periodici non usare `app.worker`/APScheduler: crea un cron Render (ogni ora) che:
+
+1. aggiorna `curva.csv` con lo script già presente;
+2. chiama l'endpoint interno protetto per l'invio batch degli alert.
+
+Esempio di comando cron (schedulato `0 * * * *`):
+
+```
+python scripts/csv_updater.py && \
+curl -sS -X POST "https://your-app.onrender.com/internal/cron/check-alerts?key=$CRON_SECRET"
+```
+
+Assicurati che `CRON_SECRET` sia configurato sia nel web service (per validare la richiesta) sia nel cron job (per firmare la chiamata).
 
 ## Health Check Configuration
 
