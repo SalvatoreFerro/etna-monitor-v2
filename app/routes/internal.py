@@ -129,7 +129,7 @@ def _collect_db_diagnostics() -> tuple[dict, bool]:
                     User.telegram_chat_id.isnot(None),
                     User.chat_id.isnot(None),
                 ),
-                User.has_premium_access.is_(True),
+                User.premium_status_clause(),
             )
             .count()
         )
@@ -266,7 +266,7 @@ def cron_check_alerts():
                     "ts": now.isoformat(),
                 }
 
-            if response_payload is None and not dataset:
+            if response_payload is None and (dataset is None or dataset.empty):
                 reason = "dataset_invalid"
                 response_payload = {
                     "ok": True,
