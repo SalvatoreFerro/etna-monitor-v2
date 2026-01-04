@@ -25,6 +25,9 @@ class TelegramService:
     RATE_LIMIT = timedelta(hours=2)
     UPSELL_COOLDOWN = timedelta(hours=24)
 
+    def __init__(self) -> None:
+        self._cooldown_skipped_count = 0
+
     def _alerts_debug_enabled(self) -> bool:
         return os.getenv("ETNAMONITOR_DEBUG_ALERTS") == "1"
 
@@ -149,12 +152,23 @@ class TelegramService:
         """Evaluate tremor data and deliver alerts based on the user's plan."""
 
         try:
+            self._cooldown_skipped_count = 0
             if not self.is_configured():
-                return {"sent": 0, "skipped": 0, "reason": "no_token"}
+                return {
+                    "sent": 0,
+                    "skipped": 0,
+                    "cooldown_skipped": self._cooldown_skipped_count,
+                    "reason": "no_token",
+                }
 
             dataset = self._load_dataset()
             if dataset is None:
-                return {"sent": 0, "skipped": 0, "reason": "no_data"}
+                return {
+                    "sent": 0,
+                    "skipped": 0,
+                    "cooldown_skipped": self._cooldown_skipped_count,
+                    "reason": "no_data",
+                }
 
             recent_data = dataset.tail(10)
             current_value = recent_data['value'].iloc[-1]
@@ -181,7 +195,12 @@ class TelegramService:
             logger.exception("Error in alert checking")
             if raise_on_error:
                 raise
-            return {"sent": 0, "skipped": 0, "reason": "error"}
+            return {
+                "sent": 0,
+                "skipped": 0,
+                "cooldown_skipped": self._cooldown_skipped_count,
+                "reason": "error",
+            }
 
     # --- Internal helpers -------------------------------------------------
 
@@ -257,7 +276,12 @@ class TelegramService:
         users = self._get_subscribed_users()
         if not users:
             logger.debug("No Telegram subscribers eligible for alerts")
-            return {"sent": 0, "skipped": 0, "reason": "no_subscribers"}
+            return {
+                "sent": 0,
+                "skipped": 0,
+                "cooldown_skipped": self._cooldown_skipped_count,
+                "reason": "no_subscribers",
+            }
 
         sent = 0
         skipped = 0
@@ -335,7 +359,12 @@ class TelegramService:
             else:
                 skipped += 1
 
-        return {"sent": sent, "skipped": skipped, "reason": "completed"}
+        return {
+            "sent": sent,
+            "skipped": skipped,
+            "cooldown_skipped": self._cooldown_skipped_count,
+            "reason": "completed",
+        }
 
     def _resolve_threshold(self, user: User) -> float:
         if user.has_premium_access:
@@ -404,6 +433,7 @@ class TelegramService:
     ) -> bool:
         if self._is_rate_limited(user, now):
             logger.debug("Rate limit active for %s", user.email)
+            self._cooldown_skipped_count += 1
             self._log_alert_decision(
                 user,
                 bool(chat_id),
