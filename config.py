@@ -140,6 +140,7 @@ class Config:
     DATA_DIR = os.getenv("DATA_DIR", "/var/tmp")
     CSV_PATH = os.getenv("CSV_PATH") or os.path.join(DATA_DIR, "curva.csv")
     STATIC_ASSET_VERSION = _resolve_static_asset_version()
+    CRON_RUN_RETENTION_DAYS = int(os.getenv("CRON_RUN_RETENTION_DAYS", "30"))
 
     # Media library settings (Cloudinary + upload size in bytes).
     CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "")

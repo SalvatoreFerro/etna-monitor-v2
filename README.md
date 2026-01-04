@@ -270,6 +270,8 @@ open http://127.0.0.1:5000/hotspots
 ## Logging & Monitoraggio
 - **Storage log**: file testuali in `./logs`, rotazione giornaliera e livelli (INFO, WARNING, ERROR). Possibile integrazione con `logging.handlers.RotatingFileHandler`.
 - **Eventi alert**: ogni notifica registra timestamp, valore, soglia, utente e esito (inviato/scartato). I record sono consultabili dalla dashboard e via API admin.
+- **Monitor Sistema (admin)**: la pagina `/admin/monitor` mostra KPI 24h, timeline dei run cron, grafici e health checks. I dettagli del run sono consultabili dal drawer sulla tabella.
+- **Retention CronRun**: i log dei run vengono conservati per 30 giorni (configurabile con `CRON_RUN_RETENTION_DAYS`). Il purge avviene automaticamente ad ogni nuovo log.
 - **Estensioni future**: esportazione verso ELK/Graylog o metriche Prometheus per dashboarding avanzato.
 
 ## Deploy (Ambiente di Produzione)

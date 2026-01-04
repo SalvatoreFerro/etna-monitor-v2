@@ -1,7 +1,7 @@
 import csv
 import io
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 from uuid import uuid4
@@ -18,7 +18,7 @@ from flask import (
     current_app,
 )
 from flask_login import current_user
-from sqlalchemy import and_, cast, func, or_
+from sqlalchemy import and_, cast, func, or_, text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
 from werkzeug.datastructures import FileStorage
@@ -35,6 +35,7 @@ from ..models import (
     CommunityPost,
     ForumThread,
     ForumReply,
+    CronRun,
 )
 from ..models.user import User
 from ..models.event import Event
@@ -116,6 +117,41 @@ def _parse_datetime_local(value: str | None) -> datetime | None:
         return datetime.fromisoformat(value)
     except ValueError:
         return None
+
+
+def _parse_datetime_param(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    raw = value.strip()
+    if not raw:
+        return None
+    try:
+        parsed = datetime.fromisoformat(raw)
+    except ValueError:
+        try:
+            parsed = datetime.strptime(raw, "%Y-%m-%d")
+        except ValueError:
+            return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def _parse_range_window(value: str | None) -> timedelta:
+    if not value:
+        return timedelta(hours=24)
+    normalized = value.strip().lower()
+    if normalized.endswith("h"):
+        try:
+            return timedelta(hours=int(normalized[:-1]))
+        except ValueError:
+            return timedelta(hours=24)
+    if normalized.endswith("d"):
+        try:
+            return timedelta(days=int(normalized[:-1]))
+        except ValueError:
+            return timedelta(days=1)
+    return timedelta(hours=24)
 
 
 def _apply_tracking_filters(query, model, start_dt, end_dt, banner_id, page_filter):
@@ -384,6 +420,12 @@ def admin_home():
             "description": "Aggiorna piani, resetta prove e controlla gli alert.",
             "icon": "fa-users-cog",
             "url": url_for("admin.admin_home"),
+        },
+        {
+            "label": "Monitor sistema",
+            "description": "KPI cron, timeline dei run e health checks.",
+            "icon": "fa-wave-square",
+            "url": url_for("admin.monitor_system"),
         },
         {
             "label": "Moderazione community",
@@ -2601,4 +2643,164 @@ def set_theme():
 
     return jsonify(
         {"success": True, "message": f"Theme changed to {theme}", "theme": theme}
+    )
+
+
+@bp.route("/monitor")
+@admin_required
+def monitor_system():
+    return render_template("admin/monitor.html")
+
+
+def _apply_cron_run_filters(query):
+    job_type = (request.args.get("job_type") or "").strip().lower()
+    ok_param = (request.args.get("ok") or "").strip().lower()
+    start_param = request.args.get("start")
+    end_param = request.args.get("end")
+    range_param = request.args.get("range")
+
+    if job_type:
+        query = query.filter(CronRun.job_type == job_type)
+
+    if ok_param in {"true", "false"}:
+        query = query.filter(CronRun.ok.is_(ok_param == "true"))
+
+    start_dt = _parse_datetime_param(start_param)
+    end_dt = _parse_datetime_param(end_param)
+    if range_param and not (start_dt or end_dt):
+        window = _parse_range_window(range_param)
+        end_dt = datetime.now(timezone.utc)
+        start_dt = end_dt - window
+
+    if start_dt:
+        query = query.filter(CronRun.created_at >= start_dt)
+    if end_dt:
+        query = query.filter(CronRun.created_at <= end_dt)
+    return query
+
+
+@bp.route("/api/monitor/runs")
+@admin_required
+def monitor_runs():
+    limit = _coerce_positive_int(request.args.get("limit"), default=100)
+    query = _apply_cron_run_filters(CronRun.query)
+    runs = (
+        query.order_by(CronRun.created_at.desc())
+        .limit(min(limit, 250))
+        .all()
+    )
+    return jsonify({"runs": [run.serialize() for run in runs]})
+
+
+@bp.route("/api/monitor/runs/<int:run_id>")
+@admin_required
+def monitor_run_detail(run_id: int):
+    run = CronRun.query.get_or_404(run_id)
+    return jsonify(run.serialize(include_payload=True))
+
+
+@bp.route("/api/monitor/kpis")
+@admin_required
+def monitor_kpis():
+    window = _parse_range_window(request.args.get("range"))
+    now = datetime.now(timezone.utc)
+    start_dt = now - window
+
+    base_query = CronRun.query.filter(CronRun.created_at >= start_dt)
+    runs_total = base_query.count()
+    failures_count = base_query.filter(CronRun.ok.is_(False)).count()
+    sent_total = (
+        db.session.query(func.coalesce(func.sum(CronRun.sent_count), 0))
+        .filter(CronRun.created_at >= start_dt)
+        .scalar()
+        or 0
+    )
+    skipped_total = (
+        db.session.query(func.coalesce(func.sum(CronRun.skipped_count), 0))
+        .filter(CronRun.created_at >= start_dt)
+        .scalar()
+        or 0
+    )
+
+    last_run = CronRun.query.order_by(CronRun.created_at.desc()).first()
+    last_csv_run = (
+        CronRun.query.filter(CronRun.job_type == "csv_updater")
+        .order_by(CronRun.created_at.desc())
+        .first()
+    )
+    if not last_csv_run:
+        last_csv_run = (
+            CronRun.query.filter(CronRun.csv_mtime.isnot(None))
+            .order_by(CronRun.created_at.desc())
+            .first()
+        )
+
+    last_point_run = (
+        CronRun.query.filter(CronRun.last_point_ts.isnot(None))
+        .order_by(CronRun.created_at.desc())
+        .first()
+    )
+
+    status = "DOWN"
+    if last_run:
+        age_seconds = (now - last_run.created_at).total_seconds() if last_run.created_at else None
+        recent_failures = failures_count > 0
+        if age_seconds is not None and age_seconds > 60 * 90:
+            status = "DOWN"
+        elif not last_run.ok:
+            status = "DOWN"
+        elif recent_failures:
+            status = "DEGRADED"
+        else:
+            status = "OK"
+
+    health_checks = {
+        "db_reachable": True,
+        "csv_exists": False,
+        "csv_mtime": None,
+        "telegram_configured": bool(current_app.config.get("TELEGRAM_BOT_TOKEN")),
+        "premium_chat_users": 0,
+    }
+
+    try:
+        db.session.execute(text("SELECT 1"))
+    except SQLAlchemyError:
+        db.session.rollback()
+        health_checks["db_reachable"] = False
+
+    csv_path_value = current_app.config.get("CURVA_CSV_PATH") or current_app.config.get("CSV_PATH")
+    csv_path = Path(csv_path_value) if csv_path_value else None
+    if csv_path and csv_path.exists():
+        health_checks["csv_exists"] = True
+        try:
+            stat = csv_path.stat()
+            health_checks["csv_mtime"] = datetime.fromtimestamp(
+                stat.st_mtime, tz=timezone.utc
+            ).isoformat()
+        except OSError:
+            health_checks["csv_mtime"] = None
+
+    premium_chat_count = (
+        User.query.filter(
+            User.telegram_opt_in.is_(True),
+            or_(User.telegram_chat_id.isnot(None), User.chat_id.isnot(None)),
+            User.premium_status_clause(),
+        )
+        .count()
+    )
+    health_checks["premium_chat_users"] = int(premium_chat_count or 0)
+
+    return jsonify(
+        {
+            "range": request.args.get("range") or "24h",
+            "status": status,
+            "last_run": last_run.serialize() if last_run else None,
+            "runs_total": runs_total,
+            "failures_count": failures_count,
+            "sent_total": int(sent_total),
+            "skipped_total": int(skipped_total),
+            "last_csv_update": last_csv_run.serialize() if last_csv_run else None,
+            "last_point": last_point_run.serialize() if last_point_run else None,
+            "health_checks": health_checks,
+        }
     )
