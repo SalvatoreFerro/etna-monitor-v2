@@ -1,17 +1,24 @@
 import csv
 import json
+import logging
 import os
+import sys
 import time
 from datetime import datetime
 from pathlib import Path
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from backend.utils.extract_png import process_png_to_csv
-from app.utils.logger import configure_logging, get_logger
 
 
 DEFAULT_INTERVAL_SECONDS = 3600
 MAX_RETRIES = 3
 RETRY_BACKOFF_SECONDS = 30
+
+log = logging.getLogger("csv_updater")
 
 
 def _resolve_csv_metrics_path() -> Path:
@@ -69,9 +76,8 @@ def _parse_iso_timestamp(value: str) -> datetime | None:
 
 
 def run_update(ingv_url: str, csv_path: Path) -> dict:
-    logger = get_logger("csv_updater")
     result = process_png_to_csv(ingv_url, str(csv_path))
-    logger.info(
+    log.info(
         "[CSV] update complete rows=%s last_ts=%s output=%s",
         result.get("rows"),
         result.get("last_ts"),
@@ -80,8 +86,7 @@ def run_update(ingv_url: str, csv_path: Path) -> dict:
     return result
 
 
-def update_with_retries(ingv_url: str, csv_path: Path) -> None:
-    logger = get_logger("csv_updater")
+def update_with_retries(ingv_url: str, csv_path: Path) -> bool:
     last_error = None
 
     for attempt in range(1, MAX_RETRIES + 1):
@@ -89,22 +94,26 @@ def update_with_retries(ingv_url: str, csv_path: Path) -> None:
             result = run_update(ingv_url, csv_path)
         except Exception as exc:
             last_error = str(exc)
-            logger.exception("[CSV] update failed (attempt %s/%s)", attempt, MAX_RETRIES)
+            log.exception("[CSV] update failed (attempt %s/%s)", attempt, MAX_RETRIES)
             if attempt < MAX_RETRIES:
                 time.sleep(RETRY_BACKOFF_SECONDS * attempt)
             continue
 
         last_ts = _read_csv_last_timestamp(csv_path)
         _record_csv_update(result.get("rows"), last_ts)
-        return
+        return True
 
     last_ts = _read_csv_last_timestamp(csv_path)
     _record_csv_update(None, last_ts, error_message=last_error or "update_failed")
+    log.error("[CSV] update failed after %s attempts", MAX_RETRIES)
+    return False
 
 
 def main() -> None:
-    log_dir = os.getenv("LOG_DIR")
-    configure_logging(log_dir)
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+    )
 
     ingv_url = os.getenv("INGV_URL", "https://www.ct.ingv.it/RMS_Etna/2.png")
     csv_path = Path(os.getenv("CSV_PATH", "/data/curva.csv"))
@@ -112,7 +121,9 @@ def main() -> None:
     run_once = os.getenv("RUN_ONCE", "").lower() in {"1", "true", "yes"}
 
     while True:
-        update_with_retries(ingv_url, csv_path)
+        success = update_with_retries(ingv_url, csv_path)
+        if not success:
+            sys.exit(1)
         if run_once:
             break
         time.sleep(interval_seconds)

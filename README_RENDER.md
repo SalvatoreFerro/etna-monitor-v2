@@ -82,7 +82,7 @@ Per gli alert periodici non usare `app.worker`/APScheduler: crea un cron Render 
 Esempio di comando cron (schedulato `0 * * * *`):
 
 ```
-python scripts/csv_updater.py && \
+PYTHONPATH=/opt/render/project/src python scripts/csv_updater.py && \
 curl -sS -X POST "https://your-app.onrender.com/internal/cron/check-alerts?key=$CRON_SECRET"
 ```
 
