@@ -67,6 +67,7 @@ def _collect_csv_diagnostics() -> tuple[dict, pd.DataFrame | None, str | None]:
         "last_point_ts": None,
         "moving_avg": None,
         "threshold_used": None,
+        "threshold_source": None,
     }
 
     if not csv_path.exists():
@@ -111,6 +112,7 @@ def _collect_csv_diagnostics() -> tuple[dict, pd.DataFrame | None, str | None]:
     )
     diagnostics["moving_avg"] = float(moving_avg)
     diagnostics["threshold_used"] = float(Config.ALERT_THRESHOLD_DEFAULT)
+    diagnostics["threshold_source"] = "default"
 
     return diagnostics, df, None
 
@@ -227,8 +229,17 @@ def cron_check_alerts():
     cooldown_skipped = 0
     reason = "unknown"
     skipped_by_reason: dict[str, int] = {}
+    required_reasons = [
+        "below_threshold",
+        "not_premium",
+        "no_chat_id",
+        "cooldown",
+        "already_sent",
+        "error",
+    ]
     response_payload: dict | None = None
     diagnostic_snapshot: dict = {}
+    premium_samples: list[dict] = []
 
     try:
         if not authorized:
@@ -309,6 +320,7 @@ def cron_check_alerts():
                 skipped = int(result.get("skipped", 0))
                 cooldown_skipped = int(result.get("cooldown_skipped", 0))
                 skipped_by_reason = result.get("skipped_by_reason") or {}
+                premium_samples = result.get("premium_samples") or []
                 reason = result.get("reason") or "completed"
                 response_payload = {
                     "ok": True,
@@ -338,10 +350,19 @@ def cron_check_alerts():
             response_payload.setdefault("ts", datetime.now(timezone.utc).isoformat())
             response_payload["duration_ms"] = round(duration_ms, 1)
             if authorized:
+                normalized_reasons = {**(skipped_by_reason or {})}
+                if "exception" in normalized_reasons and "error" not in normalized_reasons:
+                    normalized_reasons["error"] = normalized_reasons.get("error", 0) + int(
+                        normalized_reasons.get("exception", 0)
+                    )
+                for key in required_reasons:
+                    normalized_reasons.setdefault(key, 0)
+                response_payload["skipped_by_reason"] = normalized_reasons
                 diagnostic_snapshot["sent_count"] = sent
                 diagnostic_snapshot["skipped_count"] = skipped
                 diagnostic_snapshot["cooldown_skipped_count"] = cooldown_skipped
-                diagnostic_snapshot["skipped_by_reason"] = skipped_by_reason
+                diagnostic_snapshot["skipped_by_reason"] = normalized_reasons
+                diagnostic_snapshot["premium_samples"] = premium_samples
                 response_payload["diagnostic"] = diagnostic_snapshot
         current_app.logger.info(
             "[CRON] check-alerts finished request_id=%s sent=%s skipped=%s reason=%s duration_ms=%.1f",
@@ -394,7 +415,7 @@ def cron_debug_user():
         event_id = telegram_service._compute_event_id(event_ts, moving_avg)
 
     fallback_threshold = float(Config.ALERT_THRESHOLD_DEFAULT)
-    threshold_used = telegram_service._resolve_threshold(user)
+    threshold_used, threshold_fallback_used = telegram_service._resolve_threshold(user)
     effective_chat_id = telegram_service._resolve_effective_chat_id(user, allow_update=False)
     last_alert_sent_at = telegram_service._utc(user.last_alert_sent_at)
     cooldown_seconds_remaining = 0
@@ -408,7 +429,7 @@ def cron_debug_user():
         if not user.telegram_opt_in:
             reason = "opt_in_false"
         elif not effective_chat_id:
-            reason = "missing_chat_id"
+            reason = "no_chat_id"
         elif moving_avg is None or moving_avg < threshold_used:
             reason = "below_threshold"
         elif user.has_premium_access:
@@ -452,6 +473,8 @@ def cron_debug_user():
         "threshold": user.threshold,
         "fallback_threshold": fallback_threshold,
         "threshold_used": threshold_used,
+        "threshold_fallback_used": threshold_fallback_used,
+        "threshold_source": "fallback_default" if threshold_fallback_used else "user",
         "last_alert_sent_at": last_alert_sent_at.isoformat() if last_alert_sent_at else None,
         "now_utc": now.isoformat(),
         "cooldown_seconds_remaining": cooldown_seconds_remaining,
