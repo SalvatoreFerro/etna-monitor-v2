@@ -149,6 +149,9 @@ class TelegramService:
         """Evaluate tremor data and deliver alerts based on the user's plan."""
 
         try:
+            if not self.is_configured():
+                return {"sent": 0, "skipped": 0, "reason": "no_token"}
+
             dataset = self._load_dataset()
             if dataset is None:
                 return {"sent": 0, "skipped": 0, "reason": "no_data"}

@@ -86,7 +86,7 @@ python scripts/csv_updater.py && \
 curl -sS -X POST "https://your-app.onrender.com/internal/cron/check-alerts?key=$CRON_SECRET"
 ```
 
-Assicurati che `CRON_SECRET` sia configurato sia nel web service (per validare la richiesta) sia nel cron job (per firmare la chiamata).
+Assicurati che `CRON_SECRET` sia configurato sia nel web service (per validare la richiesta) sia nel cron job (per firmare la chiamata). L'endpoint cron esegue solo la logica di invio alert Telegram e non dipende da tabelle/admin audit.
 
 ## Health Check Configuration
 

@@ -6,6 +6,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from threading import Lock
+from time import perf_counter
 
 from flask import Blueprint, current_app, jsonify, request
 
@@ -67,49 +68,68 @@ def cron_check_alerts():
     secret = (current_app.config.get("CRON_SECRET") or "").strip()
     provided_key = (request.args.get("key") or "").strip()
     if not provided_key:
-        provided_key = (request.headers.get("X-Cron-Key") or "").strip()
+        provided_key = (
+            request.headers.get("X-CRON-KEY")
+            or request.headers.get("X-Cron-Key")
+            or ""
+        ).strip()
 
     if not secret or provided_key != secret:
         return jsonify({"ok": False, "error": "unauthorized"}), 401
 
+    started_at = perf_counter()
+    sent = 0
+    skipped = 0
+    reason = "unknown"
     now = datetime.now(timezone.utc)
-    with _cron_lock:
-        if _last_cron_run and now - _last_cron_run < _CRON_COOLDOWN:
-            return (
-                jsonify(
-                    {
-                        "ok": False,
-                        "error": "cooldown",
-                        "ts": now.isoformat(),
-                    }
-                ),
-                429,
-            )
-        _last_cron_run = now
-
     current_app.logger.info("[CRON] check-alerts started")
     try:
+        with _cron_lock:
+            if _last_cron_run and now - _last_cron_run < _CRON_COOLDOWN:
+                reason = "cooldown"
+                return jsonify(
+                    {
+                        "ok": True,
+                        "sent": sent,
+                        "skipped": skipped,
+                        "reason": reason,
+                        "ts": now.isoformat(),
+                    }
+                )
+            _last_cron_run = now
+
         telegram_service = TelegramService()
         result = telegram_service.check_and_send_alerts(raise_on_error=True)
+        sent = int(result.get("sent", 0))
+        skipped = int(result.get("skipped", 0))
+        reason = result.get("reason") or "completed"
         payload = {
             "ok": True,
-            "sent": int(result.get("sent", 0)),
-            "skipped": int(result.get("skipped", 0)),
-            "reason": result.get("reason", "completed"),
+            "sent": sent,
+            "skipped": skipped,
+            "reason": reason,
             "ts": datetime.now(timezone.utc).isoformat(),
         }
         return jsonify(payload)
     except Exception as exc:  # pragma: no cover - defensive guard
+        reason = "internal_error"
         current_app.logger.exception("[CRON] check-alerts failed: %s", exc)
         return (
             jsonify(
                 {
                     "ok": False,
-                    "error": str(exc),
+                    "error": "internal_error",
                     "ts": datetime.now(timezone.utc).isoformat(),
                 }
             ),
             500,
         )
     finally:
-        current_app.logger.info("[CRON] check-alerts finished")
+        duration_ms = (perf_counter() - started_at) * 1000
+        current_app.logger.info(
+            "[CRON] check-alerts finished sent=%s skipped=%s reason=%s duration_ms=%.1f",
+            sent,
+            skipped,
+            reason,
+            duration_ms,
+        )
