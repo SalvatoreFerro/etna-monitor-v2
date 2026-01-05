@@ -1563,6 +1563,12 @@
     flex-wrap: wrap;
   }
 
+  .blog-card__reading-time,
+  .blog-card__updated {
+    font-size: 0.85rem;
+    color: rgba(226, 232, 240, 0.7);
+  }
+
   .blog-article__hero {
     background: rgba(10, 17, 34, 0.72);
     border-bottom: 1px solid rgba(148, 163, 184, 0.12);

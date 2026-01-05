@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+import re
 
 from slugify import slugify
 
@@ -13,6 +14,8 @@ class BlogPost(db.Model):
     """Content entity for the blog section managed from the admin panel."""
 
     __tablename__ = "blog_posts"
+    DEFAULT_AUTHOR_NAME = "Salvatore Ferro"
+    DEFAULT_AUTHOR_SLUG = "salvatore-ferro"
 
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(180), nullable=False)
@@ -27,6 +30,9 @@ class BlogPost(db.Model):
     seo_description = db.Column(db.String(300), nullable=True)
     seo_keywords = db.Column(db.String(300), nullable=True)
     seo_score = db.Column(db.Integer, nullable=False, default=0)
+    author_name = db.Column(db.String(120), nullable=True, default=DEFAULT_AUTHOR_NAME)
+    author_slug = db.Column(db.String(140), nullable=True, default=DEFAULT_AUTHOR_SLUG)
+    sources = db.Column(db.JSON, nullable=True)
     published = db.Column(db.Boolean, nullable=False, default=True, server_default=db.text("true"))
     published_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -109,6 +115,26 @@ class BlogPost(db.Model):
     @abstract.setter
     def abstract(self, value: str | None) -> None:
         self.summary = value
+
+    @property
+    def author_display_name(self) -> str:
+        return (self.author_name or "").strip() or self.DEFAULT_AUTHOR_NAME
+
+    @property
+    def author_display_slug(self) -> str:
+        fallback = self.author_display_name
+        if self.author_slug:
+            return self.author_slug
+        return BlogPost.build_slug(fallback) or self.DEFAULT_AUTHOR_SLUG
+
+    @property
+    def reading_time_minutes(self) -> int:
+        content = (self.content or "").strip()
+        if not content:
+            return 1
+        words = re.findall(r"\\w+", content)
+        minutes = max(1, round(len(words) / 200))
+        return minutes
 
 
 def track_blog_update(mapper, connection, target: BlogPost) -> None:  # pragma: no cover - hook side effect

@@ -5,6 +5,7 @@
     {% set computed_description = page_description or default_page_description %}
     {% set computed_og_title = page_og_title or computed_title %}
     {% set computed_og_description = page_og_description or computed_description %}
+    {% set computed_og_type = page_og_type or "website" %}
     {% set social_image_url = url_for('static', filename='images/appstaticiconsapple-touch-icon.png', _external=True) %}
     {% set computed_og_image = page_og_image or social_image_url %}
     {% set computed_canonical = canonical_url %}
@@ -67,7 +68,7 @@
 
     <meta property="og:title" content="{{ computed_og_title }}" />
     <meta property="og:description" content="{{ computed_og_description }}" />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content="{{ computed_og_type }}" />
     <meta property="og:url" content="{{ canonical_home if request.path == '/' else normalized_canonical }}" />
     <meta property="og:image" content="{{ computed_og_image }}" />
     <meta property="og:image:width" content="1200" />

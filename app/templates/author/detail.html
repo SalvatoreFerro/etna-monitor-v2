@@ -1,0 +1,39 @@
+{% extends "layout.html" %}
+
+{% set page_title = author_name ~ " | Autore EtnaMonitor" %}
+{% set page_description = "Profilo autore di " ~ author_name ~ ", fondatore e responsabile editoriale di EtnaMonitor." %}
+{% set canonical_url = author_url %}
+{% set page_og_type = "profile" %}
+
+{% set page_structured_data = {
+  "@context": "https://schema.org",
+  "@type": "Person",
+  "name": author_name,
+  "url": author_url,
+  "jobTitle": "Fondatore e responsabile editoriale",
+  "worksFor": {
+    "@type": "Organization",
+    "name": "EtnaMonitor"
+  }
+} %}
+
+{% block content %}
+<section class="page-hero" aria-labelledby="author-hero-title">
+  <div class="container">
+    <span class="pill pill--glow">Autore</span>
+    <h1 id="author-hero-title">{{ author_name }}</h1>
+    <p class="lead">{{ author_name }} è il fondatore di EtnaMonitor e coordina la pubblicazione delle news sul monitoraggio dell'Etna.</p>
+  </div>
+</section>
+
+<section class="section section--narrow">
+  <div class="container">
+    <div class="card">
+    <h2>Bio</h2>
+    <p>{{ author_name }} cura la verifica delle fonti, l'analisi dei dati INGV e l'aggiornamento continuo delle informazioni pubblicate su EtnaMonitor.</p>
+    <p>EtnaMonitor è una piattaforma indipendente dedicata alla comunicazione di dati tecnici e aggiornamenti affidabili sull'attività del vulcano Etna.</p>
+      <a class="btn btn-secondary" href="{{ url_for('community.blog_index') }}">Leggi gli articoli</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

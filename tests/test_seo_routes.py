@@ -39,6 +39,7 @@ def test_robots_txt_content(client):
     assert 'Disallow: /internal' in content
     assert 'Sitemap:' in content
     assert '/sitemap.xml' in content
+    assert '/news-sitemap.xml' in content
 
 
 def test_sitemap_xml_exists(client):

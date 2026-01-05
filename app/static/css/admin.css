@@ -632,6 +632,13 @@
   width: 100%;
 }
 
+.admin-form__hint {
+  display: block;
+  margin-top: 6px;
+  color: #f4c76b;
+  font-size: 0.85rem;
+}
+
 .admin-inline-editor {
   display: grid;
   gap: clamp(0.75rem, 2vw, 1.25rem);
