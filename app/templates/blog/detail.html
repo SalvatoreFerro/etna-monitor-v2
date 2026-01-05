@@ -1,12 +1,12 @@
 {% extends "layout.html" %}
 
 {% set canonical_url = post_url %}
-{% set published_timestamp = post.published_at or post.created_at %}
 {% set hero_image = post.hero_image_url or post.hero_image %}
 {% set page_title = post.meta_title or post.seo_title or post.title %}
 {% set page_description = post.meta_description or post.seo_description or post.abstract or post.title %}
 {% set page_og_title = post.meta_title or post.seo_title or post.title %}
 {% set page_og_description = page_description %}
+{% set page_og_type = "article" %}
 {% if hero_image %}
   {% set page_og_image = hero_image %}
 {% endif %}
@@ -21,22 +21,33 @@
   <script type="application/ld+json" nonce="{{ csp_nonce() }}">
   {
     "@context": "https://schema.org",
-    "@type": "BlogPosting",
+    "@type": "NewsArticle",
     "headline": "{{ post.title|e }}",
     "description": "{{ (post.abstract or computed_description)|e }}",
     "image": [
       {% if hero_image %}"{{ hero_image }}"{% else %}"{{ default_og_image }}"{% endif %}
     ],
-    "datePublished": "{{ published_timestamp.isoformat() }}",
-    "dateModified": "{{ (post.updated_at or published_timestamp).isoformat() }}",
+    "datePublished": "{{ published_timestamp_utc.isoformat() }}",
+    "dateModified": "{{ updated_timestamp_utc.isoformat() }}",
     "author": {
-      "@type": "Organization",
-      "name": "EtnaMonitor"
+      "@type": "Person",
+      "name": "{{ author_name|e }}",
+      "url": "{{ author_url }}"
     },
+    "publisher": {
+      "@type": "Organization",
+      "name": "EtnaMonitor",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "{{ publisher_logo_url }}"
+      }
+    },
+    "isAccessibleForFree": true,
     "mainEntityOfPage": {
       "@type": "WebPage",
       "@id": "{{ computed_canonical }}"
-    }
+    },
+    "inLanguage": "it-IT"
   }
   </script>
 {% endblock %}
@@ -52,7 +63,7 @@
 {% endblock %}
 
 {% block content %}
-<article class="post" itemscope itemtype="https://schema.org/Article">
+<article class="post" itemscope itemtype="https://schema.org/NewsArticle">
   <header class="post__header">
     {% if preview_mode %}
       <div class="post__preview-watermark" aria-hidden="true">PREVIEW</div>
@@ -68,15 +79,16 @@
       </nav>
       <h1 class="post__title" itemprop="headline">{{ post.title }}</h1>
       <p class="post__meta">
-        <time datetime="{{ published_timestamp.isoformat() }}" itemprop="datePublished">{{ published_timestamp.strftime('%d %B %Y') }}</time>
+        <time datetime="{{ published_timestamp_local.isoformat() }}" itemprop="datePublished">Pubblicato {{ published_display }}</time>
         {% if author_name %}
           <span class="post__meta-separator" aria-hidden="true">·</span>
           <span class="post__meta-author" itemprop="author" itemscope itemtype="https://schema.org/Person">
-            <span itemprop="name">{{ author_name }}</span>
+            <a href="{{ author_url }}" itemprop="url"><span itemprop="name">{{ author_name }}</span></a>
           </span>
         {% endif %}
-        {% if post.seo_score is not none %}
-          <span class="badge {{ 'success' if post.seo_score >= 70 else 'warning' if post.seo_score >= 40 else 'muted' }}">SEO {{ post.seo_score }}%</span>
+        {% if show_updated %}
+          <span class="post__meta-separator" aria-hidden="true">·</span>
+          <time datetime="{{ updated_timestamp_local.isoformat() }}" itemprop="dateModified">Aggiornato {{ updated_display }}</time>
         {% endif %}
       </p>
       {% if hero_image %}
@@ -132,6 +144,17 @@
             </article>
           {% endfor %}
         </div>
+      </section>
+    {% endif %}
+
+    {% if sources %}
+      <section class="post__sources" aria-labelledby="post-sources-title">
+        <h2 id="post-sources-title" class="post__sources-title">Fonti</h2>
+        <ul class="post__sources-list">
+          {% for source in sources %}
+            <li><a href="{{ source }}" target="_blank" rel="noopener nofollow">{{ source }}</a></li>
+          {% endfor %}
+        </ul>
       </section>
     {% endif %}
 

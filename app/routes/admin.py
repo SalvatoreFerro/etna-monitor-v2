@@ -119,6 +119,14 @@ def _parse_datetime_local(value: str | None) -> datetime | None:
         return None
 
 
+def _parse_sources(value: str | None) -> list[str] | None:
+    if not value:
+        return None
+    sources = [line.strip() for line in value.splitlines()]
+    sources = [source for source in sources if source]
+    return sources or None
+
+
 def _parse_datetime_param(value: str | None) -> datetime | None:
     if not value:
         return None
@@ -658,6 +666,13 @@ def blog_manager():
                 hero_image=hero_image_url,  # legacy sync for existing data consumers
                 meta_title=(request.form.get("meta_title") or "").strip() or None,
                 meta_description=(request.form.get("meta_description") or "").strip() or None,
+                author_name=(request.form.get("author_name") or "").strip()
+                or BlogPost.DEFAULT_AUTHOR_NAME,
+                author_slug=BlogPost.build_slug(
+                    (request.form.get("author_name") or "").strip()
+                    or BlogPost.DEFAULT_AUTHOR_NAME
+                ),
+                sources=_parse_sources(request.form.get("sources")),
                 published=request.form.get("published") == "1",
                 published_at=_parse_datetime_local(request.form.get("published_at")),
             )
@@ -684,8 +699,12 @@ def blog_manager():
             post.hero_image = hero_image_url  # legacy sync for existing data consumers
             post.meta_title = (request.form.get("meta_title") or "").strip() or None
             post.meta_description = (request.form.get("meta_description") or "").strip() or None
+            author_name = (request.form.get("author_name") or "").strip() or BlogPost.DEFAULT_AUTHOR_NAME
+            post.author_name = author_name
+            post.author_slug = BlogPost.build_slug(author_name)
             post.published = request.form.get("published") == "1"
             post.published_at = _parse_datetime_local(request.form.get("published_at"))
+            post.sources = _parse_sources(request.form.get("sources"))
             if request.form.get("auto_seo") == "1":
                 post.apply_seo_boost()
             db.session.commit()
@@ -787,15 +806,29 @@ def media_library():
 @admin_required
 def blog_preview(post_id: int):
     post = BlogPost.query.get_or_404(post_id)
-    author_name = getattr(post, "author", None) or getattr(post, "author_name", None)
+    author_name = post.author_display_name
     post_url = url_for("community.blog_detail", slug=post.slug, _external=True)
+    author_url = url_for("main.author_detail", slug=post.author_display_slug, _external=True)
     body_html = render_markdown(post.content or "")
+    published_ts = post.published_at or post.created_at
+    updated_ts = post.updated_at or published_ts
 
+    publisher_logo_url = url_for("static", filename="images/logo.svg", _external=True)
     return render_template(
         "blog/detail.html",
         post=post,
         post_url=post_url,
         author_name=author_name,
+        author_url=author_url,
+        publisher_logo_url=publisher_logo_url,
+        published_timestamp_utc=published_ts,
+        published_timestamp_local=published_ts,
+        published_display=published_ts.strftime("%d %B %Y, %H:%M UTC") if published_ts else "",
+        updated_timestamp_utc=updated_ts,
+        updated_timestamp_local=updated_ts,
+        updated_display=updated_ts.strftime("%d %B %Y, %H:%M UTC") if updated_ts else "",
+        show_updated=bool(updated_ts and published_ts and updated_ts != published_ts),
+        sources=post.sources or [],
         related_posts=[],
         previous_post=None,
         next_post=None,

@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import csv
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
+import html
 from pathlib import Path
 from typing import Tuple
 
 from flask import Blueprint, Response, current_app, request, url_for
-from sqlalchemy import and_, or_
+from sqlalchemy import and_, func, or_
 from sqlalchemy.orm import joinedload
 
 from app.models.blog import BlogPost
@@ -381,10 +382,71 @@ def sitemap() -> Response:
     return Response(payload, mimetype="application/xml")
 
 
+@bp.route("/news-sitemap.xml")
+def news_sitemap() -> Response:
+    base_url = _canonical_base_url()
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(hours=48)
+    posts: list[BlogPost] = []
+
+    try:
+        posts = (
+            BlogPost.query.filter(
+                BlogPost.published.is_(True),
+                or_(BlogPost.published_at.is_(None), BlogPost.published_at <= now),
+                func.coalesce(BlogPost.published_at, BlogPost.created_at) >= cutoff,
+            )
+            .order_by(func.coalesce(BlogPost.published_at, BlogPost.created_at).desc())
+            .limit(200)
+            .all()
+        )
+    except Exception as exc:  # pragma: no cover - defensive log
+        current_app.logger.warning("[NEWS SITEMAP] Failed to fetch posts: %s", exc)
+
+    xml = [
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+        "<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\"",
+        "  xmlns:news=\"http://www.google.com/schemas/sitemap-news/0.9\">",
+    ]
+
+    for post in posts:
+        published_ts = post.published_at or post.created_at
+        if published_ts is None:
+            continue
+        if published_ts.tzinfo is None:
+            published_ts = published_ts.replace(tzinfo=timezone.utc)
+        else:
+            published_ts = published_ts.astimezone(timezone.utc)
+        loc = _normalize_external_url(
+            url_for("community.blog_detail", slug=post.slug, _external=True),
+            base_url,
+        )
+        xml.extend(
+            [
+                "  <url>",
+                f"    <loc>{loc}</loc>",
+                "    <news:news>",
+                "      <news:publication>",
+                "        <news:name>EtnaMonitor</news:name>",
+                "        <news:language>it</news:language>",
+                "      </news:publication>",
+                f"      <news:publication_date>{published_ts.isoformat()}</news:publication_date>",
+                f"      <news:title>{html.escape(post.title)}</news:title>",
+                "    </news:news>",
+                "  </url>",
+            ]
+        )
+
+    xml.append("</urlset>")
+    payload = "\n".join(xml)
+    return Response(payload, mimetype="application/xml")
+
+
 @bp.route("/robots.txt")
 def robots_txt() -> Response:
     base_url = _canonical_base_url()
     sitemap_url = f"{base_url}/sitemap.xml"
+    news_sitemap_url = f"{base_url}/news-sitemap.xml"
     
     # Build content dynamically using shared exclusion constants
     content_lines = ["User-agent: *", "Allow: /"]
@@ -393,7 +455,7 @@ def robots_txt() -> Response:
     for prefix in EXCLUDED_PREFIXES:
         content_lines.append(f"Disallow: {prefix}")
     
-    content_lines.extend([f"Sitemap: {sitemap_url}", ""])
+    content_lines.extend([f"Sitemap: {sitemap_url}", f"Sitemap: {news_sitemap_url}", ""])
     
     content = "\n".join(content_lines)
     return Response(content, mimetype="text/plain")

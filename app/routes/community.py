@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
+from zoneinfo import ZoneInfo
 
 import requests
 from flask import (
@@ -35,6 +36,34 @@ from ..filters import render_markdown
 
 bp = Blueprint("community", __name__, url_prefix="/community")
 
+ROME_TZ = ZoneInfo("Europe/Rome")
+
+
+def _ensure_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _to_rome(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    return _ensure_utc(value).astimezone(ROME_TZ)
+
+
+def _format_datetime_local(value: datetime | None) -> str:
+    if value is None:
+        return ""
+    return value.strftime("%d %B %Y, %H:%M %Z")
+
+
+def _format_date_local(value: datetime | None) -> str:
+    if value is None:
+        return ""
+    return value.strftime("%d %B %Y")
+
 
 @bp.route("/blog/")
 def blog_index():
@@ -47,7 +76,25 @@ def blog_index():
         .order_by(func.coalesce(BlogPost.published_at, BlogPost.created_at).desc())
         .all()
     )
-    return render_template("blog/index.html", posts=posts)
+    post_cards = []
+    for post in posts:
+        published_ts = _ensure_utc(post.published_at or post.created_at)
+        published_local = _to_rome(published_ts)
+        updated_local = _to_rome(post.updated_at)
+        show_updated = (
+            updated_local is not None
+            and published_local is not None
+            and updated_local.date() != published_local.date()
+        )
+        post_cards.append(
+            {
+                "post": post,
+                "published_display": _format_date_local(published_local),
+                "updated_display": _format_date_local(updated_local) if show_updated else None,
+                "reading_time": post.reading_time_minutes,
+            }
+        )
+    return render_template("blog/index.html", posts=posts, post_cards=post_cards)
 
 
 @bp.route("/blog/<slug>/")
@@ -99,8 +146,29 @@ def blog_detail(slug: str):
         .first()
     )
 
-    author_name = getattr(post, "author", None) or getattr(post, "author_name", None)
+    if post.published_at is None:
+        current_app.logger.warning(
+            "[BLOG] Missing published_at for post %s; using created_at timestamp.",
+            post.slug,
+        )
+    published_ts_utc = _ensure_utc(post.published_at or post.created_at)
+    if published_ts_utc is None:
+        fallback_date = datetime.now(ROME_TZ).date()
+        fallback_local = datetime.combine(fallback_date, time.min, tzinfo=ROME_TZ)
+        published_ts_utc = fallback_local.astimezone(timezone.utc)
+        current_app.logger.warning(
+            "[BLOG] Missing timestamps for post %s; falling back to midnight Europe/Rome.",
+            post.slug,
+        )
+    updated_ts_utc = _ensure_utc(post.updated_at or published_ts_utc) or published_ts_utc
+    published_local = _to_rome(published_ts_utc)
+    updated_local = _to_rome(updated_ts_utc)
+    show_updated = updated_ts_utc.replace(microsecond=0) != published_ts_utc.replace(microsecond=0)
+
+    author_name = post.author_display_name
+    author_slug = post.author_display_slug
     post_url = url_for("community.blog_detail", slug=post.slug, _external=True)
+    author_url = url_for("main.author_detail", slug=author_slug, _external=True)
     body_html = render_markdown(post.content or "")
 
     breadcrumb_schema = {
@@ -134,11 +202,22 @@ def blog_detail(slug: str):
         ],
     }
 
+    publisher_logo_url = url_for("static", filename="images/logo.svg", _external=True)
     return render_template(
         "blog/detail.html",
         post=post,
         post_url=post_url,
         author_name=author_name,
+        author_url=author_url,
+        publisher_logo_url=publisher_logo_url,
+        published_timestamp_utc=published_ts_utc,
+        published_timestamp_local=published_local,
+        published_display=_format_datetime_local(published_local),
+        updated_timestamp_utc=updated_ts_utc,
+        updated_timestamp_local=updated_local,
+        updated_display=_format_datetime_local(updated_local),
+        show_updated=show_updated,
+        sources=post.sources or [],
         related_posts=related_posts,
         previous_post=previous_post,
         next_post=next_post,

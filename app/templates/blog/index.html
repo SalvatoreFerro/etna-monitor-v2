@@ -18,21 +18,25 @@
 
 <section class="blog-list" aria-label="Articoli pubblicati">
   <div class="container">
-    {% if posts %}
+    {% if post_cards %}
       <div class="blog-grid">
-        {% for post in posts %}
+        {% for card in post_cards %}
+          {% set post = card.post %}
           <article class="blog-card">
             {% if post.hero_image_url or post.hero_image %}
               <img src="{{ post.hero_image_url or post.hero_image }}" alt="{{ post.title }}" loading="lazy" decoding="async" />
             {% endif %}
             <div class="blog-card__content">
-              <span class="blog-card__date">{{ post.created_at.strftime('%d %B %Y') }}</span>
+              <span class="blog-card__date">{{ card.published_display }}</span>
               <h2><a href="{{ url_for('community.blog_detail', slug=post.slug) }}">{{ post.title }}</a></h2>
               {% if post.summary %}
                 <p>{{ post.summary }}</p>
               {% endif %}
               <div class="blog-card__meta">
-                <span class="badge {{ 'success' if post.seo_score >= 70 else 'warning' if post.seo_score >= 40 else 'muted' }}">SEO {{ post.seo_score }}%</span>
+                <span class="blog-card__reading-time">Tempo di lettura: {{ card.reading_time }} min</span>
+                {% if card.updated_display %}
+                  <span class="blog-card__updated">Aggiornato: {{ card.updated_display }}</span>
+                {% endif %}
                 <a class="btn btn-ghost btn-sm" href="{{ url_for('community.blog_detail', slug=post.slug) }}">Leggi l'articolo</a>
               </div>
             </div>

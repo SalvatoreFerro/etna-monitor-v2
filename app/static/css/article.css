@@ -101,8 +101,13 @@
   font-weight: 500;
 }
 
-.post__meta .badge {
-  font-size: 0.85rem;
+.post__meta a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.post__meta a:hover {
+  text-decoration: underline;
 }
 
 .blog-hero {
@@ -127,6 +132,24 @@
 
 .post__body {
   padding-block: 1.5rem 3rem;
+}
+
+.post__sources {
+  margin-top: 2.5rem;
+  padding: 1.5rem;
+  background: rgba(10, 17, 34, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 1rem;
+}
+
+.post__sources-title {
+  margin-bottom: 0.75rem;
+}
+
+.post__sources-list {
+  display: grid;
+  gap: 0.5rem;
+  padding-left: 1.25rem;
 }
 
 .blog-body {

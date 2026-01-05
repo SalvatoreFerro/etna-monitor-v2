@@ -26,6 +26,7 @@ from ..utils.auth import get_current_user
 from app.bootstrap import get_alembic_status
 from app.models import db
 from app.models.user import User
+from app.models.blog import BlogPost
 from sqlalchemy import or_
 
 from ..extensions import cache
@@ -37,6 +38,20 @@ from backend.services.hotspots.storage import read_cache, unavailable_payload
 from config import DEFAULT_GA_MEASUREMENT_ID
 
 bp = Blueprint("main", __name__)
+
+
+@bp.route("/author/<slug>")
+def author_detail(slug: str):
+    author_slug = BlogPost.DEFAULT_AUTHOR_SLUG
+    author_name = BlogPost.DEFAULT_AUTHOR_NAME
+    if slug != author_slug:
+        abort(404)
+    author_url = url_for("main.author_detail", slug=author_slug, _external=True)
+    return render_template(
+        "author/detail.html",
+        author_name=author_name,
+        author_url=author_url,
+    )
 
 
 WEATHER_CODE_DESCRIPTIONS: dict[int, str] = {

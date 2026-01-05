@@ -36,6 +36,10 @@
           <input type="text" name="title" required maxlength="180" placeholder="Titolo coinvolgente" />
         </label>
         <label>
+          <span>Autore</span>
+          <input type="text" name="author_name" maxlength="120" value="Salvatore Ferro" />
+        </label>
+        <label>
           <span>Hero image (URL)</span>
           <input type="url" name="hero_image_url" placeholder="https://…" data-hero-input />
           <small><a href="{{ url_for('admin.media_library') }}" target="_blank" rel="noopener">Apri Media Library</a></small>
@@ -59,6 +63,10 @@
       <label>
         <span>Contenuto</span>
         <textarea name="content" rows="8" required placeholder="Markdown o testo semplice supportato"></textarea>
+      </label>
+      <label>
+        <span>Fonti (una URL per riga)</span>
+        <textarea name="sources" rows="3" placeholder="https://..."></textarea>
       </label>
       <div class="form-grid">
         <label class="checkbox">
@@ -114,9 +122,12 @@
                     <span class="badge muted">Bozza</span>
                   {% endif %}
                 </td>
-                <td data-label="Pubblicazione">
-                  {{ post.published_at.strftime('%d/%m/%Y %H:%M') if post.published_at else '—' }}
-                </td>
+        <td data-label="Pubblicazione">
+          {{ post.published_at.strftime('%d/%m/%Y %H:%M') if post.published_at else '—' }}
+          {% if not post.published_at %}
+            <span class="badge warning">TODO: aggiungi orario</span>
+          {% endif %}
+        </td>
                 <td data-label="Aggiornato">{{ post.updated_at.strftime('%d/%m/%Y %H:%M') if post.updated_at else '—' }}</td>
                 <td data-label="Azioni">
                   <details class="admin-inline-editor">
@@ -128,6 +139,10 @@
                       <label>
                         <span>Titolo</span>
                         <input type="text" name="title" value="{{ post.title }}" maxlength="180" required />
+                      </label>
+                      <label>
+                        <span>Autore</span>
+                        <input type="text" name="author_name" value="{{ post.author_display_name }}" maxlength="120" />
                       </label>
                       <label>
                         <span>Hero image</span>
@@ -156,8 +171,15 @@
                         <textarea name="content" rows="6" required>{{ post.content }}</textarea>
                       </label>
                       <label>
+                        <span>Fonti (una URL per riga)</span>
+                        <textarea name="sources" rows="3">{{ post.sources | join('\n') if post.sources else '' }}</textarea>
+                      </label>
+                      <label>
                         <span>Programmazione pubblicazione (UTC)</span>
                         <input type="datetime-local" name="published_at" value="{{ post.published_at.strftime('%Y-%m-%dT%H:%M') if post.published_at else '' }}" />
+                        {% if not post.published_at %}
+                          <small class="admin-form__hint">TODO: aggiungi un orario di pubblicazione esplicito.</small>
+                        {% endif %}
                       </label>
                       <div class="form-grid">
                         <label class="checkbox">
