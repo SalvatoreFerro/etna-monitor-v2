@@ -679,38 +679,38 @@ class TelegramService:
         state_prev: str,
         state_new: str,
     ) -> tuple[bool, Optional[str]]:
-            if self._is_rate_limited(user, now):
-                logger.debug("Rate limit active for %s", user.email)
-                self._cooldown_skipped_count += 1
-                cooldown_remaining = self.RATE_LIMIT - (now - self._utc(user.last_alert_sent_at))
-                logger.info(
-                    "alert_check cooldown active user_id=%s email=%s remaining_s=%s",
-                    user.id,
-                    user.email,
-                    round(cooldown_remaining.total_seconds()),
-                )
-                self._log_alert_decision(
-                    user,
-                    bool(chat_id),
-                    threshold,
-                    threshold_fallback_used,
+        if self._is_rate_limited(user, now):
+            logger.debug("Rate limit active for %s", user.email)
+            self._cooldown_skipped_count += 1
+            cooldown_remaining = self.RATE_LIMIT - (now - self._utc(user.last_alert_sent_at))
+            logger.info(
+                "alert_check cooldown active user_id=%s email=%s remaining_s=%s",
+                user.id,
+                user.email,
+                round(cooldown_remaining.total_seconds()),
+            )
+            self._log_alert_decision(
+                user,
+                bool(chat_id),
+                threshold,
+                threshold_fallback_used,
                 current_value,
                 moving_avg,
                 window_size,
                 state_prev,
                 state_new,
-                    False,
-                    "cooldown",
-                )
-                self._log_alert_evaluation(
-                    user,
-                    threshold,
-                    moving_avg,
-                    "skip",
-                    "cooldown",
-                    cooldown_remaining=cooldown_remaining,
-                )
-                return False, "cooldown"
+                False,
+                "cooldown",
+            )
+            self._log_alert_evaluation(
+                user,
+                threshold,
+                moving_avg,
+                "skip",
+                "cooldown",
+                cooldown_remaining=cooldown_remaining,
+            )
+            return False, "cooldown"
 
         if not self._passed_hysteresis(user, threshold, moving_avg, last_alert):
             logger.debug("Hysteresis gate blocked alert for %s", user.email)
