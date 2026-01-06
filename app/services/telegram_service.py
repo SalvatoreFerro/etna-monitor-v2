@@ -24,7 +24,7 @@ class TelegramService:
     """Handle tremor alerts for Telegram subscribers."""
 
     RATE_LIMIT = timedelta(minutes=Config.ALERT_RATE_LIMIT_MINUTES)
-    RENOTIFY_INTERVAL = timedelta(hours=Config.ALERT_RENOTIFY_HOURS)
+    RENOTIFY_INTERVAL = timedelta(minutes=30)
     MOVING_AVG_WINDOW = Config.ALERT_MOVING_AVG_WINDOW
     UPSELL_COOLDOWN = timedelta(hours=24)
 
@@ -203,7 +203,7 @@ class TelegramService:
             cooldown_seconds,
         )
     
-    def check_and_send_alerts(self, raise_on_error: bool = False):
+    def check_and_send_alerts(self, raise_on_error: bool = False, *, allow_free: bool = False):
         """Evaluate tremor data and deliver alerts based on the user's plan."""
 
         try:
@@ -214,6 +214,10 @@ class TelegramService:
                     "skipped": 0,
                     "cooldown_skipped": self._cooldown_skipped_count,
                     "skipped_by_reason": {},
+                    "free_candidates_count": 0,
+                    "free_trial_sent_count": 0,
+                    "skipped_free_already_consumed_count": 0,
+                    "skipped_not_premium_count": 0,
                     "reason": "no_token",
                 }
 
@@ -224,6 +228,10 @@ class TelegramService:
                     "skipped": 0,
                     "cooldown_skipped": self._cooldown_skipped_count,
                     "skipped_by_reason": {"dataset_invalid": 1},
+                    "free_candidates_count": 0,
+                    "free_trial_sent_count": 0,
+                    "skipped_free_already_consumed_count": 0,
+                    "skipped_not_premium_count": 0,
                     "reason": "dataset_invalid",
                 }
 
@@ -247,6 +255,10 @@ class TelegramService:
                     "skipped": 0,
                     "cooldown_skipped": self._cooldown_skipped_count,
                     "skipped_by_reason": {"no_new_points": 1},
+                    "free_candidates_count": 0,
+                    "free_trial_sent_count": 0,
+                    "skipped_free_already_consumed_count": 0,
+                    "skipped_not_premium_count": 0,
                     "reason": "no_new_points",
                 }
 
@@ -288,6 +300,7 @@ class TelegramService:
                 moving_avg_real,
                 now,
                 window_size=window_size,
+                allow_free=allow_free,
             )
             alert_state.last_checked_ts = event_ts
             alert_state.touch()
@@ -304,6 +317,10 @@ class TelegramService:
                 "skipped": 0,
                 "cooldown_skipped": self._cooldown_skipped_count,
                 "skipped_by_reason": {"exception": 1},
+                "free_candidates_count": 0,
+                "free_trial_sent_count": 0,
+                "skipped_free_already_consumed_count": 0,
+                "skipped_not_premium_count": 0,
                 "reason": "error",
             }
 
@@ -400,6 +417,10 @@ class TelegramService:
                 "skipped": 0,
                 "cooldown_skipped": self._cooldown_skipped_count,
                 "skipped_by_reason": {},
+                "free_candidates_count": 0,
+                "free_trial_sent_count": 0,
+                "skipped_free_already_consumed_count": 0,
+                "skipped_not_premium_count": 0,
                 "reason": "no_subscribers",
             }
 
@@ -407,6 +428,10 @@ class TelegramService:
         skipped = 0
         skipped_by_reason: dict[str, int] = {}
         premium_samples: list[dict] = []
+        free_candidates_count = 0
+        free_trial_sent_count = 0
+        skipped_free_already_consumed_count = 0
+        skipped_not_premium_count = 0
 
         for user in users:
             if not user.telegram_opt_in:
@@ -474,6 +499,7 @@ class TelegramService:
                     "not_premium",
                 )
                 skipped += 1
+                skipped_not_premium_count += 1
                 skipped_by_reason["not_premium"] = (
                     skipped_by_reason.get("not_premium", 0) + 1
                 )
@@ -529,6 +555,9 @@ class TelegramService:
                 )
                 continue
 
+            if not user.has_premium_access and allow_free:
+                free_candidates_count += 1
+
             if user.has_premium_access:
                 sent_alert, decision_reason = self._process_premium_user(
                     user,
@@ -560,6 +589,8 @@ class TelegramService:
                 )
             if sent_alert:
                 sent += 1
+                if decision_reason == "sent_free_trial":
+                    free_trial_sent_count += 1
                 self._record_premium_sample(
                     premium_samples,
                     user,
@@ -579,6 +610,8 @@ class TelegramService:
                 if decision_reason is None:
                     decision_reason = "error"
                 skipped_by_reason[decision_reason] = skipped_by_reason.get(decision_reason, 0) + 1
+                if decision_reason == "free_trial_already_consumed":
+                    skipped_free_already_consumed_count += 1
                 self._record_premium_sample(
                     premium_samples,
                     user,
@@ -599,6 +632,10 @@ class TelegramService:
             "skipped": skipped,
             "cooldown_skipped": self._cooldown_skipped_count,
             "skipped_by_reason": skipped_by_reason,
+            "free_candidates_count": free_candidates_count,
+            "free_trial_sent_count": free_trial_sent_count,
+            "skipped_free_already_consumed_count": skipped_free_already_consumed_count,
+            "skipped_not_premium_count": skipped_not_premium_count,
             "premium_samples": premium_samples,
             "reason": "completed",
         }
@@ -654,6 +691,7 @@ class TelegramService:
                 "is_premium": bool(has_premium_access),
                 "will_send": will_send,
                 "reason": reason,
+                "decision_reason": reason,
             }
         )
 
@@ -927,7 +965,7 @@ class TelegramService:
                     True,
                     "sent_free_trial",
                 )
-                return True, None
+                return True, "sent_free_trial"
             else:
                 logger.error("Failed to deliver free trial alert to %s", user.email)
                 self._log_alert_evaluation(
@@ -965,17 +1003,17 @@ class TelegramService:
             state_prev,
             state_new,
             False,
-            "not_premium",
+            "free_trial_already_consumed",
         )
         self._log_alert_evaluation(
             user,
             threshold,
             peak_value,
             "skip",
-            "not_premium",
+            "free_trial_already_consumed",
         )
         self._send_upsell(user, now, chat_id)
-        return False, "not_premium"
+        return False, "free_trial_already_consumed"
 
     def _send_upsell(self, user: User, now: datetime, chat_id: Optional[int]) -> None:
         last_upsell = (
@@ -1111,6 +1149,36 @@ class TelegramService:
         )
 
     @staticmethod
+    def simulate_free_trial_decision(
+        *,
+        allow_free: bool,
+        free_alert_consumed: bool,
+        last_free_event_id: Optional[str],
+        event_id: str,
+    ) -> dict:
+        """Deterministic simulation of free-trial eligibility (no DB/network)."""
+        if not allow_free:
+            return {
+                "sent": False,
+                "reason": "not_premium",
+                "free_alert_consumed": free_alert_consumed,
+                "free_alert_event_id": last_free_event_id,
+            }
+        if free_alert_consumed or last_free_event_id == event_id:
+            return {
+                "sent": False,
+                "reason": "free_trial_already_consumed",
+                "free_alert_consumed": free_alert_consumed,
+                "free_alert_event_id": last_free_event_id,
+            }
+        return {
+            "sent": True,
+            "reason": "sent_free_trial",
+            "free_alert_consumed": True,
+            "free_alert_event_id": event_id,
+        }
+
+    @staticmethod
     def simulate_premium_alert_flow(
         values: list[float],
         *,
@@ -1119,7 +1187,7 @@ class TelegramService:
         sample_minutes: int = 1,
         hysteresis_delta: Optional[float] = None,
         rate_limit_minutes: Optional[int] = None,
-        renotify_hours: Optional[int] = None,
+        renotify_minutes: Optional[int] = None,
     ) -> list[dict]:
         """Deterministic simulation of premium alert decisions (no DB/network)."""
         start_time = start_time or datetime(2024, 1, 1, tzinfo=timezone.utc)
@@ -1132,9 +1200,7 @@ class TelegramService:
             else rate_limit_minutes
         )
         renotify_interval = timedelta(
-            hours=Config.ALERT_RENOTIFY_HOURS
-            if renotify_hours is None
-            else renotify_hours
+            minutes=30 if renotify_minutes is None else renotify_minutes
         )
         last_alert_sent_at: Optional[datetime] = None
         last_hysteresis_reset_at: Optional[datetime] = None
