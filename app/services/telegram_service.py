@@ -23,7 +23,9 @@ logger = get_logger(__name__)
 class TelegramService:
     """Handle tremor alerts for Telegram subscribers."""
 
-    RATE_LIMIT = timedelta(hours=2)
+    RATE_LIMIT = timedelta(minutes=Config.ALERT_RATE_LIMIT_MINUTES)
+    RENOTIFY_INTERVAL = timedelta(minutes=Config.ALERT_RENOTIFY_MINUTES)
+    MOVING_AVG_WINDOW = Config.ALERT_MOVING_AVG_WINDOW
     UPSELL_COOLDOWN = timedelta(hours=24)
 
     def __init__(self) -> None:
@@ -39,7 +41,8 @@ class TelegramService:
         threshold: float,
         threshold_fallback_used: bool,
         current_value: float,
-        moving_avg: float,
+        peak_value: float,
+        moving_avg_real: Optional[float],
         window_size: Optional[int],
         state_prev: str,
         state_new: str,
@@ -50,7 +53,8 @@ class TelegramService:
             return
         logger.debug(
             "alert_debug user_id=%s email=%s is_premium=%s chat_id_present=%s "
-            "threshold=%.2f threshold_fallback_used=%s current=%.2f avg=%.2f window=%s "
+            "threshold=%.2f threshold_fallback_used=%s current=%.2f peak_value=%.2f "
+            "media_mobile_diagnostica=%s window=%s "
             "state_prev=%s state_new=%s sent=%s reason=%s",
             user.id,
             user.email,
@@ -59,7 +63,8 @@ class TelegramService:
             float(threshold),
             threshold_fallback_used,
             float(current_value),
-            float(moving_avg),
+            float(peak_value),
+            f"{moving_avg_real:.2f}" if moving_avg_real is not None else "n/a",
             window_size if window_size is not None else "n/a",
             state_prev,
             state_new,
@@ -246,23 +251,33 @@ class TelegramService:
                     "reason": "no_new_points",
                 }
 
-            max_value = float(new_points["value"].max())
+            peak_value = float(new_points["value"].max())
             latest_row = new_points.iloc[-1]
             current_value = float(latest_row["value"])
             timestamp = latest_row["timestamp"]
             event_ts = timestamp.to_pydatetime() if hasattr(timestamp, "to_pydatetime") else timestamp
             event_ts = self._utc(event_ts)
-            event_id = self._compute_event_id(event_ts, max_value)
+            event_id = self._compute_event_id(event_ts, peak_value)
+            window_size = max(1, int(self.MOVING_AVG_WINDOW))
+            diagnostics_window = max(window_size, 10)
+            diagnostics_window = min(diagnostics_window, 50)
+            diagnostics_values = dataset["value"].tail(diagnostics_window).tolist()
+            moving_avg_real = float(
+                self.calculate_moving_average(
+                    diagnostics_values,
+                    window_size=window_size,
+                )
+            )
 
             logger.info(
-                "alert_check last_checked_ts=%s new_points=%s last_point_ts=%s max_value=%.3f",
+                "alert_check last_checked_ts=%s new_points=%s last_point_ts=%s peak_value=%.3f",
                 self._format_timestamp(last_checked_ts),
                 len(new_points),
                 self._format_timestamp(event_ts),
-                max_value,
+                peak_value,
             )
             baseline_threshold = float(Config.ALERT_THRESHOLD_DEFAULT)
-            baseline_decision = "send" if max_value >= baseline_threshold else "skip"
+            baseline_decision = "send" if peak_value >= baseline_threshold else "skip"
             logger.info(
                 "alert_check evaluation baseline_threshold=%.2f decision=%s",
                 baseline_threshold,
@@ -273,9 +288,10 @@ class TelegramService:
             result = self._dispatch_alerts(
                 event_id,
                 current_value,
-                max_value,
+                peak_value,
+                moving_avg_real,
                 now,
-                window_size=None,
+                window_size=window_size,
             )
             alert_state.last_checked_ts = event_ts
             alert_state.touch()
@@ -328,11 +344,11 @@ class TelegramService:
 
         return df
 
-    def _compute_event_id(self, timestamp: datetime, moving_avg: float) -> str:
+    def _compute_event_id(self, timestamp: datetime, peak_value: float) -> str:
         window_start = timestamp.replace(second=0, microsecond=0)
         window_minute = (window_start.minute // 5) * 5
         window_start = window_start.replace(minute=window_minute)
-        return f"{window_start.isoformat()}_{moving_avg:.3f}"
+        return f"{window_start.isoformat()}_{peak_value:.3f}"
 
     def send_alert(self, event_id: str, value_mv: float, ts: datetime) -> None:
         """Dispatch a pre-computed alert using the freemium rules."""
@@ -345,6 +361,7 @@ class TelegramService:
                 event_id,
                 value_mv,
                 value_mv,
+                None,
                 now,
                 window_size=None,
                 allow_free=True,
@@ -372,7 +389,8 @@ class TelegramService:
         self,
         event_id: str,
         current_value: float,
-        moving_avg: float,
+        peak_value: float,
+        moving_avg_real: Optional[float],
         now: datetime,
         window_size: Optional[int],
         *,
@@ -402,7 +420,8 @@ class TelegramService:
                     0,
                     False,
                     current_value,
-                    moving_avg,
+                    peak_value,
+                    moving_avg_real,
                     window_size,
                     "n/a",
                     "n/a",
@@ -421,7 +440,8 @@ class TelegramService:
                     0,
                     False,
                     current_value,
-                    moving_avg,
+                    peak_value,
+                    moving_avg_real,
                     window_size,
                     "n/a",
                     "n/a",
@@ -439,7 +459,7 @@ class TelegramService:
                 self._log_alert_evaluation(
                     user,
                     threshold,
-                    moving_avg,
+                    peak_value,
                     "skip",
                     "not_premium",
                 )
@@ -449,7 +469,8 @@ class TelegramService:
                     0,
                     False,
                     current_value,
-                    moving_avg,
+                    peak_value,
+                    moving_avg_real,
                     window_size,
                     "n/a",
                     "n/a",
@@ -464,19 +485,26 @@ class TelegramService:
 
             threshold, threshold_fallback_used = self._resolve_threshold(user)
             last_alert = self._get_last_alert_event(user)
-            self._register_hysteresis_release(user, threshold, moving_avg, now, last_alert)
+            last_alert_event_ts = self._utc(last_alert.timestamp) if last_alert else None
+            last_alert_sent_at = self._utc(user.last_alert_sent_at)
+            self._register_hysteresis_release(user, threshold, peak_value, now, last_alert_event_ts)
 
-            state_prev = "above" if last_alert and last_alert.value is not None and last_alert.value >= threshold else "below"
-            state_new = "above" if moving_avg >= threshold else "below"
+            state_prev = (
+                "above"
+                if last_alert and last_alert.value is not None and last_alert.value >= threshold
+                else "below"
+            )
+            state_new = "above" if peak_value >= threshold else "below"
 
-            if moving_avg < threshold:
+            if peak_value < threshold:
                 self._log_alert_decision(
                     user,
                     bool(chat_id),
                     threshold,
                     threshold_fallback_used,
                     current_value,
-                    moving_avg,
+                    peak_value,
+                    moving_avg_real,
                     window_size,
                     state_prev,
                     state_new,
@@ -486,7 +514,7 @@ class TelegramService:
                 self._log_alert_evaluation(
                     user,
                     threshold,
-                    moving_avg,
+                    peak_value,
                     "skip",
                     "below_threshold",
                 )
@@ -499,21 +527,28 @@ class TelegramService:
                     user,
                     threshold,
                     threshold_fallback_used,
-                    moving_avg,
+                    peak_value,
+                    moving_avg_real,
+                    last_alert_sent_at,
+                    last_alert_event_ts,
+                    self._next_allowed_at_short(last_alert_sent_at),
+                    self._next_allowed_at_renotify(last_alert_event_ts),
+                    user.has_premium_access,
                     False,
                     "below_threshold",
                 )
                 continue
 
             if user.has_premium_access:
-                sent_alert, skip_reason = self._process_premium_user(
+                sent_alert, decision_reason = self._process_premium_user(
                     user,
                     event_id,
                     current_value,
-                    moving_avg,
+                    peak_value,
                     threshold,
                     threshold_fallback_used,
                     now,
+                    last_alert_event_ts,
                     last_alert,
                     chat_id,
                     window_size,
@@ -521,11 +556,11 @@ class TelegramService:
                     state_new,
                 )
             else:
-                sent_alert, skip_reason = self._process_free_user(
+                sent_alert, decision_reason = self._process_free_user(
                     user,
                     event_id,
                     current_value,
-                    moving_avg,
+                    peak_value,
                     threshold,
                     now,
                     chat_id,
@@ -540,23 +575,35 @@ class TelegramService:
                     user,
                     threshold,
                     threshold_fallback_used,
-                    moving_avg,
+                    peak_value,
+                    moving_avg_real,
+                    last_alert_sent_at,
+                    last_alert_event_ts,
+                    self._next_allowed_at_short(last_alert_sent_at),
+                    self._next_allowed_at_renotify(last_alert_event_ts),
+                    user.has_premium_access,
                     True,
-                    "sent",
+                    decision_reason or "sent",
                 )
             else:
                 skipped += 1
-                if skip_reason is None:
-                    skip_reason = "error"
-                skipped_by_reason[skip_reason] = skipped_by_reason.get(skip_reason, 0) + 1
+                if decision_reason is None:
+                    decision_reason = "error"
+                skipped_by_reason[decision_reason] = skipped_by_reason.get(decision_reason, 0) + 1
                 self._record_premium_sample(
                     premium_samples,
                     user,
                     threshold,
                     threshold_fallback_used,
-                    moving_avg,
+                    peak_value,
+                    moving_avg_real,
+                    last_alert_sent_at,
+                    last_alert_event_ts,
+                    self._next_allowed_at_short(last_alert_sent_at),
+                    self._next_allowed_at_renotify(last_alert_event_ts),
+                    user.has_premium_access,
                     False,
-                    skip_reason,
+                    decision_reason,
                 )
 
         return {
@@ -586,7 +633,13 @@ class TelegramService:
         user: User,
         threshold: float,
         threshold_fallback_used: bool,
-        moving_avg: float,
+        peak_value: float,
+        moving_avg_real: Optional[float],
+        last_alert_sent_at: Optional[datetime],
+        last_alert_event_ts: Optional[datetime],
+        next_allowed_at_short: Optional[datetime],
+        next_allowed_at_renotify: Optional[datetime],
+        has_premium_access: bool,
         will_send: bool,
         reason: str,
     ) -> None:
@@ -595,10 +648,26 @@ class TelegramService:
         samples.append(
             {
                 "email": user.email,
+                "last_alert_sent_at": last_alert_sent_at.isoformat() if last_alert_sent_at else None,
+                "last_alert_event_ts": last_alert_event_ts.isoformat()
+                if last_alert_event_ts
+                else None,
+                "next_allowed_at_short": (
+                    next_allowed_at_short.isoformat() if next_allowed_at_short else None
+                ),
+                "next_allowed_at_renotify": (
+                    next_allowed_at_renotify.isoformat() if next_allowed_at_renotify else None
+                ),
+                "renotify_interval_minutes": int(TelegramService.RENOTIFY_INTERVAL.total_seconds() // 60),
+                "rate_limit_minutes": int(TelegramService.RATE_LIMIT.total_seconds() // 60),
+                "hysteresis_delta": float(Config.ALERT_HYSTERESIS_DELTA),
                 "threshold": float(threshold),
                 "threshold_fallback_used": threshold_fallback_used,
                 "threshold_source": "fallback_default" if threshold_fallback_used else "user",
-                "moving_avg": float(moving_avg),
+                "moving_avg": float(peak_value),
+                "peak_value": float(peak_value),
+                "moving_avg_real": float(moving_avg_real) if moving_avg_real is not None else None,
+                "is_premium": bool(has_premium_access),
                 "will_send": will_send,
                 "reason": reason,
             }
@@ -629,22 +698,22 @@ class TelegramService:
         self,
         user: User,
         threshold: float,
-        moving_avg: float,
+        peak_value: float,
         now: datetime,
-        last_alert: Optional[Event],
+        last_alert_event_ts: Optional[datetime],
     ) -> None:
-        if not last_alert:
+        if not last_alert_event_ts:
             return
 
         lower_bound = threshold - Config.ALERT_HYSTERESIS_DELTA
-        if moving_avg > lower_bound:
+        if peak_value > lower_bound:
             return
 
         reset_exists = (
             Event.query.filter(
                 Event.user_id == user.id,
                 Event.event_type == 'hysteresis_reset',
-                Event.timestamp > last_alert.timestamp,
+                Event.timestamp > last_alert_event_ts,
             )
             .order_by(Event.timestamp.desc())
             .first()
@@ -657,9 +726,9 @@ class TelegramService:
             Event(
                 user_id=user.id,
                 event_type='hysteresis_reset',
-                value=moving_avg,
+                value=peak_value,
                 threshold=threshold,
-                message='Moving average returned below hysteresis threshold',
+                message='Signal returned below hysteresis threshold',
             )
         )
         logger.info("Hysteresis reset recorded for %s", user.email)
@@ -669,10 +738,11 @@ class TelegramService:
         user: User,
         event_id: str,
         current_value: float,
-        moving_avg: float,
+        peak_value: float,
         threshold: float,
         threshold_fallback_used: bool,
         now: datetime,
+        last_alert_event_ts: Optional[datetime],
         last_alert: Optional[Event],
         chat_id: Optional[int],
         window_size: Optional[int],
@@ -695,7 +765,8 @@ class TelegramService:
                 threshold,
                 threshold_fallback_used,
                 current_value,
-                moving_avg,
+                peak_value,
+                None,
                 window_size,
                 state_prev,
                 state_new,
@@ -705,14 +776,26 @@ class TelegramService:
             self._log_alert_evaluation(
                 user,
                 threshold,
-                moving_avg,
+                peak_value,
                 "skip",
                 "cooldown",
                 cooldown_remaining=cooldown_remaining,
             )
             return False, "cooldown"
 
-        if not self._passed_hysteresis(user, threshold, moving_avg, last_alert):
+        # Hysteresis uses Event timestamps; rate limit uses user.last_alert_sent_at.
+        hysteresis_rearmed = self._passed_hysteresis(
+            user,
+            threshold,
+            peak_value,
+            last_alert_event_ts,
+        )
+        renotify_due = (
+            last_alert_event_ts is not None
+            and now - last_alert_event_ts >= self.RENOTIFY_INTERVAL
+        )
+
+        if not hysteresis_rearmed and not renotify_due:
             logger.debug("Hysteresis gate blocked alert for %s", user.email)
             self._log_alert_decision(
                 user,
@@ -720,29 +803,35 @@ class TelegramService:
                 threshold,
                 threshold_fallback_used,
                 current_value,
-                moving_avg,
+                peak_value,
+                None,
                 window_size,
                 state_prev,
                 state_new,
                 False,
-                "already_sent",
+                "already_sent_hysteresis",
             )
             self._log_alert_evaluation(
                 user,
                 threshold,
-                moving_avg,
+                peak_value,
                 "skip",
-                "already_sent",
+                "already_sent_hysteresis",
             )
-            return False, "already_sent"
+            return False, "already_sent_hysteresis"
 
-        message = self._build_premium_message(current_value, moving_avg, threshold)
+        send_reason = (
+            "persistent_above_threshold_renotify"
+            if renotify_due and not hysteresis_rearmed
+            else "sent"
+        )
+        message = self._build_premium_message(current_value, peak_value, threshold)
         if self.send_message(chat_id, message):
             user.last_alert_sent_at = now
             alert_event = Event(
                 user_id=user.id,
                 event_type='alert',
-                value=moving_avg,
+                value=peak_value,
                 threshold=threshold,
                 message=f'Telegram alert sent (event_id={event_id})',
             )
@@ -752,9 +841,9 @@ class TelegramService:
             self._log_alert_evaluation(
                 user,
                 threshold,
-                moving_avg,
+                peak_value,
                 "sent",
-                "sent",
+                send_reason,
             )
             self._log_alert_decision(
                 user,
@@ -762,20 +851,21 @@ class TelegramService:
                 threshold,
                 threshold_fallback_used,
                 current_value,
-                moving_avg,
+                peak_value,
+                None,
                 window_size,
                 state_prev,
                 state_new,
                 True,
-                "sent",
+                send_reason,
             )
-            return True, None
+            return True, send_reason
         else:
             logger.error("Failed to deliver premium alert to %s", user.email)
             self._log_alert_evaluation(
                 user,
                 threshold,
-                moving_avg,
+                peak_value,
                 "skip",
                 "error",
             )
@@ -785,7 +875,8 @@ class TelegramService:
                 threshold,
                 threshold_fallback_used,
                 current_value,
-                moving_avg,
+                peak_value,
+                None,
                 window_size,
                 state_prev,
                 state_new,
@@ -799,7 +890,7 @@ class TelegramService:
         user: User,
         event_id: str,
         current_value: float,
-        moving_avg: float,
+        peak_value: float,
         threshold: float,
         now: datetime,
         chat_id: Optional[int],
@@ -808,7 +899,7 @@ class TelegramService:
         state_new: str,
     ) -> tuple[bool, Optional[str]]:
         if (user.free_alert_consumed or 0) == 0 and user.free_alert_event_id != event_id:
-            message = self._build_free_trial_message(current_value, moving_avg, threshold)
+            message = self._build_free_trial_message(current_value, peak_value, threshold)
             if self.send_message(chat_id, message):
                 user.free_alert_consumed = (user.free_alert_consumed or 0) + 1
                 user.free_alert_event_id = event_id
@@ -816,7 +907,7 @@ class TelegramService:
                 alert_event = Event(
                     user_id=user.id,
                     event_type='alert',
-                    value=moving_avg,
+                    value=peak_value,
                     threshold=threshold,
                     message=f'Free trial alert sent (event_id={event_id})',
                 )
@@ -825,7 +916,7 @@ class TelegramService:
                     Event(
                         user_id=user.id,
                         event_type='free_trial_consumed',
-                        value=moving_avg,
+                        value=peak_value,
                         threshold=threshold,
                         message='Free Telegram alert consumed',
                     )
@@ -835,7 +926,7 @@ class TelegramService:
                 self._log_alert_evaluation(
                     user,
                     threshold,
-                    moving_avg,
+                    peak_value,
                     "sent",
                     "sent_free_trial",
                 )
@@ -845,7 +936,8 @@ class TelegramService:
                     threshold,
                     False,
                     current_value,
-                    moving_avg,
+                    peak_value,
+                    None,
                     window_size,
                     state_prev,
                     state_new,
@@ -858,7 +950,7 @@ class TelegramService:
                 self._log_alert_evaluation(
                     user,
                     threshold,
-                    moving_avg,
+                    peak_value,
                     "skip",
                     "error",
                 )
@@ -868,7 +960,8 @@ class TelegramService:
                     threshold,
                     False,
                     current_value,
-                    moving_avg,
+                    peak_value,
+                    None,
                     window_size,
                     state_prev,
                     state_new,
@@ -883,7 +976,8 @@ class TelegramService:
             threshold,
             False,
             current_value,
-            moving_avg,
+            peak_value,
+            None,
             window_size,
             state_prev,
             state_new,
@@ -893,7 +987,7 @@ class TelegramService:
         self._log_alert_evaluation(
             user,
             threshold,
-            moving_avg,
+            peak_value,
             "skip",
             "not_premium",
         )
@@ -936,26 +1030,45 @@ class TelegramService:
         self,
         user: User,
         threshold: float,
-        moving_avg: float,
-        last_alert: Optional[Event],
+        peak_value: float,
+        last_alert_event_ts: Optional[datetime],
     ) -> bool:
-        if not last_alert:
+        if not last_alert_event_ts:
             return True
 
         lower_bound = threshold - Config.ALERT_HYSTERESIS_DELTA
-        if moving_avg <= lower_bound:
+        if peak_value <= lower_bound:
             return True
 
+        return self._has_hysteresis_reset_since(user, last_alert_event_ts)
+
+    def _has_hysteresis_reset_since(
+        self,
+        user: User,
+        last_alert_event_ts: datetime,
+    ) -> bool:
         reset_exists = (
             Event.query.filter(
                 Event.user_id == user.id,
                 Event.event_type == 'hysteresis_reset',
-                Event.timestamp > last_alert.timestamp,
+                Event.timestamp > last_alert_event_ts,
             )
             .order_by(Event.timestamp.desc())
             .first()
         )
         return bool(reset_exists)
+
+    def _next_allowed_at_short(self, last_alert_sent_at: Optional[datetime]) -> Optional[datetime]:
+        if not last_alert_sent_at:
+            return None
+        return last_alert_sent_at + self.RATE_LIMIT
+
+    def _next_allowed_at_renotify(
+        self, last_alert_event_ts: Optional[datetime]
+    ) -> Optional[datetime]:
+        if not last_alert_event_ts:
+            return None
+        return last_alert_event_ts + self.RENOTIFY_INTERVAL
 
     def _update_alert_counters(self, user: User, now: datetime) -> None:
         window_start = now - timedelta(days=30)
@@ -970,7 +1083,7 @@ class TelegramService:
         )
         user.alert_count_30d = int(count or 0)
 
-    def _build_premium_message(self, current_value: float, moving_avg: float, threshold: float) -> str:
+    def _build_premium_message(self, current_value: float, peak_value: float, threshold: float) -> str:
         return (
             "\n".join(
                 [
@@ -978,13 +1091,13 @@ class TelegramService:
                     "",
                     "Tremore vulcanico oltre la soglia personalizzata.",
                     f"Valore attuale: {current_value:.2f} mV",
-                    f"Picco massimo (nuovi campioni): {moving_avg:.2f} mV",
+                    f"Picco massimo (nuovi campioni): {peak_value:.2f} mV",
                     f"Soglia: {threshold:.2f} mV",
                 ]
             )
         )
 
-    def _build_free_trial_message(self, current_value: float, moving_avg: float, threshold: float) -> str:
+    def _build_free_trial_message(self, current_value: float, peak_value: float, threshold: float) -> str:
         donation_link = Config.PAYPAL_DONATION_LINK or 'https://paypal.me/'
         return (
             "\n".join(
@@ -993,7 +1106,7 @@ class TelegramService:
                     "",
                     "Questo è il tuo unico alert gratuito.",
                     f"Valore attuale: {current_value:.2f} mV",
-                    f"Picco massimo (nuovi campioni): {moving_avg:.2f} mV",
+                    f"Picco massimo (nuovi campioni): {peak_value:.2f} mV",
                     f"Soglia di riferimento: {threshold:.2f} mV",
                     "",
                     f"Sostieni il progetto e attiva Premium: {donation_link}",
@@ -1013,3 +1126,84 @@ class TelegramService:
                 ]
             )
         )
+
+    @staticmethod
+    def simulate_premium_alert_flow(
+        values: list[float],
+        *,
+        threshold: float,
+        start_time: Optional[datetime] = None,
+        sample_minutes: int = 1,
+        hysteresis_delta: Optional[float] = None,
+        rate_limit_minutes: Optional[int] = None,
+        renotify_minutes: Optional[int] = None,
+    ) -> list[dict]:
+        """Deterministic simulation of premium alert decisions (no DB/network)."""
+        start_time = start_time or datetime(2024, 1, 1, tzinfo=timezone.utc)
+        hysteresis_delta = (
+            Config.ALERT_HYSTERESIS_DELTA if hysteresis_delta is None else hysteresis_delta
+        )
+        rate_limit = timedelta(
+            minutes=Config.ALERT_RATE_LIMIT_MINUTES
+            if rate_limit_minutes is None
+            else rate_limit_minutes
+        )
+        renotify_interval = timedelta(
+            minutes=Config.ALERT_RENOTIFY_MINUTES
+            if renotify_minutes is None
+            else renotify_minutes
+        )
+        last_alert_event_ts: Optional[datetime] = None
+        last_hysteresis_reset_at: Optional[datetime] = None
+        results: list[dict] = []
+
+        for index, value in enumerate(values):
+            now = start_time + timedelta(minutes=sample_minutes * index)
+            lower_bound = threshold - hysteresis_delta
+            reason = None
+            sent = False
+
+            if value <= lower_bound:
+                last_hysteresis_reset_at = now
+
+            if value < threshold:
+                reason = "below_threshold"
+            elif last_alert_event_ts and now - last_alert_event_ts < rate_limit:
+                reason = "cooldown"
+            else:
+                rearmed = (
+                    last_alert_event_ts is None
+                    or value <= lower_bound
+                    or (
+                        last_hysteresis_reset_at
+                        and last_hysteresis_reset_at > last_alert_event_ts
+                    )
+                )
+                renotify_due = (
+                    last_alert_event_ts is not None
+                    and now - last_alert_event_ts >= renotify_interval
+                )
+                if not rearmed and not renotify_due:
+                    reason = "already_sent_hysteresis"
+                else:
+                    sent = True
+                    reason = (
+                        "persistent_above_threshold_renotify"
+                        if renotify_due and not rearmed
+                        else "sent"
+                    )
+                    last_alert_event_ts = now
+
+            results.append(
+                {
+                    "timestamp": now.isoformat(),
+                    "value": float(value),
+                    "sent": sent,
+                    "reason": reason,
+                    "last_alert_event_ts": last_alert_event_ts.isoformat()
+                    if last_alert_event_ts
+                    else None,
+                }
+            )
+
+        return results
