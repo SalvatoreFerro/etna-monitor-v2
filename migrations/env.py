@@ -2,8 +2,12 @@
 
 from __future__ import annotations
 
+import importlib
 import os
+import sys
 from logging.config import fileConfig
+from pathlib import Path
+from types import ModuleType
 
 # Ensure application bootstrap knows we are running inside Alembic before any
 # application modules are imported. This prevents ``app.__init__`` from running
@@ -13,7 +17,20 @@ os.environ.setdefault("ALEMBIC_RUNNING", "1")
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-from app.models import db  # noqa: F401 - ensures models are imported
+def _load_models_module():
+    """Load app.models without executing app/__init__.py side effects."""
+
+    app_root = Path(__file__).resolve().parents[1] / "app"
+    if "app" not in sys.modules:
+        app_pkg = ModuleType("app")
+        app_pkg.__path__ = [str(app_root)]
+        sys.modules["app"] = app_pkg
+
+    return importlib.import_module("app.models")
+
+
+models = _load_models_module()
+db = models.db
 
 config = context.config
 
