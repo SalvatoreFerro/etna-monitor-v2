@@ -39,7 +39,7 @@ services:
     plan: free
     buildCommand: pip install -r requirements.cron.txt
     schedule: "0 * * * *"
-    command: python scripts/csv_updater.py
+    command: python scripts/update_and_check_alerts.py
     envVars:
       - key: DATA_DIR
         value: /data

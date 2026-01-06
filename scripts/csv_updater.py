@@ -90,12 +90,13 @@ def run_update(ingv_url: str, csv_path: Path) -> dict:
     return result
 
 
-def update_with_retries(ingv_url: str, csv_path: Path) -> bool:
+def update_with_retries(ingv_url: str, csv_path: Path) -> dict:
     last_error = None
     last_exception = None
     last_traceback = None
     started_at = perf_counter()
     pipeline_id = (os.getenv("CRON_PIPELINE_ID") or "").strip() or None
+    previous_last_ts = _read_csv_last_timestamp(csv_path)
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
@@ -111,6 +112,9 @@ def update_with_retries(ingv_url: str, csv_path: Path) -> bool:
             continue
 
         last_ts = _read_csv_last_timestamp(csv_path)
+        updated = False
+        if last_ts and (previous_last_ts is None or last_ts > previous_last_ts):
+            updated = True
         _record_csv_update(result.get("rows"), last_ts)
         _log_cron_run(
             csv_path,
@@ -131,7 +135,11 @@ def update_with_retries(ingv_url: str, csv_path: Path) -> bool:
                 "output_path": result.get("output_path"),
             },
         )
-        return True
+        return {
+            "ok": True,
+            "updated": updated,
+            "last_ts": last_ts,
+        }
 
     last_ts = _read_csv_last_timestamp(csv_path)
     _record_csv_update(None, last_ts, error_message=last_error or "update_failed")
@@ -150,7 +158,11 @@ def update_with_retries(ingv_url: str, csv_path: Path) -> bool:
             "error": last_error or "update_failed",
         },
     )
-    return False
+    return {
+        "ok": False,
+        "updated": False,
+        "last_ts": last_ts,
+    }
 
 
 def _log_cron_run(
@@ -216,8 +228,8 @@ def main() -> None:
     run_once = os.getenv("RUN_ONCE", "").lower() in {"1", "true", "yes"}
 
     while True:
-        success = update_with_retries(ingv_url, csv_path)
-        if not success:
+        result = update_with_retries(ingv_url, csv_path)
+        if not result.get("ok"):
             sys.exit(1)
         if run_once:
             break

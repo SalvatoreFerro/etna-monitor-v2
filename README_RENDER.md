@@ -77,16 +77,13 @@ L'applicazione verifica lo stato delle migrazioni Alembic durante la creazione d
 Per gli alert periodici non usare `app.worker`/APScheduler: crea un cron Render (ogni ora) che:
 
 1. aggiorna `curva.csv` con lo script già presente;
-2. chiama l'endpoint interno protetto per l'invio batch degli alert.
+2. esegue subito il check alert solo se arrivano nuovi dati.
 
 Esempio di comando cron (schedulato `0 * * * *`):
 
 ```
-PYTHONPATH=/opt/render/project/src python scripts/csv_updater.py && \
-curl -sS -X POST "https://your-app.onrender.com/internal/cron/check-alerts?key=$CRON_SECRET"
+PYTHONPATH=/opt/render/project/src python scripts/update_and_check_alerts.py
 ```
-
-Assicurati che `CRON_SECRET` sia configurato sia nel web service (per validare la richiesta) sia nel cron job (per firmare la chiamata). L'endpoint cron esegue solo la logica di invio alert Telegram e non dipende da tabelle/admin audit.
 
 ## Health Check Configuration
 
