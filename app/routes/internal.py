@@ -78,6 +78,8 @@ def _collect_csv_diagnostics() -> tuple[dict, pd.DataFrame | None, str | None]:
         "csv_mtime": None,
         "last_point_ts": None,
         "moving_avg": None,
+        "peak_value": None,
+        "moving_avg_real": None,
         "threshold_used": None,
         "threshold_source": None,
     }
@@ -112,17 +114,23 @@ def _collect_csv_diagnostics() -> tuple[dict, pd.DataFrame | None, str | None]:
         return diagnostics, None, "csv_empty"
 
     recent_data = df.tail(10)
-    window_size = 5
-    moving_avg = TelegramService().calculate_moving_average(
-        recent_data["value"].tolist(), window_size=window_size
+    window_size = max(1, int(Config.ALERT_MOVING_AVG_WINDOW))
+    diagnostics_window = max(window_size, 10)
+    diagnostics_window = min(diagnostics_window, 50)
+    diagnostics_values = df["value"].tail(diagnostics_window).tolist()
+    moving_avg_real = TelegramService().calculate_moving_average(
+        diagnostics_values, window_size=window_size
     )
+    peak_value = float(pd.Series(diagnostics_values).max())
     last_ts = recent_data["timestamp"].iloc[-1]
     diagnostics["last_point_ts"] = (
         last_ts.to_pydatetime().isoformat()
         if hasattr(last_ts, "to_pydatetime")
         else str(last_ts)
     )
-    diagnostics["moving_avg"] = float(moving_avg)
+    diagnostics["moving_avg"] = float(peak_value)
+    diagnostics["peak_value"] = float(peak_value)
+    diagnostics["moving_avg_real"] = float(moving_avg_real)
     diagnostics["threshold_used"] = float(Config.ALERT_THRESHOLD_DEFAULT)
     diagnostics["threshold_source"] = "default"
 
@@ -264,7 +272,7 @@ def cron_check_alerts():
         "not_premium",
         "no_chat_id",
         "cooldown",
-        "already_sent",
+        "already_sent_hysteresis",
         "error",
     ]
     response_payload: dict | None = None
@@ -490,9 +498,10 @@ def cron_debug_user():
     now = datetime.now(timezone.utc)
     last_point_value = None
     last_point_ts = None
-    moving_avg = None
+    moving_avg_real = None
+    peak_value = None
     reason = None
-    window_size = 5
+    window_size = max(1, int(Config.ALERT_MOVING_AVG_WINDOW))
     event_id = None
 
     if dataset is None or dataset.empty:
@@ -500,21 +509,29 @@ def cron_debug_user():
     else:
         recent_data = dataset.tail(10)
         last_point_value = float(recent_data["value"].iloc[-1])
-        moving_avg = float(
+        diagnostics_window = max(window_size, 10)
+        diagnostics_window = min(diagnostics_window, 50)
+        diagnostics_values = recent_data["value"].tail(diagnostics_window).tolist()
+        peak_value = float(pd.Series(diagnostics_values).max())
+        moving_avg_real = float(
             telegram_service.calculate_moving_average(
-                recent_data["value"].tolist(), window_size=window_size
+                diagnostics_values, window_size=window_size
             )
         )
         timestamp = recent_data["timestamp"].iloc[-1]
         event_ts = timestamp.to_pydatetime() if hasattr(timestamp, "to_pydatetime") else timestamp
         event_ts = telegram_service._utc(event_ts)
         last_point_ts = event_ts.isoformat() if event_ts else str(timestamp)
-        event_id = telegram_service._compute_event_id(event_ts, moving_avg)
+        event_id = telegram_service._compute_event_id(event_ts, peak_value)
 
     fallback_threshold = float(Config.ALERT_THRESHOLD_DEFAULT)
     threshold_used, threshold_fallback_used = telegram_service._resolve_threshold(user)
     effective_chat_id = telegram_service._resolve_effective_chat_id(user, allow_update=False)
     last_alert_sent_at = telegram_service._utc(user.last_alert_sent_at)
+    last_alert_event = telegram_service._get_last_alert_event(user)
+    last_alert_event_ts = (
+        telegram_service._utc(last_alert_event.timestamp) if last_alert_event else None
+    )
     cooldown_seconds_remaining = 0
     if last_alert_sent_at:
         cooldown_remaining = telegram_service.RATE_LIMIT - (now - last_alert_sent_at)
@@ -527,20 +544,23 @@ def cron_debug_user():
             reason = "opt_in_false"
         elif not effective_chat_id:
             reason = "no_chat_id"
-        elif moving_avg is None or moving_avg < threshold_used:
+        elif peak_value is None or peak_value < threshold_used:
             reason = "below_threshold"
         elif user.has_premium_access:
             if telegram_service._is_rate_limited(user, now):
                 reason = "cooldown"
             else:
-                last_alert = telegram_service._get_last_alert_event(user)
                 if not telegram_service._passed_hysteresis(
                     user,
                     threshold_used,
-                    moving_avg,
-                    last_alert,
+                    peak_value,
+                    last_alert_event_ts,
                 ):
-                    reason = "already_sent"
+                    if last_alert_event_ts and now - last_alert_event_ts >= telegram_service.RENOTIFY_INTERVAL:
+                        will_send = True
+                        reason = "persistent_above_threshold_renotify"
+                    else:
+                        reason = "already_sent_hysteresis"
                 else:
                     will_send = True
                     reason = "send"
@@ -573,9 +593,12 @@ def cron_debug_user():
         "threshold_fallback_used": threshold_fallback_used,
         "threshold_source": "fallback_default" if threshold_fallback_used else "user",
         "last_alert_sent_at": last_alert_sent_at.isoformat() if last_alert_sent_at else None,
+        "last_alert_event_ts": last_alert_event_ts.isoformat() if last_alert_event_ts else None,
         "now_utc": now.isoformat(),
         "cooldown_seconds_remaining": cooldown_seconds_remaining,
-        "moving_avg": moving_avg,
+        "moving_avg": peak_value,
+        "peak_value": peak_value,
+        "moving_avg_real": moving_avg_real,
         "last_point_value": last_point_value,
         "last_point_ts": last_point_ts,
         "will_send": will_send,
