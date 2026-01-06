@@ -44,7 +44,8 @@ def test_csv_updater_runs_without_pandas(monkeypatch, tmp_path):
     monkeypatch.setattr(csv_updater, "process_png_to_csv", fake_process_png_to_csv)
 
     csv_path = tmp_path / "curva.csv"
-    csv_updater.update_with_retries("http://example.com", csv_path)
+    result = csv_updater.update_with_retries("http://example.com", csv_path)
+    assert result["ok"] is True
 
     assert csv_path.exists()
     last_ts = csv_updater._read_csv_last_timestamp(csv_path)

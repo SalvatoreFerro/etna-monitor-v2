@@ -9,6 +9,7 @@ from flask import current_app, has_app_context
 from sqlalchemy import and_, func, or_
 
 from app.models import db
+from app.models.alert_state import AlertState
 from app.models.event import Event
 from app.models.user import User
 from app.utils.logger import get_logger
@@ -157,6 +158,46 @@ class TelegramService:
         if len(values) < window_size:
             return sum(values) / len(values) if values else 0
         return sum(values[-window_size:]) / window_size
+
+    def _get_alert_state(self) -> AlertState:
+        state = AlertState.query.order_by(AlertState.id.asc()).first()
+        if not state:
+            state = AlertState()
+            db.session.add(state)
+        return state
+
+    @staticmethod
+    def _format_timestamp(value: datetime | None) -> str:
+        if not value:
+            return "none"
+        return value.isoformat()
+
+    def _log_alert_evaluation(
+        self,
+        user: User,
+        threshold: float,
+        evaluation_value: float,
+        decision: str,
+        reason: str,
+        *,
+        cooldown_remaining: timedelta | None = None,
+    ) -> None:
+        cooldown_seconds = (
+            round(cooldown_remaining.total_seconds())
+            if cooldown_remaining
+            else None
+        )
+        logger.info(
+            "alert_check user_id=%s email=%s threshold=%.2f evaluation_value=%.2f decision=%s "
+            "reason=%s cooldown_remaining_s=%s",
+            user.id,
+            user.email,
+            float(threshold),
+            float(evaluation_value),
+            decision,
+            reason,
+            cooldown_seconds,
+        )
     
     def check_and_send_alerts(self, raise_on_error: bool = False):
         """Evaluate tremor data and deliver alerts based on the user's plan."""
@@ -182,24 +223,62 @@ class TelegramService:
                     "reason": "dataset_invalid",
                 }
 
-            recent_data = dataset.tail(10)
-            current_value = recent_data['value'].iloc[-1]
-            window_size = 5
-            moving_avg = self.calculate_moving_average(recent_data['value'].tolist(), window_size=window_size)
+            dataset = dataset.sort_values("timestamp").reset_index(drop=True)
+            alert_state = self._get_alert_state()
+            last_checked_ts = self._utc(alert_state.last_checked_ts)
 
-            timestamp = recent_data['timestamp'].iloc[-1]
+            if last_checked_ts:
+                new_points = dataset[dataset["timestamp"] > last_checked_ts]
+            else:
+                new_points = dataset
+
+            if new_points.empty:
+                logger.info(
+                    "alert_check no new points last_checked_ts=%s total_points=%s",
+                    self._format_timestamp(last_checked_ts),
+                    len(dataset),
+                )
+                return {
+                    "sent": 0,
+                    "skipped": 0,
+                    "cooldown_skipped": self._cooldown_skipped_count,
+                    "skipped_by_reason": {"no_new_points": 1},
+                    "reason": "no_new_points",
+                }
+
+            max_value = float(new_points["value"].max())
+            latest_row = new_points.iloc[-1]
+            current_value = float(latest_row["value"])
+            timestamp = latest_row["timestamp"]
             event_ts = timestamp.to_pydatetime() if hasattr(timestamp, "to_pydatetime") else timestamp
             event_ts = self._utc(event_ts)
-            event_id = self._compute_event_id(event_ts, moving_avg)
+            event_id = self._compute_event_id(event_ts, max_value)
+
+            logger.info(
+                "alert_check last_checked_ts=%s new_points=%s last_point_ts=%s max_value=%.3f",
+                self._format_timestamp(last_checked_ts),
+                len(new_points),
+                self._format_timestamp(event_ts),
+                max_value,
+            )
+            baseline_threshold = float(Config.ALERT_THRESHOLD_DEFAULT)
+            baseline_decision = "send" if max_value >= baseline_threshold else "skip"
+            logger.info(
+                "alert_check evaluation baseline_threshold=%.2f decision=%s",
+                baseline_threshold,
+                baseline_decision,
+            )
             now = datetime.now(timezone.utc)
 
             result = self._dispatch_alerts(
                 event_id,
                 current_value,
-                moving_avg,
+                max_value,
                 now,
-                window_size=window_size,
+                window_size=None,
             )
+            alert_state.last_checked_ts = event_ts
+            alert_state.touch()
             db.session.commit()
             return result
         except Exception as exc:  # pragma: no cover - defensive logging
@@ -228,13 +307,15 @@ class TelegramService:
             return None
 
         df = pd.read_csv(curva_file)
-        if 'timestamp' not in df.columns:
-            logger.warning("Tremor CSV missing timestamp column")
-            record_csv_error("curva.csv missing timestamp column")
+        if 'timestamp' not in df.columns or 'value' not in df.columns:
+            logger.warning("Tremor CSV missing required columns")
+            record_csv_error("curva.csv missing required columns")
             return None
 
         df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
         df = df.dropna(subset=['timestamp'])
+        df['value'] = pd.to_numeric(df['value'], errors='coerce')
+        df = df.dropna(subset=['value'])
 
         if df.empty:
             logger.warning("Empty tremor data file")
@@ -354,6 +435,14 @@ class TelegramService:
                 continue
 
             if not user.has_premium_access and not allow_free:
+                threshold, _ = self._resolve_threshold(user)
+                self._log_alert_evaluation(
+                    user,
+                    threshold,
+                    moving_avg,
+                    "skip",
+                    "not_premium",
+                )
                 self._log_alert_decision(
                     user,
                     bool(chat_id),
@@ -392,6 +481,13 @@ class TelegramService:
                     state_prev,
                     state_new,
                     False,
+                    "below_threshold",
+                )
+                self._log_alert_evaluation(
+                    user,
+                    threshold,
+                    moving_avg,
+                    "skip",
                     "below_threshold",
                 )
                 skipped += 1
@@ -583,23 +679,38 @@ class TelegramService:
         state_prev: str,
         state_new: str,
     ) -> tuple[bool, Optional[str]]:
-        if self._is_rate_limited(user, now):
-            logger.debug("Rate limit active for %s", user.email)
-            self._cooldown_skipped_count += 1
-            self._log_alert_decision(
-                user,
-                bool(chat_id),
-                threshold,
-                threshold_fallback_used,
+            if self._is_rate_limited(user, now):
+                logger.debug("Rate limit active for %s", user.email)
+                self._cooldown_skipped_count += 1
+                cooldown_remaining = self.RATE_LIMIT - (now - self._utc(user.last_alert_sent_at))
+                logger.info(
+                    "alert_check cooldown active user_id=%s email=%s remaining_s=%s",
+                    user.id,
+                    user.email,
+                    round(cooldown_remaining.total_seconds()),
+                )
+                self._log_alert_decision(
+                    user,
+                    bool(chat_id),
+                    threshold,
+                    threshold_fallback_used,
                 current_value,
                 moving_avg,
                 window_size,
                 state_prev,
                 state_new,
-                False,
-                "cooldown",
-            )
-            return False, "cooldown"
+                    False,
+                    "cooldown",
+                )
+                self._log_alert_evaluation(
+                    user,
+                    threshold,
+                    moving_avg,
+                    "skip",
+                    "cooldown",
+                    cooldown_remaining=cooldown_remaining,
+                )
+                return False, "cooldown"
 
         if not self._passed_hysteresis(user, threshold, moving_avg, last_alert):
             logger.debug("Hysteresis gate blocked alert for %s", user.email)
@@ -614,6 +725,13 @@ class TelegramService:
                 state_prev,
                 state_new,
                 False,
+                "already_sent",
+            )
+            self._log_alert_evaluation(
+                user,
+                threshold,
+                moving_avg,
+                "skip",
                 "already_sent",
             )
             return False, "already_sent"
@@ -631,6 +749,13 @@ class TelegramService:
             db.session.add(alert_event)
             self._update_alert_counters(user, now)
             logger.info("Premium alert delivered to %s", user.email)
+            self._log_alert_evaluation(
+                user,
+                threshold,
+                moving_avg,
+                "sent",
+                "sent",
+            )
             self._log_alert_decision(
                 user,
                 bool(chat_id),
@@ -647,6 +772,13 @@ class TelegramService:
             return True, None
         else:
             logger.error("Failed to deliver premium alert to %s", user.email)
+            self._log_alert_evaluation(
+                user,
+                threshold,
+                moving_avg,
+                "skip",
+                "error",
+            )
             self._log_alert_decision(
                 user,
                 bool(chat_id),
@@ -700,6 +832,13 @@ class TelegramService:
                 )
                 self._update_alert_counters(user, now)
                 logger.info("Free trial alert delivered to %s", user.email)
+                self._log_alert_evaluation(
+                    user,
+                    threshold,
+                    moving_avg,
+                    "sent",
+                    "sent_free_trial",
+                )
                 self._log_alert_decision(
                     user,
                     bool(chat_id),
@@ -716,6 +855,13 @@ class TelegramService:
                 return True, None
             else:
                 logger.error("Failed to deliver free trial alert to %s", user.email)
+                self._log_alert_evaluation(
+                    user,
+                    threshold,
+                    moving_avg,
+                    "skip",
+                    "error",
+                )
                 self._log_alert_decision(
                     user,
                     bool(chat_id),
@@ -742,6 +888,13 @@ class TelegramService:
             state_prev,
             state_new,
             False,
+            "not_premium",
+        )
+        self._log_alert_evaluation(
+            user,
+            threshold,
+            moving_avg,
+            "skip",
             "not_premium",
         )
         self._send_upsell(user, now, chat_id)
@@ -825,7 +978,7 @@ class TelegramService:
                     "",
                     "Tremore vulcanico oltre la soglia personalizzata.",
                     f"Valore attuale: {current_value:.2f} mV",
-                    f"Media mobile (ultimi 5 campioni): {moving_avg:.2f} mV",
+                    f"Picco massimo (nuovi campioni): {moving_avg:.2f} mV",
                     f"Soglia: {threshold:.2f} mV",
                 ]
             )
@@ -840,7 +993,7 @@ class TelegramService:
                     "",
                     "Questo è il tuo unico alert gratuito.",
                     f"Valore attuale: {current_value:.2f} mV",
-                    f"Media mobile (ultimi 5 campioni): {moving_avg:.2f} mV",
+                    f"Picco massimo (nuovi campioni): {moving_avg:.2f} mV",
                     f"Soglia di riferimento: {threshold:.2f} mV",
                     "",
                     f"Sostieni il progetto e attiva Premium: {donation_link}",

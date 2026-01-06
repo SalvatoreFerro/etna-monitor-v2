@@ -1,0 +1,37 @@
+import logging
+import os
+import sys
+from pathlib import Path
+
+from app import create_app
+from app.services.telegram_service import TelegramService
+from scripts.csv_updater import update_with_retries
+
+
+log = logging.getLogger("update_and_check_alerts")
+
+
+def main() -> None:
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s %(levelname)s %(message)s",
+    )
+
+    ingv_url = os.getenv("INGV_URL", "https://www.ct.ingv.it/RMS_Etna/2.png")
+    csv_path = Path(os.getenv("CSV_PATH", "/data/curva.csv"))
+
+    result = update_with_retries(ingv_url, csv_path)
+    if not result.get("ok"):
+        sys.exit(1)
+
+    if not result.get("updated"):
+        log.info("No new CSV data detected; skipping alert check")
+        return
+
+    app = create_app()
+    with app.app_context():
+        TelegramService().check_and_send_alerts()
+
+
+if __name__ == "__main__":
+    main()
