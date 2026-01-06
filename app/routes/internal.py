@@ -262,6 +262,10 @@ def cron_check_alerts():
     sent = 0
     skipped = 0
     cooldown_skipped = 0
+    free_candidates_count = 0
+    free_trial_sent_count = 0
+    skipped_free_already_consumed_count = 0
+    skipped_not_premium_count = 0
     reason = "unknown"
     skipped_by_reason: dict[str, int] = {}
     required_reasons = [
@@ -368,10 +372,21 @@ def cron_check_alerts():
                 }
 
             if response_payload is None:
-                result = telegram_service.check_and_send_alerts(raise_on_error=True)
+                result = telegram_service.check_and_send_alerts(
+                    raise_on_error=True,
+                    allow_free=True,
+                )
                 sent = int(result.get("sent", 0))
                 skipped = int(result.get("skipped", 0))
                 cooldown_skipped = int(result.get("cooldown_skipped", 0))
+                free_candidates_count = int(result.get("free_candidates_count", 0))
+                free_trial_sent_count = int(result.get("free_trial_sent_count", 0))
+                skipped_free_already_consumed_count = int(
+                    result.get("skipped_free_already_consumed_count", 0)
+                )
+                skipped_not_premium_count = int(
+                    result.get("skipped_not_premium_count", 0)
+                )
                 skipped_by_reason = result.get("skipped_by_reason") or {}
                 premium_samples = result.get("premium_samples") or []
                 reason = result.get("reason") or "completed"
@@ -417,6 +432,12 @@ def cron_check_alerts():
                 diagnostic_snapshot["sent_count"] = sent
                 diagnostic_snapshot["skipped_count"] = skipped
                 diagnostic_snapshot["cooldown_skipped_count"] = cooldown_skipped
+                diagnostic_snapshot["free_candidates_count"] = free_candidates_count
+                diagnostic_snapshot["free_trial_sent_count"] = free_trial_sent_count
+                diagnostic_snapshot[
+                    "skipped_free_already_consumed_count"
+                ] = skipped_free_already_consumed_count
+                diagnostic_snapshot["skipped_not_premium_count"] = skipped_not_premium_count
                 diagnostic_snapshot["skipped_by_reason"] = normalized_reasons
                 diagnostic_snapshot["premium_samples"] = premium_samples
                 response_payload["diagnostic"] = diagnostic_snapshot

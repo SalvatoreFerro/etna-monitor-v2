@@ -49,7 +49,7 @@ class SchedulerService:
                 extra={"job_id": "telegram_alerts", "started_at": started_at.isoformat()},
             )
             try:
-                self.telegram_service.check_and_send_alerts()
+                self.telegram_service.check_and_send_alerts(allow_free=True)
             except Exception:  # pragma: no cover - defensive guard
                 logger.exception("[WORKER] scheduler.job.error", extra={"job_id": "telegram_alerts"})
             else:
