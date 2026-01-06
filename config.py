@@ -107,6 +107,9 @@ class Config:
         os.getenv("PREMIUM_DEFAULT_THRESHOLD", os.getenv("ALERT_THRESHOLD_DEFAULT", "2.0"))
     )
     ALERT_HYSTERESIS_DELTA = float(os.getenv("ALERT_HYSTERESIS_DELTA", "0.2"))
+    ALERT_RATE_LIMIT_MINUTES = int(os.getenv("ALERT_RATE_LIMIT_MINUTES", "120"))
+    ALERT_RENOTIFY_HOURS = int(os.getenv("ALERT_RENOTIFY_HOURS", "6"))
+    ALERT_MOVING_AVG_WINDOW = int(os.getenv("ALERT_MOVING_AVG_WINDOW", "5"))
 
     TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
