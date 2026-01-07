@@ -11,12 +11,12 @@ const LOG_TICKS = [
 ];
 const DEFAULT_THEME_COLORS = {
     dark: {
-        line: '#38bdf8',
-        fill: 'rgba(56, 189, 248, 0.18)',
-        grid: 'rgba(148, 163, 184, 0.2)',
-        axis: '#94a3b8',
-        threshold: '#f87171',
-        hoverBg: 'rgba(15, 23, 42, 0.92)'
+        line: '#4ade80',
+        fill: 'rgba(74, 222, 128, 0.1)',
+        grid: 'rgba(148, 163, 184, 0.14)',
+        axis: 'rgba(148, 163, 184, 0.65)',
+        threshold: '#fca5a5',
+        hoverBg: 'rgba(8, 15, 30, 0.92)'
     },
     light: {
         line: '#1d4ed8',
@@ -35,6 +35,7 @@ class EtnaDashboard {
         this.refreshCountdown = null;
         this.plotData = null;
         this.analyzeModeEnabled = false;
+        this.focusModeOpen = false;
         
         this.init();
     }
@@ -43,6 +44,7 @@ class EtnaDashboard {
         this.setupEventListeners();
         this.setupThemeToggle();
         this.setupINGVMode();
+        this.setupFocusMode();
         this.setupAutoRefresh();
         this.loadInitialData();
 
@@ -106,6 +108,165 @@ class EtnaDashboard {
         }
 
         this.updateAnalyzeUI();
+    }
+
+    setupFocusMode() {
+        const plotDiv = document.getElementById('tremor-plot');
+        const focusModal = document.getElementById('tremor-focus-modal');
+        const focusClose = document.getElementById('focus-close');
+        const focusReset = document.getElementById('focus-reset-view');
+        const focusBackdrop = focusModal?.querySelector('[data-focus-close]');
+
+        if (!plotDiv || !focusModal) {
+            return;
+        }
+
+        // Tap/click sul grafico per entrare in modalità Focus (mobile-first).
+        plotDiv.addEventListener('click', (event) => {
+            if (!this.shouldOpenFocus(event)) return;
+            this.openFocusMode();
+        });
+
+        plotDiv.addEventListener('keydown', (event) => {
+            if ((event.key === 'Enter' || event.key === ' ') && this.shouldOpenFocus(event)) {
+                event.preventDefault();
+                this.openFocusMode();
+            }
+        });
+
+        if (focusClose) {
+            focusClose.addEventListener('click', () => this.closeFocusMode());
+        }
+
+        if (focusBackdrop) {
+            focusBackdrop.addEventListener('click', () => this.closeFocusMode());
+        }
+
+        if (focusReset) {
+            focusReset.addEventListener('click', () => this.resetFocusView());
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && this.focusModeOpen) {
+                this.closeFocusMode();
+            }
+        });
+
+        window.addEventListener('resize', () => {
+            if (this.focusModeOpen && window.Plotly) {
+                const focusPlot = document.getElementById('tremor-plot-focus');
+                if (focusPlot && focusPlot.data) {
+                    Plotly.Plots.resize(focusPlot);
+                }
+            }
+        });
+    }
+
+    shouldOpenFocus(event) {
+        if (this.focusModeOpen || this.analyzeModeEnabled) return false;
+        if (event && event.target && event.target.closest && event.target.closest('.modebar')) return false;
+        return true;
+    }
+
+    openFocusMode() {
+        const focusModal = document.getElementById('tremor-focus-modal');
+        const focusClose = document.getElementById('focus-close');
+        const plotDiv = document.getElementById('tremor-plot');
+
+        if (!focusModal || !plotDiv || !window.Plotly) {
+            return;
+        }
+
+        this.focusModeOpen = true;
+        focusModal.classList.add('is-open');
+        focusModal.setAttribute('aria-hidden', 'false');
+        document.body.classList.add('focus-modal-open');
+        this.renderFocusPlot(plotDiv);
+
+        if (focusClose) {
+            focusClose.focus();
+        }
+    }
+
+    closeFocusMode() {
+        const focusModal = document.getElementById('tremor-focus-modal');
+        if (!focusModal) return;
+
+        this.focusModeOpen = false;
+        focusModal.classList.remove('is-open');
+        focusModal.setAttribute('aria-hidden', 'true');
+        document.body.classList.remove('focus-modal-open');
+    }
+
+    resetFocusView() {
+        const focusPlot = document.getElementById('tremor-plot-focus');
+        if (focusPlot && window.Plotly && focusPlot.data) {
+            Plotly.relayout(focusPlot, {
+                'xaxis.autorange': true,
+                'yaxis.autorange': true,
+                dragmode: 'pan'
+            });
+        }
+    }
+
+    renderFocusPlot(basePlotDiv) {
+        const focusPlot = document.getElementById('tremor-plot-focus');
+        if (!focusPlot || !basePlotDiv || !basePlotDiv.data) return;
+
+        const focusLayout = this.buildFocusLayout(basePlotDiv.layout);
+        const focusConfig = {
+            displayModeBar: false,
+            displaylogo: false,
+            responsive: true,
+            staticPlot: false,
+            scrollZoom: true,
+            doubleClick: 'reset',
+            modeBarButtonsToRemove: ['select2d', 'lasso2d']
+        };
+
+        Plotly.react(focusPlot, basePlotDiv.data, focusLayout, focusConfig);
+    }
+
+    buildFocusLayout(baseLayout = {}) {
+        const focusLayout = {
+            ...baseLayout,
+            margin: { l: 72, r: 40, t: 56, b: 72 },
+            dragmode: 'pan',
+            hovermode: 'x'
+        };
+
+        if (focusLayout.xaxis) {
+            focusLayout.xaxis = {
+                ...focusLayout.xaxis,
+                automargin: true,
+                tickfont: { ...(focusLayout.xaxis.tickfont || {}), size: 13 },
+                tickpadding: 8,
+                fixedrange: false
+            };
+        }
+
+        if (focusLayout.yaxis) {
+            focusLayout.yaxis = {
+                ...focusLayout.yaxis,
+                automargin: true,
+                tickfont: { ...(focusLayout.yaxis.tickfont || {}), size: 13 },
+                tickpadding: 8,
+                fixedrange: false
+            };
+        }
+
+        return focusLayout;
+    }
+
+    getTickFormatStops() {
+        return [
+            { dtickrange: [null, 3600000], value: '%H:%M' },
+            { dtickrange: [3600000, 86400000], value: '%d %b' },
+            { dtickrange: [86400000, 604800000], value: '%d %b' },
+            { dtickrange: [604800000, 'M1'], value: '%d %b' },
+            { dtickrange: ['M1', 'M12'], value: '%b %Y' },
+            { dtickrange: ['M12', null], value: '%Y' }
+        ];
     }
 
     getSelectedLimit() {
@@ -348,6 +509,9 @@ class EtnaDashboard {
         const hasExistingPlot = Boolean(plotDiv.data && plotDiv.data.length);
         const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
         const themeColors = this.getThemeColors(isDark);
+        const isMobile = window.matchMedia('(max-width: 640px)').matches;
+        const tickFormatStops = this.getTickFormatStops();
+        const fontFamily = "'Inter', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif";
 
         if (this.ingvMode) {
             const layout = {
@@ -416,6 +580,7 @@ class EtnaDashboard {
                 Plotly.newPlot(plotDiv, [trace], layout, config);
             }
             this.applyInteractionState(plotDiv);
+            this.syncFocusPlot(plotDiv);
             return;
         }
         const { line: lineColor, fill: fillColor, grid: gridColor, axis: axisLineColor, threshold: thresholdColor, hoverBg } = themeColors;
@@ -427,13 +592,28 @@ class EtnaDashboard {
             Math.max(Math.log10(LOG_SCALE_MAX), Math.ceil(maxExponent * 10) / 10)
         ];
 
+        // Linea soglia con etichetta discreta per mantenere chiarezza scientifica.
         const shapes = threshold > 0 ? [{
             type: 'line',
             x0: timestamps[0],
             x1: timestamps[timestamps.length - 1],
             y0: threshold,
             y1: threshold,
-            line: { color: thresholdColor, width: 2, dash: 'dash' }
+            line: { color: thresholdColor, width: 1, dash: 'dash' }
+        }] : [];
+
+        const annotations = threshold > 0 ? [{
+            x: timestamps[timestamps.length - 1],
+            y: threshold,
+            xref: 'x',
+            yref: 'y',
+            text: 'Soglia di attenzione',
+            showarrow: false,
+            xanchor: 'right',
+            yanchor: 'bottom',
+            xshift: -6,
+            yshift: 6,
+            font: { size: 11, color: thresholdColor }
         }] : [];
 
         const trace = {
@@ -442,29 +622,34 @@ class EtnaDashboard {
             type: 'scatter',
             mode: 'lines',
             name: 'Segnale Tremore',
-            line: { color: lineColor, width: 2.4, shape: 'spline', smoothing: 1.15 },
+            line: { color: lineColor, width: 2, shape: 'spline', smoothing: 1.1 },
             fill: 'tozeroy',
             fillcolor: fillColor,
-            hovertemplate: '<b>%{y:.2f} mV</b><br>%{x|%d/%m %H:%M}<extra></extra>',
+            hovertemplate: '%{x|%d %b %Y %H:%M}<br><b>%{y:.2f} mV</b><extra></extra>',
             showlegend: false
         };
 
         const layout = {
-            margin: { l: 64, r: 32, t: 48, b: 56 },
-            hovermode: 'x unified',
+            margin: { l: 64, r: 36, t: 48, b: 56 },
+            hovermode: 'x',
             dragmode: this.analyzeModeEnabled ? 'select' : 'pan',
             plot_bgcolor: 'rgba(0,0,0,0)',
             paper_bgcolor: 'rgba(0,0,0,0)',
-            font: { color: isDark ? '#e2e8f0' : '#0f172a' },
+            font: { color: isDark ? '#e2e8f0' : '#0f172a', family: fontFamily, size: isMobile ? 13 : 12 },
             xaxis: {
                 type: 'date',
                 title: '',
                 showgrid: true,
                 gridcolor: gridColor,
+                gridwidth: 0.6,
                 linewidth: 1,
                 linecolor: axisLineColor,
                 hoverformat: '%d/%m %H:%M',
-                tickfont: { size: 12 },
+                tickfont: { size: isMobile ? 13 : 12 },
+                tickpadding: isMobile ? 8 : 6,
+                nticks: isMobile ? 4 : 6,
+                tickformatstops: tickFormatStops,
+                automargin: true,
                 ticks: 'outside',
                 tickcolor: axisLineColor
             },
@@ -474,21 +659,25 @@ class EtnaDashboard {
                 range: yRange,
                 showgrid: true,
                 gridcolor: gridColor,
+                gridwidth: 0.6,
                 linewidth: 1,
                 linecolor: axisLineColor,
-                tickfont: { size: 12 },
+                tickfont: { size: isMobile ? 13 : 12 },
+                tickpadding: isMobile ? 8 : 6,
                 tickvals: LOG_TICKS.map((tick) => tick.value),
                 ticktext: LOG_TICKS.map((tick) => tick.label),
                 ticksuffix: ' mV',
                 exponentformat: 'power',
                 minor: { ticklen: 4, showgrid: false },
-                zeroline: false
+                zeroline: false,
+                automargin: true
             },
             shapes,
+            annotations,
             hoverlabel: {
                 bgcolor: hoverBg,
                 bordercolor: thresholdColor,
-                font: { color: isDark ? '#f8fafc' : '#0f172a' }
+                font: { color: isDark ? '#f8fafc' : '#0f172a', family: fontFamily, size: 12 }
             }
         };
 
@@ -510,6 +699,12 @@ class EtnaDashboard {
 
         plotDiv.classList.add('loaded');
         this.applyInteractionState(plotDiv);
+        this.syncFocusPlot(plotDiv);
+    }
+
+    syncFocusPlot(plotDiv) {
+        if (!this.focusModeOpen || !plotDiv) return;
+        this.renderFocusPlot(plotDiv);
     }
     
     updateStats(data) {

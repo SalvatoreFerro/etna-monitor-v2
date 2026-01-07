@@ -158,7 +158,13 @@
           Attiva Analizza per selezionare un intervallo da approfondire.
         </p>
 
-        <div id="tremor-plot" class="chart-container" role="img" aria-label="Grafico dati tremore vulcanico"></div>
+        <div
+          id="tremor-plot"
+          class="chart-container"
+          role="img"
+          tabindex="0"
+          aria-label="Grafico dati tremore vulcanico"
+        ></div>
 
         <footer class="chart-legend">
           <div class="legend-item">
@@ -454,6 +460,29 @@
       {% endif %}
     </div>
   </section>
+</div>
+
+<div
+  id="tremor-focus-modal"
+  class="chart-focus-modal"
+  role="dialog"
+  aria-label="Modalità focus grafico tremore"
+  aria-hidden="true"
+>
+  <div class="chart-focus-backdrop" data-focus-close></div>
+  <div class="chart-focus-panel" role="document">
+    <header class="chart-focus-header">
+      <div>
+        <span class="chart-focus-title">Tremore vulcanico</span>
+        <span class="chart-focus-subtitle">Modalità Focus</span>
+      </div>
+      <div class="chart-focus-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="focus-reset-view">Reset vista</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="focus-close">Chiudi</button>
+      </div>
+    </header>
+    <div id="tremor-plot-focus" class="chart-focus-plot" role="img" aria-label="Grafico tremore in modalità focus"></div>
+  </div>
 </div>
 
 <div id="loading-overlay" class="loading-overlay" style="display: none;">
