@@ -204,12 +204,10 @@
             {% if not telegram_connected %}
               <a class="btn btn-secondary glass btn-sm" href="{{ url_for('dashboard.dashboard_home') }}#alert-settings">Collega Telegram</a>
             {% endif %}
-            {% if not threshold_configured %}
-              {% if user.has_premium_access %}
-                <a class="btn btn-secondary glass btn-sm" href="{{ url_for('dashboard.dashboard_home') }}#threshold-settings">Imposta soglia</a>
-              {% else %}
-                <a class="btn btn-premium btn-sm" href="{{ url_for('main.pricing') }}">Passa a Premium</a>
-              {% endif %}
+            {% if not threshold_configured and user.has_premium_access %}
+              <a class="btn btn-secondary glass btn-sm" href="{{ url_for('dashboard.dashboard_home') }}#threshold-settings">Imposta soglia</a>
+            {% elif not threshold_configured and not user.has_premium_access %}
+              <span class="muted">La soglia personalizzata è disponibile con Premium.</span>
             {% endif %}
           </div>
         </article>
@@ -234,39 +232,6 @@
                 data-track-location="dashboard"
               >Collega Telegram</a>
             </div>
-          {% endif %}
-        </article>
-        <article
-          class="card-premium premium-offer-card"
-          aria-label="Promemoria Premium"
-          data-track-view="premium_info_view"
-          data-track-location="dashboard"
-        >
-          <header class="card-header">
-            <h2>Premium</h2>
-            <p class="muted">Sblocca il monitoraggio completo e gli alert illimitati.</p>
-          </header>
-          <div class="premium-offer-grid">
-            <div>
-              <span class="premium-offer-label">Free</span>
-              <strong>1 alert</strong>
-            </div>
-            <div>
-              <span class="premium-offer-label">Premium</span>
-              <strong>alert illimitati</strong>
-            </div>
-          </div>
-          <p class="premium-offer-price">€10 a vita</p>
-          <p class="premium-offer-note">Promo early users: €10 a vita (tempo limitato).</p>
-          {% if user.has_premium_access %}
-            <span class="telegram-badge telegram-badge--connected">Premium attivo</span>
-          {% else %}
-            <a
-              class="btn btn-premium btn-sm"
-              href="{{ url_for('main.pricing') }}"
-              data-track-event="click_attiva_premium"
-              data-track-location="dashboard"
-            >Attiva Premium</a>
           {% endif %}
         </article>
         <article class="card-premium account-status-card" aria-label="Stato account">
@@ -307,8 +272,8 @@
           </div>
           {% else %}
           <div class="upgrade-prompt">
-            <p>Soglia fissa: {{ "%.2f"|format(active_threshold) }} mV</p>
-            <a href="/pricing" class="btn btn-premium btn-sm">Passa a Premium per soglie personalizzate</a>
+            <p>Soglia fissa: {{ "%.2f"|format(active_threshold) }} mV.</p>
+            <p class="muted">La soglia personalizzata è disponibile con il piano Premium.</p>
           </div>
           {% endif %}
         </article>
@@ -333,20 +298,36 @@
           </div>
         </article>
 
-        <article class="card-premium info-card animate-premium-slide">
+        <article class="card-premium info-card animate-premium-slide" data-track-view="premium_info_view" data-track-location="dashboard">
           <header class="card-header">
-            <h3>Hai già utilizzato il tuo alert gratuito?</h3>
-            <p>Controlla lo stato della prova e scopri come ottenere avvisi illimitati.</p>
+            <h3>Informazioni piano e limiti</h3>
+            <p>Riepilogo rapido di cosa è incluso nel tuo piano attuale.</p>
           </header>
           <div class="info-content">
             {% if user.has_premium_access %}
-              <p>Il tuo account Premium è attivo: notifiche illimitate e log eventi sono disponibili in tempo reale.</p>
+              <p>Premium attivo: notifiche illimitate, log eventi completo, esportazioni e soglia personalizzata sono disponibili.</p>
             {% elif user.free_alert_consumed %}
-              <p>La prova gratuita è stata consumata. Attiva Premium per continuare a ricevere notifiche, personalizzare la soglia e consultare lo storico completo.</p>
-              <a href="/pricing" class="btn btn-premium btn-sm">Attiva Premium</a>
+              <p>La prova gratuita è stata consumata. Nel piano Free restano disponibili grafico in tempo reale e soglia fissa.</p>
+              <ul class="muted">
+                <li>Alert limitati: 1 alert gratuito totale (già utilizzato).</li>
+                <li>Notifiche email e storico eventi completo richiedono Premium.</li>
+                <li>Soglia personalizzata disponibile con Premium.</li>
+              </ul>
             {% else %}
-              <p>Collega il bot Telegram per ricevere automaticamente il tuo unico alert gratuito alla prossima attività significativa.</p>
-              <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener" class="btn btn-secondary glass btn-sm">Apri il bot Telegram</a>
+              <p>Hai 1 alert gratuito disponibile con Telegram alla prossima attività significativa.</p>
+              <ul class="muted">
+                <li>Alert limitati: 1 alert gratuito totale.</li>
+                <li>Notifiche email e storico eventi completo richiedono Premium.</li>
+                <li>Soglia personalizzata disponibile con Premium.</li>
+              </ul>
+            {% endif %}
+            {% if not user.has_premium_access %}
+              <a
+                class="btn btn-premium btn-sm"
+                href="{{ url_for('main.pricing') }}"
+                data-track-event="click_attiva_premium"
+                data-track-location="dashboard"
+              >Attiva Premium</a>
             {% endif %}
           </div>
         </article>
@@ -385,7 +366,6 @@
           {% else %}
           <div class="upgrade-prompt">
             <p>Le notifiche email sono riservate agli utenti Premium.</p>
-            <a href="/pricing" class="btn btn-premium btn-sm">Scopri i vantaggi</a>
           </div>
           {% endif %}
 
@@ -450,11 +430,10 @@
       <article class="card-premium events-card animate-premium-fade">
         <header class="card-header">
           <h3>Storico eventi</h3>
-          <p>Il log eventi completo è disponibile con il piano Premium.</p>
+          <p>Nel piano Free lo storico completo non è disponibile.</p>
         </header>
         <div class="empty-state">
-          <p>Attiva Premium per consultare tutte le notifiche inviate e monitorare l'evoluzione del tremore.</p>
-          <a href="/pricing" class="btn btn-premium btn-sm">Scopri i piani</a>
+          <p>Continua a monitorare il grafico in tempo reale e lo stato corrente.</p>
         </div>
       </article>
       {% endif %}
