@@ -37,6 +37,7 @@
   const loadingElement = document.getElementById('home-preview-loading');
   const analyzeToggle = document.getElementById('chart-analyze-toggle');
   const analyzeHint = document.getElementById('chart-analyze-hint');
+  const analyzeStatus = document.getElementById('chart-analyze-status');
   const resetViewBtn = document.getElementById('chart-reset-view');
   const quickUpdateBtn = document.getElementById('btn-aggiorna-dati-live')
     || document.getElementById('quick-update-btn');
@@ -83,6 +84,7 @@
   let currentLimit = DEFAULT_LIMIT;
   let autoRefreshTimer = null;
   let analyzeModeEnabled = false;
+  const ANALYZE_HINT_KEY = 'chartAnalyzeHintSeen';
 
   if (rangeButtons.length) {
     const activeButton = getActiveRangeButton() || rangeButtons[0];
@@ -182,7 +184,11 @@
     if (analyzeHint) {
       analyzeHint.textContent = analyzeModeEnabled
         ? 'Trascina sul grafico per selezionare l’intervallo da analizzare.'
-        : 'Attiva Analizza per selezionare un intervallo.';
+        : 'Suggerimento: premi Analizza e trascina sul grafico per selezionare un intervallo.';
+    }
+    if (analyzeStatus) {
+      analyzeStatus.classList.toggle('is-active', analyzeModeEnabled);
+      analyzeStatus.setAttribute('aria-hidden', analyzeModeEnabled ? 'false' : 'true');
     }
     if (plotElement) {
       plotElement.classList.toggle('is-analyze-active', analyzeModeEnabled);
@@ -205,6 +211,27 @@
   function toggleAnalyzeMode() {
     analyzeModeEnabled = !analyzeModeEnabled;
     applyAnalyzeMode();
+    if (analyzeModeEnabled) {
+      highlightAnalyzeHintOnce();
+    }
+  }
+
+  function highlightAnalyzeHintOnce() {
+    if (!analyzeHint) return;
+    let alreadySeen = false;
+    try {
+      alreadySeen = window.localStorage.getItem(ANALYZE_HINT_KEY) === '1';
+    } catch (error) {
+      alreadySeen = false;
+    }
+    if (alreadySeen) return;
+    analyzeHint.classList.add('is-highlighted');
+    window.setTimeout(() => analyzeHint.classList.remove('is-highlighted'), 4000);
+    try {
+      window.localStorage.setItem(ANALYZE_HINT_KEY, '1');
+    } catch (error) {
+      // No-op if storage is unavailable.
+    }
   }
 
   function resetPlotView() {

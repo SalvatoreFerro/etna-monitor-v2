@@ -79,8 +79,11 @@
           >
             Reset vista
           </button>
-          <span id="chart-analyze-hint" class="chart-interaction-hint">
-            Attiva Analizza per selezionare un intervallo.
+          <span id="chart-analyze-hint" class="chart-interaction-hint" role="status" aria-live="polite">
+            Suggerimento: premi Analizza e trascina sul grafico per selezionare un intervallo.
+          </span>
+          <span id="chart-analyze-status" class="chart-mode-indicator" aria-live="polite" aria-hidden="true">
+            Modalità analisi attiva
           </span>
         </div>
         {% if csv_snapshot.has_data %}

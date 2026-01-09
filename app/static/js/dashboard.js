@@ -27,6 +27,7 @@ const DEFAULT_THEME_COLORS = {
         hoverBg: '#f8fafc'
     }
 };
+const ANALYZE_HINT_KEY = 'dashboardAnalyzeHintSeen';
 
 class EtnaDashboard {
     constructor() {
@@ -743,6 +744,7 @@ class EtnaDashboard {
     updateAnalyzeUI() {
         const analyzeToggle = document.getElementById('dashboard-analyze-toggle');
         const analyzeHint = document.getElementById('dashboard-analyze-hint');
+        const analyzeStatus = document.getElementById('dashboard-analyze-status');
         if (analyzeToggle) {
             analyzeToggle.classList.toggle('is-active', this.analyzeModeEnabled);
             analyzeToggle.setAttribute('aria-pressed', this.analyzeModeEnabled ? 'true' : 'false');
@@ -751,7 +753,11 @@ class EtnaDashboard {
         if (analyzeHint) {
             analyzeHint.textContent = this.analyzeModeEnabled
                 ? 'Trascina sul grafico per selezionare l’intervallo da analizzare.'
-                : 'Attiva Analizza per selezionare un intervallo da approfondire.';
+                : 'Suggerimento: premi Analizza e trascina sul grafico per selezionare un intervallo.';
+        }
+        if (analyzeStatus) {
+            analyzeStatus.classList.toggle('is-active', this.analyzeModeEnabled);
+            analyzeStatus.setAttribute('aria-hidden', this.analyzeModeEnabled ? 'false' : 'true');
         }
     }
 
@@ -765,6 +771,9 @@ class EtnaDashboard {
         this.analyzeModeEnabled = !this.analyzeModeEnabled;
         const plotDiv = document.getElementById('tremor-plot');
         this.applyInteractionState(plotDiv);
+        if (this.analyzeModeEnabled) {
+            this.highlightAnalyzeHintOnce();
+        }
         if (plotDiv && window.Plotly && plotDiv.data) {
             Plotly.relayout(plotDiv, {
                 dragmode: this.analyzeModeEnabled ? 'select' : 'pan'
@@ -787,6 +796,25 @@ class EtnaDashboard {
             }).then(() => {
                 Plotly.restyle(plotDiv, { selectedpoints: [null] });
             });
+        }
+    }
+
+    highlightAnalyzeHintOnce() {
+        const analyzeHint = document.getElementById('dashboard-analyze-hint');
+        if (!analyzeHint) return;
+        let alreadySeen = false;
+        try {
+            alreadySeen = localStorage.getItem(ANALYZE_HINT_KEY) === '1';
+        } catch (error) {
+            alreadySeen = false;
+        }
+        if (alreadySeen) return;
+        analyzeHint.classList.add('is-highlighted');
+        window.setTimeout(() => analyzeHint.classList.remove('is-highlighted'), 4000);
+        try {
+            localStorage.setItem(ANALYZE_HINT_KEY, '1');
+        } catch (error) {
+            // No-op if storage is unavailable.
         }
     }
     

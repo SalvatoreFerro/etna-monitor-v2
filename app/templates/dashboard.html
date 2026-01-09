@@ -154,9 +154,12 @@
             </div>
           </div>
         </div>
-        <p id="dashboard-analyze-hint" class="chart-interaction-hint">
-          Attiva Analizza per selezionare un intervallo da approfondire.
+        <p id="dashboard-analyze-hint" class="chart-interaction-hint" role="status" aria-live="polite">
+          Suggerimento: premi Analizza e trascina sul grafico per selezionare un intervallo.
         </p>
+        <span id="dashboard-analyze-status" class="chart-mode-indicator" aria-live="polite" aria-hidden="true">
+          Modalità analisi attiva
+        </span>
 
         <div
           id="tremor-plot"
