@@ -43,6 +43,7 @@ class EtnaDashboard {
     
     init() {
         this.setupEventListeners();
+        this.setupTelegramValidation();
         this.setupThemeToggle();
         this.setupINGVMode();
         this.setupFocusMode();
@@ -109,6 +110,41 @@ class EtnaDashboard {
         }
 
         this.updateAnalyzeUI();
+    }
+
+    setupTelegramValidation() {
+        const chatInput = document.getElementById('chat_id');
+        const validationEl = document.getElementById('chat-id-validation');
+
+        if (!chatInput || !validationEl) {
+            return;
+        }
+
+        const updateStatus = () => {
+            const value = chatInput.value.trim();
+            if (!value) {
+                validationEl.textContent = '';
+                validationEl.classList.remove('is-valid', 'is-invalid');
+                return;
+            }
+
+            const numeric = /^[0-9]+$/.test(value);
+            const nonZero = numeric && !/^0+$/.test(value);
+
+            if (numeric && nonZero) {
+                validationEl.textContent = 'ID valido';
+                validationEl.classList.add('is-valid');
+                validationEl.classList.remove('is-invalid');
+            } else {
+                validationEl.textContent = 'ID non valido';
+                validationEl.classList.add('is-invalid');
+                validationEl.classList.remove('is-valid');
+            }
+        };
+
+        chatInput.addEventListener('input', updateStatus);
+        chatInput.addEventListener('blur', updateStatus);
+        updateStatus();
     }
 
     setupFocusMode() {

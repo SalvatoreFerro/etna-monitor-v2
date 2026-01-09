@@ -171,11 +171,16 @@ def connect_telegram():
                 chat_id = int(raw_chat_id)
             except ValueError:
                 logger.warning("Invalid chat ID format submitted: %s", raw_chat_id)
-                flash("Invalid chat ID format", "error")
+                flash("ID chat non valido: usa solo numeri.", "error")
                 return redirect(url_for('dashboard.dashboard_home'))
 
+    if chat_id is not None and chat_id <= 0:
+        logger.warning("Invalid chat ID value submitted: %s", chat_id)
+        flash("ID chat non valido: inserisci un numero positivo.", "error")
+        return redirect(url_for('dashboard.dashboard_home'))
+
     if chat_id is None:
-        flash("Please provide your Telegram chat ID", "error")
+        flash("Inserisci il tuo ID chat Telegram.", "error")
         return redirect(url_for('dashboard.dashboard_home'))
 
     try:

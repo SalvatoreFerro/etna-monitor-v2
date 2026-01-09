@@ -388,17 +388,55 @@
               </div>
             {% else %}
               <div class="telegram-setup">
-                <p>Collega il bot per ricevere gli avvisi disponibili sul tuo piano:</p>
-                <ol>
-                  <li>Avvia una chat con <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">@etna_turi_bot</a></li>
-                  <li>Invia il comando <code>/start</code></li>
-                  <li>Incolla qui il tuo Chat ID</li>
+                <p class="telegram-intro">Collega il bot per ricevere gli avvisi disponibili sul tuo piano.</p>
+                <ol class="telegram-steps" aria-label="Guida rapida Telegram">
+                  <li class="telegram-step">
+                    <span class="telegram-step-index">1</span>
+                    <div class="telegram-step-body">
+                      <span class="telegram-step-title">Apri il bot</span>
+                      <p>Avvia la chat con <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">@etna_turi_bot</a> e premi <span class="telegram-pill">Avvia</span>.</p>
+                    </div>
+                    <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener" class="btn btn-secondary btn-sm glass telegram-step-action">Apri bot</a>
+                  </li>
+                  <li class="telegram-step">
+                    <span class="telegram-step-index">2</span>
+                    <div class="telegram-step-body">
+                      <span class="telegram-step-title">Richiedi l'ID</span>
+                      <p>Invia <code>/start</code> e copia l'ID che il bot ti restituisce.</p>
+                    </div>
+                    <span class="telegram-pill telegram-pill--copy">Copia</span>
+                  </li>
+                  <li class="telegram-step">
+                    <span class="telegram-step-index">3</span>
+                    <div class="telegram-step-body">
+                      <span class="telegram-step-title">Incolla qui</span>
+                      <p>Incolla l'ID nel campo sottostante per completare la connessione.</p>
+                    </div>
+                    <span class="telegram-pill telegram-pill--copy">Incolla</span>
+                  </li>
                 </ol>
+                <div class="telegram-copy-hint glass">
+                  <span class="telegram-pill telegram-pill--copy">Copia/Incolla</span>
+                  <p>Ti basta copiare l'ID dal messaggio del bot e incollarlo qui sotto. Niente spazi, solo numeri.</p>
+                </div>
                 <form method="POST" action="{{ url_for('dashboard.connect_telegram') }}" class="telegram-form">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                   <div class="form-group">
                     <label for="chat_id">ID Chat Telegram</label>
-                    <input type="text" id="chat_id" name="chat_id" class="input-base" placeholder="es. 123456789" required>
+                    <input
+                      type="text"
+                      id="chat_id"
+                      name="chat_id"
+                      class="input-base"
+                      placeholder="es. 123456789"
+                      inputmode="numeric"
+                      pattern="^[0-9]+$"
+                      autocomplete="off"
+                      aria-describedby="chat-id-hint chat-id-validation"
+                      required
+                    >
+                    <small id="chat-id-hint" class="muted">Solo numeri positivi, senza spazi o prefissi.</small>
+                    <div id="chat-id-validation" class="telegram-validation" role="status" aria-live="polite"></div>
                   </div>
                   <button type="submit" class="btn btn-premium">Collega Telegram</button>
                 </form>
