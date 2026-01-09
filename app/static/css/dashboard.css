@@ -417,8 +417,49 @@
 
 .chart-interaction-hint {
   margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.chart-interaction-hint::before {
+  content: "💡";
+  font-size: 0.95rem;
+}
+
+.chart-interaction-hint.is-highlighted {
+  border-color: rgba(59, 130, 246, 0.8);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
+  color: var(--color-text-primary);
+}
+
+.chart-mode-indicator {
+  display: none;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0.3rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  background: rgba(56, 189, 248, 0.18);
+  color: var(--color-text-primary);
+  border: 1px solid rgba(56, 189, 248, 0.6);
+}
+
+.chart-mode-indicator::before {
+  content: "●";
+  color: var(--color-accent-primary);
+  font-size: 0.75rem;
+}
+
+.chart-mode-indicator.is-active {
+  display: inline-flex;
 }
 
 .chart-container {
