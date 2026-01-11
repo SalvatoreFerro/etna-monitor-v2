@@ -5903,6 +5903,11 @@
   font-size: 1rem;
 }
 
+.observatory-copernicus-status-note {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
 .observatory-copernicus-badges {
   display: flex;
   flex-wrap: wrap;

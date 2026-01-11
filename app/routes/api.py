@@ -11,9 +11,12 @@ from ..utils.auth import get_current_user
 from ..models.hotspots_cache import HotspotsCache
 from ..models.hotspots_record import HotspotsRecord
 from ..services.copernicus import (
+    fetch_latest_copernicus_items,
     get_latest_copernicus_image,
+    is_available_status,
     resolve_copernicus_bbox,
     resolve_copernicus_image_url,
+    resolve_latest_and_available_items,
 )
 from backend.utils.extract_png import process_png_to_csv
 from backend.utils.time import to_iso_utc
@@ -410,39 +413,42 @@ def get_hotspots_diagnose():
 def get_copernicus_latest():
     record = get_latest_copernicus_image()
     bbox = resolve_copernicus_bbox(record)
-    if record is None:
-        current_app.logger.info(
-            "[API] Copernicus latest status=unavailable reason=no_record bbox=%s product_id=%s",
-            bbox,
-            None,
-        )
-        return jsonify(
-            {
-                "available": False,
-                "acquired_at": None,
-                "product_id": None,
-                "cloud_cover": None,
-                "cloud_coverage": None,
-                "bbox": bbox,
-                "image_path": None,
-                "image_url": None,
-                "created_at": None,
-                "status": "unavailable",
-                "status_label": "Non disponibile",
-                "status_reason": "no_record",
-                "status_detail": "Dati in aggiornamento.",
-            }
-        )
+    items = fetch_latest_copernicus_items(bbox, current_app.logger)
+    latest_item, available_item = resolve_latest_and_available_items(items)
+    latest_status = latest_item.status if latest_item else None
+    latest_is_available = is_available_status(latest_status)
 
     image_url = resolve_copernicus_image_url(record)
-    status = "available" if image_url else "processing"
-    status_label = "Immagine disponibile" if image_url else "In elaborazione"
-    status_reason = "ready" if image_url else "image_pending"
-    status_detail = (
-        "Disponibile per la visualizzazione." if image_url else "Miniatura in elaborazione."
+    has_image = image_url is not None
+    available_image_date = (
+        to_iso_utc(record.acquired_at)
+        if record
+        else to_iso_utc(available_item.acquired_at) if available_item else None
     )
-    if not image_url:
-        if not record.image_path:
+    available_image_product_id = (
+        record.product_id if record else available_item.product_id if available_item else None
+    )
+
+    is_fallback_image = bool(has_image and latest_item and not latest_is_available)
+    status = "available" if has_image else "processing"
+    status_label = "Immagine disponibile" if has_image else "In elaborazione"
+    status_reason = "ready" if has_image else "image_pending"
+    status_detail = (
+        "Disponibile per la visualizzazione." if has_image else "Miniatura in elaborazione."
+    )
+
+    if is_fallback_image:
+        status_label = "Ultima immagine disponibile"
+        status_reason = "fallback_image"
+        status_detail = "L’immagine più recente è in fase di elaborazione Copernicus."
+
+    if not has_image:
+        if record is None:
+            status = "unavailable"
+            status_label = "Non disponibile"
+            status_reason = "no_record"
+            status_detail = "Dati in aggiornamento."
+        elif not record.image_path:
             status_reason = "missing_image_path"
             status_detail = "Percorso immagine mancante."
         else:
@@ -455,27 +461,36 @@ def get_copernicus_latest():
             "[API] Copernicus missing image status=%s reason=%s product_id=%s cloud_cover=%s bbox=%s",
             status,
             status_reason,
-            record.product_id,
-            record.cloud_cover,
+            record.product_id if record else None,
+            record.cloud_cover if record else None,
             bbox,
         )
     current_app.logger.info(
-        "[API] Copernicus latest status=%s bbox=%s product_id=%s",
+        "[API] Copernicus latest status=%s latest_status=%s fallback=%s bbox=%s product_id=%s",
         status,
+        latest_status,
+        is_fallback_image,
         bbox,
-        record.product_id,
+        record.product_id if record else None,
     )
     return jsonify(
         {
-            "available": image_url is not None,
-            "acquired_at": to_iso_utc(record.acquired_at),
-            "product_id": record.product_id,
-            "cloud_cover": record.cloud_cover,
-            "cloud_coverage": record.cloud_cover,
+            "available": has_image,
+            "acquired_at": to_iso_utc(record.acquired_at) if record else None,
+            "product_id": record.product_id if record else None,
+            "cloud_cover": record.cloud_cover if record else None,
+            "cloud_coverage": record.cloud_cover if record else None,
             "bbox": bbox,
-            "image_path": record.image_path,
+            "image_path": record.image_path if record else None,
             "image_url": image_url,
-            "created_at": to_iso_utc(record.created_at),
+            "created_at": to_iso_utc(record.created_at) if record else None,
+            "latest_acquisition_date": (
+                to_iso_utc(latest_item.acquired_at) if latest_item else None
+            ),
+            "latest_acquisition_status": latest_status,
+            "available_image_date": available_image_date,
+            "available_image_product_id": available_image_product_id,
+            "is_fallback_image": is_fallback_image,
             "status": status,
             "status_label": status_label,
             "status_reason": status_reason,

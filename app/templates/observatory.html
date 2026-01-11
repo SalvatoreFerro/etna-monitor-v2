@@ -206,6 +206,9 @@
                 <div class="observatory-copernicus-status">
                   <span>Stato immagine</span>
                   <strong id="observatory-copernicus-status">{{ copernicus_status }}</strong>
+                  <span class="observatory-copernicus-status-note" id="observatory-copernicus-fallback-notice" hidden>
+                    L’immagine più recente è in fase di elaborazione Copernicus.
+                  </span>
                 </div>
                 <div class="observatory-copernicus-badges" id="observatory-copernicus-badges">
                   {% if copernicus_cloud_high %}
@@ -357,6 +360,7 @@
       const labelEl = document.getElementById('observatory-map-label');
       const loaderEl = document.getElementById('observatory-map-loader');
       const statusEl = document.getElementById('observatory-copernicus-status');
+      const fallbackNoticeEl = document.getElementById('observatory-copernicus-fallback-notice');
       const badgesEl = document.getElementById('observatory-copernicus-badges');
       const productEl = document.getElementById('observatory-copernicus-product');
       const cloudEl = document.getElementById('observatory-copernicus-cloud');
@@ -409,6 +413,12 @@
       const resolveCopernicusStatus = (payload) => {
         if (!payload) {
           return { label: 'Non disponibile', detail: 'Dati in aggiornamento.' };
+        }
+        if (payload.is_fallback_image) {
+          return {
+            label: 'Ultima immagine disponibile',
+            detail: 'L’immagine più recente è in fase di elaborazione Copernicus.',
+          };
         }
         if (payload.status_label) {
           return {
@@ -509,6 +519,14 @@
         const status = resolveCopernicusStatus(payload);
         if (statusEl) {
           statusEl.textContent = status.label;
+        }
+        if (fallbackNoticeEl) {
+          if (payload.is_fallback_image) {
+            fallbackNoticeEl.textContent = status.detail;
+            fallbackNoticeEl.hidden = false;
+          } else {
+            fallbackNoticeEl.hidden = true;
+          }
         }
         if (imageStatusEl) {
           imageStatusEl.textContent = status.label;
