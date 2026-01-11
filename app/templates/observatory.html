@@ -1,0 +1,316 @@
+{% extends "layout.html" %}
+
+{% block head_extra %}
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+{% endblock %}
+
+{% block content %}
+  <section class="observatory-hero">
+    <div class="container">
+      <div class="observatory-header">
+        <span class="observatory-pill">🛰️ Osservatorio multisorgente</span>
+        <h1>Osservatorio Etna: tremore, hotspot NASA e Copernicus Sentinel-2</h1>
+        <p>
+          Una vista unica per monitorare il vulcano con dati INGV, anomalie termiche NASA FIRMS e
+          immagini satellitari Copernicus Sentinel-2 pronte per il web.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section class="observatory-grid">
+    <div class="container">
+      <div class="observatory-columns">
+        <article class="observatory-card observatory-card--tremor">
+          <header class="observatory-card__header">
+            <div>
+              <h2>Tremore</h2>
+              <p>Grafico INGV aggiornato automaticamente.</p>
+            </div>
+            <div class="observatory-card__meta">
+              <span>Ultimo aggiornamento</span>
+              <strong>{{ latest_timestamp_display or '—' }}</strong>
+            </div>
+          </header>
+          <div class="observatory-card__body">
+            <div class="chart-card" id="grafico-etna">
+              <div class="chart-card__status">
+                <div class="chart-range-selector" role="group" aria-label="Intervallo temporale">
+                  <button type="button" class="chart-range-btn" data-limit="288">24h</button>
+                  <button type="button" class="chart-range-btn" data-limit="864">3 giorni</button>
+                  <button type="button" class="chart-range-btn is-active" data-limit="2016">7 giorni</button>
+                </div>
+                <div class="chart-interaction-controls" role="group" aria-label="Controlli analisi grafico">
+                  <button
+                    type="button"
+                    id="chart-analyze-toggle"
+                    class="btn btn-secondary btn-sm chart-interaction-toggle"
+                  >
+                    Analizza
+                  </button>
+                  <button
+                    type="button"
+                    id="chart-reset-view"
+                    class="btn btn-ghost btn-sm chart-interaction-reset"
+                  >
+                    Reset vista
+                  </button>
+                  <span id="chart-analyze-hint" class="chart-interaction-hint" role="status" aria-live="polite">
+                    Suggerimento: premi Analizza e trascina sul grafico per selezionare un intervallo.
+                  </span>
+                  <span id="chart-analyze-status" class="chart-mode-indicator" aria-live="polite" aria-hidden="true">
+                    Modalità analisi attiva
+                  </span>
+                </div>
+              </div>
+              {% if csv_snapshot.has_data %}
+                <div id="home-preview-loading" class="chart-loading" aria-live="polite">
+                  <div class="chart-spinner" aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                  <p>Caricamento dati INGV…</p>
+                </div>
+                <div id="home-preview-plot" aria-hidden="true"></div>
+                {% if preview_rows %}
+                  <script id="home-bootstrap-data" type="application/json" nonce="{{ csp_nonce() }}">
+                    {{ preview_rows | tojson(indent=0) | safe }}
+                  </script>
+                {% endif %}
+              {% else %}
+                <div class="chart-loading" aria-live="polite">
+                  <p><strong>Dati in preparazione</strong></p>
+                  <p>
+                    Il file <code>{{ csv_snapshot.path }}</code> risulta temporaneamente vuoto (motivo: {{ csv_snapshot.placeholder_reason }}).
+                    Riprova più tardi: il grafico si popolerà automaticamente.
+                  </p>
+                </div>
+              {% endif %}
+            </div>
+            <div class="observatory-tremor-meta">
+              <div class="observatory-kpi">
+                <span>Ultimo aggiornamento</span>
+                <strong id="live-last-update">{{ latest_timestamp_display or '--' }}</strong>
+              </div>
+              <div class="observatory-kpi">
+                <span>Campioni elaborati</span>
+                <strong id="live-data-points">{{ data_points_count or '--' }}</strong>
+              </div>
+              <div class="observatory-kpi">
+                <span>Stato</span>
+                <strong>
+                  <span class="status-dot" id="live-status-indicator" aria-hidden="true"></span>
+                  <span id="live-status-text">Connessione in corso…</span>
+                </strong>
+              </div>
+              <div class="observatory-kpi">
+                <span>Attività</span>
+                <strong><span id="live-activity-badge" class="activity-badge">In caricamento…</span></strong>
+              </div>
+              <button id="btn-aggiorna-dati-live" class="btn btn-primary btn-sm" type="button">Aggiorna dati live</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="observatory-card observatory-card--hotspots">
+          <header class="observatory-card__header">
+            <div>
+              <h2>Hotspot NASA</h2>
+              <p>Termiche FIRMS nelle ultime 24 ore.</p>
+            </div>
+            <div class="observatory-card__meta">
+              <span>Ultimo aggiornamento</span>
+              <strong>{{ hotspots_summary.last_fetch_display or '—' }}</strong>
+            </div>
+          </header>
+          <div class="observatory-card__body">
+            <div id="observatory-hotspots-map" class="observatory-map" aria-label="Mappa hotspot Etna"></div>
+            <div class="observatory-kpi-grid">
+              <div class="observatory-kpi">
+                <span>Hotspot ultime 24h</span>
+                <strong id="observatory-hotspots-count">{{ hotspots_summary.count_24h or '0' }}</strong>
+              </div>
+              <div class="observatory-kpi">
+                <span>Hotspot più recente</span>
+                <strong id="observatory-hotspots-latest">{{ hotspots_summary.latest_acquired_display or '—' }}</strong>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="observatory-card observatory-card--copernicus">
+          <header class="observatory-card__header">
+            <div>
+              <h2>Copernicus Sentinel-2</h2>
+              <p>Thumbnail satellitare aggiornata via CDSE.</p>
+            </div>
+            <div class="observatory-card__meta">
+              <span>Ultimo aggiornamento</span>
+              <strong>{{ copernicus_updated_display or '—' }}</strong>
+            </div>
+          </header>
+          <div class="observatory-card__body">
+            <div class="observatory-image">
+              {% if copernicus_image_url %}
+                <img
+                  src="{{ copernicus_image_url }}"
+                  alt="Immagine satellitare Copernicus Sentinel-2 dell'Etna"
+                  loading="lazy"
+                  decoding="async"
+                />
+              {% else %}
+                <div class="observatory-image__placeholder">
+                  <span>Nessuna immagine disponibile</span>
+                </div>
+              {% endif %}
+            </div>
+            <div class="observatory-copernicus-meta">
+              <div>
+                <span>Acquisizione</span>
+                <strong>{{ copernicus_acquired_display or '—' }}</strong>
+              </div>
+              <div>
+                <span>Copertura nuvolosa</span>
+                <strong>
+                  {% if copernicus_latest and copernicus_latest.cloud_cover is not none %}
+                    {{ '%.1f' | format(copernicus_latest.cloud_cover) }}%
+                  {% else %}
+                    —
+                  {% endif %}
+                </strong>
+              </div>
+            </div>
+            <p class="observatory-note">
+              Immagine satellitare Copernicus Sentinel-2 (CDSE). La disponibilità dipende dalla copertura
+              nuvolosa e dai passaggi del satellite.
+            </p>
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-modal-open
+              {% if not copernicus_image_url %}disabled{% endif %}
+            >
+              Apri grande
+            </button>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <div class="observatory-modal" data-modal hidden>
+    <div class="observatory-modal__backdrop" data-modal-close></div>
+    <div class="observatory-modal__content" role="dialog" aria-modal="true" aria-label="Immagine Copernicus Sentinel-2">
+      <button class="observatory-modal__close" type="button" data-modal-close aria-label="Chiudi">×</button>
+      {% if copernicus_image_url %}
+        <img
+          src="{{ copernicus_image_url }}"
+          alt="Immagine satellitare Copernicus Sentinel-2 dell'Etna in formato grande"
+          loading="lazy"
+          decoding="async"
+        />
+      {% endif %}
+    </div>
+  </div>
+{% endblock %}
+
+{% block head %}
+  <script defer src="{{ url_for('static', filename='js/plotly.min.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
+  <script defer src="{{ url_for('static', filename='js/chart.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
+  <script
+    defer
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script nonce="{{ csp_nonce() }}">
+    document.addEventListener('DOMContentLoaded', () => {
+      const mapElement = document.getElementById('observatory-hotspots-map');
+      if (mapElement && window.L) {
+        const map = L.map(mapElement, {
+          zoomControl: false,
+          scrollWheelZoom: false,
+          attributionControl: false,
+        }).setView([37.751, 14.995], 11);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 13,
+        }).addTo(map);
+
+        const countEl = document.getElementById('observatory-hotspots-count');
+        const latestEl = document.getElementById('observatory-hotspots-latest');
+
+        fetch('/api/hotspots/latest?mode=all', { headers: { Accept: 'application/json' } })
+          .then((response) => response.json())
+          .then((payload) => {
+            if (!payload || !payload.available) {
+              return;
+            }
+            if (countEl) {
+              countEl.textContent = payload.count_24h ?? '0';
+            }
+
+            const items = Array.isArray(payload.items_24h) ? payload.items_24h : [];
+            let latestTimestamp = null;
+            items.forEach((item) => {
+              if (!item || item.lat == null || item.lon == null) {
+                return;
+              }
+              const marker = L.circleMarker([item.lat, item.lon], {
+                radius: 6,
+                color: '#f97316',
+                weight: 1,
+                fillColor: '#fb923c',
+                fillOpacity: 0.8,
+              });
+              marker.addTo(map);
+              if (item.time_utc) {
+                const ts = new Date(item.time_utc);
+                if (!Number.isNaN(ts.getTime())) {
+                  if (!latestTimestamp || ts > latestTimestamp) {
+                    latestTimestamp = ts;
+                  }
+                }
+              }
+            });
+
+            if (latestTimestamp && latestEl) {
+              latestEl.textContent = latestTimestamp.toLocaleString('it-IT', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: 'UTC',
+                timeZoneName: 'short'
+              });
+            }
+          })
+          .catch(() => null);
+      }
+
+      const modal = document.querySelector('[data-modal]');
+      const modalOpen = document.querySelector('[data-modal-open]');
+      const modalCloseButtons = document.querySelectorAll('[data-modal-close]');
+
+      if (modal && modalOpen) {
+        const openModal = () => {
+          modal.hidden = false;
+          modal.classList.add('is-open');
+        };
+        const closeModal = () => {
+          modal.classList.remove('is-open');
+          modal.hidden = true;
+        };
+        modalOpen.addEventListener('click', openModal);
+        modalCloseButtons.forEach((button) => button.addEventListener('click', closeModal));
+      }
+    });
+  </script>
+{% endblock %}

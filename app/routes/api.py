@@ -10,6 +10,7 @@ from ..utils.metrics import record_csv_error, record_csv_read, record_csv_update
 from ..utils.auth import get_current_user
 from ..models.hotspots_cache import HotspotsCache
 from ..models.hotspots_record import HotspotsRecord
+from ..services.copernicus import get_latest_copernicus_image, resolve_copernicus_image_url
 from backend.utils.extract_png import process_png_to_csv
 from backend.utils.time import to_iso_utc
 from backend.services.hotspots.config import HotspotsConfig
@@ -399,6 +400,35 @@ def get_hotspots_diagnose():
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
     return response
+
+
+@api_bp.get("/api/copernicus/latest")
+def get_copernicus_latest():
+    record = get_latest_copernicus_image()
+    if record is None:
+        return jsonify(
+            {
+                "available": False,
+                "acquired_at": None,
+                "product_id": None,
+                "cloud_cover": None,
+                "image_path": None,
+                "image_url": None,
+                "created_at": None,
+            }
+        )
+
+    return jsonify(
+        {
+            "available": True,
+            "acquired_at": to_iso_utc(record.acquired_at),
+            "product_id": record.product_id,
+            "cloud_cover": record.cloud_cover,
+            "image_path": record.image_path,
+            "image_url": resolve_copernicus_image_url(record),
+            "created_at": to_iso_utc(record.created_at),
+        }
+    )
 
 @api_bp.route("/api/force_update", methods=["GET", "POST"])
 def force_update():

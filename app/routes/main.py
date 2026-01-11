@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import copy
 import json
 import os
@@ -28,6 +28,7 @@ from app.models import db
 from app.models.user import User
 from app.models.blog import BlogPost
 from sqlalchemy import or_
+from sqlalchemy.exc import SQLAlchemyError
 
 from ..extensions import cache
 from ..utils.metrics import get_csv_metrics, record_csv_error, record_csv_read
@@ -36,6 +37,8 @@ from backend.utils.time import to_iso_utc
 from backend.services.hotspots.config import HotspotsConfig
 from backend.services.hotspots.storage import read_cache, unavailable_payload
 from config import DEFAULT_GA_MEASUREMENT_ID
+from app.models.hotspots_record import HotspotsRecord
+from app.services.copernicus import get_latest_copernicus_image, resolve_copernicus_image_url
 
 bp = Blueprint("main", __name__)
 
@@ -133,6 +136,13 @@ def _format_hotspots_timestamp(value: str | None) -> str | None:
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc).strftime("%d/%m/%Y %H:%M UTC")
+
+
+def _format_display_datetime(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    dt = value.astimezone(timezone.utc) if value.tzinfo else value.replace(tzinfo=timezone.utc)
+    return dt.strftime("%d/%m/%Y %H:%M UTC")
 
 
 def _describe_weather_code(code: int | None) -> str | None:
@@ -770,6 +780,112 @@ def hotspots():
         generated_at_display=generated_at_display,
         map_center=map_center,
         map_bounds=map_bounds,
+    )
+
+
+@bp.route("/observatory")
+def observatory():
+    csv_path_setting = current_app.config.get("CURVA_CSV_PATH") or current_app.config.get("CSV_PATH")
+    csv_path = Path(csv_path_setting or "/var/tmp/curva.csv")
+    preview_rows: list[dict[str, object]] = []
+    latest_timestamp_display: str | None = None
+    data_points = 0
+    placeholder_reason: str | None = None
+
+    if csv_path.exists():
+        try:
+            df = pd.read_csv(csv_path)
+            if "timestamp" not in df.columns:
+                placeholder_reason = "missing_timestamp"
+            else:
+                df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+                df = df.dropna(subset=["timestamp"])
+                if df.empty:
+                    placeholder_reason = "empty"
+                else:
+                    df = df.sort_values("timestamp")
+                    data_points = len(df)
+                    preview_slice = df.tail(2016)
+                    preview_rows = [
+                        {
+                            "timestamp": to_iso_utc(row.timestamp),
+                            "value": float(getattr(row, "value", 0)),
+                        }
+                        for row in preview_slice.itertuples(index=False)
+                        if getattr(row, "value", None) is not None
+                    ]
+                    temporal_end = df["timestamp"].iloc[-1]
+                    temporal_end_display = (
+                        temporal_end.tz_convert("UTC")
+                        if getattr(temporal_end, "tz", None) is not None
+                        else temporal_end.tz_localize("UTC")
+                    )
+                    latest_timestamp_display = temporal_end_display.strftime("%d/%m/%Y %H:%M")
+        except Exception:
+            placeholder_reason = "error"
+            current_app.logger.exception("[OBSERVATORY] Failed to read tremor CSV")
+    else:
+        placeholder_reason = "missing"
+
+    csv_snapshot = {
+        "path": str(csv_path),
+        "rows": data_points,
+        "placeholder_reason": placeholder_reason,
+        "has_data": placeholder_reason is None,
+    }
+
+    hotspots_config = HotspotsConfig.from_env()
+    hotspots_cache = read_cache(hotspots_config.cache_path) if hotspots_config.enabled else None
+    hotspots_last_fetch = None
+    if hotspots_cache:
+        hotspots_last_fetch = hotspots_cache.get("last_fetch_at") or hotspots_cache.get("generated_at")
+
+    hotspot_count_24h = 0
+    hotspot_latest_record = None
+    try:
+        window_start = datetime.now(timezone.utc) - timedelta(hours=24)
+        hotspot_count_24h = (
+            HotspotsRecord.query.filter(HotspotsRecord.acq_datetime >= window_start).count()
+        )
+        hotspot_latest_record = (
+            HotspotsRecord.query.order_by(HotspotsRecord.acq_datetime.desc()).first()
+        )
+    except SQLAlchemyError:
+        current_app.logger.exception("[OBSERVATORY] Hotspots summary lookup failed")
+
+    copernicus_latest = get_latest_copernicus_image()
+    copernicus_image_url = resolve_copernicus_image_url(copernicus_latest)
+
+    copernicus_acquired_display = _format_display_datetime(
+        copernicus_latest.acquired_at if copernicus_latest else None
+    )
+    copernicus_updated_display = _format_display_datetime(
+        copernicus_latest.created_at if copernicus_latest else None
+    )
+
+    return render_template(
+        "observatory.html",
+        page_title="Osservatorio Etna – Tremore, Hotspot NASA e Copernicus",
+        page_description=(
+            "Pagina unica di osservazione EtnaMonitor con grafico del tremore INGV, "
+            "hotspot NASA FIRMS e immagini satellitari Copernicus Sentinel-2."
+        ),
+        canonical_url=url_for("main.observatory", _external=True),
+        csv_snapshot=csv_snapshot,
+        preview_rows=preview_rows,
+        latest_timestamp_display=latest_timestamp_display,
+        data_points_count=data_points,
+        hotspots_summary={
+            "last_fetch_display": _format_hotspots_timestamp(hotspots_last_fetch),
+            "count_24h": hotspot_count_24h,
+            "latest_acquired_display": _format_display_datetime(
+                hotspot_latest_record.acq_datetime if hotspot_latest_record else None
+            ),
+        },
+        copernicus_latest=copernicus_latest,
+        copernicus_image_url=copernicus_image_url,
+        copernicus_acquired_display=copernicus_acquired_display,
+        copernicus_updated_display=copernicus_updated_display,
     )
 
 
