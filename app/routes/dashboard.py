@@ -1,8 +1,8 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify
+from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from ..utils.auth import login_required, get_current_user
 from ..utils.logger import get_logger
 from ..utils.csrf import validate_csrf_token
-from ..models import db
+from ..models import db, TelegramLinkToken
 from ..models.event import Event
 from ..utils.plot import make_tremor_figure
 from ..utils.metrics import record_csv_error, record_csv_read
@@ -10,7 +10,8 @@ from config import Config
 import json
 import os
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import secrets
 
 logger = get_logger(__name__)
 
@@ -210,6 +211,53 @@ def connect_telegram():
         logger.error(f"Telegram connection error: {e}")
     
     return redirect(url_for('dashboard.dashboard_home'))
+
+
+@bp.route("/telegram/link", methods=["POST"])
+@login_required
+def generate_telegram_link():
+    user = get_current_user()
+
+    csrf_token = request.form.get("csrf_token")
+    if not validate_csrf_token(csrf_token):
+        flash("Sessione scaduta, riprova.", "error")
+        return redirect(url_for("dashboard.dashboard_home"))
+
+    if user.telegram_chat_id or user.chat_id:
+        flash("Telegram è già attivo sul tuo profilo.", "info")
+        return redirect(url_for("dashboard.dashboard_home"))
+
+    bot_username = (current_app.config.get("TELEGRAM_BOT_USERNAME") or "").strip().lstrip("@")
+    if not bot_username:
+        flash("Bot Telegram non configurato. Riprova più tardi.", "error")
+        return redirect(url_for("dashboard.dashboard_home"))
+
+    now = datetime.now(timezone.utc)
+    expires_at = now + timedelta(minutes=15)
+    token_value = secrets.token_urlsafe(32)
+
+    try:
+        TelegramLinkToken.query.filter(
+            TelegramLinkToken.user_id == user.id,
+            TelegramLinkToken.used_at.is_(None),
+            TelegramLinkToken.expires_at > now,
+        ).update({"used_at": now}, synchronize_session=False)
+
+        token = TelegramLinkToken(
+            user_id=user.id,
+            token=token_value,
+            expires_at=expires_at,
+        )
+        db.session.add(token)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("Failed to generate Telegram link token for user %s", user.id)
+        flash("Errore durante la generazione del link Telegram.", "error")
+        return redirect(url_for("dashboard.dashboard_home"))
+
+    deep_link = f"https://t.me/{bot_username}?start=LINK_{token_value}"
+    return redirect(deep_link)
 
 @bp.route("/telegram/disconnect", methods=["POST"])
 @login_required
