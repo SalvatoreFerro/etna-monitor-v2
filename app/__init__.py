@@ -61,7 +61,6 @@ from .filters import md
 from .utils.csrf import generate_csrf_token
 from .utils.user_columns import get_login_safe_user_columns
 from .utils.logger import configure_logging
-from .cli import register_cli_commands
 from config import (
     Config,
     DEFAULT_GA_MEASUREMENT_ID,
@@ -1176,7 +1175,12 @@ def create_app(config_overrides: dict | None = None):
         finally:
             db.session.remove()
 
-    register_cli_commands(app)
+    if _is_truthy_env(os.getenv("FLASK_RUN_FROM_CLI")) or _is_truthy_env(
+        os.getenv("FLASK_CLI")
+    ):
+        from .cli import register_cli_commands
+
+        register_cli_commands(app)
 
     @app.cli.command("categories-ensure-seed")
     def categories_ensure_seed() -> None:

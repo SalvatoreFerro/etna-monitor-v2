@@ -10,11 +10,15 @@ from flask import current_app
 from flask import Flask
 
 from .models import db
-from .scripts.run_backfill_partners_category import DEFAULT_CHUNK_SIZE, run_backfill
 
 
 def register_cli_commands(app: Flask) -> None:
     """Register application specific CLI commands."""
+
+    from .scripts.run_backfill_partners_category import (
+        DEFAULT_CHUNK_SIZE,
+        run_backfill,
+    )
 
     @app.cli.command("backfill-partners-category")
     @click.option(
@@ -43,4 +47,3 @@ def register_cli_commands(app: Flask) -> None:
             raise click.ClickException(str(exc)) from exc
 
         click.echo(f"Backfill completed successfully: {updated} partners updated")
-
