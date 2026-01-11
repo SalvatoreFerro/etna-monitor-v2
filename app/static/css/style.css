@@ -5613,6 +5613,10 @@
   height: 180px;
 }
 
+.etna-map--compact {
+  height: 240px;
+}
+
 .etna-map-loader {
   position: absolute;
   inset: 0;
@@ -5701,6 +5705,15 @@
   gap: var(--space-2);
 }
 
+.legend-line {
+  width: 16px;
+  height: 10px;
+  border-radius: 4px;
+  border: 2px dashed #facc15;
+  background: rgba(250, 204, 21, 0.15);
+  display: inline-block;
+}
+
 .legend-dot {
   width: 10px;
   height: 10px;
@@ -5718,6 +5731,19 @@
 
 .legend-dot--low {
   background: #facc15;
+}
+
+.legend-dot--etna {
+  background: #facc15;
+  box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.35);
+}
+
+.etna-map-status-badge {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 4;
+  pointer-events: none;
 }
 
 .leaflet-interactive.hotspots-marker {
@@ -5820,19 +5846,10 @@
   color: var(--color-text);
 }
 
-.observatory-image__placeholder {
-  min-height: 220px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--color-text-secondary);
-}
-
-.observatory-image__placeholder-content {
+.observatory-image__fallback {
   display: grid;
-  gap: 0.4rem;
+  gap: var(--space-3);
   padding: var(--space-4);
-  text-align: center;
 }
 
 .observatory-image__status {
@@ -5841,6 +5858,22 @@
 }
 
 .observatory-image__detail {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.observatory-copernicus-fallback-info {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.observatory-copernicus-fallback-status {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.observatory-copernicus-fallback-note {
+  margin: 0;
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
 }
@@ -5989,6 +6022,10 @@
   .etna-map--overview {
     height: 160px;
   }
+
+  .etna-map--compact {
+    height: 220px;
+  }
 }
 
 @media (max-width: 768px) {
@@ -5998,5 +6035,9 @@
 
   .etna-map--overview {
     height: 150px;
+  }
+
+  .etna-map--compact {
+    height: 200px;
   }
 }

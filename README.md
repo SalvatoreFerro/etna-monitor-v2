@@ -256,12 +256,21 @@ open http://127.0.0.1:5000/hotspots
 EtnaMonitor integra Copernicus Data Space Ecosystem per generare una thumbnail web-friendly Sentinel-2
 aggiornata su area Etna.
 
+### Stato “in elaborazione” e fallback UI
+Quando l'endpoint `/api/copernicus/latest` segnala un prodotto senza immagine pronta, la pagina
+`/osservatorio` mostra una mappa scientifica di fallback con footprint/bbox e marker Etna, più
+metadati completi (acquisizione, cloud cover, product ID, ultimo tentativo). La UI effettua
+polling leggero per aggiornare automaticamente l'immagine: ogni 60s per un massimo di 20 minuti,
+poi mostra una CTA “Riprova”. I parametri sono configurabili via variabili ambiente.
+
 ### Variabili ambiente
 ```env
 CDSE_CLIENT_ID=
 CDSE_CLIENT_SECRET=
 CDSE_DAYS_LOOKBACK=5
 CDSE_MAX_CLOUD=80
+COPERNICUS_POLL_INTERVAL_SECONDS=60
+COPERNICUS_POLL_TIMEOUT_MINUTES=20
 ```
 
 ### Aggiornamento immagine
