@@ -20,15 +20,17 @@ from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy.pool import NullPool
 
 try:  # pragma: no cover - optional dependency for precise error classes
-    import psycopg2.errors as pg_errors
+    import psycopg.errors as pg_errors
+except ModuleNotFoundError:  # pragma: no cover - fallback for psycopg2 or absence
+    try:  # pragma: no cover - legacy psycopg2 compatibility
+        import psycopg2.errors as pg_errors
+    except ModuleNotFoundError:  # pragma: no cover - no driver-specific errors
+        pg_errors = None
 
-    _PG_LOCK_ERRORS = (
-        getattr(pg_errors, "LockNotAvailable", None),
-        getattr(pg_errors, "QueryCanceled", None),
-    )
-except ModuleNotFoundError:  # pragma: no cover - fallback when psycopg2 is absent
-    pg_errors = None
-    _PG_LOCK_ERRORS = tuple()
+_PG_LOCK_ERRORS = (
+    getattr(pg_errors, "LockNotAvailable", None),
+    getattr(pg_errors, "QueryCanceled", None),
+) if pg_errors else tuple()
 
 
 logger = logging.getLogger(__name__)
