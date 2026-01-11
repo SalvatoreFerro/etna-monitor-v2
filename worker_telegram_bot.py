@@ -7,12 +7,12 @@ import time
 from datetime import datetime, timezone
 from typing import Final
 
+from flask import Flask
+from sqlalchemy import or_
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
-from sqlalchemy import or_
 
-from app import create_app
-from app.models import db, TelegramLinkToken, User
+from app.models import TelegramLinkToken, User, db, init_db
 from app.models.event import Event
 from config import Config
 
@@ -23,10 +23,17 @@ _LAST_START_AT: dict[int, float] = {}
 _FLASK_APP = None
 
 
+def _create_worker_app() -> Flask:
+    app = Flask(__name__)
+    app.config.from_object(Config)
+    init_db(app)
+    return app
+
+
 def _get_flask_app():
     global _FLASK_APP
     if _FLASK_APP is None:
-        _FLASK_APP = create_app()
+        _FLASK_APP = _create_worker_app()
     return _FLASK_APP
 
 
