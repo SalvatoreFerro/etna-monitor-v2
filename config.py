@@ -185,6 +185,12 @@ class Config:
         os.getenv("HOTSPOTS_ENABLED", "false").strip().lower()
         in {"1", "true", "yes"}
     )
+    COPERNICUS_POLL_INTERVAL_SECONDS = int(
+        os.getenv("COPERNICUS_POLL_INTERVAL_SECONDS", "60")
+    )
+    COPERNICUS_POLL_TIMEOUT_MINUTES = int(
+        os.getenv("COPERNICUS_POLL_TIMEOUT_MINUTES", "20")
+    )
     PARTNER_DEFAULT_MAX_SLOTS = int(
         os.getenv("PARTNER_DEFAULT_MAX_SLOTS", "10")
     )

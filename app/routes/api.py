@@ -411,7 +411,11 @@ def get_copernicus_latest():
     record = get_latest_copernicus_image()
     bbox = resolve_copernicus_bbox(record)
     if record is None:
-        current_app.logger.info("[API] Copernicus latest bbox=%s product_id=%s", bbox, None)
+        current_app.logger.info(
+            "[API] Copernicus latest status=unavailable reason=no_record bbox=%s product_id=%s",
+            bbox,
+            None,
+        )
         return jsonify(
             {
                 "available": False,
@@ -423,12 +427,43 @@ def get_copernicus_latest():
                 "image_path": None,
                 "image_url": None,
                 "created_at": None,
+                "status": "unavailable",
+                "status_label": "Non disponibile",
+                "status_reason": "no_record",
+                "status_detail": "Dati in aggiornamento.",
             }
         )
 
     image_url = resolve_copernicus_image_url(record)
+    status = "available" if image_url else "processing"
+    status_label = "Immagine disponibile" if image_url else "In elaborazione"
+    status_reason = "ready" if image_url else "image_pending"
+    status_detail = (
+        "Disponibile per la visualizzazione." if image_url else "Miniatura in elaborazione."
+    )
+    if not image_url:
+        if not record.image_path:
+            status_reason = "missing_image_path"
+            status_detail = "Percorso immagine mancante."
+        else:
+            static_folder = current_app.static_folder or ""
+            image_path = Path(static_folder) / record.image_path
+            if not image_path.exists():
+                status_reason = "image_file_missing"
+                status_detail = "File immagine non ancora presente."
+        current_app.logger.warning(
+            "[API] Copernicus missing image status=%s reason=%s product_id=%s cloud_cover=%s bbox=%s",
+            status,
+            status_reason,
+            record.product_id,
+            record.cloud_cover,
+            bbox,
+        )
     current_app.logger.info(
-        "[API] Copernicus latest bbox=%s product_id=%s", bbox, record.product_id
+        "[API] Copernicus latest status=%s bbox=%s product_id=%s",
+        status,
+        bbox,
+        record.product_id,
     )
     return jsonify(
         {
@@ -441,6 +476,10 @@ def get_copernicus_latest():
             "image_path": record.image_path,
             "image_url": image_url,
             "created_at": to_iso_utc(record.created_at),
+            "status": status,
+            "status_label": status_label,
+            "status_reason": status_reason,
+            "status_detail": status_detail,
         }
     )
 

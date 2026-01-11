@@ -10,7 +10,7 @@
 {% endblock %}
 
 {% block content %}
-  {% from "partials/leaflet_map.html" import etna_hotspots_map %}
+  {% from "partials/leaflet_map.html" import etna_map_shell, etna_hotspots_legend, etna_copernicus_legend %}
   <section class="observatory-hero">
     <div class="container">
       <div class="observatory-header">
@@ -133,13 +133,16 @@
           <div class="observatory-card__body">
             {% set copernicus_available = copernicus_image_url is not none %}
             {% set copernicus_cloud_high = copernicus_latest and copernicus_latest.cloud_cover is not none and copernicus_latest.cloud_cover >= 65 %}
-            {% set copernicus_status = 'Immagine disponibile' if copernicus_available else ('Copertura nuvolosa elevata' if copernicus_cloud_high else ('In elaborazione' if copernicus_latest else 'Prodotto non ancora pubblicato')) %}
-            {{ etna_hotspots_map(
+            {% set copernicus_status = 'Immagine disponibile' if copernicus_available else ('In elaborazione' if copernicus_latest else 'Non disponibile') %}
+            {% call etna_map_shell(
               'observatory-map',
               'observatory-map-label',
               'observatory-map-loader',
-              'Hotspot FIRMS e area Copernicus Sentinel-2 sull’Etna'
-            ) }}
+              'Hotspot FIRMS e area Copernicus Sentinel-2 sull’Etna',
+              aria_label='Mappa hotspot FIRMS e footprint Copernicus'
+            ) %}
+              {{ etna_hotspots_legend() }}
+            {% endcall %}
             <div class="observatory-map-meta">
               <div class="observatory-map-meta-group">
                 <div class="observatory-map-meta-title">Hotspot NASA FIRMS</div>
@@ -186,6 +189,16 @@
                     </strong>
                   </div>
                   <div>
+                    <span>BBOX (EPSG:4326)</span>
+                    <strong id="observatory-copernicus-bbox">
+                      {% if copernicus_bbox %}
+                        {{ copernicus_bbox | join(', ') }}
+                      {% else %}
+                        —
+                      {% endif %}
+                    </strong>
+                  </div>
+                  <div>
                     <span>Ultimo aggiornamento</span>
                     <strong id="observatory-copernicus-updated">{{ copernicus_updated_display or '—' }}</strong>
                   </div>
@@ -205,22 +218,42 @@
               </div>
             </div>
             <div class="observatory-image">
-              {% if copernicus_image_url %}
-                <div class="observatory-image__frame">
-                  <img
-                    src="{{ copernicus_image_url }}"
-                    alt="Immagine satellitare Copernicus Sentinel-2 dell'Etna"
-                    loading="lazy"
-                    decoding="async"
-                  />
-                  <div class="observatory-image__overlay">
-                    <span class="observatory-summit-marker" aria-hidden="true"></span>
-                    <span class="observatory-summit-label">Etna summit</span>
-                  </div>
+              <div class="observatory-image__frame" id="observatory-copernicus-image" {% if not copernicus_image_url %}hidden{% endif %}>
+                <img
+                  id="observatory-copernicus-img"
+                  src="{{ copernicus_image_url or '' }}"
+                  alt="Immagine satellitare Copernicus Sentinel-2 dell'Etna"
+                  loading="lazy"
+                  decoding="async"
+                  {% if not copernicus_image_url %}hidden{% endif %}
+                />
+                <div class="observatory-image__overlay">
+                  <span class="observatory-summit-marker" aria-hidden="true"></span>
+                  <span class="observatory-summit-label">Etna summit</span>
                 </div>
-              {% else %}
-                <div class="observatory-image__placeholder" id="observatory-image-placeholder">
-                  <div class="observatory-image__placeholder-content">
+              </div>
+              <div
+                class="observatory-image__fallback"
+                id="observatory-copernicus-fallback"
+                data-poll-interval-ms="{{ config.COPERNICUS_POLL_INTERVAL_SECONDS * 1000 }}"
+                data-poll-max-minutes="{{ config.COPERNICUS_POLL_TIMEOUT_MINUTES }}"
+                {% if copernicus_image_url %}hidden{% endif %}
+              >
+                {% call etna_map_shell(
+                  'observatory-copernicus-map',
+                  'observatory-copernicus-map-label',
+                  none,
+                  'Copertura Copernicus Sentinel-2 sull’Etna',
+                  aria_label='Footprint Copernicus Sentinel-2 sull’Etna',
+                  map_class='etna-map--compact',
+                  badge_text=copernicus_status,
+                  badge_id='observatory-copernicus-fallback-badge',
+                  badge_class='observatory-badge observatory-badge--info'
+                ) %}
+                  {{ etna_copernicus_legend() }}
+                {% endcall %}
+                <div class="observatory-copernicus-fallback-info">
+                  <div class="observatory-copernicus-fallback-status">
                     <span class="observatory-image__status" id="observatory-image-status">{{ copernicus_status }}</span>
                     <span class="observatory-image__detail" id="observatory-image-detail">
                       {% if copernicus_acquired_display %}
@@ -232,8 +265,15 @@
                       {% endif %}
                     </span>
                   </div>
+                  <p class="observatory-copernicus-fallback-note">
+                    Il prodotto è disponibile ma la miniatura può richiedere tempo (pipeline ESA). Nel frattempo vedi
+                    la copertura dell’area acquisita.
+                  </p>
+                  <button class="btn btn-ghost btn-sm" type="button" id="observatory-copernicus-retry" hidden>
+                    Riprova
+                  </button>
                 </div>
-              {% endif %}
+              </div>
             </div>
             <p class="observatory-note">
               Immagine satellitare Copernicus Sentinel-2 (CDSE). La disponibilità dipende dalla copertura
@@ -247,6 +287,7 @@
                 type="button"
                 class="btn btn-secondary"
                 data-modal-open
+                id="observatory-copernicus-open"
                 {% if not copernicus_image_url %}disabled{% endif %}
               >
                 Apri grande
@@ -262,14 +303,14 @@
     <div class="observatory-modal__backdrop" data-modal-close></div>
     <div class="observatory-modal__content" role="dialog" aria-modal="true" aria-label="Immagine Copernicus Sentinel-2">
       <button class="observatory-modal__close" type="button" data-modal-close aria-label="Chiudi">×</button>
-      {% if copernicus_image_url %}
-        <img
-          src="{{ copernicus_image_url }}"
-          alt="Immagine satellitare Copernicus Sentinel-2 dell'Etna in formato grande"
-          loading="lazy"
-          decoding="async"
-        />
-      {% endif %}
+      <img
+        id="observatory-copernicus-modal-image"
+        src="{{ copernicus_image_url or '' }}"
+        alt="Immagine satellitare Copernicus Sentinel-2 dell'Etna in formato grande"
+        loading="lazy"
+        decoding="async"
+        {% if not copernicus_image_url %}hidden{% endif %}
+      />
     </div>
   </div>
 {% endblock %}
@@ -286,146 +327,300 @@
   ></script>
   <script nonce="{{ csp_nonce() }}">
     document.addEventListener('DOMContentLoaded', () => {
+      const copernicusBbox = {{ copernicus_bbox | tojson }};
       const mapElement = document.getElementById('observatory-map');
+      const fallbackContainer = document.getElementById('observatory-copernicus-fallback');
+      const fallbackMapElement = document.getElementById('observatory-copernicus-map');
+      const fallbackLabelEl = document.getElementById('observatory-copernicus-map-label');
+      const fallbackBadgeEl = document.getElementById('observatory-copernicus-fallback-badge');
+      const retryButton = document.getElementById('observatory-copernicus-retry');
+      const modal = document.querySelector('[data-modal]');
+      const modalOpen = document.querySelector('[data-modal-open]');
+      const modalCloseButtons = document.querySelectorAll('[data-modal-close]');
+      const imageFrame = document.getElementById('observatory-copernicus-image');
+      const imageEl = document.getElementById('observatory-copernicus-img');
+      const modalImage = document.getElementById('observatory-copernicus-modal-image');
+
+      const pollIntervalMs = Number(fallbackContainer?.dataset.pollIntervalMs || 60000);
+      const pollMaxMinutes = Number(fallbackContainer?.dataset.pollMaxMinutes || 20);
+      const pollMaxMs = pollMaxMinutes * 60 * 1000;
+      let pollStart = null;
+      let pollTimer = null;
+
+      let map = null;
+      let copernicusFootprint = null;
+      let fallbackMap = null;
+      let fallbackFootprint = null;
+
+      const countEl = document.getElementById('observatory-hotspots-count');
+      const latestEl = document.getElementById('observatory-hotspots-latest');
+      const labelEl = document.getElementById('observatory-map-label');
+      const loaderEl = document.getElementById('observatory-map-loader');
+      const statusEl = document.getElementById('observatory-copernicus-status');
+      const badgesEl = document.getElementById('observatory-copernicus-badges');
+      const productEl = document.getElementById('observatory-copernicus-product');
+      const cloudEl = document.getElementById('observatory-copernicus-cloud');
+      const acquiredEl = document.getElementById('observatory-copernicus-acquired');
+      const updatedEl = document.getElementById('observatory-copernicus-updated');
+      const bboxEl = document.getElementById('observatory-copernicus-bbox');
+      const imageStatusEl = document.getElementById('observatory-image-status');
+      const imageDetailEl = document.getElementById('observatory-image-detail');
+
+      const setLoaderVisible = (visible) => {
+        if (!loaderEl) {
+          return;
+        }
+        loaderEl.classList.toggle('is-visible', visible);
+      };
+
+      const setLabelVisible = (element, visible) => {
+        if (!element) {
+          return;
+        }
+        element.classList.toggle('is-visible', visible);
+      };
+
+      const formatDateTime = (value) => {
+        if (!value) {
+          return '—';
+        }
+        const parsed = new Date(value);
+        if (Number.isNaN(parsed.getTime())) {
+          return value;
+        }
+        return parsed.toLocaleString('it-IT', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZone: 'UTC',
+          timeZoneName: 'short',
+        });
+      };
+
+      const formatBbox = (bbox) => {
+        if (!Array.isArray(bbox) || bbox.length !== 4) {
+          return '—';
+        }
+        return bbox.map((value) => Number(value).toFixed(3)).join(', ');
+      };
+
+      const resolveCopernicusStatus = (payload) => {
+        if (!payload) {
+          return { label: 'Non disponibile', detail: 'Dati in aggiornamento.' };
+        }
+        if (payload.status_label) {
+          return {
+            label: payload.status_label,
+            detail: payload.status_detail || 'Dati in aggiornamento.',
+          };
+        }
+        if (payload.available) {
+          return { label: 'Immagine disponibile', detail: 'Disponibile per la visualizzazione.' };
+        }
+        const cloudCoverage = payload.cloud_coverage ?? payload.cloud_cover;
+        if (cloudCoverage != null && cloudCoverage >= 65) {
+          return { label: 'Copertura nuvolosa elevata', detail: 'La scena risulta troppo coperta.' };
+        }
+        if (!payload.product_id) {
+          return { label: 'Non disponibile', detail: 'In attesa della prossima acquisizione.' };
+        }
+        return { label: 'In elaborazione', detail: 'Il prodotto è in fase di processing.' };
+      };
+
+      const renderCopernicusBadges = (payload, statusLabel) => {
+        if (!badgesEl) {
+          return;
+        }
+        badgesEl.innerHTML = '';
+        const cloudCoverage = payload?.cloud_coverage ?? payload?.cloud_cover ?? null;
+        if (cloudCoverage != null && cloudCoverage >= 65) {
+          const badge = document.createElement('span');
+          badge.className = 'observatory-badge observatory-badge--warning';
+          badge.textContent = 'Nuvolosità alta';
+          badgesEl.appendChild(badge);
+        }
+        if (!payload?.available) {
+          const badge = document.createElement('span');
+          badge.className = 'observatory-badge observatory-badge--info';
+          badge.textContent = statusLabel;
+          badgesEl.appendChild(badge);
+        }
+      };
+
+      const updateCopernicusFootprint = (targetMap, payload, options) => {
+        if (!targetMap || !payload?.bbox || !window.EtnaLeaflet?.addCopernicusFootprint) {
+          return null;
+        }
+        return window.EtnaLeaflet.addCopernicusFootprint(targetMap, payload.bbox, options);
+      };
+
+      const updateCopernicusImage = (payload) => {
+        const hasImage = Boolean(payload?.available && payload?.image_url);
+        if (imageFrame) {
+          imageFrame.hidden = !hasImage;
+        }
+        if (fallbackContainer) {
+          fallbackContainer.hidden = hasImage;
+        }
+        if (imageEl) {
+          if (hasImage) {
+            imageEl.src = payload.image_url;
+            imageEl.hidden = false;
+          } else {
+            imageEl.hidden = true;
+          }
+        }
+        if (modalImage) {
+          if (hasImage) {
+            modalImage.src = payload.image_url;
+            modalImage.hidden = false;
+          } else {
+            modalImage.hidden = true;
+          }
+        }
+        if (modalOpen) {
+          modalOpen.disabled = !hasImage;
+          modalOpen.setAttribute('aria-disabled', String(!hasImage));
+        }
+      };
+
+      const updateCopernicusMeta = (payload) => {
+        if (!payload) {
+          return;
+        }
+        if (productEl) {
+          productEl.textContent = payload.product_id || '—';
+        }
+        if (cloudEl) {
+          const cloudCoverage = payload.cloud_coverage ?? payload.cloud_cover;
+          cloudEl.textContent = cloudCoverage == null ? '—' : `${cloudCoverage.toFixed(1)}%`;
+        }
+        if (acquiredEl) {
+          acquiredEl.textContent = formatDateTime(payload.acquired_at);
+        }
+        if (updatedEl) {
+          updatedEl.textContent = formatDateTime(payload.created_at);
+        }
+        if (bboxEl) {
+          bboxEl.textContent = formatBbox(payload.bbox);
+        }
+        const status = resolveCopernicusStatus(payload);
+        if (statusEl) {
+          statusEl.textContent = status.label;
+        }
+        if (imageStatusEl) {
+          imageStatusEl.textContent = status.label;
+        }
+        if (fallbackBadgeEl) {
+          fallbackBadgeEl.textContent = status.label;
+        }
+        if (imageDetailEl) {
+          const detail = payload.acquired_at
+            ? `Acquisizione: ${formatDateTime(payload.acquired_at)}`
+            : payload.created_at
+              ? `Ultimo tentativo: ${formatDateTime(payload.created_at)}`
+              : status.detail;
+          imageDetailEl.textContent = detail;
+        }
+        renderCopernicusBadges(payload, status.label);
+        if (map) {
+          if (copernicusFootprint) {
+            map.removeLayer(copernicusFootprint);
+          }
+          copernicusFootprint = updateCopernicusFootprint(map, payload, {
+            color: '#38bdf8',
+            fillColor: '#38bdf8',
+          });
+        }
+        if (fallbackMap) {
+          if (fallbackFootprint) {
+            fallbackMap.removeLayer(fallbackFootprint);
+          }
+          fallbackFootprint = updateCopernicusFootprint(fallbackMap, payload, {
+            color: '#facc15',
+            fillColor: '#facc15',
+            dashArray: '6 6',
+            fillOpacity: 0.12,
+            fitBounds: true,
+          });
+        }
+        updateCopernicusImage(payload);
+      };
+
+      const stopPolling = (showRetry) => {
+        if (pollTimer) {
+          window.clearInterval(pollTimer);
+        }
+        pollTimer = null;
+        pollStart = null;
+        if (retryButton) {
+          retryButton.hidden = !showRetry;
+        }
+      };
+
+      const fetchCopernicus = () =>
+        fetch('/api/copernicus/latest', { headers: { Accept: 'application/json' } })
+          .then((response) => response.json())
+          .then((payload) => {
+            updateCopernicusMeta(payload);
+            if (payload?.available && payload?.image_url) {
+              stopPolling(false);
+            }
+            return payload;
+          })
+          .catch(() => null);
+
+      const startPolling = () => {
+        if (!fallbackContainer || pollTimer || pollIntervalMs <= 0) {
+          return;
+        }
+        pollStart = Date.now();
+        if (retryButton) {
+          retryButton.hidden = true;
+        }
+        pollTimer = window.setInterval(() => {
+          if (document.hidden) {
+            stopPolling(false);
+            return;
+          }
+          if (pollStart && Date.now() - pollStart >= pollMaxMs) {
+            stopPolling(true);
+            return;
+          }
+          fetchCopernicus();
+        }, pollIntervalMs);
+      };
+
       if (mapElement && window.EtnaLeaflet) {
-        const copernicusBbox = {{ copernicus_bbox | tojson }};
-        const map = window.EtnaLeaflet.createEtnaMap(mapElement, {
+        map = window.EtnaLeaflet.createEtnaMap(mapElement, {
           addFirmsBadge: true,
         });
 
-        let copernicusFootprint = window.EtnaLeaflet.addCopernicusFootprint(map, copernicusBbox, {
+        copernicusFootprint = window.EtnaLeaflet.addCopernicusFootprint(map, copernicusBbox, {
           color: '#38bdf8',
           fillColor: '#38bdf8',
         });
         window.EtnaLeaflet.addEtnaMarker(map);
+      }
 
-        const countEl = document.getElementById('observatory-hotspots-count');
-        const latestEl = document.getElementById('observatory-hotspots-latest');
-        const labelEl = document.getElementById('observatory-map-label');
-        const loaderEl = document.getElementById('observatory-map-loader');
-        const statusEl = document.getElementById('observatory-copernicus-status');
-        const badgesEl = document.getElementById('observatory-copernicus-badges');
-        const productEl = document.getElementById('observatory-copernicus-product');
-        const cloudEl = document.getElementById('observatory-copernicus-cloud');
-        const acquiredEl = document.getElementById('observatory-copernicus-acquired');
-        const updatedEl = document.getElementById('observatory-copernicus-updated');
-        const imageStatusEl = document.getElementById('observatory-image-status');
-        const imageDetailEl = document.getElementById('observatory-image-detail');
+      if (fallbackMapElement && window.EtnaLeaflet) {
+        fallbackMap = window.EtnaLeaflet.createEtnaMap(fallbackMapElement, {
+          mapOptions: { zoomControl: true },
+        });
+        fallbackFootprint = window.EtnaLeaflet.addCopernicusFootprint(fallbackMap, copernicusBbox, {
+          color: '#facc15',
+          fillColor: '#facc15',
+          dashArray: '6 6',
+          fillOpacity: 0.12,
+          fitBounds: true,
+        });
+        window.EtnaLeaflet.addEtnaMarker(fallbackMap);
+        setLabelVisible(fallbackLabelEl, true);
+      }
 
-        const setLoaderVisible = (visible) => {
-          if (!loaderEl) {
-            return;
-          }
-          loaderEl.classList.toggle('is-visible', visible);
-        };
-
-        const setLabelVisible = (visible) => {
-          if (!labelEl) {
-            return;
-          }
-          labelEl.classList.toggle('is-visible', visible);
-        };
-
-        const formatDateTime = (value) => {
-          if (!value) {
-            return '—';
-          }
-          const parsed = new Date(value);
-          if (Number.isNaN(parsed.getTime())) {
-            return value;
-          }
-          return parsed.toLocaleString('it-IT', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-            timeZone: 'UTC',
-            timeZoneName: 'short',
-          });
-        };
-
-        const resolveCopernicusStatus = (payload) => {
-          if (!payload) {
-            return { label: 'Prodotto non ancora pubblicato', detail: 'Dati in aggiornamento.' };
-          }
-          if (payload.available) {
-            return { label: 'Immagine disponibile', detail: 'Disponibile per la visualizzazione.' };
-          }
-          const cloudCoverage = payload.cloud_coverage ?? payload.cloud_cover;
-          if (cloudCoverage != null && cloudCoverage >= 65) {
-            return { label: 'Copertura nuvolosa elevata', detail: 'La scena risulta troppo coperta.' };
-          }
-          if (!payload.product_id) {
-            return { label: 'Prodotto non ancora pubblicato', detail: 'In attesa della prossima acquisizione.' };
-          }
-          return { label: 'In elaborazione', detail: 'Il prodotto è in fase di processing.' };
-        };
-
-        const renderCopernicusBadges = (payload, statusLabel) => {
-          if (!badgesEl) {
-            return;
-          }
-          badgesEl.innerHTML = '';
-          const cloudCoverage = payload?.cloud_coverage ?? payload?.cloud_cover ?? null;
-          if (cloudCoverage != null && cloudCoverage >= 65) {
-            const badge = document.createElement('span');
-            badge.className = 'observatory-badge observatory-badge--warning';
-            badge.textContent = 'Nuvolosità alta';
-            badgesEl.appendChild(badge);
-          }
-          if (!payload?.available) {
-            const badge = document.createElement('span');
-            badge.className = 'observatory-badge observatory-badge--info';
-            badge.textContent = statusLabel;
-            badgesEl.appendChild(badge);
-          }
-        };
-
-        const updateCopernicusMeta = (payload) => {
-          if (!payload) {
-            return;
-          }
-          if (productEl) {
-            productEl.textContent = payload.product_id || '—';
-          }
-          if (cloudEl) {
-            const cloudCoverage = payload.cloud_coverage ?? payload.cloud_cover;
-            cloudEl.textContent = cloudCoverage == null ? '—' : `${cloudCoverage.toFixed(1)}%`;
-          }
-          if (acquiredEl) {
-            acquiredEl.textContent = formatDateTime(payload.acquired_at);
-          }
-          if (updatedEl) {
-            updatedEl.textContent = formatDateTime(payload.created_at);
-          }
-          const status = resolveCopernicusStatus(payload);
-          if (statusEl) {
-            statusEl.textContent = status.label;
-          }
-          if (imageStatusEl) {
-            imageStatusEl.textContent = status.label;
-          }
-          if (imageDetailEl) {
-            const detail = payload.acquired_at
-              ? `Acquisizione: ${formatDateTime(payload.acquired_at)}`
-              : payload.created_at
-                ? `Ultimo tentativo: ${formatDateTime(payload.created_at)}`
-                : status.detail;
-            imageDetailEl.textContent = detail;
-          }
-          renderCopernicusBadges(payload, status.label);
-          if (map && payload.bbox && window.EtnaLeaflet?.addCopernicusFootprint) {
-            if (copernicusFootprint) {
-              map.removeLayer(copernicusFootprint);
-            }
-            copernicusFootprint = window.EtnaLeaflet.addCopernicusFootprint(map, payload.bbox, {
-              color: '#38bdf8',
-              fillColor: '#38bdf8',
-            });
-          }
-        };
-
+      if (map) {
         setLoaderVisible(true);
         fetch('/api/hotspots/latest?mode=all', { headers: { Accept: 'application/json' } })
           .then((response) => response.json())
@@ -470,23 +665,40 @@
                 timeZoneName: 'short',
               });
             }
-            setLabelVisible(true);
+            setLabelVisible(labelEl, true);
           })
           .catch(() => null)
           .finally(() => setLoaderVisible(false));
-
-        fetch('/api/copernicus/latest', { headers: { Accept: 'application/json' } })
-          .then((response) => response.json())
-          .then((payload) => updateCopernicusMeta(payload))
-          .catch(() => null);
       }
 
-      const modal = document.querySelector('[data-modal]');
-      const modalOpen = document.querySelector('[data-modal-open]');
-      const modalCloseButtons = document.querySelectorAll('[data-modal-close]');
+      fetchCopernicus().then((payload) => {
+        if (payload && !payload.available) {
+          startPolling();
+        }
+      });
+
+      if (retryButton) {
+        retryButton.addEventListener('click', () => {
+          stopPolling(false);
+          fetchCopernicus().then((payload) => {
+            if (payload && !payload.available) {
+              startPolling();
+            }
+          });
+        });
+      }
+
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+          stopPolling(false);
+        }
+      });
 
       if (modal && modalOpen) {
         const openModal = () => {
+          if (modalOpen.disabled) {
+            return;
+          }
           modal.hidden = false;
           modal.classList.add('is-open');
         };

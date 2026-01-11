@@ -1,4 +1,4 @@
-{% macro etna_hotspots_map(map_id, label_id, loader_id, label_text, aria_label='Mappa hotspot termici Etna') %}
+{% macro etna_map_shell(map_id, label_id, loader_id, label_text, aria_label='Mappa Etna', map_class='', badge_text=None, badge_id=None, badge_class='') %}
   <div class="etna-map-stack">
     <div class="etna-map-shell">
       {% if loader_id %}
@@ -7,17 +7,46 @@
           <div class="muted">Stiamo sincronizzando i dati satellitari…</div>
         </div>
       {% endif %}
-      <div id="{{ map_id }}" class="etna-map" aria-label="{{ aria_label }}"></div>
-      <div class="etna-map-label" id="{{ label_id }}">
-        {{ label_text }}
+      <div id="{{ map_id }}" class="etna-map {{ map_class }}" aria-label="{{ aria_label }}"></div>
+      {% if label_id %}
+        <div class="etna-map-label" id="{{ label_id }}">
+          {{ label_text }}
+        </div>
+      {% endif %}
+      {% if badge_text %}
+        <div
+          class="etna-map-status-badge {{ badge_class }}"
+          {% if badge_id %}id="{{ badge_id }}"{% endif %}
+        >
+          {{ badge_text }}
+        </div>
+      {% endif %}
+    </div>
+    {% if caller %}
+      <div class="etna-legend">
+        {{ caller() }}
       </div>
-    </div>
-    <div class="etna-legend">
-      <div class="etna-legend-title">Legenda intensità</div>
-      <div class="legend-row"><span class="legend-dot legend-dot--high"></span> Intensità alta</div>
-      <div class="legend-row"><span class="legend-dot legend-dot--mid"></span> Intensità media</div>
-      <div class="legend-row"><span class="legend-dot legend-dot--low"></span> Intensità bassa</div>
-      <div>Ogni punto = area di circa 375 m</div>
-    </div>
+    {% endif %}
   </div>
+{% endmacro %}
+
+{% macro etna_hotspots_legend() %}
+  <div class="etna-legend-title">Legenda intensità</div>
+  <div class="legend-row"><span class="legend-dot legend-dot--high"></span> Intensità alta</div>
+  <div class="legend-row"><span class="legend-dot legend-dot--mid"></span> Intensità media</div>
+  <div class="legend-row"><span class="legend-dot legend-dot--low"></span> Intensità bassa</div>
+  <div>Ogni punto = area di circa 375 m</div>
+{% endmacro %}
+
+{% macro etna_copernicus_legend() %}
+  <div class="etna-legend-title">Legenda Copernicus</div>
+  <div class="legend-row">
+    <span class="legend-line legend-line--copernicus" aria-hidden="true"></span>
+    Area acquisizione Sentinel-2
+  </div>
+  <div class="legend-row">
+    <span class="legend-dot legend-dot--etna" aria-hidden="true"></span>
+    Etna
+  </div>
+  <div>Footprint stimata del prodotto disponibile.</div>
 {% endmacro %}

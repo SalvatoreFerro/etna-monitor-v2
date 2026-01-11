@@ -464,7 +464,7 @@
 {% endblock %}
 
 {% block content %}
-  {% from "partials/leaflet_map.html" import etna_hotspots_map %}
+  {% from "partials/leaflet_map.html" import etna_map_shell, etna_hotspots_legend %}
   <section class="container container--wide">
     <div class="hotspots-header">
       <h1>Hotspot termici satellitari sull’Etna</h1>
@@ -545,12 +545,15 @@
 
     <div class="hotspots-grid">
       <div class="hotspots-panel">
-        {{ etna_hotspots_map(
+        {% call etna_map_shell(
           'hotspots-map',
           'hotspots-map-label',
           'hotspots-loader',
-          'Concentrazione di anomalie termiche nell’area sommitale dell’Etna'
-        ) }}
+          'Concentrazione di anomalie termiche nell’area sommitale dell’Etna',
+          aria_label='Mappa hotspot termici Etna'
+        ) %}
+          {{ etna_hotspots_legend() }}
+        {% endcall %}
       </div>
 
       <div class="hotspots-panel">
