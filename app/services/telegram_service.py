@@ -15,6 +15,7 @@ from app.models.user import User
 from app.utils.logger import get_logger
 from app.utils.metrics import record_csv_error, record_csv_read
 from alerts.notifier import send_telegram_alert
+from app import bot_messages
 from config import Config
 
 logger = get_logger(__name__)
@@ -1105,48 +1106,13 @@ class TelegramService:
         user.alert_count_30d = int(count or 0)
 
     def _build_premium_message(self, current_value: float, peak_value: float, threshold: float) -> str:
-        return (
-            "\n".join(
-                [
-                    "🌋 ALLERTA ETNA",
-                    "",
-                    "Tremore vulcanico oltre la soglia personalizzata.",
-                    f"Valore attuale: {current_value:.2f} mV",
-                    f"Picco massimo (nuovi campioni): {peak_value:.2f} mV",
-                    f"Soglia: {threshold:.2f} mV",
-                ]
-            )
-        )
+        return bot_messages.premium_alert(current_value, peak_value, threshold)
 
     def _build_free_trial_message(self, current_value: float, peak_value: float, threshold: float) -> str:
-        donation_link = Config.PAYPAL_DONATION_LINK or 'https://paypal.me/'
-        return (
-            "\n".join(
-                [
-                    "🌋 ETNA – ALERT DI PROVA",
-                    "",
-                    "Questo è il tuo unico alert gratuito.",
-                    f"Valore attuale: {current_value:.2f} mV",
-                    f"Picco massimo (nuovi campioni): {peak_value:.2f} mV",
-                    f"Soglia di riferimento: {threshold:.2f} mV",
-                    "",
-                    f"Sostieni il progetto e attiva Premium: {donation_link}",
-                ]
-            )
-        )
+        return bot_messages.free_trial_alert(current_value, peak_value, threshold)
 
     def _build_upsell_message(self) -> str:
-        donation_link = Config.PAYPAL_DONATION_LINK or 'https://paypal.me/'
-        return (
-            "\n".join(
-                [
-                    "🔔 Alert Premium disponibili",
-                    "",
-                    "Attiva il piano Premium per ricevere notifiche illimitate e personalizzare la soglia.",
-                    f"Supportaci con una donazione: {donation_link}",
-                ]
-            )
-        )
+        return bot_messages.upsell_message()
 
     @staticmethod
     def simulate_free_trial_decision(

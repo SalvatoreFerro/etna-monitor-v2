@@ -36,10 +36,10 @@
               <span class="plan-caption">Alert illimitati, soglia personalizzata e log eventi sempre disponibili.</span>
             {% elif not user.free_alert_consumed %}
               <span class="badge free">⚪ Free – 1 alert gratuito disponibile</span>
-              <span class="plan-caption">Collega il bot Telegram per ricevere l'alert di prova alla prossima attività significativa.</span>
+              <span class="plan-caption">Premium con donazione PayPal (min. €9,99). Nella donazione inserisci la tua email di registrazione.</span>
             {% else %}
               <span class="badge warning">🔴 Free – prova già utilizzata</span>
-              <span class="plan-caption">Passa a Premium per notifiche illimitate, log eventi e controlli avanzati.</span>
+              <span class="plan-caption">Premium con donazione PayPal (min. €9,99). Nella donazione inserisci la tua email di registrazione.</span>
             {% endif %}
           </div>
         </div>
@@ -216,8 +216,8 @@
         </article>
         <article class="card-premium telegram-status-card" aria-label="Stato Telegram">
           <header class="card-header">
-            <h2>Telegram Status</h2>
-            <p class="muted">Assicurati di ricevere avvisi in tempo reale sul tuo telefono.</p>
+            <h2>Telegram</h2>
+            <p class="muted">Collega il bot per ricevere alert sul telefono.</p>
           </header>
           {% if telegram_connected %}
             <div class="telegram-status-body" data-track-view="telegram_link_success" data-track-location="dashboard">
@@ -227,7 +227,10 @@
           {% else %}
             <div class="telegram-status-body">
               <span class="telegram-badge telegram-badge--disconnected">Telegram non collegato</span>
-              <p class="muted">Collega Telegram per ricevere avvisi immediati sulle variazioni importanti.</p>
+              <ol class="step-list">
+                <li>Genera il link di collegamento</li>
+                <li>Apri Telegram e premi Start</li>
+              </ol>
               <form method="POST" action="{{ url_for('dashboard.generate_telegram_link') }}" target="_blank">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <button
@@ -240,25 +243,37 @@
             </div>
           {% endif %}
         </article>
-        <article class="card-premium account-status-card" aria-label="Stato account">
-          <header class="account-status-card__header">
-            <h2>Stato account</h2>
-            <p class="muted">Verifica a colpo d'occhio registrazione, premium e Telegram.</p>
+        <article class="card-premium account-summary-card" aria-label="Account">
+          <header class="card-header">
+            <h2>Account</h2>
+            <p class="muted">Stato e attivazione Premium in un colpo d'occhio.</p>
           </header>
-          <ul class="account-status-list">
-            <li>
-              <span class="account-status-label">Registrazione</span>
-              <span class="account-status-value">✓</span>
-            </li>
-            <li>
-              <span class="account-status-label">Premium</span>
-              <span class="account-status-value">{{ '✓' if user.has_premium_access else '✗' }}</span>
-            </li>
-            <li>
-              <span class="account-status-label">Telegram</span>
-              <span class="account-status-value">{{ '✓' if (user.telegram_chat_id or user.chat_id) else '✗' }}</span>
-            </li>
-          </ul>
+          {% if user.has_premium_access %}
+            <div class="account-summary">
+              <div class="account-summary__status">
+                <span class="badge premium">🟢 Premium attivo</span>
+                <p class="muted">Accesso completo agli alert e alla personalizzazione.</p>
+              </div>
+              <ul class="account-benefits">
+                <li>Alert Telegram + email senza limiti</li>
+                <li>Soglia personalizzata e log eventi</li>
+                <li>Esportazioni e accesso anticipato</li>
+              </ul>
+            </div>
+          {% else %}
+            <div class="account-summary">
+              <div class="account-summary__status">
+                <span class="badge free">⚪ Free</span>
+                <p class="muted">Hai accesso al grafico realtime e a 1 alert di prova.</p>
+              </div>
+              <div class="account-summary__actions">
+                <a class="btn btn-premium btn-sm" href="{{ url_for('billing.donate') }}">Attiva Premium (PayPal)</a>
+                <p class="helper-text">Donazione PayPal (min. €9,99)</p>
+                <p class="helper-text">Nella donazione inserisci la tua email di registrazione</p>
+                <p class="helper-text">PayPal: salvoferro16@gmail.com</p>
+              </div>
+            </div>
+          {% endif %}
         </article>
         <article class="card-premium threshold-card animate-premium-slide" id="threshold-settings">
           <header class="card-header">
@@ -279,7 +294,7 @@
           {% else %}
           <div class="upgrade-prompt">
             <p>Soglia fissa: {{ "%.2f"|format(active_threshold) }} mV.</p>
-            <p class="muted">La soglia personalizzata è disponibile con il piano Premium.</p>
+            <p class="muted">Premium con donazione PayPal (min. €9,99). Inserisci l’email di registrazione.</p>
           </div>
           {% endif %}
         </article>
@@ -330,10 +345,11 @@
             {% if not user.has_premium_access %}
               <a
                 class="btn btn-premium btn-sm"
-                href="{{ url_for('main.pricing') }}"
+                href="{{ url_for('billing.donate') }}"
                 data-track-event="click_attiva_premium"
                 data-track-location="dashboard"
-              >Attiva Premium</a>
+              >Attiva Premium (PayPal)</a>
+              <p class="muted">Donazione PayPal (min. €9,99) · Inserisci email di registrazione</p>
             {% endif %}
           </div>
         </article>
@@ -382,7 +398,7 @@
                 <span class="connection-status status-success">✓ Connesso</span>
                 <p>Chat ID: {{ user.telegram_chat_id or user.chat_id }}</p>
                 {% if not user.has_premium_access %}
-                  <p class="trial-hint">Riceverai l'alert di prova alla prossima attività significativa. Passa a Premium per continuare a ricevere notifiche.</p>
+                  <p class="trial-hint">Riceverai l'alert di prova alla prossima attività significativa. Premium con donazione PayPal (min. €9,99) con email registrazione.</p>
                 {% endif %}
                 <form method="POST" action="{{ url_for('dashboard.disconnect_telegram') }}">
                   <button type="submit" class="btn btn-secondary btn-sm">Disconnetti</button>
@@ -414,20 +430,38 @@
           <h3>Eventi recenti</h3>
           <p>Ultimi eventi sismici rilevati dalla piattaforma.</p>
         </header>
-        <div class="events-list" id="events-list">
-          {% for event in recent_events %}
-            <div class="event-item">
-              <span class="event-time">{{ event.timestamp.strftime('%d/%m %H:%M') }}</span>
-              <span class="event-type">{{ event.event_type.replace('_', ' ').title() }}</span>
-              {% if event.value %}
-                <span class="event-value">{{ "%.2f"|format(event.value) }} mV</span>
-              {% endif %}
-              <p class="event-message">{{ event.message }}</p>
-            </div>
-          {% else %}
-            <p class="no-events">Nessun evento sismico significativo nelle ultime 24 ore.</p>
-          {% endfor %}
+        {% if recent_events %}
+        <div class="events-table-wrapper">
+          <table class="events-table" id="events-list">
+            <thead>
+              <tr>
+                <th scope="col">Data</th>
+                <th scope="col">Evento</th>
+                <th scope="col">Valore</th>
+                <th scope="col">Dettagli</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for event in recent_events %}
+              <tr>
+                <td>{{ event.timestamp.strftime('%d/%m %H:%M') }}</td>
+                <td>{{ event.event_type.replace('_', ' ').title() }}</td>
+                <td>
+                  {% if event.value %}
+                    {{ "%.2f"|format(event.value) }} mV
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td class="event-message">{{ event.message }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
+        {% else %}
+          <p class="no-events">Nessun evento sismico significativo nelle ultime 24 ore.</p>
+        {% endif %}
       </article>
       {% else %}
       <article class="card-premium events-card animate-premium-fade">

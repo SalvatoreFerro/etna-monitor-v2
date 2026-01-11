@@ -4,14 +4,15 @@
 <section class="card card-premium animate-premium-fade" style="max-width: 720px; margin: 0 auto;">
   <header class="card-header">
     <h1>Sostienici / Diventa Premium</h1>
-    <p>Donazione minima €9,99 → Premium Lifetime</p>
+    <p>Donazione PayPal libera con minimo €9,99 → attivazione Premium</p>
   </header>
 
   <div class="card-body">
     <p>
-      Sostieni lo sviluppo di EtnaMonitor con una donazione minima di <strong>€9,99</strong> e otterrai
-      l'attivazione manuale del piano <strong>Premium Lifetime</strong>.
+      Sostieni lo sviluppo di EtnaMonitor con una donazione PayPal libera di almeno <strong>€9,99</strong> e otterrai
+      l'attivazione manuale di <strong>Premium</strong>.
     </p>
+    <p class="muted">Nella donazione inserisci la tua email di registrazione. PayPal: <strong>salvoferro16@gmail.com</strong></p>
 
     <div class="donation-cta" style="margin: 24px 0;">
       <h2>Donazione PayPal</h2>
@@ -27,7 +28,7 @@
 
     <div class="donation-confirm card-premium" style="padding: 24px;">
       <h2>Ho donato</h2>
-      <p>Incolla l'ID transazione PayPal per permetterci di verificare e attivare il tuo piano.</p>
+      <p>Incolla l'ID transazione PayPal per permetterci di verificare e attivare Premium.</p>
       <form method="POST" action="{{ url_for('billing.confirm_donation') }}" class="stacked-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div class="form-group">

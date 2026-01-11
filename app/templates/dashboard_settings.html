@@ -181,7 +181,7 @@
     <section class="settings-card animate-premium-slide">
       <header>
         <h2>Riepilogo account</h2>
-        <p class="muted-text">Informazioni principali sul tuo profilo e sullo stato dell'abbonamento.</p>
+        <p class="muted-text">Informazioni principali sul tuo profilo e sullo stato Premium.</p>
       </header>
       <div class="account-details">
         <div class="pill">
@@ -220,7 +220,7 @@
             {% if user.telegram_chat_id or user.chat_id %}
               Connesso (ID {{ user.telegram_chat_id or user.chat_id }})
               {% if user.free_alert_consumed and not user.has_premium_access %}
-                · Riceverai solo messaggi di servizio finché non attivi Premium.
+                · Premium si attiva con donazione PayPal min €9,99 (inserisci email di registrazione).
               {% endif %}
             {% else %}
               Non collegato · collega Telegram dalla <a class="inline-link" href="{{ url_for('dashboard.dashboard_home') }}#alert-settings">dashboard</a>
@@ -242,7 +242,7 @@
 
     <section class="settings-card secondary-card animate-premium-slide">
       <header>
-        <h2>{% if user.has_premium_access %}Strumenti avanzati Premium{% else %}Perché passare a Premium{% endif %}</h2>
+        <h2>{% if user.has_premium_access %}Strumenti avanzati Premium{% else %}Perché attivare Premium{% endif %}</h2>
         <p class="muted-text">
           {% if user.has_premium_access %}
             Sfrutta tutte le funzionalità dedicate al monitoraggio pro avanzato.
@@ -282,7 +282,8 @@
       </ul>
 
       {% if not user.has_premium_access %}
-      <a href="/pricing" class="btn btn-premium">Scopri i piani Premium</a>
+      <a href="{{ url_for('billing.donate') }}" class="btn btn-premium">Attiva Premium (PayPal)</a>
+      <p class="muted-text">Donazione PayPal (min. €9,99) · Inserisci l'email di registrazione.</p>
       {% else %}
       <p class="muted-text">Hai già accesso a tutte le funzionalità Premium: personalizzale dalla dashboard in qualsiasi momento.</p>
       {% endif %}

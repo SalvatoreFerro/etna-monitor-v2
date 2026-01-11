@@ -13,11 +13,11 @@
   {% set cta_panel_text = "Imposta la tua soglia, ricevi il primo alert gratuito e resta sempre aggiornato." %}
 {% elif not has_premium %}
   {% set cta_state = 'free' %}
-  {% set cta_label = 'Passa a Premium' %}
-  {% set cta_url = url_for('main.pricing') %}
-  {% set cta_note = "EtnaBot è incluso nei piani Premium: passa a Premium per attivarlo." %}
-  {% set cta_alert_text = "EtnaBot è disponibile solo con Premium: passa al piano Premium per sbloccarlo." %}
-  {% set cta_panel_text = "Upgrade a Premium per attivare EtnaBot e usare soglie personalizzate." %}
+  {% set cta_label = 'Attiva Premium (PayPal)' %}
+  {% set cta_url = url_for('billing.donate') %}
+  {% set cta_note = "Premium si attiva con donazione PayPal (min. €9,99). Nella donazione inserisci la tua email di registrazione." %}
+  {% set cta_alert_text = "EtnaBot si attiva con Premium: donazione PayPal (min. €9,99) + email di registrazione." %}
+  {% set cta_panel_text = "Attiva Premium con donazione PayPal (min. €9,99) e inserisci l'email di registrazione." %}
 {% elif not has_telegram %}
   {% set cta_state = 'premium_no_telegram' %}
   {% set cta_label = 'Collega Telegram' %}
@@ -38,7 +38,7 @@
     <header class="page__header etna-bot-page__hero">
       <span class="eyebrow">Telegram Alerts</span>
       <h1>Il bot Telegram che ti avvisa quando il tremore dell’Etna aumenta</h1>
-      <p class="page__lede">Alert automatici, soglia personalizzabile e prima notifica GRATIS.</p>
+      <p class="page__lede">Alert automatici, soglia personalizzabile e prima notifica gratis.</p>
       <p class="muted">{{ cta_note }}</p>
       {% if cta_url %}
         <a href="{{ cta_url }}" class="cta-button-primary">{{ cta_label }}</a>
@@ -53,7 +53,7 @@
         <ul>
           <li>Monitoraggio 24/7 del tremore INGV con soglie dinamiche.</li>
           <li>Prima notifica gratuita per provare subito l’alert via Telegram.</li>
-          <li>Notifiche illimitate con soglia personalizzabile (Premium Lifetime).</li>
+          <li>Notifiche illimitate con soglia personalizzabile (Premium con donazione PayPal).</li>
           <li>Alert istantanei su Telegram con testo contestuale e link rapidi.</li>
         </ul>
         <div class="bot-feature-card__cta">
@@ -108,7 +108,7 @@
         </ul>
       </article>
       <article class="plan-summary__card plan-summary__card--premium">
-        <h3>Premium Lifetime</h3>
+        <h3>Premium</h3>
         <p>Notifiche illimitate + soglia personalizzabile + funzionalità avanzate.</p>
         <ul>
           <li>Alert multi-canale con priorità</li>
