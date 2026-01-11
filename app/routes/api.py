@@ -412,20 +412,23 @@ def get_copernicus_latest():
                 "acquired_at": None,
                 "product_id": None,
                 "cloud_cover": None,
+                "bbox": None,
                 "image_path": None,
                 "image_url": None,
                 "created_at": None,
             }
         )
 
+    image_url = resolve_copernicus_image_url(record)
     return jsonify(
         {
-            "available": True,
+            "available": image_url is not None,
             "acquired_at": to_iso_utc(record.acquired_at),
             "product_id": record.product_id,
             "cloud_cover": record.cloud_cover,
+            "bbox": record.bbox,
             "image_path": record.image_path,
-            "image_url": resolve_copernicus_image_url(record),
+            "image_url": image_url,
             "created_at": to_iso_utc(record.created_at),
         }
     )

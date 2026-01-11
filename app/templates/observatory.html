@@ -10,6 +10,7 @@
 {% endblock %}
 
 {% block content %}
+  {% from "partials/leaflet_map.html" import etna_hotspots_map %}
   <section class="observatory-hero">
     <div class="container">
       <div class="observatory-header">
@@ -130,7 +131,12 @@
             </div>
           </header>
           <div class="observatory-card__body">
-            <div id="observatory-hotspots-map" class="observatory-map" aria-label="Mappa hotspot Etna"></div>
+            {{ etna_hotspots_map(
+              'observatory-hotspots-map',
+              'observatory-hotspots-label',
+              'observatory-hotspots-loader',
+              'Concentrazione di anomalie termiche nell’area sommitale dell’Etna'
+            ) }}
             <div class="observatory-kpi-grid">
               <div class="observatory-kpi">
                 <span>Hotspot ultime 24h</span>
@@ -140,6 +146,11 @@
                 <span>Hotspot più recente</span>
                 <strong id="observatory-hotspots-latest">{{ hotspots_summary.latest_acquired_display or '—' }}</strong>
               </div>
+            </div>
+            <div class="observatory-card__footer">
+              {% if config.HOTSPOTS_ENABLED %}
+                <a class="btn btn-secondary" href="{{ url_for('main.hotspots') }}">Apri pagina hotspot</a>
+              {% endif %}
             </div>
           </div>
         </article>
@@ -158,18 +169,29 @@
           <div class="observatory-card__body">
             <div class="observatory-image">
               {% if copernicus_image_url %}
-                <img
-                  src="{{ copernicus_image_url }}"
-                  alt="Immagine satellitare Copernicus Sentinel-2 dell'Etna"
-                  loading="lazy"
-                  decoding="async"
-                />
+                <div class="observatory-image__frame">
+                  <img
+                    src="{{ copernicus_image_url }}"
+                    alt="Immagine satellitare Copernicus Sentinel-2 dell'Etna"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                  <div class="observatory-image__overlay">
+                    <span class="observatory-summit-marker" aria-hidden="true"></span>
+                    <span class="observatory-summit-label">Etna summit</span>
+                  </div>
+                </div>
               {% else %}
                 <div class="observatory-image__placeholder">
-                  <span>Nessuna immagine disponibile</span>
+                  <span>
+                    Nessuna immagine disponibile{% if copernicus_updated_display %}<br />Ultimo tentativo: {{ copernicus_updated_display }}{% endif %}
+                  </span>
                 </div>
               {% endif %}
             </div>
+            {% if copernicus_latest and copernicus_latest.cloud_cover is not none and copernicus_latest.cloud_cover >= 65 %}
+              <span class="observatory-badge observatory-badge--warning">Nuvolosità alta</span>
+            {% endif %}
             <div class="observatory-copernicus-meta">
               <div>
                 <span>Acquisizione</span>
@@ -190,14 +212,24 @@
               Immagine satellitare Copernicus Sentinel-2 (CDSE). La disponibilità dipende dalla copertura
               nuvolosa e dai passaggi del satellite.
             </p>
-            <button
-              type="button"
-              class="btn btn-secondary"
-              data-modal-open
-              {% if not copernicus_image_url %}disabled{% endif %}
-            >
-              Apri grande
-            </button>
+            {% if copernicus_latest and copernicus_latest.bbox %}
+              <div
+                id="observatory-copernicus-overview"
+                class="etna-map etna-map--overview"
+                data-bbox='{{ copernicus_latest.bbox | tojson }}'
+                aria-label="Overview Copernicus Sentinel-2"
+              ></div>
+            {% endif %}
+            <div class="observatory-card__footer">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                data-modal-open
+                {% if not copernicus_image_url %}disabled{% endif %}
+              >
+                Apri grande
+              </button>
+            </div>
           </div>
         </article>
       </div>
@@ -223,6 +255,7 @@
 {% block head %}
   <script defer src="{{ url_for('static', filename='js/plotly.min.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
   <script defer src="{{ url_for('static', filename='js/chart.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
+  <script defer src="{{ url_for('static', filename='js/leaflet_common.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
   <script
     defer
     src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
@@ -232,24 +265,41 @@
   <script nonce="{{ csp_nonce() }}">
     document.addEventListener('DOMContentLoaded', () => {
       const mapElement = document.getElementById('observatory-hotspots-map');
-      if (mapElement && window.L) {
-        const map = L.map(mapElement, {
-          zoomControl: false,
-          scrollWheelZoom: false,
-          attributionControl: false,
-        }).setView([37.751, 14.995], 11);
-
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 13,
-        }).addTo(map);
+      if (mapElement && window.EtnaLeaflet) {
+        const map = window.EtnaLeaflet.createEtnaMap(mapElement, {
+          center: [37.751, 14.995],
+          zoom: 10,
+          addFirmsBadge: true,
+          mapOptions: {
+            zoomControl: true,
+            attributionControl: true,
+          },
+        });
 
         const countEl = document.getElementById('observatory-hotspots-count');
         const latestEl = document.getElementById('observatory-hotspots-latest');
+        const labelEl = document.getElementById('observatory-hotspots-label');
+        const loaderEl = document.getElementById('observatory-hotspots-loader');
 
+        const setLoaderVisible = (visible) => {
+          if (!loaderEl) {
+            return;
+          }
+          loaderEl.classList.toggle('is-visible', visible);
+        };
+
+        const setLabelVisible = (visible) => {
+          if (!labelEl) {
+            return;
+          }
+          labelEl.classList.toggle('is-visible', visible);
+        };
+
+        setLoaderVisible(true);
         fetch('/api/hotspots/latest?mode=all', { headers: { Accept: 'application/json' } })
           .then((response) => response.json())
           .then((payload) => {
-            if (!payload || !payload.available) {
+            if (!payload || !payload.available || !map) {
               return;
             }
             if (countEl) {
@@ -258,26 +308,24 @@
 
             const items = Array.isArray(payload.items_24h) ? payload.items_24h : [];
             let latestTimestamp = null;
-            items.forEach((item) => {
-              if (!item || item.lat == null || item.lon == null) {
-                return;
-              }
-              const marker = L.circleMarker([item.lat, item.lon], {
-                radius: 6,
-                color: '#f97316',
-                weight: 1,
-                fillColor: '#fb923c',
-                fillOpacity: 0.8,
-              });
-              marker.addTo(map);
-              if (item.time_utc) {
-                const ts = new Date(item.time_utc);
-                if (!Number.isNaN(ts.getTime())) {
-                  if (!latestTimestamp || ts > latestTimestamp) {
-                    latestTimestamp = ts;
+
+            window.EtnaLeaflet.addHotspotsLayer(map, items, {
+              fitBounds: true,
+              onMarker: (marker, item) => {
+                if (item.time_utc) {
+                  const ts = new Date(item.time_utc);
+                  if (!Number.isNaN(ts.getTime())) {
+                    if (!latestTimestamp || ts > latestTimestamp) {
+                      latestTimestamp = ts;
+                    }
                   }
                 }
-              }
+                const brightness = window.EtnaLeaflet.getHotspotBrightness(item);
+                const unit = item?.intensity?.unit ?? '';
+                const frp = item?.intensity?.frp;
+                const tooltip = `${brightness == null ? '—' : brightness.toFixed(1)} ${unit} • ${frp == null ? '—' : frp.toFixed(1)} MW`;
+                marker.bindTooltip(tooltip, { direction: 'top', opacity: 0.9 });
+              },
             });
 
             if (latestTimestamp && latestEl) {
@@ -288,11 +336,60 @@
                 hour: '2-digit',
                 minute: '2-digit',
                 timeZone: 'UTC',
-                timeZoneName: 'short'
+                timeZoneName: 'short',
               });
             }
+            setLabelVisible(true);
           })
-          .catch(() => null);
+          .catch(() => null)
+          .finally(() => setLoaderVisible(false));
+      }
+
+      const overviewEl = document.getElementById('observatory-copernicus-overview');
+      if (overviewEl && window.EtnaLeaflet) {
+        try {
+          const bbox = JSON.parse(overviewEl.dataset.bbox || 'null');
+          if (Array.isArray(bbox) && bbox.length === 4) {
+            const [minLon, minLat, maxLon, maxLat] = bbox;
+            const centerLat = (minLat + maxLat) / 2;
+            const centerLon = (minLon + maxLon) / 2;
+            const map = window.EtnaLeaflet.createEtnaMap(overviewEl, {
+              center: [centerLat, centerLon],
+              zoom: 11,
+              mapOptions: {
+                zoomControl: false,
+                attributionControl: false,
+                dragging: false,
+                scrollWheelZoom: false,
+                doubleClickZoom: false,
+                boxZoom: false,
+                keyboard: false,
+              },
+            });
+
+            if (map && window.L) {
+              const bounds = L.latLngBounds(
+                [minLat, minLon],
+                [maxLat, maxLon]
+              );
+              L.rectangle(bounds, {
+                color: '#38bdf8',
+                weight: 1,
+                fillOpacity: 0.08,
+              }).addTo(map);
+              L.circleMarker([centerLat, centerLon], {
+                radius: 5,
+                color: '#e2e8f0',
+                fillColor: '#38bdf8',
+                fillOpacity: 0.9,
+                weight: 1.5,
+              }).addTo(map);
+              map.fitBounds(bounds, { padding: [8, 8], maxZoom: 12, animate: false });
+            }
+          }
+        } catch (error) {
+          // Ignore malformed bbox data
+        }
       }
 
       const modal = document.querySelector('[data-modal]');

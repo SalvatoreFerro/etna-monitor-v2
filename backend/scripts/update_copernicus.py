@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import time
 from dataclasses import dataclass
@@ -15,7 +16,6 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import URL, make_url
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
-from backend.services.hotspots.config import HotspotsConfig
 
 STAC_URL = "https://stac.dataspace.copernicus.eu/v1/search"
 TOKEN_URL = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
@@ -24,11 +24,13 @@ DEFAULT_COLLECTION = "sentinel-2-l2a"
 DEFAULT_SOURCE = "Copernicus Sentinel-2 / CDSE"
 DEFAULT_DAYS_LOOKBACK = 5
 DEFAULT_MAX_CLOUD = 80
+DEFAULT_BBOX_DELTA_DEG = 0.06
 OUTPUT_WIDTH = 1024
 OUTPUT_MIN_HEIGHT = 256
 OUTPUT_MAX_HEIGHT = 1024
 REQUEST_TIMEOUT = (8, 35)
 RETRY_DELAYS = [1.0, 2.5]
+ETNA_CENTER = (37.751, 14.993)
 
 
 class Base(DeclarativeBase):
@@ -133,8 +135,7 @@ def _load_config() -> CopernicusConfig:
     if not client_id or not client_secret:
         raise RuntimeError("CDSE_CLIENT_ID and CDSE_CLIENT_SECRET are required.")
 
-    hotspots_config = HotspotsConfig.from_env()
-    bbox = list(hotspots_config.bbox_coords)
+    bbox = _resolve_bbox()
 
     days_lookback = int(os.getenv("CDSE_DAYS_LOOKBACK", str(DEFAULT_DAYS_LOOKBACK)))
     max_cloud = int(os.getenv("CDSE_MAX_CLOUD", str(DEFAULT_MAX_CLOUD)))
@@ -146,6 +147,34 @@ def _load_config() -> CopernicusConfig:
         days_lookback=days_lookback,
         max_cloud=max_cloud,
     )
+
+
+def _resolve_bbox() -> list[float]:
+    bbox_km = os.getenv("CDSE_BBOX_KM")
+    bbox_delta = os.getenv("CDSE_BBOX_DELTA_DEG")
+
+    lat_center, lon_center = ETNA_CENTER
+    if bbox_km:
+        try:
+            km_value = float(bbox_km)
+        except ValueError:
+            km_value = DEFAULT_BBOX_DELTA_DEG * 111
+        lat_delta = km_value / 111
+        lon_delta = km_value / (111 * max(0.1, abs(math.cos(math.radians(lat_center)))))
+    else:
+        try:
+            delta_deg = float(bbox_delta) if bbox_delta else DEFAULT_BBOX_DELTA_DEG
+        except ValueError:
+            delta_deg = DEFAULT_BBOX_DELTA_DEG
+        lat_delta = delta_deg
+        lon_delta = delta_deg
+
+    return [
+        lon_center - lon_delta,
+        lat_center - lat_delta,
+        lon_center + lon_delta,
+        lat_center + lat_delta,
+    ]
 
 
 def _fetch_stac_items(config: CopernicusConfig, session: requests.Session, logger: logging.Logger) -> list[StacItem]:
@@ -175,7 +204,7 @@ def _fetch_stac_items(config: CopernicusConfig, session: requests.Session, logge
                 cloud_cover = float(cloud_cover)
             except (TypeError, ValueError):
                 cloud_cover = None
-        bbox = feature.get("bbox") or config.bbox
+        bbox = list(config.bbox)
         items.append(
             StacItem(
                 product_id=str(product_id),
@@ -313,6 +342,8 @@ def main() -> int:
         logger.error(str(exc))
         return 2
 
+    logger.info("Copernicus bbox used: %s", config.bbox)
+
     session = requests.Session()
     try:
         items = _fetch_stac_items(config, session, logger)
@@ -324,6 +355,12 @@ def main() -> int:
     if item is None:
         logger.warning("Copernicus: nessuna acquisizione disponibile")
         return 0
+
+    logger.info(
+        "Copernicus: selezionato prodotto %s (cloud cover: %s)",
+        item.product_id,
+        f"{item.cloud_cover:.1f}%" if item.cloud_cover is not None else "n/a",
+    )
 
     engine = _build_engine()
     session_factory = sessionmaker(bind=engine)
@@ -361,6 +398,7 @@ def main() -> int:
         db_session.add(record)
         db_session.commit()
 
+    logger.info("Copernicus: immagine salvata in %s", relative_path)
     logger.info(
         "Copernicus: immagine aggiornata (%s, %s)",
         item.acquired_at.isoformat(),

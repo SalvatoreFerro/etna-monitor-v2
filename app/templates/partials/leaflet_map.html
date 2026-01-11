@@ -1,0 +1,23 @@
+{% macro etna_hotspots_map(map_id, label_id, loader_id, label_text, aria_label='Mappa hotspot termici Etna') %}
+  <div class="etna-map-stack">
+    <div class="etna-map-shell">
+      {% if loader_id %}
+        <div class="etna-map-loader" id="{{ loader_id }}">
+          <div class="loader-ring" aria-hidden="true"></div>
+          <div class="muted">Stiamo sincronizzando i dati satellitari…</div>
+        </div>
+      {% endif %}
+      <div id="{{ map_id }}" class="etna-map" aria-label="{{ aria_label }}"></div>
+      <div class="etna-map-label" id="{{ label_id }}">
+        {{ label_text }}
+      </div>
+    </div>
+    <div class="etna-legend">
+      <div class="etna-legend-title">Legenda intensità</div>
+      <div class="legend-row"><span class="legend-dot legend-dot--high"></span> Intensità alta</div>
+      <div class="legend-row"><span class="legend-dot legend-dot--mid"></span> Intensità media</div>
+      <div class="legend-row"><span class="legend-dot legend-dot--low"></span> Intensità bassa</div>
+      <div>Ogni punto = area di circa 375 m</div>
+    </div>
+  </div>
+{% endmacro %}
