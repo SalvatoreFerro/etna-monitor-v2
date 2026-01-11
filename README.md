@@ -252,6 +252,29 @@ curl http://127.0.0.1:5000/api/hotspots/latest
 open http://127.0.0.1:5000/hotspots
 ```
 
+## Copernicus Sentinel-2 (CDSE)
+EtnaMonitor integra Copernicus Data Space Ecosystem per generare una thumbnail web-friendly Sentinel-2
+aggiornata su area Etna.
+
+### Variabili ambiente
+```env
+CDSE_CLIENT_ID=
+CDSE_CLIENT_SECRET=
+CDSE_DAYS_LOOKBACK=5
+CDSE_MAX_CLOUD=80
+```
+
+### Aggiornamento immagine
+```bash
+python backend/scripts/update_copernicus.py
+```
+
+### Cron (ogni 2 ore)
+Agganciare lo script allo stesso scheduler già usato per gli hotspot, senza modificare la pipeline esistente:
+```bash
+0 */2 * * * cd /path/to/etna-monitor-v2 && /usr/bin/env python backend/scripts/update_copernicus.py
+```
+
 ## Notifiche Telegram
 - **Collegamento account**: l'utente fornisce il proprio `chat_id` tramite comando `/start`, che viene associato al profilo in dashboard.
 - **Trigger alert**: viene inviato un messaggio quando la media dell'ultima finestra supera la soglia personalizzata. L'hysteresis evita notifiche ripetute finché il valore non rientra sotto la soglia meno un margine.
