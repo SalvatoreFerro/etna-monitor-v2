@@ -220,20 +220,23 @@
             <p class="muted">Assicurati di ricevere avvisi in tempo reale sul tuo telefono.</p>
           </header>
           {% if telegram_connected %}
-            <div class="telegram-status-body">
-              <span class="telegram-badge telegram-badge--connected">Telegram collegato</span>
+            <div class="telegram-status-body" data-track-view="telegram_link_success" data-track-location="dashboard">
+              <span class="telegram-badge telegram-badge--connected">Telegram attivo ✅</span>
               <p class="muted">Alert attivi via Telegram.</p>
             </div>
           {% else %}
             <div class="telegram-status-body">
               <span class="telegram-badge telegram-badge--disconnected">Telegram non collegato</span>
               <p class="muted">Collega Telegram per ricevere avvisi immediati sulle variazioni importanti.</p>
-              <a
-                class="btn btn-secondary glass btn-sm"
-                href="{{ url_for('dashboard.dashboard_home') }}#alert-settings"
-                data-track-event="click_collega_telegram"
-                data-track-location="dashboard"
-              >Collega Telegram</a>
+              <form method="POST" action="{{ url_for('dashboard.generate_telegram_link') }}" target="_blank">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button
+                  type="submit"
+                  class="btn btn-secondary glass btn-sm"
+                  data-track-event="telegram_link_link_generated"
+                  data-track-location="dashboard"
+                >Attiva avvisi Telegram (30 sec)</button>
+              </form>
             </div>
           {% endif %}
         </article>
@@ -388,57 +391,16 @@
               </div>
             {% else %}
               <div class="telegram-setup">
-                <p class="telegram-intro">Collega il bot per ricevere gli avvisi disponibili sul tuo piano.</p>
-                <ol class="telegram-steps" aria-label="Guida rapida Telegram">
-                  <li class="telegram-step">
-                    <span class="telegram-step-index">1</span>
-                    <div class="telegram-step-body">
-                      <span class="telegram-step-title">Apri il bot</span>
-                      <p>Avvia la chat con <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">@etna_turi_bot</a> e premi <span class="telegram-pill">Avvia</span>.</p>
-                    </div>
-                    <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener" class="btn btn-secondary btn-sm glass telegram-step-action">Apri bot</a>
-                  </li>
-                  <li class="telegram-step">
-                    <span class="telegram-step-index">2</span>
-                    <div class="telegram-step-body">
-                      <span class="telegram-step-title">Richiedi l'ID</span>
-                      <p>Invia <code>/start</code> e copia l'ID che il bot ti restituisce.</p>
-                    </div>
-                    <span class="telegram-pill telegram-pill--copy">Copia</span>
-                  </li>
-                  <li class="telegram-step">
-                    <span class="telegram-step-index">3</span>
-                    <div class="telegram-step-body">
-                      <span class="telegram-step-title">Incolla qui</span>
-                      <p>Incolla l'ID nel campo sottostante per completare la connessione.</p>
-                    </div>
-                    <span class="telegram-pill telegram-pill--copy">Incolla</span>
-                  </li>
-                </ol>
-                <div class="telegram-copy-hint glass">
-                  <span class="telegram-pill telegram-pill--copy">Copia/Incolla</span>
-                  <p>Ti basta copiare l'ID dal messaggio del bot e incollarlo qui sotto. Niente spazi, solo numeri.</p>
-                </div>
-                <form method="POST" action="{{ url_for('dashboard.connect_telegram') }}" class="telegram-form">
+                <p class="telegram-intro">Collega il bot in un tap per ricevere gli avvisi disponibili sul tuo piano.</p>
+                <p class="muted">Il link rimane valido 15 minuti e si avvia in automatico su Telegram.</p>
+                <form method="POST" action="{{ url_for('dashboard.generate_telegram_link') }}" class="telegram-form" target="_blank">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <div class="form-group">
-                    <label for="chat_id">ID Chat Telegram</label>
-                    <input
-                      type="text"
-                      id="chat_id"
-                      name="chat_id"
-                      class="input-base"
-                      placeholder="es. 123456789"
-                      inputmode="numeric"
-                      pattern="^[0-9]+$"
-                      autocomplete="off"
-                      aria-describedby="chat-id-hint chat-id-validation"
-                      required
-                    >
-                    <small id="chat-id-hint" class="muted">Solo numeri positivi, senza spazi o prefissi.</small>
-                    <div id="chat-id-validation" class="telegram-validation" role="status" aria-live="polite"></div>
-                  </div>
-                  <button type="submit" class="btn btn-premium">Collega Telegram</button>
+                  <button
+                    type="submit"
+                    class="btn btn-premium"
+                    data-track-event="telegram_link_link_generated"
+                    data-track-location="dashboard"
+                  >Attiva avvisi Telegram (30 sec)</button>
                 </form>
               </div>
             {% endif %}

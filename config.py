@@ -113,6 +113,7 @@ class Config:
 
     TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
     TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "")
+    TELEGRAM_BOT_USERNAME = os.getenv("TELEGRAM_BOT_USERNAME", "etna_turi_bot").lstrip("@")
     TELEGRAM_BOT_MODE = _resolve_telegram_bot_mode()
     PAYPAL_DONATION_LINK = os.getenv("PAYPAL_DONATION_LINK", "")
     CSV_METRICS_PATH = os.getenv(

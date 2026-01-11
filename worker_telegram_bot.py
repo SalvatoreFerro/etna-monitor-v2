@@ -3,12 +3,31 @@
 import logging
 import os
 import sys
+import time
+from datetime import datetime, timezone
 from typing import Final
 
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
+from sqlalchemy import or_
+
+from app import create_app
+from app.models import db, TelegramLinkToken, User
+from app.models.event import Event
+from config import Config
 
 TOKEN_ENV: Final[str] = "TELEGRAM_BOT_TOKEN"
+LINK_PREFIX: Final[str] = "LINK_"
+RATE_LIMIT_SECONDS: Final[int] = 2
+_LAST_START_AT: dict[int, float] = {}
+_FLASK_APP = None
+
+
+def _get_flask_app():
+    global _FLASK_APP
+    if _FLASK_APP is None:
+        _FLASK_APP = create_app()
+    return _FLASK_APP
 
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -17,11 +36,101 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     chat_id = update.effective_chat.id if update.effective_chat else None
     if chat_id is not None:
         logging.info("Handling /start command chat_id=%s", chat_id)
-    if update.message:
-        greeting = "Ciao, sono Etna Bot! 🔥"
-        if chat_id is not None:
-            greeting = f"{greeting}\nIl tuo chat ID è: {chat_id}"
-        await update.message.reply_text(greeting)
+        now = time.monotonic()
+        last_start_at = _LAST_START_AT.get(chat_id)
+        if last_start_at and now - last_start_at < RATE_LIMIT_SECONDS:
+            return
+        _LAST_START_AT[chat_id] = now
+
+    if not update.message:
+        return
+
+    args = context.args or []
+    payload = args[0] if args else ""
+    if payload.startswith(LINK_PREFIX):
+        token_value = payload[len(LINK_PREFIX):].strip()
+        if not token_value or chat_id is None:
+            await update.message.reply_text(
+                "Token non valido. Riprova dal pulsante sul sito."
+            )
+            return
+
+        app = _get_flask_app()
+        with app.app_context():
+            now = datetime.now(timezone.utc)
+            try:
+                token_record = TelegramLinkToken.query.filter_by(token=token_value).first()
+                if not token_record:
+                    await update.message.reply_text(
+                        "Token non valido o scaduto. Rigenera il link dal sito."
+                    )
+                    return
+                if token_record.used_at:
+                    await update.message.reply_text(
+                        "Questo link è già stato usato. Rigenera il link dal sito."
+                    )
+                    return
+                if token_record.expires_at < now:
+                    await update.message.reply_text(
+                        "Il link è scaduto. Rigenera il link dal sito."
+                    )
+                    return
+
+                user = User.query.get(token_record.user_id)
+                if not user:
+                    await update.message.reply_text(
+                        "Impossibile completare il collegamento. Riprova dal sito."
+                    )
+                    return
+
+                if user.telegram_chat_id and user.telegram_chat_id != chat_id:
+                    await update.message.reply_text(
+                        "Il tuo account è già collegato a un altro Telegram."
+                    )
+                    return
+
+                existing_user = User.query.filter(
+                    User.id != user.id,
+                    or_(User.telegram_chat_id == chat_id, User.chat_id == chat_id),
+                ).first()
+                if existing_user:
+                    await update.message.reply_text(
+                        "Questo account Telegram è già collegato a un altro profilo."
+                    )
+                    return
+
+                user.telegram_chat_id = chat_id
+                user.chat_id = chat_id
+                user.telegram_opt_in = True
+                user.consent_ts = user.consent_ts or datetime.utcnow()
+                user.privacy_version = Config.PRIVACY_POLICY_VERSION
+                token_record.used_at = now
+                db.session.add(
+                    Event(
+                        user_id=user.id,
+                        event_type="telegram_connected",
+                        message="Telegram connected via deep link",
+                    )
+                )
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                logging.exception("Failed to link Telegram account for chat_id=%s", chat_id)
+                await update.message.reply_text(
+                    "Errore durante il collegamento. Riprova dal sito."
+                )
+                return
+
+        await update.message.reply_text(
+            "✅ Collegato! Ora riceverai gli alert quando superi la soglia."
+        )
+        return
+
+    greeting = (
+        "Ciao, sono Etna Bot! 🔥\n"
+        "Per collegare il tuo account, usa il pulsante su EtnaMonitor."
+    )
+    await update.message.reply_text(greeting)
 
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

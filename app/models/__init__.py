@@ -27,6 +27,7 @@ from .hotspots_cache import HotspotsCache
 from .hotspots_record import HotspotsRecord
 from .cron_run import CronRun
 from .alert_state import AlertState
+from .telegram_link_token import TelegramLinkToken
 
 try:
     from .sponsor_banner import (
@@ -65,6 +66,7 @@ __all__ = [
     'HotspotsRecord',
     'CronRun',
     'AlertState',
+    'TelegramLinkToken',
 ]
 
 if SponsorBanner is not None:
