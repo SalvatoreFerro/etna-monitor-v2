@@ -8,8 +8,7 @@ from flask import current_app, url_for
 
 from app.models.copernicus_image import CopernicusImage
 
-DEFAULT_ETNA_CENTER = (37.751, 14.993)
-DEFAULT_BBOX_DELTA_DEG = 0.06
+ETNA_BBOX_EPSG4326 = [14.85, 37.65, 15.15, 37.88]
 
 
 def get_latest_copernicus_image() -> CopernicusImage | None:
@@ -29,23 +28,6 @@ def resolve_copernicus_image_url(record: CopernicusImage | None) -> str | None:
 
 
 def resolve_copernicus_bbox(record: CopernicusImage | None) -> list[float]:
-    bbox = record.bbox if record else None
-    if isinstance(bbox, dict):
-        if all(key in bbox for key in ("west", "south", "east", "north")):
-            return [
-                float(bbox["west"]),
-                float(bbox["south"]),
-                float(bbox["east"]),
-                float(bbox["north"]),
-            ]
-        if isinstance(bbox.get("bbox"), (list, tuple)) and len(bbox["bbox"]) == 4:
-            return [float(value) for value in bbox["bbox"]]
-    if isinstance(bbox, (list, tuple)) and len(bbox) == 4:
-        return [float(value) for value in bbox]
-    lat_center, lon_center = DEFAULT_ETNA_CENTER
-    return [
-        lon_center - DEFAULT_BBOX_DELTA_DEG,
-        lat_center - DEFAULT_BBOX_DELTA_DEG,
-        lon_center + DEFAULT_BBOX_DELTA_DEG,
-        lat_center + DEFAULT_BBOX_DELTA_DEG,
-    ]
+    """Return a stable EPSG:4326 bbox for the Etna observatory view."""
+    _ = record
+    return [float(value) for value in ETNA_BBOX_EPSG4326]

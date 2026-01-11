@@ -5828,6 +5828,23 @@
   color: var(--color-text-secondary);
 }
 
+.observatory-image__placeholder-content {
+  display: grid;
+  gap: 0.4rem;
+  padding: var(--space-4);
+  text-align: center;
+}
+
+.observatory-image__status {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text);
+}
+
+.observatory-image__detail {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
 .observatory-copernicus-meta {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -5839,6 +5856,24 @@
 .observatory-copernicus-meta strong {
   color: var(--color-text);
   font-size: 1rem;
+}
+
+.observatory-copernicus-status {
+  display: grid;
+  gap: 0.15rem;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.observatory-copernicus-status strong {
+  color: var(--color-text);
+  font-size: 1rem;
+}
+
+.observatory-copernicus-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
 .observatory-badge {
@@ -5858,6 +5893,12 @@
   background: rgba(185, 28, 28, 0.2);
   border-color: rgba(248, 113, 113, 0.45);
   color: #fecaca;
+}
+
+.observatory-badge--info {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: rgba(125, 211, 252, 0.45);
+  color: #bae6fd;
 }
 
 .observatory-card__footer {

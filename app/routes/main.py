@@ -867,6 +867,11 @@ def observatory():
         copernicus_latest.created_at if copernicus_latest else None
     )
     copernicus_bbox = resolve_copernicus_bbox(copernicus_latest)
+    current_app.logger.info(
+        "[OBSERVATORY] Copernicus bbox=%s product_id=%s",
+        copernicus_bbox,
+        copernicus_latest.product_id if copernicus_latest else None,
+    )
 
     return render_template(
         "observatory.html",

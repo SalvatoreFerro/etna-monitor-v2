@@ -10,7 +10,11 @@ from ..utils.metrics import record_csv_error, record_csv_read, record_csv_update
 from ..utils.auth import get_current_user
 from ..models.hotspots_cache import HotspotsCache
 from ..models.hotspots_record import HotspotsRecord
-from ..services.copernicus import get_latest_copernicus_image, resolve_copernicus_image_url
+from ..services.copernicus import (
+    get_latest_copernicus_image,
+    resolve_copernicus_bbox,
+    resolve_copernicus_image_url,
+)
 from backend.utils.extract_png import process_png_to_csv
 from backend.utils.time import to_iso_utc
 from backend.services.hotspots.config import HotspotsConfig
@@ -405,14 +409,17 @@ def get_hotspots_diagnose():
 @api_bp.get("/api/copernicus/latest")
 def get_copernicus_latest():
     record = get_latest_copernicus_image()
+    bbox = resolve_copernicus_bbox(record)
     if record is None:
+        current_app.logger.info("[API] Copernicus latest bbox=%s product_id=%s", bbox, None)
         return jsonify(
             {
                 "available": False,
                 "acquired_at": None,
                 "product_id": None,
                 "cloud_cover": None,
-                "bbox": None,
+                "cloud_coverage": None,
+                "bbox": bbox,
                 "image_path": None,
                 "image_url": None,
                 "created_at": None,
@@ -420,13 +427,17 @@ def get_copernicus_latest():
         )
 
     image_url = resolve_copernicus_image_url(record)
+    current_app.logger.info(
+        "[API] Copernicus latest bbox=%s product_id=%s", bbox, record.product_id
+    )
     return jsonify(
         {
             "available": image_url is not None,
             "acquired_at": to_iso_utc(record.acquired_at),
             "product_id": record.product_id,
             "cloud_cover": record.cloud_cover,
-            "bbox": record.bbox,
+            "cloud_coverage": record.cloud_cover,
+            "bbox": bbox,
             "image_path": record.image_path,
             "image_url": image_url,
             "created_at": to_iso_utc(record.created_at),
