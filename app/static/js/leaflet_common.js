@@ -145,6 +145,89 @@
     return { layer, markerMap, bounds, hasPoints };
   };
 
+  const normalizeBbox = (bbox) => {
+    if (Array.isArray(bbox) && bbox.length === 4) {
+      return bbox.map((value) => Number(value));
+    }
+    if (bbox && typeof bbox === 'object') {
+      if (Array.isArray(bbox.bbox) && bbox.bbox.length === 4) {
+        return bbox.bbox.map((value) => Number(value));
+      }
+      if (
+        bbox.west != null &&
+        bbox.south != null &&
+        bbox.east != null &&
+        bbox.north != null
+      ) {
+        return [bbox.west, bbox.south, bbox.east, bbox.north].map((value) => Number(value));
+      }
+    }
+    return null;
+  };
+
+  const addCopernicusFootprint = (map, bbox, options = {}) => {
+    if (!global.L || !map) {
+      return null;
+    }
+    const normalized = normalizeBbox(bbox);
+    if (!normalized) {
+      return null;
+    }
+    const [minLon, minLat, maxLon, maxLat] = normalized;
+    const bounds = global.L.latLngBounds(
+      [minLat, minLon],
+      [maxLat, maxLon]
+    );
+    const rectangle = global.L.rectangle(bounds, {
+      color: options.color ?? '#facc15',
+      fillColor: options.fillColor ?? '#facc15',
+      weight: options.weight ?? 1.6,
+      fillOpacity: options.fillOpacity ?? 0.12,
+      dashArray: options.dashArray ?? '6 6',
+      className: options.className ?? 'etna-footprint',
+    }).addTo(map);
+
+    if (options.fitBounds) {
+      map.fitBounds(bounds, {
+        padding: options.boundsPadding || [24, 24],
+        maxZoom: options.maxZoom ?? 12,
+        animate: false,
+      });
+    }
+
+    return rectangle;
+  };
+
+  const addEtnaMarker = (map, options = {}) => {
+    if (!global.L || !map) {
+      return null;
+    }
+    const center = options.center || DEFAULT_CENTER;
+    const marker = global.L.circleMarker(center, {
+      radius: options.radius ?? 5,
+      color: options.color ?? '#f8fafc',
+      fillColor: options.fillColor ?? '#facc15',
+      fillOpacity: options.fillOpacity ?? 0.9,
+      weight: options.weight ?? 1.5,
+      className: options.className ?? 'etna-marker',
+    }).addTo(map);
+
+    const label = options.label ?? 'Etna';
+    if (label) {
+      marker
+        .bindTooltip(label, {
+          permanent: true,
+          direction: 'top',
+          opacity: 0.9,
+          offset: options.tooltipOffset || [0, -8],
+          className: options.tooltipClassName || 'etna-map-marker-label',
+        })
+        .openTooltip();
+    }
+
+    return marker;
+  };
+
   global.EtnaLeaflet = {
     createEtnaMap,
     addHotspotsLayer,
@@ -152,5 +235,7 @@
     getHotspotBrightness: getBrightness,
     getHotspotMarkerColor: getMarkerColor,
     getHotspotMarkerClass: getMarkerClass,
+    addCopernicusFootprint,
+    addEtnaMarker,
   };
 })(window);

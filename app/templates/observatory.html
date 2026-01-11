@@ -119,54 +119,69 @@
           </div>
         </article>
 
-        <article class="observatory-card observatory-card--hotspots">
+        <article class="observatory-card observatory-card--satellite">
           <header class="observatory-card__header">
             <div>
-              <h2>Hotspot NASA</h2>
-              <p>Termiche FIRMS nelle ultime 24 ore.</p>
+              <h2>Mappa satellitare</h2>
+              <p>Hotspot NASA FIRMS e area Copernicus Sentinel-2 in un’unica vista.</p>
             </div>
             <div class="observatory-card__meta">
-              <span>Ultimo aggiornamento</span>
-              <strong>{{ hotspots_summary.last_fetch_display or '—' }}</strong>
-            </div>
-          </header>
-          <div class="observatory-card__body">
-            {{ etna_hotspots_map(
-              'observatory-hotspots-map',
-              'observatory-hotspots-label',
-              'observatory-hotspots-loader',
-              'Concentrazione di anomalie termiche nell’area sommitale dell’Etna'
-            ) }}
-            <div class="observatory-kpi-grid">
-              <div class="observatory-kpi">
-                <span>Hotspot ultime 24h</span>
-                <strong id="observatory-hotspots-count">{{ hotspots_summary.count_24h or '0' }}</strong>
-              </div>
-              <div class="observatory-kpi">
-                <span>Hotspot più recente</span>
-                <strong id="observatory-hotspots-latest">{{ hotspots_summary.latest_acquired_display or '—' }}</strong>
-              </div>
-            </div>
-            <div class="observatory-card__footer">
-              {% if config.HOTSPOTS_ENABLED %}
-                <a class="btn btn-secondary" href="{{ url_for('main.hotspots') }}">Apri pagina hotspot</a>
-              {% endif %}
-            </div>
-          </div>
-        </article>
-
-        <article class="observatory-card observatory-card--copernicus">
-          <header class="observatory-card__header">
-            <div>
-              <h2>Copernicus Sentinel-2</h2>
-              <p>Thumbnail satellitare aggiornata via CDSE.</p>
-            </div>
-            <div class="observatory-card__meta">
-              <span>Ultimo aggiornamento</span>
+              <span>Ultimo aggiornamento Copernicus</span>
               <strong>{{ copernicus_updated_display or '—' }}</strong>
             </div>
           </header>
           <div class="observatory-card__body">
+            {{ etna_hotspots_map(
+              'observatory-map',
+              'observatory-map-label',
+              'observatory-map-loader',
+              'Hotspot FIRMS e area Copernicus Sentinel-2 sull’Etna'
+            ) }}
+            <div class="observatory-map-meta">
+              <div class="observatory-map-meta-group">
+                <div class="observatory-map-meta-title">Hotspot NASA FIRMS</div>
+                <div class="observatory-kpi-grid">
+                  <div class="observatory-kpi">
+                    <span>Ultimo aggiornamento</span>
+                    <strong>{{ hotspots_summary.last_fetch_display or '—' }}</strong>
+                  </div>
+                  <div class="observatory-kpi">
+                    <span>Hotspot ultime 24h</span>
+                    <strong id="observatory-hotspots-count">{{ hotspots_summary.count_24h or '0' }}</strong>
+                  </div>
+                  <div class="observatory-kpi">
+                    <span>Hotspot più recente</span>
+                    <strong id="observatory-hotspots-latest">{{ hotspots_summary.latest_acquired_display or '—' }}</strong>
+                  </div>
+                </div>
+              </div>
+              <div class="observatory-map-meta-group">
+                <div class="observatory-map-meta-title">Copernicus Sentinel-2</div>
+                <div class="observatory-copernicus-meta">
+                  <div>
+                    <span>Acquisizione</span>
+                    <strong>{{ copernicus_acquired_display or '—' }}</strong>
+                  </div>
+                  <div>
+                    <span>Copertura nuvolosa</span>
+                    <strong>
+                      {% if copernicus_latest and copernicus_latest.cloud_cover is not none %}
+                        {{ '%.1f' | format(copernicus_latest.cloud_cover) }}%
+                      {% else %}
+                        —
+                      {% endif %}
+                    </strong>
+                  </div>
+                  <div>
+                    <span>Ultimo aggiornamento</span>
+                    <strong>{{ copernicus_updated_display or '—' }}</strong>
+                  </div>
+                </div>
+                {% if copernicus_latest and copernicus_latest.cloud_cover is not none and copernicus_latest.cloud_cover >= 65 %}
+                  <span class="observatory-badge observatory-badge--warning">Nuvolosità alta</span>
+                {% endif %}
+              </div>
+            </div>
             <div class="observatory-image">
               {% if copernicus_image_url %}
                 <div class="observatory-image__frame">
@@ -181,46 +196,27 @@
                     <span class="observatory-summit-label">Etna summit</span>
                   </div>
                 </div>
-              {% else %}
+              {% elif copernicus_latest %}
                 <div class="observatory-image__placeholder">
                   <span>
-                    Nessuna immagine disponibile{% if copernicus_updated_display %}<br />Ultimo tentativo: {{ copernicus_updated_display }}{% endif %}
+                    Immagine satellitare in fase di elaborazione o non ancora pubblicata.
+                    {% if copernicus_updated_display %}<br />Ultimo tentativo: {{ copernicus_updated_display }}{% endif %}
                   </span>
                 </div>
+              {% else %}
+                <div class="observatory-image__placeholder">
+                  <span>Nessuna immagine disponibile</span>
+                </div>
               {% endif %}
-            </div>
-            {% if copernicus_latest and copernicus_latest.cloud_cover is not none and copernicus_latest.cloud_cover >= 65 %}
-              <span class="observatory-badge observatory-badge--warning">Nuvolosità alta</span>
-            {% endif %}
-            <div class="observatory-copernicus-meta">
-              <div>
-                <span>Acquisizione</span>
-                <strong>{{ copernicus_acquired_display or '—' }}</strong>
-              </div>
-              <div>
-                <span>Copertura nuvolosa</span>
-                <strong>
-                  {% if copernicus_latest and copernicus_latest.cloud_cover is not none %}
-                    {{ '%.1f' | format(copernicus_latest.cloud_cover) }}%
-                  {% else %}
-                    —
-                  {% endif %}
-                </strong>
-              </div>
             </div>
             <p class="observatory-note">
               Immagine satellitare Copernicus Sentinel-2 (CDSE). La disponibilità dipende dalla copertura
               nuvolosa e dai passaggi del satellite.
             </p>
-            {% if copernicus_latest and copernicus_latest.bbox %}
-              <div
-                id="observatory-copernicus-overview"
-                class="etna-map etna-map--overview"
-                data-bbox='{{ copernicus_latest.bbox | tojson }}'
-                aria-label="Overview Copernicus Sentinel-2"
-              ></div>
-            {% endif %}
             <div class="observatory-card__footer">
+              {% if config.HOTSPOTS_ENABLED %}
+                <a class="btn btn-secondary" href="{{ url_for('main.hotspots') }}">Apri pagina hotspot</a>
+              {% endif %}
               <button
                 type="button"
                 class="btn btn-secondary"
@@ -264,8 +260,9 @@
   ></script>
   <script nonce="{{ csp_nonce() }}">
     document.addEventListener('DOMContentLoaded', () => {
-      const mapElement = document.getElementById('observatory-hotspots-map');
+      const mapElement = document.getElementById('observatory-map');
       if (mapElement && window.EtnaLeaflet) {
+        const copernicusBbox = {{ copernicus_bbox | tojson }};
         const map = window.EtnaLeaflet.createEtnaMap(mapElement, {
           center: [37.751, 14.995],
           zoom: 10,
@@ -276,10 +273,13 @@
           },
         });
 
+        window.EtnaLeaflet.addCopernicusFootprint(map, copernicusBbox);
+        window.EtnaLeaflet.addEtnaMarker(map);
+
         const countEl = document.getElementById('observatory-hotspots-count');
         const latestEl = document.getElementById('observatory-hotspots-latest');
-        const labelEl = document.getElementById('observatory-hotspots-label');
-        const loaderEl = document.getElementById('observatory-hotspots-loader');
+        const labelEl = document.getElementById('observatory-map-label');
+        const loaderEl = document.getElementById('observatory-map-loader');
 
         const setLoaderVisible = (visible) => {
           if (!loaderEl) {
@@ -343,53 +343,6 @@
           })
           .catch(() => null)
           .finally(() => setLoaderVisible(false));
-      }
-
-      const overviewEl = document.getElementById('observatory-copernicus-overview');
-      if (overviewEl && window.EtnaLeaflet) {
-        try {
-          const bbox = JSON.parse(overviewEl.dataset.bbox || 'null');
-          if (Array.isArray(bbox) && bbox.length === 4) {
-            const [minLon, minLat, maxLon, maxLat] = bbox;
-            const centerLat = (minLat + maxLat) / 2;
-            const centerLon = (minLon + maxLon) / 2;
-            const map = window.EtnaLeaflet.createEtnaMap(overviewEl, {
-              center: [centerLat, centerLon],
-              zoom: 11,
-              mapOptions: {
-                zoomControl: false,
-                attributionControl: false,
-                dragging: false,
-                scrollWheelZoom: false,
-                doubleClickZoom: false,
-                boxZoom: false,
-                keyboard: false,
-              },
-            });
-
-            if (map && window.L) {
-              const bounds = L.latLngBounds(
-                [minLat, minLon],
-                [maxLat, maxLon]
-              );
-              L.rectangle(bounds, {
-                color: '#38bdf8',
-                weight: 1,
-                fillOpacity: 0.08,
-              }).addTo(map);
-              L.circleMarker([centerLat, centerLon], {
-                radius: 5,
-                color: '#e2e8f0',
-                fillColor: '#38bdf8',
-                fillOpacity: 0.9,
-                weight: 1.5,
-              }).addTo(map);
-              map.fitBounds(bounds, { padding: [8, 8], maxZoom: 12, animate: false });
-            }
-          }
-        } catch (error) {
-          // Ignore malformed bbox data
-        }
       }
 
       const modal = document.querySelector('[data-modal]');
