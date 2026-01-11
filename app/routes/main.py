@@ -38,7 +38,11 @@ from backend.services.hotspots.config import HotspotsConfig
 from backend.services.hotspots.storage import read_cache, unavailable_payload
 from config import DEFAULT_GA_MEASUREMENT_ID
 from app.models.hotspots_record import HotspotsRecord
-from app.services.copernicus import get_latest_copernicus_image, resolve_copernicus_image_url
+from app.services.copernicus import (
+    get_latest_copernicus_image,
+    resolve_copernicus_bbox,
+    resolve_copernicus_image_url,
+)
 
 bp = Blueprint("main", __name__)
 
@@ -862,6 +866,7 @@ def observatory():
     copernicus_updated_display = _format_display_datetime(
         copernicus_latest.created_at if copernicus_latest else None
     )
+    copernicus_bbox = resolve_copernicus_bbox(copernicus_latest)
 
     return render_template(
         "observatory.html",
@@ -886,6 +891,7 @@ def observatory():
         copernicus_image_url=copernicus_image_url,
         copernicus_acquired_display=copernicus_acquired_display,
         copernicus_updated_display=copernicus_updated_display,
+        copernicus_bbox=copernicus_bbox,
     )
 
 
