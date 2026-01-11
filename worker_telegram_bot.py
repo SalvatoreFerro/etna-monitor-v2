@@ -172,17 +172,31 @@ def get_token() -> str:
     return token
 
 
+def _resolve_polling_mode() -> str:
+    mode = (os.getenv("TELEGRAM_BOT_MODE") or Config.TELEGRAM_BOT_MODE or "").strip().lower()
+    if mode and mode != "polling":
+        logging.warning(
+            "TELEGRAM_BOT_MODE=%s is not supported for the worker; forcing polling.", mode
+        )
+    return "polling"
+
+
 def main() -> None:
     """Entry point for the Telegram bot worker."""
 
     configure_logging()
     token = get_token()
+    mode = _resolve_polling_mode()
+
+    logging.info("Worker booting with Python=%s", sys.version.replace("\n", " "))
+    logging.info("Telegram token present: %s", "yes" if token else "no")
+    logging.info("Telegram mode: %s", mode)
 
     application = Application.builder().token(token).build()
     application.add_handler(CommandHandler("start", start_command))
     application.add_handler(CommandHandler("help", help_command))
 
-    logging.info("Bot is ready!")
+    logging.info("Bot handlers registered: /start, /help")
     logging.info("Starting Telegram polling...")
 
     application.run_polling(drop_pending_updates=True, stop_signals=None)

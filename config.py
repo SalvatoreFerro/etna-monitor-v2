@@ -45,10 +45,13 @@ def normalize_database_uri(uri: Optional[str]) -> Optional[str]:
         return uri
 
     if uri.startswith("postgres://"):
-        return "postgresql+psycopg2://" + uri[len("postgres://"):]
+        return "postgresql+psycopg://" + uri[len("postgres://"):]
 
-    if uri.startswith("postgresql://") and not uri.startswith("postgresql+psycopg2://"):
-        return "postgresql+psycopg2://" + uri[len("postgresql://"):]
+    if uri.startswith("postgresql+psycopg2://"):
+        return "postgresql+psycopg://" + uri[len("postgresql+psycopg2://"):]
+
+    if uri.startswith("postgresql://") and not uri.startswith("postgresql+psycopg://"):
+        return "postgresql+psycopg://" + uri[len("postgresql://"):]
 
     return uri
 

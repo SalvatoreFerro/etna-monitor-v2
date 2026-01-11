@@ -27,14 +27,14 @@ services:
     name: etnamonitor-telegram-bot
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt
+    buildCommand: pip install -r requirements.txt && python scripts/smoke_worker_imports.py
     startCommand: python worker_telegram_bot.py
     autoDeploy: true
     envVars:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: PYTHON_VERSION
-        value: 3.12.7
+        value: 3.13.1
   - type: cron
     name: etnamonitor-csv-updater
     env: python
