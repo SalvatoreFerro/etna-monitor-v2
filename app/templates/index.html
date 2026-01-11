@@ -484,18 +484,6 @@
   </div>
 </section>
 
-<div class="popup-overlay" data-popup-overlay hidden>
-  <div class="popup-alert" role="dialog" aria-modal="true" aria-labelledby="popup-alert-title">
-    <button class="popup-alert__close" type="button" aria-label="Chiudi" data-popup-close>&times;</button>
-    <h3 id="popup-alert-title">🔔 Ricevi un avviso quando il tremore aumenta</h3>
-    <p>La prima notifica è gratuita. Attiva ora EtnaBot.</p>
-    {% if is_authenticated %}
-      <a href="{{ url_for('dashboard.dashboard_home') }}" class="cta-button-primary">Gestisci dalla Dashboard</a>
-    {% else %}
-      <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Registrati Gratis</a>
-    {% endif %}
-  </div>
-</div>
 {% endblock %}
 
 {% block extra_scripts %}
