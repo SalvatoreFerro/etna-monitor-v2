@@ -38,14 +38,31 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 
+def _normalize_database_url(url: str) -> str:
+    if url.startswith("postgres://"):
+        return "postgresql+psycopg://" + url[len("postgres://"):]
+
+    if url.startswith("postgresql+psycopg2://"):
+        return "postgresql+psycopg://" + url[len("postgresql+psycopg2://"):]
+
+    if url.startswith("postgresql://") and not url.startswith("postgresql+psycopg://"):
+        return "postgresql+psycopg://" + url[len("postgresql://"):]
+
+    return url
+
+
 def _get_database_url() -> str:
-    try:
+    if "DATABASE_URL" in os.environ:
         return os.environ["DATABASE_URL"]
-    except KeyError as exc:  # pragma: no cover - defensive guard
-        raise RuntimeError("DATABASE_URL environment variable is required for migrations") from exc
+
+    config_url = config.get_main_option("sqlalchemy.url")
+    if config_url:
+        return config_url
+
+    raise RuntimeError("DATABASE_URL environment variable is required for migrations")
 
 
-database_url = _get_database_url()
+database_url = _normalize_database_url(_get_database_url())
 config.set_main_option("sqlalchemy.url", database_url)
 
 target_metadata = db.Model.metadata
