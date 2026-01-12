@@ -1,6 +1,14 @@
 {% extends "layout.html" %}
 {% set is_authenticated = current_user and current_user.is_authenticated %}
 {% set has_telegram = is_authenticated and (current_user.telegram_chat_id or current_user.chat_id) and current_user.telegram_opt_in %}
+{% if not is_authenticated %}
+  {% set telegram_cta_url = url_for('auth.login') %}
+{% elif has_telegram %}
+  {% set telegram_cta_url = url_for('dashboard.dashboard_home') %}
+{% else %}
+  {% set telegram_cta_url = url_for('dashboard.dashboard_home') ~ '#alert-settings' %}
+{% endif %}
+{% set graph_live_url = url_for('main.index') ~ '#grafico-etna' %}
 
 {% block head_extra %}
   <link
@@ -490,35 +498,31 @@
       <div class="hotspots-callouts">
         <div class="hotspots-callout">
           <strong>Avvisi Telegram</strong>
-          <span>Gli utenti con Telegram collegato ricevono notifiche in caso di variazioni rilevanti.</span>
+          <span>Ti avvisiamo quando cambiano gli hotspot più rilevanti, così non perdi gli aggiornamenti chiave.</span>
           {% if has_telegram %}
-            <span>Notifiche hotspot attive via Telegram.</span>
-          {% else %}
-            {% if is_authenticated %}
-              <a
-                class="hotspots-telegram-cta"
-                href="{{ url_for('dashboard.dashboard_home') }}#alert-settings"
-                data-track-event="click_collega_telegram_from_hotspot"
-                data-track-location="hotspots"
-              >Collega Telegram per non perderti gli aggiornamenti</a>
-            {% else %}
-              <a
-                class="hotspots-telegram-cta"
-                href="{{ url_for('auth.login') }}"
-                data-track-event="click_collega_telegram_from_hotspot"
-                data-track-location="hotspots"
-              >Collega Telegram per non perderti gli aggiornamenti</a>
-            {% endif %}
+            <span>Notifiche Telegram già attive: controlla la dashboard per i dettagli.</span>
           {% endif %}
-          <span
-            data-track-view="premium_cta_view_from_hotspot"
-            data-track-location="hotspots"
-          >Con Premium ricevi alert illimitati anche su variazioni hotspot.</span>
+          <div class="hero__actions">
+            <a
+              class="btn btn-primary"
+              href="{{ telegram_cta_url }}"
+              data-cta="telegram_primary"
+              data-location="hotspots"
+            >Ricevi avvisi su Telegram</a>
+            <a
+              class="btn btn-secondary"
+              href="{{ graph_live_url }}"
+              data-cta="graph_live_secondary"
+              data-location="hotspots"
+            >Apri il grafico live</a>
+          </div>
+          <span class="muted">Gratis con un account EtnaMonitor.</span>
         </div>
       </div>
     </div>
 
     <div class="hotspots-status">
+      <p class="hotspots-source">I KPI sintetizzano le ultime 24 ore per leggere subito l’andamento termico.</p>
       <div class="hotspots-kpis hotspots-fade" id="hotspots-kpis">
         <div class="hotspots-kpi">
           <span>Ultimo aggiornamento</span>
@@ -554,6 +558,7 @@
         ) %}
           {{ etna_hotspots_legend() }}
         {% endcall %}
+        <p class="hotspots-source">Clicca un punto per dettagli e intensità: la mappa evidenzia le anomalie più recenti.</p>
       </div>
 
       <div class="hotspots-panel">
@@ -571,6 +576,12 @@
         </div>
         <div class="hotspots-list" id="hotspots-list"></div>
       </div>
+    </div>
+
+    <div class="hotspots-panel" style="margin-top: var(--space-6);">
+      <p>
+        Vuoi avvisi più frequenti e storico esteso? <a href="{{ url_for('main.pricing') }}" data-cta="premium_soft" data-location="hotspots">Scopri Premium.</a>
+      </p>
     </div>
 
     <div class="hotspots-panel" style="margin-top: var(--space-6);">
