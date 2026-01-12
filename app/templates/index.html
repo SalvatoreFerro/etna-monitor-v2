@@ -4,6 +4,15 @@
 {% set share_url = request.url_root %}
 {% set share_text = "Monitora il tremore vulcanico dell'Etna in tempo reale su EtnaMonitor" %}
 {% set is_authenticated = current_user and current_user.is_authenticated %}
+{% set has_telegram = is_authenticated and (current_user.telegram_chat_id or current_user.chat_id) and current_user.telegram_opt_in %}
+{% if not is_authenticated %}
+  {% set telegram_cta_url = url_for('auth.login') %}
+{% elif has_telegram %}
+  {% set telegram_cta_url = url_for('dashboard.dashboard_home') %}
+{% else %}
+  {% set telegram_cta_url = url_for('dashboard.dashboard_home') ~ '#alert-settings' %}
+{% endif %}
+{% set graph_live_url = url_for('main.index') ~ '#grafico-etna' %}
 <section class="hero hero--compact monitor-hero">
   <div class="container container--wide hero__layout">
     <div class="hero__content monitor-hero__content">
@@ -11,18 +20,28 @@
       <div class="monitor-hero-badges">
         <span class="pill pill--hotspots">🛰️ Nuovo: hotspot satellitari in tempo quasi reale</span>
       </div>
-      <h1 class="monitor-hero__title">Monitoraggio in tempo reale del tremore vulcanico dell’Etna (grafico INGV)</h1>
+      <h1 class="monitor-hero__title">Ricevi avvisi su Telegram quando il tremore dell’Etna cambia</h1>
       <p class="lead hero__lead monitor-hero__subtitle">
-        Il grafico storico torna al centro con colori sobri e lettura immediata per controllare l'attività vulcanica in pochi secondi.
+        Ti avvisiamo quando l’attività accelera, così controlli il grafico INGV solo quando serve davvero.
       </p>
       <div class="cta-alert monitor-cta">
-        <h3>🔔 Vuoi ricevere un avviso quando il tremore dell’Etna aumenta?</h3>
-        <p>Registrati GRATIS e ricevi la prima notifica via Telegram.</p>
-        {% if is_authenticated %}
-          <a href="{{ url_for('dashboard.dashboard_home') }}" class="cta-button-primary">Vai alla Dashboard</a>
-        {% else %}
-          <a href="{{ url_for('auth.login') }}" class="cta-button-primary">Accedi / Registrati</a>
-        {% endif %}
+        <h3>🔔 Ti avvisiamo quando cambia davvero.</h3>
+        <p>Telegram è il modo più rapido per sapere se il tremore sale o rientra nelle soglie.</p>
+        <p class="muted">Gratis con un account EtnaMonitor.</p>
+        <div class="hero__actions">
+          <a
+            href="{{ telegram_cta_url }}"
+            class="btn btn-primary"
+            data-cta="telegram_primary"
+            data-location="home"
+          >Ricevi avvisi su Telegram</a>
+          <a
+            href="{{ graph_live_url }}"
+            class="btn btn-secondary"
+            data-cta="graph_live_secondary"
+            data-location="home"
+          >Apri il grafico live</a>
+        </div>
       </div>
     </div>
   </div>
@@ -31,13 +50,8 @@
 <section class="home-telegram-banner" aria-label="Avviso Telegram">
   <div class="container container--wide home-telegram-banner__inner">
     <p class="home-telegram-banner__copy">
-      Senza Telegram non ricevi avvisi in tempo reale.
+      Attiva Telegram dalla dashboard per ricevere aggiornamenti appena cambiano i livelli di tremore.
     </p>
-    {% if is_authenticated %}
-      <a href="{{ url_for('dashboard.dashboard_home') }}#alert-settings" class="btn btn-secondary">Gestisci Telegram</a>
-    {% else %}
-      <a href="{{ url_for('auth.login') }}" class="btn btn-secondary">Accedi / Registrati</a>
-    {% endif %}
   </div>
 </section>
 
@@ -58,6 +72,7 @@
           </ol>
         </nav>
         <h2 id="grafico-title">Curva del tremore vulcanico</h2>
+        <p class="muted">Usa il grafico per verificare rapidamente gli ultimi 7 giorni e capire se il trend è in crescita.</p>
         <div class="chart-range-selector" role="group" aria-label="Intervallo temporale">
           <button type="button" class="chart-range-btn" data-limit="288">24h</button>
           <button type="button" class="chart-range-btn" data-limit="864">3 giorni</button>
@@ -126,6 +141,7 @@
               <span id="live-status-text">Connessione in corso…</span>
             </span>
           </div>
+          <p class="muted">I KPI sintetizzano lo stato live: orario aggiornamento, campioni e livello di attività.</p>
           <dl class="metric-list">
             <div class="metric">
               <dt>Ultimo aggiornamento</dt>
@@ -168,14 +184,9 @@
       </div>
       <div class="monitor-graph-cta" aria-label="Registrati per ricevere notifiche su EtnaMonitor">
         <div class="monitor-graph-cta__copy">
-          <h3>Alert smart vicino al grafico</h3>
-          <p>Ricevi avvisi Telegram e email quando il tremore supera le soglie personalizzabili.</p>
+          <h3>Controllo rapido, avviso puntuale</h3>
+          <p>Quando vuoi, ritorna qui per verificare le soglie e confrontare le ultime variazioni.</p>
         </div>
-        {% if is_authenticated %}
-          <a href="{{ url_for('dashboard.dashboard_home') }}" class="btn btn-primary">Apri Dashboard</a>
-        {% else %}
-          <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Accedi / Registrati</a>
-        {% endif %}
       </div>
     </div>
   </div>

@@ -7,6 +7,16 @@
 {% set page_og_title = post.meta_title or post.seo_title or post.title %}
 {% set page_og_description = page_description %}
 {% set page_og_type = "article" %}
+{% set is_authenticated = current_user and current_user.is_authenticated %}
+{% set has_telegram = is_authenticated and (current_user.telegram_chat_id or current_user.chat_id) and current_user.telegram_opt_in %}
+{% if not is_authenticated %}
+  {% set telegram_cta_url = url_for('auth.login') %}
+{% elif has_telegram %}
+  {% set telegram_cta_url = url_for('dashboard.dashboard_home') %}
+{% else %}
+  {% set telegram_cta_url = url_for('dashboard.dashboard_home') ~ '#alert-settings' %}
+{% endif %}
+{% set graph_live_url = url_for('main.index') ~ '#grafico-etna' %}
 {% if hero_image %}
   {% set page_og_image = hero_image %}
 {% endif %}
@@ -99,6 +109,23 @@
       {% if post.abstract %}
         <p class="blog-abstract" itemprop="description">{{ post.abstract }}</p>
       {% endif %}
+      <div class="post__inline-cta">
+        <div class="cta-stack">
+          <a
+            class="btn btn-secondary"
+            href="{{ graph_live_url }}"
+            data-cta="graph_live_secondary"
+            data-location="blog"
+          >Apri il grafico live</a>
+          <a
+            class="btn btn-primary"
+            href="{{ telegram_cta_url }}"
+            data-cta="telegram_primary"
+            data-location="blog"
+          >Ricevi avvisi su Telegram</a>
+        </div>
+        <p class="muted">Gratis con un account EtnaMonitor.</p>
+      </div>
     </div>
   </header>
 
@@ -160,8 +187,16 @@
 
     <div class="post__footer-cta">
       <div class="cta-stack">
-        <a class="btn btn-primary" href="{{ url_for('community.feedback_portal') }}">Ti è stato utile? Lascia un feedback</a>
-        <a class="btn btn-secondary" href="{{ url_for('community.forum_home') }}">Fai una domanda nel forum</a>
+        <a
+          class="btn btn-primary"
+          href="{{ telegram_cta_url }}"
+          data-cta="telegram_primary"
+          data-location="blog"
+        >Ricevi avvisi su Telegram</a>
+        <div class="post__footer-links">
+          <a class="link-arrow" href="{{ url_for('community.feedback_portal') }}">Lascia un feedback</a>
+          <a class="link-arrow" href="{{ url_for('community.forum_home') }}">Fai una domanda nel forum</a>
+        </div>
       </div>
     </div>
   </footer>

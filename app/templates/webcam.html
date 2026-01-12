@@ -4,6 +4,16 @@
 {% set page_og_title = page_title %}
 {% set page_og_description = page_description %}
 {% set canonical_url = url_for('main.webcam_etna', _external=True) %}
+{% set is_authenticated = current_user and current_user.is_authenticated %}
+{% set has_telegram = is_authenticated and (current_user.telegram_chat_id or current_user.chat_id) and current_user.telegram_opt_in %}
+{% if not is_authenticated %}
+  {% set telegram_cta_url = url_for('auth.login') %}
+{% elif has_telegram %}
+  {% set telegram_cta_url = url_for('dashboard.dashboard_home') %}
+{% else %}
+  {% set telegram_cta_url = url_for('dashboard.dashboard_home') ~ '#alert-settings' %}
+{% endif %}
+{% set graph_live_url = url_for('main.index') ~ '#grafico-etna' %}
 
 {% block content %}
 <section class="page page--webcam">
@@ -81,6 +91,30 @@
         {% else %}
           <p class="webcam-weather__loading">Caricamento delle condizioni meteo…</p>
         {% endif %}
+      </div>
+    </section>
+
+    <section class="webcam-notes" aria-label="Avvisi Telegram e grafico live">
+      <div class="webcam-notes__content">
+        <h2>Segui l’Etna con avvisi puntuali</h2>
+        <p>
+          Il meteo aiuta a valutare visibilità e condizioni in quota; l’attività del vulcano si segue dal grafico del tremore.
+        </p>
+        <div class="hero__actions">
+          <a
+            class="btn btn-primary"
+            href="{{ telegram_cta_url }}"
+            data-cta="telegram_primary"
+            data-location="webcam"
+          >Ricevi avvisi su Telegram</a>
+          <a
+            class="btn btn-secondary"
+            href="{{ graph_live_url }}"
+            data-cta="graph_live_secondary"
+            data-location="webcam"
+          >Apri il grafico live</a>
+        </div>
+        <p class="muted">Gratis con un account EtnaMonitor.</p>
       </div>
     </section>
 
