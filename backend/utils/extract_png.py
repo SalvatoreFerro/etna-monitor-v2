@@ -13,6 +13,8 @@ from .time import to_iso_utc
 
 
 EXTRACTION_DURATION = timedelta(days=7)
+DEFAULT_GREEN_LOWER = np.array([35, 40, 40])
+DEFAULT_GREEN_UPPER = np.array([90, 255, 255])
 
 
 logger = logging.getLogger(__name__)
@@ -54,7 +56,11 @@ def extract_green_curve_from_png(
     cropped = img[50:-20, 100:-30]
 
     hsv = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)
-    mask = cv2.inRange(hsv, np.array([40, 40, 40]), np.array([80, 255, 255]))
+    mask = cv2.inRange(hsv, DEFAULT_GREEN_LOWER, DEFAULT_GREEN_UPPER)
+    kernel = np.ones((3, 3), np.uint8)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=1)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+    mask = cv2.dilate(mask, kernel, iterations=1)
     height, width = mask.shape
 
     if end_time is None:
@@ -76,17 +82,31 @@ def extract_green_curve_from_png(
         return 10 ** log_val
 
     data = []
+    max_visible_pixel = None
+    if np.any(mask == 255):
+        max_visible_pixel = int(np.min(np.where(mask == 255)[0]))
     for x in range(width):
         col = mask[:, x]
         y_vals = np.where(col == 255)[0]
         if len(y_vals) > 0:
-            y = y_vals[-1]
+            y_peak = int(np.min(y_vals))
+            y_median = float(np.median(y_vals))
             timestamp = start_time + timedelta(seconds=seconds_per_pixel * x)
-            data.append((timestamp, pixel_to_mV(y)))
+            value_raw = float(pixel_to_mV(y_peak))
+            value_avg = float(pixel_to_mV(y_median))
+            data.append(
+                {
+                    "timestamp": timestamp,
+                    "value": value_raw,
+                    "value_max": value_raw,
+                    "value_avg": value_avg,
+                }
+            )
 
     if data:
-        last_value = data[-1][1]
-        data[-1] = (end_time, last_value)
+        last_value = data[-1]["value"]
+        data[-1]["timestamp"] = end_time
+        data[-1]["value"] = last_value
 
     interval_seconds = seconds_per_pixel if width else None
     metadata = {
@@ -95,6 +115,8 @@ def extract_green_curve_from_png(
         "end_time": end_time,
         "duration_seconds": total_seconds,
         "interval_seconds": interval_seconds,
+        "max_visible_pixel": max_visible_pixel,
+        "max_visible_value": pixel_to_mV(max_visible_pixel) if max_visible_pixel is not None else None,
     }
     return data, metadata
 
@@ -131,37 +153,59 @@ def clean_and_save_data(data, output_path=None):
         output_path = os.path.join(DATA_DIR, 'curva.csv')
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
 
-    cleaned = []
-    seen = set()
+    cleaned = {}
 
     for item in data:
-        if not item or len(item) < 2:
+        if not item:
             continue
-        ts_raw, value = item[0], item[1]
+        if isinstance(item, dict):
+            ts_raw = item.get("timestamp")
+            value = item.get("value")
+            value_max = item.get("value_max", value)
+            value_avg = item.get("value_avg", value)
+        else:
+            if len(item) < 2:
+                continue
+            ts_raw, value = item[0], item[1]
+            value_max = value
+            value_avg = value
         dt = _to_datetime_utc(ts_raw)
         if dt is None:
             continue
         try:
             numeric = float(value)
+            numeric_max = float(value_max)
+            numeric_avg = float(value_avg)
         except (TypeError, ValueError):
             continue
-        if numeric < 0.01 or numeric > 100:
+        if numeric <= 0:
             continue
         key = dt.isoformat()
-        if key in seen:
+        if key in cleaned and numeric <= cleaned[key]["value"]:
             continue
-        seen.add(key)
-        cleaned.append((dt, numeric))
+        cleaned[key] = {
+            "timestamp": dt,
+            "value": numeric,
+            "value_max": max(numeric, numeric_max),
+            "value_avg": numeric_avg if numeric_avg > 0 else numeric,
+        }
 
-    cleaned.sort(key=lambda row: row[0])
+    cleaned_rows = sorted(cleaned.values(), key=lambda row: row["timestamp"])
 
     with open(output_path, "w", encoding="utf-8", newline="") as handle:
         writer = csv.writer(handle)
-        writer.writerow(["timestamp", "value"])
-        for ts, val in cleaned:
-            writer.writerow([_format_timestamp(ts), f"{val}"])
+        writer.writerow(["timestamp", "value", "value_max", "value_avg"])
+        for row in cleaned_rows:
+            writer.writerow(
+                [
+                    _format_timestamp(row["timestamp"]),
+                    f"{row['value']}",
+                    f"{row['value_max']}",
+                    f"{row['value_avg']}",
+                ]
+            )
 
-    return output_path, cleaned
+    return output_path, cleaned_rows
 
 def process_png_to_csv(url="https://www.ct.ingv.it/RMS_Etna/2.png", output_path=None):
     """Complete pipeline: download PNG, extract curve, save CSV"""
@@ -180,11 +224,28 @@ def process_png_to_csv(url="https://www.ct.ingv.it/RMS_Etna/2.png", output_path=
 
     final_path, cleaned_rows = clean_and_save_data(data, output_path)
 
-    last_ts = cleaned_rows[-1][0] if cleaned_rows else None
-    first_ts = cleaned_rows[0][0] if cleaned_rows else None
+    last_ts = cleaned_rows[-1]["timestamp"] if cleaned_rows else None
+    first_ts = cleaned_rows[0]["timestamp"] if cleaned_rows else None
     interval_minutes = None
     if metadata.get("interval_seconds"):
         interval_minutes = metadata["interval_seconds"] / 60
+
+    end_time = metadata.get("end_time")
+    max_7d_value = None
+    max_7d_ts = None
+    max_24h_value = None
+    max_24h_ts = None
+    if cleaned_rows:
+        max_row = max(cleaned_rows, key=lambda row: row["value"])
+        max_7d_value = max_row["value"]
+        max_7d_ts = max_row["timestamp"]
+        if end_time:
+            window_start = end_time - timedelta(hours=24)
+            window_rows = [row for row in cleaned_rows if row["timestamp"] >= window_start]
+            if window_rows:
+                max_24h_row = max(window_rows, key=lambda row: row["value"])
+                max_24h_value = max_24h_row["value"]
+                max_24h_ts = max_24h_row["timestamp"]
 
     logger.info(
         "Estratti %s punti INGV start_ref=%s end_ref=%s durata=%ss colonne=%s intervallo≈%smin first_ts=%s last_ts=%s",
@@ -196,6 +257,14 @@ def process_png_to_csv(url="https://www.ct.ingv.it/RMS_Etna/2.png", output_path=
         f"{interval_minutes:.2f}" if interval_minutes else "n/a",
         to_iso_utc(first_ts),
         to_iso_utc(last_ts),
+    )
+    logger.info(
+        "Picchi INGV max_7d=%s@%s max_24h=%s@%s max_png=%s",
+        f"{max_7d_value:.4f}" if max_7d_value else "n/a",
+        to_iso_utc(max_7d_ts),
+        f"{max_24h_value:.4f}" if max_24h_value else "n/a",
+        to_iso_utc(max_24h_ts),
+        f"{metadata.get('max_visible_value'):.4f}" if metadata.get("max_visible_value") else "n/a",
     )
 
     return {

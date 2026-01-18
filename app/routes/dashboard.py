@@ -59,7 +59,15 @@ def dashboard_home():
             threshold = Config.ALERT_THRESHOLD_DEFAULT
             threshold_source = "default"
 
-        fig = make_tremor_figure(df['timestamp'], df['value'], threshold)
+        if not df.empty and 'value' in df.columns:
+            raw_series = df['value']
+        elif not df.empty and df.shape[1] > 1:
+            raw_series = df.iloc[:, 1]
+        else:
+            raw_series = df['timestamp'] * 0 if 'timestamp' in df.columns else df.index.to_series() * 0
+        smooth_source = df['value_avg'] if 'value_avg' in df.columns else raw_series
+        smooth_series = smooth_source.rolling(window=9, min_periods=1, center=True).median()
+        fig = make_tremor_figure(df['timestamp'], raw_series, threshold, smooth_series)
         if debug_alerts_enabled:
             logger.debug(
                 "plot_threshold=%.2f source=%s user_id=%s",
@@ -75,7 +83,7 @@ def dashboard_home():
         )
         graph_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
         
-        latest_value = df['value'].iloc[-1] if not df.empty else 0
+        latest_value = raw_series.iloc[-1] if not df.empty else 0
         status = 'above' if latest_value > threshold else 'below'
         if debug_alerts_enabled:
             logger.debug(

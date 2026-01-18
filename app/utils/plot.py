@@ -1,4 +1,5 @@
 from functools import lru_cache
+import math
 
 
 @lru_cache(maxsize=1)
@@ -8,14 +9,30 @@ def _graph_objects():  # pragma: no cover - thin import wrapper
     return go
 
 
-def make_tremor_figure(times, values, threshold: float, ingv_mode: bool = False):
+def _log_range(values):
+    positive = [float(value) for value in values if value and float(value) > 0]
+    if not positive:
+        return [-1, 1]
+    min_val = min(positive)
+    max_val = max(positive)
+    min_log = math.floor(math.log10(min_val))
+    max_log = math.ceil(math.log10(max_val))
+    if min_log == max_log:
+        max_log += 1
+    return [min_log, max_log]
+
+
+def make_tremor_figure(times, raw_values, threshold: float, smooth_values=None, ingv_mode: bool = False):
     go = _graph_objects()
     fig = go.Figure()
+    has_smooth = smooth_values is not None
+    smooth_values = smooth_values if has_smooth else []
+    y_range = _log_range(list(raw_values) + list(smooth_values))
 
     if ingv_mode:
         fig.add_trace(go.Scatter(
             x=times,
-            y=values,
+            y=raw_values,
             mode="lines",
             name="RMS",
             line=dict(color='#00AA00', width=1),
@@ -58,11 +75,20 @@ def make_tremor_figure(times, values, threshold: float, ingv_mode: bool = False)
     else:
         fig.add_trace(go.Scatter(
             x=times,
-            y=values,
+            y=raw_values,
             mode="lines",
-            name="Tremor",
+            name="RAW (picchi reali)",
             line=dict(color='#4ade80', width=2)
         ))
+        if has_smooth:
+            fig.add_trace(go.Scatter(
+                x=times,
+                y=smooth_values,
+                mode="lines",
+                name="Trend (smoothed)",
+                line=dict(color='#22d3ee', width=2, dash="solid"),
+                opacity=0.8
+            ))
 
         fig.add_hline(
             y=threshold,
@@ -78,8 +104,22 @@ def make_tremor_figure(times, values, threshold: float, ingv_mode: bool = False)
             margin=dict(l=0, r=0, t=30, b=0),
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
-            font_color='#e6e7ea'
+            font_color='#e6e7ea',
+            showlegend=True,
+            legend=dict(
+                orientation="h",
+                yanchor="bottom",
+                y=1.02,
+                xanchor="right",
+                x=1,
+                font=dict(color="#e6e7ea")
+            )
         )
 
-    fig.update_yaxes(type="log", range=[-1, 1])
+    fig.update_yaxes(
+        type="log",
+        range=y_range,
+        tickvals=[0.1, 1, 10],
+        ticktext=['10⁻¹', '10⁰', '10¹']
+    )
     return fig
