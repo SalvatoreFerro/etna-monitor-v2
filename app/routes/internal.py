@@ -310,6 +310,13 @@ def cron_check_alerts():
             db_diagnostics, db_ok = _collect_db_diagnostics()
             diagnostic_snapshot.update(csv_diagnostics)
             diagnostic_snapshot.update(db_diagnostics)
+            diagnostic_snapshot["rate_limit_minutes"] = int(
+                telegram_service.RATE_LIMIT.total_seconds() // 60
+            )
+            diagnostic_snapshot["renotify_interval_minutes"] = int(
+                telegram_service.RENOTIFY_INTERVAL.total_seconds() // 60
+            )
+            diagnostic_snapshot["hysteresis_delta"] = float(Config.ALERT_HYSTERESIS_DELTA)
 
             with _cron_lock:
                 if _last_cron_run and now - _last_cron_run < _CRON_COOLDOWN:
