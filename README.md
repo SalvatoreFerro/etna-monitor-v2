@@ -219,9 +219,9 @@ ALERT_THRESHOLD_DEFAULT=2.0
 
 ## Pipeline Dati (PNG INGV → CSV → Grafico)
 1. **Download**: uno scheduler scarica periodicamente il grafico PNG pubblico fornito da INGV.
-2. **Estrazione curva verde**: applicazione di una maschera HSV o filtro colore per isolare la curva del tremore; successiva pulizia tramite median blur e thinning per ottenere punti vettoriali.
+2. **Estrazione curva verde**: maschera HSV (con dilatazione/erosione leggere) per isolare la curva del tremore; per ogni colonna si conserva il pixel più alto (RAW) e si calcola una mediana come riferimento per smoothing.
 3. **Conversione unità**: trasformazione della posizione dei pixel in valori di tremore in millivolt con scala log10 secondo la legenda del PNG.
-4. **Persistenza**: salvataggio in CSV con schema `timestamp, valore_mV, media_mobile, note`. File archiviati in `data/` con rotazione giornaliera.
+4. **Persistenza**: salvataggio in CSV con schema `timestamp, value (RAW), value_max, value_avg`. Il grafico mostra sempre la serie RAW (picchi reali) più un overlay smoothed opzionale. File archiviati in `data/` con rotazione giornaliera.
 5. **Rendering**: Plotly genera grafico linea verde su asse Y logaritmico, sovrappone soglia rossa e indicatori dell'ultimo valore.
 6. **Considerazioni**: gestione ritardi aggiornamento sorgente, retry con backoff esponenziale, notifiche di errore se il PNG non è aggiornato oltre una soglia temporale.
 

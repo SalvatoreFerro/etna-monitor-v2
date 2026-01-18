@@ -43,18 +43,47 @@ function renderHomePreview(data) {
   
   const container = 'home-preview-plot';
   const timestamps = data.data.map(row => row.timestamp);
-  const values = data.data.map(row => row.value);
+  const rawValues = data.data.map(row => row.value);
+  const smoothWindow = 9;
+  const smoothValues = rawValues.map((_, idx) => {
+    const start = Math.max(0, idx - Math.floor(smoothWindow / 2));
+    const end = Math.min(rawValues.length, idx + Math.ceil(smoothWindow / 2));
+    const slice = rawValues.slice(start, end).filter(value => value > 0);
+    if (!slice.length) return rawValues[idx];
+    const sorted = slice.slice().sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length / 2)];
+  });
   const threshold = 2.0; // Default threshold
   
-  const trace = {
+  const rawTrace = {
     x: timestamps,
-    y: values,
+    y: rawValues,
     type: 'scatter',
     mode: 'lines',
-    name: 'Tremor',
-    line: { color: '#00AA00', width: 2 },
-    showlegend: false
+    name: 'RAW (picchi reali)',
+    line: { color: '#4ade80', width: 2 },
+    showlegend: true
   };
+
+  const smoothTrace = {
+    x: timestamps,
+    y: smoothValues,
+    type: 'scatter',
+    mode: 'lines',
+    name: 'Trend (smoothed)',
+    line: { color: '#22d3ee', width: 2 },
+    opacity: 0.8,
+    showlegend: true
+  };
+
+  const positiveValues = rawValues.filter(value => value > 0);
+  const minVal = positiveValues.length ? Math.min(...positiveValues) : 0.1;
+  const maxVal = positiveValues.length ? Math.max(...positiveValues) : 10;
+  let logMin = isFinite(minVal) ? Math.floor(Math.log10(minVal)) : -1;
+  let logMax = isFinite(maxVal) ? Math.ceil(Math.log10(maxVal)) : 1;
+  if (logMin === logMax) {
+    logMax += 1;
+  }
   
   const layout = {
     margin: { l: 60, r: 20, t: 20, b: 50 },
@@ -72,7 +101,9 @@ function renderHomePreview(data) {
     yaxis: { 
       title: 'mV',
       type: 'log', 
-      range: [-1, 1], // 0.1 to 10 range
+      range: [logMin, logMax],
+      tickvals: [0.1, 1, 10],
+      ticktext: ['10⁻¹', '10⁰', '10¹'],
       tickfont: { size: 11, color: '#e6e7ea' },
       titlefont: { size: 12, color: '#e6e7ea' },
       showgrid: true,
@@ -80,6 +111,7 @@ function renderHomePreview(data) {
       color: '#e6e7ea'
     },
     font: { color: '#e6e7ea', size: 12 },
+    legend: { orientation: 'h', y: 1.05, x: 1, xanchor: 'right' },
     shapes: [{
       type: 'line',
       x0: timestamps[0],
@@ -96,7 +128,7 @@ function renderHomePreview(data) {
     staticPlot: false
   };
   
-  return Plotly.newPlot(container, [trace], layout, config).then(() => {
+  return Plotly.newPlot(container, [rawTrace, smoothTrace], layout, config).then(() => {
     const loadingOverlay = document.getElementById('home-preview-loading');
     const plotContainer = document.getElementById(container);
     

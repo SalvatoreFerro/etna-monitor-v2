@@ -90,6 +90,11 @@ def _prepare_tremor_dataframe(raw_df: pd.DataFrame) -> tuple[pd.DataFrame, str |
     df = raw_df.copy()
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
     df = df.dropna(subset=["timestamp"])
+    if "value" not in df.columns:
+        if "value_max" in df.columns:
+            df["value"] = df["value_max"]
+        elif "value_avg" in df.columns:
+            df["value"] = df["value_avg"]
 
     if df.empty:
         return df, "empty_data"
