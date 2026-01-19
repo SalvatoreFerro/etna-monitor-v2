@@ -6,6 +6,8 @@
   const kpiKm = document.getElementById('sentieri-km');
   const kpiPois = document.getElementById('sentieri-pois');
   const mapLabel = document.getElementById('sentieri-map-label');
+  const mapPanel = document.querySelector('.sentieri-panel--map');
+  const mapToggle = document.querySelector('[data-toggle-map]');
 
   if (!listEl) {
     return;
@@ -91,7 +93,7 @@
     }
     resetSelection();
     selectedLayer = layer;
-    layer.setStyle({ color: '#f97316', weight: 5, opacity: 0.9 });
+    layer.setStyle({ color: '#fb7185', weight: 5, opacity: 0.95 });
   };
 
   const buildCountsByTrail = (pois) => {
@@ -120,22 +122,35 @@
     card.dataset.slug = slug;
 
     const count = counts[slug] || { point: 0, cave: 0, mount: 0, hut: 0 };
+    const totalPois = count.point + count.cave + count.mount + count.hut;
+    const difficulty = props.difficulty || '—';
+    const difficultyValue = typeof difficulty === 'string' ? difficulty.toLowerCase() : '';
+    const isExpert = difficultyValue.includes('esperti');
+    let difficultyBadge = '⛰️ Media';
+    if (difficultyValue.includes('facile')) {
+      difficultyBadge = '🥾 Facile';
+    } else if (difficultyValue.includes('esperti')) {
+      difficultyBadge = '🧗 Esperti';
+    } else if (difficultyValue.includes('media')) {
+      difficultyBadge = '⛰️ Media';
+    }
+    const description = props.description || '';
 
     card.innerHTML = `
       <div class="sentieri-card-header">
         <h3 class="sentieri-card-title">${props.name || 'Sentiero'}</h3>
-        <span class="sentieri-card-pill">${props.difficulty || '—'}</span>
       </div>
       <div class="sentieri-card-meta">
-        <span>${props.km ?? '—'} km</span>
-        <span>${categoryLabels.point}: ${count.point}</span>
-        <span>${categoryLabels.cave}: ${count.cave}</span>
-        <span>${categoryLabels.mount}: ${count.mount}</span>
-        <span>${categoryLabels.hut}: ${count.hut}</span>
+        ${props.km ?? '—'} km · Difficoltà: ${difficulty}
+      </div>
+      <p class="sentieri-card-description">${description}</p>
+      <div class="sentieri-card-badges">
+        <span class="sentieri-card-pill">${difficultyBadge}</span>
+        <span class="sentieri-card-pill">📍 ${totalPois} POI</span>
+        ${isExpert ? '<span class="sentieri-card-pill sentieri-card-pill--guide">⚠️ Guida consigliata</span>' : ''}
       </div>
       <div class="sentieri-card-actions">
-        <span class="muted">${props.description ? props.description.slice(0, 60) + '…' : ''}</span>
-        <a href="/sentieri/${slug}">Apri</a>
+        <a href="/sentieri/${slug}">Esplora →</a>
       </div>
     `;
 
@@ -231,6 +246,31 @@
     });
   });
 
+  const toggleMapPanel = (collapsed) => {
+    if (!mapPanel || !mapToggle) {
+      return;
+    }
+    mapPanel.classList.toggle('is-collapsed', collapsed);
+    mapToggle.setAttribute('aria-expanded', String(!collapsed));
+    mapToggle.textContent = collapsed ? 'Mostra mappa' : 'Nascondi mappa';
+    if (!collapsed && map) {
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 200);
+    }
+  };
+
+  if (mapToggle && mapPanel) {
+    const prefersCollapsed = window.matchMedia('(max-width: 900px)');
+    toggleMapPanel(prefersCollapsed.matches);
+    mapToggle.addEventListener('click', () => {
+      toggleMapPanel(!mapPanel.classList.contains('is-collapsed'));
+    });
+    prefersCollapsed.addEventListener('change', (event) => {
+      toggleMapPanel(event.matches);
+    });
+  }
+
   const loadData = async () => {
     setLoading(true);
     setMapLabel('Caricamento sentieri in corso...');
@@ -266,13 +306,36 @@
       if (map && window.L) {
         const layerMap = new Map();
         trailLayer = window.L.geoJSON(trailsData, {
-          style: () => ({ color: '#38bdf8', weight: 3, opacity: 0.75 }),
+          style: () => ({
+            color: '#fb923c',
+            weight: 3.5,
+            opacity: 0.85,
+            lineCap: 'round',
+            lineJoin: 'round',
+            className: 'sentieri-trail',
+          }),
           onEachFeature: (feature, layer) => {
-            layer.defaultStyle = { color: '#38bdf8', weight: 3, opacity: 0.75 };
+            layer.defaultStyle = {
+              color: '#fb923c',
+              weight: 3.5,
+              opacity: 0.85,
+              lineCap: 'round',
+              lineJoin: 'round',
+            };
             const slug = feature?.properties?.slug;
             if (slug) {
               layerMap.set(slug, layer);
             }
+            layer.on('mouseover', () => {
+              if (layer !== selectedLayer) {
+                layer.setStyle({ weight: 5, opacity: 1, color: '#fdba74' });
+              }
+            });
+            layer.on('mouseout', () => {
+              if (layer !== selectedLayer) {
+                layer.setStyle(layer.defaultStyle);
+              }
+            });
           },
         });
 
@@ -298,6 +361,7 @@
             weight: 1,
             fillColor: categoryColors[category] || '#38bdf8',
             fillOpacity: 0.9,
+            className: `sentieri-poi-marker sentieri-poi-marker--${category}`,
           });
           marker.bindPopup(`<strong>${props.name || 'POI'}</strong><br>${props.description || ''}`);
           poiLayers[category].addLayer(marker);
