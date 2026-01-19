@@ -65,6 +65,23 @@ def _format_date_local(value: datetime | None) -> str:
     return value.strftime("%d %B %Y")
 
 
+@bp.route("/")
+def community_landing():
+    page_title = "Community EtnaMonitor – Monitoraggio condiviso e moderato"
+    page_description = (
+        "Scopri la community EtnaMonitor: uno spazio moderato e senza allarmismi per "
+        "capire i dati del vulcano, le webcam e gli avvisi Telegram."
+    )
+    return render_template(
+        "community/landing.html",
+        page_title=page_title,
+        page_description=page_description,
+        page_og_title=page_title,
+        page_og_description=page_description,
+        canonical_url=url_for("community.community_landing", _external=True),
+    )
+
+
 @bp.route("/blog/")
 def blog_index():
     now = datetime.utcnow()

@@ -314,10 +314,10 @@ def index():
     canonical_home = url_for("main.index", _external=True)
     chart_url = f"{canonical_home}#grafico-etna"
     og_image = url_for("static", filename="icons/icon-512.png", _external=True)
-    page_title = "Monitoraggio Etna in tempo reale – Grafico INGV"
+    page_title = "Monitoraggio Etna in tempo reale – Grafico INGV | EtnaMonitor"
     page_description = (
-        "Grafico aggiornato del tremore vulcanico dell'Etna con dati ufficiali INGV, "
-        "indicazioni sulle soglie operative e descrizione del monitoraggio in tempo reale."
+        "Dati ufficiali INGV e grafico del tremore dell'Etna aggiornato con lettura chiara delle soglie. "
+        "EtnaMonitor offre un monitoraggio affidabile e avvisi Telegram quando serve."
     )
 
     webpage_structured_data = {
@@ -628,8 +628,11 @@ def eruzione_oggi():
     
     return render_template(
         "eruzione_oggi.html",
-        page_title=f"Eruzione Etna Oggi {current_date} – Monitoraggio Live Tremore INGV",
-        page_description="Aggiornamenti in tempo reale sull'attività dell'Etna oggi: grafico tremore INGV live, webcam diretta, bollettini ufficiali e indicazioni di sicurezza.",
+        page_title=f"Eruzione Etna oggi {current_date} – Dati INGV | EtnaMonitor",
+        page_description=(
+            "Aggiornamenti affidabili sull'attività dell'Etna oggi: grafico tremore INGV, webcam live, "
+            "bollettini ufficiali e indicazioni di sicurezza."
+        ),
         page_og_image=og_image,
         canonical_url=url_for('main.eruzione_oggi', _external=True),
         page_structured_data=page_structured_data,
@@ -765,10 +768,15 @@ def webcam_etna():
 
     return render_template(
         "webcam.html",
-        page_title="Webcam Etna in diretta – Vista live dei crateri con meteo aggiornato",
-        page_description="Guarda le webcam live dell'Etna e consulta meteo, vento, temperatura e umidità aggiornati per pianificare escursioni in sicurezza.",
-        page_og_title="Webcam Etna in diretta",
-        page_og_description="Tre webcam live dell'Etna con anteprima meteo aggiornata su vento, temperatura e umidità.",
+        page_title="Webcam Etna in diretta e meteo – EtnaMonitor",
+        page_description=(
+            "Webcam live dell'Etna con meteo aggiornato, spiegazioni per leggere le immagini e "
+            "dati EtnaMonitor sul tremore e gli hotspot."
+        ),
+        page_og_title="Webcam Etna in diretta – EtnaMonitor",
+        page_og_description=(
+            "Tre webcam live dell'Etna con meteo aggiornato e un contesto dati chiaro firmato EtnaMonitor."
+        ),
         page_og_image=og_image,
         canonical_url=canonical,
         webcams=webcams,
