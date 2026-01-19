@@ -12,43 +12,78 @@
 {% block content %}
   {% from "partials/leaflet_map.html" import etna_map_shell %}
   <section class="container sentieri-page">
-    <header class="sentieri-header">
+    <header class="sentieri-hero">
       <span class="sentieri-eyebrow">Sentieri EtnaMonitor</span>
-      <h1>Sentieri dell'Etna</h1>
+      <h1>Sentieri dell’Etna</h1>
       <p class="sentieri-subtitle">
-        Mappa interattiva dei sentieri e punti di interesse sull'Etna, con filtri per
-        categorie e KPI aggiornati dai GeoJSON ufficiali EtnaMonitor.
+        Mappe interattive, dati essenziali e consigli per esplorare l’Etna in sicurezza.
       </p>
+      <div class="sentieri-hero-badges">
+        <span class="sentieri-badge">20 sentieri verificati</span>
+        <span class="sentieri-badge">POI filtrabili</span>
+        <span class="sentieri-badge">Guide consigliate</span>
+      </div>
     </header>
 
     <section class="sentieri-kpis" id="sentieri-kpis">
       <div class="sentieri-kpi">
-        <span>Totale sentieri</span>
-        <strong id="sentieri-count">—</strong>
+        <div class="sentieri-kpi-icon" aria-hidden="true">⛰️</div>
+        <div class="sentieri-kpi-content">
+          <span>Totale sentieri</span>
+          <strong id="sentieri-count">—</strong>
+        </div>
       </div>
       <div class="sentieri-kpi">
-        <span>Km complessivi</span>
-        <strong id="sentieri-km">—</strong>
+        <div class="sentieri-kpi-icon" aria-hidden="true">📏</div>
+        <div class="sentieri-kpi-content">
+          <span>Km complessivi</span>
+          <strong id="sentieri-km">—</strong>
+        </div>
       </div>
       <div class="sentieri-kpi">
-        <span>POI totali</span>
-        <strong id="sentieri-pois">—</strong>
+        <div class="sentieri-kpi-icon" aria-hidden="true">📍</div>
+        <div class="sentieri-kpi-content">
+          <span>POI totali</span>
+          <strong id="sentieri-pois">—</strong>
+        </div>
       </div>
     </section>
 
     <div class="sentieri-grid">
-      <div class="sentieri-panel">
-        {{ etna_map_shell(
+      <div class="sentieri-panel sentieri-panel--map">
+        <button class="sentieri-map-toggle" type="button" data-toggle-map aria-expanded="true">
+          Mostra mappa
+        </button>
+        {% call etna_map_shell(
           'sentieri-map',
           'sentieri-map-label',
           'sentieri-loader',
           'Mappa sentieri e POI',
           aria_label='Mappa Sentieri Etna',
           map_class='sentieri-map'
-        ) }}
+        ) %}
+          <div class="sentieri-legend">
+            <div class="sentieri-legend__title">Legenda</div>
+            <div class="sentieri-legend__row">
+              <span class="sentieri-legend__line"></span> Sentieri
+            </div>
+            <div class="sentieri-legend__row">
+              <span class="sentieri-legend__dot sentieri-legend__dot--point"></span> Punti
+            </div>
+            <div class="sentieri-legend__row">
+              <span class="sentieri-legend__dot sentieri-legend__dot--cave"></span> Grotte
+            </div>
+            <div class="sentieri-legend__row">
+              <span class="sentieri-legend__dot sentieri-legend__dot--mount"></span> Monti
+            </div>
+            <div class="sentieri-legend__row">
+              <span class="sentieri-legend__dot sentieri-legend__dot--hut"></span> Rifugi
+            </div>
+          </div>
+        {% endcall %}
         <p class="sentieri-note">Clicca una card per zoomare sulla partenza e aprire la scheda completa.</p>
       </div>
-      <div class="sentieri-panel">
+      <div class="sentieri-panel sentieri-panel--list">
         <div class="sentieri-filter" role="group" aria-label="Filtri sentieri">
           <button class="sentieri-toggle is-active" type="button" data-layer="trails">Sentieri</button>
           <button class="sentieri-toggle is-active" type="button" data-layer="point">Punti</button>

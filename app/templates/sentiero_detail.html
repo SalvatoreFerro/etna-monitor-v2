@@ -12,27 +12,49 @@
 {% block content %}
   {% from "partials/leaflet_map.html" import etna_map_shell %}
   <section class="container sentieri-detail" data-trail-slug="{{ trail.slug }}" data-start-lat="{{ trail.start_lat }}" data-start-lng="{{ trail.start_lng }}">
-    <header class="sentieri-header">
-      <span class="sentieri-eyebrow">Sentiero Etna</span>
+    <header class="sentieri-header sentieri-header--detail">
+      <span class="sentieri-eyebrow">Scheda sentiero</span>
       <h1>{{ trail.name }}</h1>
-      <div class="sentieri-meta">
-        <span>Difficoltà: <strong>{{ trail.difficulty }}</strong></span>
-        <span>Lunghezza: <strong>{{ trail.km }} km</strong></span>
+      <div class="sentieri-meta sentieri-meta--chips">
+        <span>📏 <strong>{{ trail.km }} km</strong></span>
+        <span>🥾 <strong>{{ trail.difficulty }}</strong></span>
+        {% if trail.difficulty and 'Esperti' in trail.difficulty %}
+          <span class="sentieri-meta-alert">⚠️ Guida consigliata</span>
+        {% endif %}
       </div>
       <p class="sentieri-description">{{ trail.description }}</p>
     </header>
 
     <div class="sentieri-grid sentieri-grid--detail">
       <div class="sentieri-panel">
-        {{ etna_map_shell(
+        {% call etna_map_shell(
           'sentiero-map',
           'sentiero-map-label',
           'sentiero-loader',
           'Mappa sentiero e POI',
           aria_label='Mappa sentiero Etna',
           map_class='sentieri-map'
-        ) }}
-        <div class="sentieri-filter" role="group" aria-label="Filtri punti di interesse">
+        ) %}
+          <div class="sentieri-legend">
+            <div class="sentieri-legend__title">Legenda</div>
+            <div class="sentieri-legend__row">
+              <span class="sentieri-legend__line"></span> Sentiero
+            </div>
+            <div class="sentieri-legend__row">
+              <span class="sentieri-legend__dot sentieri-legend__dot--point"></span> Punti
+            </div>
+            <div class="sentieri-legend__row">
+              <span class="sentieri-legend__dot sentieri-legend__dot--cave"></span> Grotte
+            </div>
+            <div class="sentieri-legend__row">
+              <span class="sentieri-legend__dot sentieri-legend__dot--mount"></span> Monti
+            </div>
+            <div class="sentieri-legend__row">
+              <span class="sentieri-legend__dot sentieri-legend__dot--hut"></span> Rifugi
+            </div>
+          </div>
+        {% endcall %}
+        <div class="sentieri-filter sentieri-filter--poi" role="group" aria-label="Filtri punti di interesse">
           <button class="sentieri-toggle is-active" type="button" data-layer="point">Punti</button>
           <button class="sentieri-toggle is-active" type="button" data-layer="cave">Grotte</button>
           <button class="sentieri-toggle is-active" type="button" data-layer="mount">Monti</button>
@@ -44,13 +66,16 @@
       </div>
     </div>
 
-    <aside class="sentieri-editorial">
-      <h2>Vuoi farlo in sicurezza?</h2>
-      <p>
-        Affrontare un sentiero sull’Etna richiede esperienza e conoscenza del territorio.
-        Scopri le guide e le esperienze selezionate da EtnaMonitor.
-      </p>
-      <a class="sentieri-editorial__cta" href="{{ url_for('main.experience') }}">Pianifica con una guida consigliata</a>
+    <aside class="sentieri-editorial sentieri-editorial--highlight">
+      <div class="sentieri-editorial__icon" aria-hidden="true">🧭</div>
+      <div>
+        <h2>Vuoi farlo in sicurezza?</h2>
+        <p>
+          Affrontare un sentiero sull’Etna richiede esperienza e conoscenza del territorio.
+          Scopri le guide e le esperienze selezionate da EtnaMonitor.
+        </p>
+        <a class="sentieri-editorial__cta" href="{{ url_for('main.experience') }}">Pianifica con una guida consigliata</a>
+      </div>
     </aside>
   </section>
 {% endblock %}

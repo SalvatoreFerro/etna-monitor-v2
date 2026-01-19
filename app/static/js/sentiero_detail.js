@@ -28,6 +28,7 @@
 
   const state = { point: true, cave: true, mount: true, hut: true };
   const toggleButtons = Array.from(document.querySelectorAll('.sentieri-toggle'));
+  let activeMarker = null;
 
   const map = window.EtnaLeaflet?.createEtnaMap('sentiero-map', {
     center: Number.isFinite(startLat) && Number.isFinite(startLng) ? [startLat, startLng] : [37.751, 15.0],
@@ -85,16 +86,26 @@
     }
     poiLists.innerHTML = '';
 
-    Object.entries(categoryLabels).forEach(([category, label]) => {
+    const entries = Object.entries(categoryLabels);
+
+    entries.forEach(([category, label], index) => {
       const items = poiByCategory[category] || [];
       const wrapper = document.createElement('div');
       wrapper.className = 'sentieri-poi-category';
-      wrapper.innerHTML = `<h3>${label} (${items.length})</h3>`;
-      const list = document.createElement('div');
-      list.className = 'sentieri-poi-list';
+      const trigger = document.createElement('button');
+      trigger.type = 'button';
+      trigger.className = 'sentieri-poi-trigger';
+      trigger.setAttribute('aria-expanded', index === 0 ? 'true' : 'false');
+      trigger.innerHTML = `
+        <strong>${label}</strong>
+        <span>${items.length} punti</span>
+      `;
+      const panel = document.createElement('div');
+      panel.className = 'sentieri-poi-panel';
+      panel.hidden = index !== 0;
 
       if (!items.length) {
-        list.innerHTML = '<span class="muted">Nessun punto disponibile.</span>';
+        panel.innerHTML = '<span class="muted">Nessun punto disponibile.</span>';
       } else {
         items.forEach((poi) => {
           const item = document.createElement('button');
@@ -103,14 +114,34 @@
           item.textContent = poi.name || 'POI';
           item.addEventListener('click', () => {
             if (poi.marker && map) {
+              if (activeMarker && activeMarker.defaultStyle) {
+                activeMarker.setStyle(activeMarker.defaultStyle);
+                if (typeof activeMarker.defaultRadius === 'number') {
+                  activeMarker.setRadius(activeMarker.defaultRadius);
+                }
+              }
+              poi.marker.setStyle({
+                weight: 2,
+                color: '#f8fafc',
+                fillOpacity: 1,
+              });
+              poi.marker.setRadius(9);
+              activeMarker = poi.marker;
               map.setView(poi.marker.getLatLng(), 14, { animate: true });
               poi.marker.openPopup();
             }
           });
-          list.appendChild(item);
+          panel.appendChild(item);
         });
       }
-      wrapper.appendChild(list);
+      trigger.addEventListener('click', () => {
+        const isExpanded = trigger.getAttribute('aria-expanded') === 'true';
+        trigger.setAttribute('aria-expanded', String(!isExpanded));
+        panel.hidden = isExpanded;
+      });
+
+      wrapper.appendChild(trigger);
+      wrapper.appendChild(panel);
       poiLists.appendChild(wrapper);
     });
   };
@@ -139,7 +170,14 @@
 
       if (map && window.L) {
         const trailLayer = window.L.geoJSON(trailFeature, {
-          style: () => ({ color: '#38bdf8', weight: 4, opacity: 0.85 }),
+          style: () => ({
+            color: '#fb923c',
+            weight: 4,
+            opacity: 0.9,
+            lineCap: 'round',
+            lineJoin: 'round',
+            className: 'sentieri-trail',
+          }),
         }).addTo(map);
 
         const bounds = trailLayer.getBounds();
@@ -163,7 +201,15 @@
               weight: 1,
               fillColor: categoryColors[category] || '#38bdf8',
               fillOpacity: 0.9,
+              className: `sentieri-poi-marker sentieri-poi-marker--${category}`,
             });
+            marker.defaultStyle = {
+              color: '#0f172a',
+              weight: 1,
+              fillColor: categoryColors[category] || '#38bdf8',
+              fillOpacity: 0.9,
+            };
+            marker.defaultRadius = 6;
             marker.bindPopup(`<strong>${props.name || 'POI'}</strong><br>${props.description || ''}`);
             poiLayers[category].addLayer(marker);
             poiByCategory[category].push({ name: props.name, marker });
