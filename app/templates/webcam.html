@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
-{% set page_title = "Webcam Etna in diretta – Vista live dei crateri con meteo aggiornato" %}
-{% set page_description = "Guarda le webcam live dell'Etna e consulta meteo, vento, temperatura e umidità aggiornati per pianificare escursioni in sicurezza." %}
+{% set page_title = "Webcam Etna in diretta e meteo – EtnaMonitor" %}
+{% set page_description = "Webcam live dell'Etna con meteo aggiornato, spiegazioni per leggere le immagini e dati EtnaMonitor su tremore e hotspot." %}
 {% set page_og_title = page_title %}
 {% set page_og_description = page_description %}
 {% set canonical_url = url_for('main.webcam_etna', _external=True) %}
@@ -136,6 +136,65 @@
           </a>
         </article>
       {% endfor %}
+    </section>
+
+    <section class="webcam-insights" aria-labelledby="webcam-insights-title">
+      <div class="webcam-insights__card">
+        <div class="webcam-insights__text">
+          <h2 id="webcam-insights-title">Immagini e dati: due livelli di lettura</h2>
+          <p>
+            Le webcam mostrano immagini live e possono essere influenzate da meteo, nuvole e luce. Sono perfette per vedere
+            cosa accade in superficie, ma non raccontano sempre l'attività interna del vulcano.
+          </p>
+          <p>
+            EtnaMonitor integra dati reali come tremore, hotspot e segnali sismici per capire se la situazione cambia davvero.
+            Per un quadro completo consulta la pagina <a class="link-arrow" href="{{ url_for('main.eruzione_oggi') }}">Eruzione Etna oggi</a>.
+          </p>
+        </div>
+        <div class="webcam-insights__cta">
+          <p class="webcam-insights__cta-text">Vuoi sapere se qualcosa cambia davvero? Ricevi un avviso su Telegram quando serve.</p>
+          <a class="btn btn-secondary" href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">Ricevi avvisi su Telegram</a>
+          <a class="link-arrow" href="{{ url_for('community.community_landing') }}">Scopri la community EtnaMonitor</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="webcam-faq" aria-labelledby="webcam-faq-title">
+      <h2 id="webcam-faq-title">Mini FAQ sulle webcam dell'Etna</h2>
+      <div class="webcam-faq__grid">
+        <article>
+          <h3>Le webcam mostrano sempre un’eruzione?</h3>
+          <p>
+            No. Le webcam mostrano ciò che è visibile in quel momento: una fase eruttiva può essere nascosta da nuvole o luce
+            sfavorevole. Per conferme affidabili servono i dati INGV.
+          </p>
+        </article>
+        <article>
+          <h3>Le webcam bastano per capire l’attività dell’Etna?</h3>
+          <p>
+            Sono utili, ma non sufficienti. Il tremore e i segnali sismici raccontano cosa accade all’interno del vulcano e
+            spesso anticipano ciò che si vede in superficie.
+          </p>
+        </article>
+        <article>
+          <h3>Perché i dati sono più affidabili delle immagini?</h3>
+          <p>
+            I dati provengono da sensori scientifici continui e non dipendono dalla visibilità. Le immagini aiutano a
+            interpretare, ma i numeri spiegano se l’attività sta davvero aumentando.
+          </p>
+        </article>
+        <article>
+          <h3>Quando conviene controllare anche il grafico del tremore?</h3>
+          <p>
+            Quando noti bagliori o fumi insoliti, oppure se vuoi capire se un cambiamento è reale. Il grafico è il modo
+            più chiaro per leggere l’andamento delle ultime ore.
+          </p>
+        </article>
+      </div>
+      <p class="webcam-faq__note">
+        Approfondisci su <a class="link-arrow" href="{{ url_for('main.index') }}#grafico-etna">grafico tremore</a> e nella
+        <a class="link-arrow" href="{{ url_for('community.community_landing') }}">community EtnaMonitor</a>.
+      </p>
     </section>
 
     <aside class="webcam-notes" aria-label="Suggerimenti di utilizzo">

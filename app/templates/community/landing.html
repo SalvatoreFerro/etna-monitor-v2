@@ -1,0 +1,77 @@
+{% extends "layout.html" %}
+{% set page_title = "Community EtnaMonitor – Monitoraggio condiviso e moderato" %}
+{% set page_description = "Scopri la community EtnaMonitor: uno spazio moderato e senza allarmismi per capire i dati del vulcano, le webcam e gli avvisi Telegram." %}
+{% set page_og_title = page_title %}
+{% set page_og_description = page_description %}
+{% set canonical_url = url_for('community.community_landing', _external=True) %}
+
+{% block content %}
+<section class="page page--community">
+  <div class="container stack">
+    <header class="page__header">
+      <span class="eyebrow">Community EtnaMonitor</span>
+      <h1>Una community per capire l'Etna senza allarmismi</h1>
+      <p class="page__lede">
+        EtnaMonitor è un progetto indipendente: uniamo immagini live, dati scientifici e confronto con la community per
+        interpretare l'attività del vulcano con un linguaggio semplice e responsabile.
+      </p>
+      <div class="hero__actions">
+        <a class="btn btn-primary" href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">Ricevi avvisi su Telegram</a>
+        <a class="btn btn-secondary" href="{{ url_for('community.forum_home') }}">Vai al forum</a>
+        <a class="btn btn-ghost" href="{{ url_for('community.blog_index') }}">Leggi il blog</a>
+      </div>
+    </header>
+
+    <section class="community-highlights" aria-label="Cosa offre la community">
+      <article class="community-card">
+        <h2>Cosa trovi nella community</h2>
+        <ul>
+          <li>Spiegazioni chiare del grafico del tremore e degli indicatori INGV.</li>
+          <li>Risposte moderate a dubbi su eruzioni, escursioni e sicurezza.</li>
+          <li>Un luogo dove condividere osservazioni senza sensazionalismi.</li>
+        </ul>
+      </article>
+      <article class="community-card">
+        <h2>Moderazione senza allarmismi</h2>
+        <p>
+          I contenuti sono moderati per mantenere un tono autorevole, utile e rispettoso. Le discussioni privilegiano fonti
+          ufficiali e dati verificabili, evitando interpretazioni emotive o non supportate.
+        </p>
+      </article>
+      <article class="community-card">
+        <h2>EtnaMonitor come riferimento</h2>
+        <p>
+          La community si collega alle pagine chiave del sito: webcam, grafico tremore e aggiornamenti quotidiani. In questo
+          modo ogni informazione resta contestualizzata e facilmente consultabile.
+        </p>
+      </article>
+    </section>
+
+    <section class="community-bridge" aria-labelledby="community-bridge-title">
+      <div class="community-bridge__content">
+        <h2 id="community-bridge-title">Sito, dati e Telegram lavorano insieme</h2>
+        <ol class="community-steps">
+          <li>
+            <strong>Osserva.</strong> Le <a href="{{ url_for('main.webcam_etna') }}">webcam dell'Etna</a> mostrano cosa avviene in superficie.
+          </li>
+          <li>
+            <strong>Conferma.</strong> Il <a href="{{ url_for('main.index') }}#grafico-etna">grafico del tremore</a> e gli indicatori INGV spiegano se il cambiamento è reale.
+          </li>
+          <li>
+            <strong>Ricevi avvisi.</strong> Telegram invia notifiche solo quando i dati superano le soglie impostate.
+          </li>
+        </ol>
+      </div>
+      <aside class="community-bridge__panel" aria-label="Risorse correlate">
+        <h3>Risorse utili</h3>
+        <ul>
+          <li><a class="link-arrow" href="{{ url_for('main.eruzione_oggi') }}">Eruzione Etna oggi</a></li>
+          <li><a class="link-arrow" href="{{ url_for('main.webcam_etna') }}">Webcam Etna + meteo</a></li>
+          <li><a class="link-arrow" href="{{ url_for('main.faq') }}">FAQ Etna</a></li>
+        </ul>
+        <p class="muted">Preferisci partecipare? Apri una discussione nel forum oppure leggi gli articoli del blog.</p>
+      </aside>
+    </section>
+  </div>
+</section>
+{% endblock %}

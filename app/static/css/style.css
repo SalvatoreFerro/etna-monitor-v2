@@ -1963,6 +1963,84 @@
     gap: 0.5rem;
     font-size: 1.1rem;
   }
+
+  .page--community .container {
+    gap: clamp(var(--space-8), 6vw, var(--space-12));
+  }
+
+  .community-highlights {
+    display: grid;
+    gap: var(--space-5);
+  }
+
+  @media (min-width: 900px) {
+    .community-highlights {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .community-card {
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(148, 197, 255, 0.18);
+    background: rgba(13, 21, 42, 0.72);
+    padding: clamp(var(--space-5), 4vw, var(--space-6));
+    display: grid;
+    gap: var(--space-3);
+    box-shadow: var(--shadow-xs);
+  }
+
+  .community-card ul {
+    margin: 0;
+    padding-left: 1.1rem;
+    color: var(--color-text-muted);
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .community-bridge {
+    border-radius: var(--radius-2xl);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(8, 16, 32, 0.9);
+    padding: clamp(var(--space-6), 5vw, var(--space-8));
+    display: grid;
+    gap: var(--space-6);
+  }
+
+  @media (min-width: 900px) {
+    .community-bridge {
+      grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+      align-items: start;
+    }
+  }
+
+  .community-steps {
+    margin: 0;
+    padding-left: 1.2rem;
+    display: grid;
+    gap: var(--space-3);
+    color: var(--color-text-muted);
+  }
+
+  .community-steps strong {
+    color: var(--color-heading);
+  }
+
+  .community-bridge__panel {
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    background: rgba(15, 23, 42, 0.6);
+    padding: var(--space-4);
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .community-bridge__panel ul {
+    margin: 0;
+    padding-left: 0;
+    list-style: none;
+    display: grid;
+    gap: 0.6rem;
+  }
 }
 
 @layer overlays {
@@ -3651,7 +3729,92 @@
   display: grid;
   gap: 0.6rem;
   color: var(--color-text-muted);
-}  
+}
+
+.webcam-insights {
+  display: grid;
+}
+
+.webcam-insights__card {
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(100, 244, 255, 0.18);
+  background: linear-gradient(145deg, rgba(7, 14, 28, 0.96), rgba(30, 58, 138, 0.18));
+  padding: clamp(var(--space-6), 5vw, var(--space-8));
+  display: grid;
+  gap: var(--space-5);
+  box-shadow: var(--shadow-md);
+}
+
+@media (min-width: 880px) {
+  .webcam-insights__card {
+    grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+    align-items: start;
+  }
+}
+
+.webcam-insights__text {
+  display: grid;
+  gap: var(--space-3);
+}
+
+.webcam-insights__cta {
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.6);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-3);
+}
+
+.webcam-insights__cta-text {
+  font-weight: 500;
+  color: var(--color-heading);
+}
+
+.webcam-faq {
+  border-radius: var(--radius-xl);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(10, 19, 36, 0.85);
+  padding: clamp(var(--space-6), 5vw, var(--space-8));
+  display: grid;
+  gap: var(--space-5);
+}
+
+.webcam-faq__grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+@media (min-width: 768px) {
+  .webcam-faq__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.webcam-faq__grid article {
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.6);
+  padding: var(--space-4);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.webcam-faq__grid h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--color-heading);
+}
+
+.webcam-faq__grid p {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.webcam-faq__note {
+  margin: 0;
+  color: var(--color-text-muted);
+}
 
 @layer layout {
   .page--experience {

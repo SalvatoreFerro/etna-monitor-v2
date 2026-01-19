@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
-{% set page_title = "Eruzione Etna Oggi " ~ current_date ~ " – Monitoraggio Live Tremore INGV" %}
-{% set page_description = "Aggiornamenti in tempo reale sull'attività dell'Etna oggi: grafico tremore INGV live, webcam diretta, bollettini ufficiali e indicazioni di sicurezza." %}
+{% set page_title = "Eruzione Etna oggi " ~ current_date ~ " – Dati INGV | EtnaMonitor" %}
+{% set page_description = "Aggiornamenti affidabili sull'attività dell'Etna oggi: grafico tremore INGV, webcam live, bollettini ufficiali e indicazioni di sicurezza." %}
 {% set page_og_title = page_title %}
 {% set page_og_description = page_description %}
 {% set canonical_url = url_for('main.eruzione_oggi', _external=True) %}
@@ -251,6 +251,9 @@
           <a href="{{ url_for('auth.login') }}" class="btn btn-primary">Attiva gli alert</a>
           <a href="{{ url_for('main.etna_bot') }}" class="btn btn-secondary">Scopri il bot Telegram</a>
         </div>
+        <p class="muted">
+          Vuoi capire come vengono interpretati i dati? <a class="link-arrow" href="{{ url_for('community.community_landing') }}">Scopri la community EtnaMonitor</a>.
+        </p>
       </div>
     </aside>
 
@@ -263,6 +266,7 @@
         <li><a href="{{ url_for('main.faq') }}#escursione-sicura">Quando è sicuro fare trekking sull'Etna?</a></li>
         <li><a href="{{ url_for('main.faq') }}">Tutte le FAQ →</a></li>
       </ul>
+      <p class="muted">Approfondisci con le <a class="link-arrow" href="{{ url_for('main.webcam_etna') }}">webcam Etna</a> e con la <a class="link-arrow" href="{{ url_for('community.community_landing') }}">community EtnaMonitor</a>.</p>
     </section>
   </div>
 </section>

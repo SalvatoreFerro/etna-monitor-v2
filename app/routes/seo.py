@@ -72,6 +72,7 @@ STATIC_PAGES: Tuple[Tuple[str, str, str], ...] = (
     ("main.privacy", "yearly", "0.3"),
     ("main.terms", "yearly", "0.3"),
     ("main.cookies", "yearly", "0.3"),
+    ("community.community_landing", "weekly", "0.7"),
     ("community.forum_home", "weekly", "0.5"),
     ("partners.direct_guide_listing", "weekly", "0.6"),
     ("partners.direct_hotel_listing", "weekly", "0.6"),
