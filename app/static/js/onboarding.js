@@ -91,19 +91,7 @@
       });
     });
 
-    let shouldAutoOpen = true;
-    try {
-      shouldAutoOpen = !localStorage.getItem(STORAGE_KEY);
-    } catch (error) {
-      shouldAutoOpen = true;
-    }
-
-    if (shouldAutoOpen && !sessionStorage.getItem(SESSION_KEY)) {
-      window.setTimeout(() => {
-        openOverlay();
-        sessionStorage.setItem(SESSION_KEY, 'auto');
-      }, 1200);
-    }
+    // Auto-start disabled: onboarding should only open via manual triggers.
   }
 
   if (document.readyState === 'loading') {
