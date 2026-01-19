@@ -87,6 +87,11 @@ from ..services.media_library import (
     upload_media_asset,
     validate_media_file,
 )
+from ..services.sentieri_geojson import (
+    parse_geojson_text,
+    read_geojson_file,
+    validate_feature_collection,
+)
 
 bp = Blueprint("admin", __name__)
 
@@ -2676,6 +2681,116 @@ def set_theme():
 
     return jsonify(
         {"success": True, "message": f"Theme changed to {theme}", "theme": theme}
+    )
+
+
+@bp.route("/sentieri", methods=["GET", "POST"])
+@admin_required
+def admin_sentieri():
+    """Admin console for trails/POI GeoJSON management (founder-only)."""
+    data_dir = Path(current_app.root_path) / "static" / "data"
+    trails_path = data_dir / "trails.geojson"
+    pois_path = data_dir / "pois.geojson"
+
+    trails_text = ""
+    pois_text = ""
+    report = None
+
+    if request.method == "POST":
+        if not _is_csrf_valid(request.form.get("csrf_token")):
+            flash("Token CSRF non valido. Riprova.", "error")
+            return redirect(url_for("admin.admin_sentieri"))
+
+        action = (request.form.get("action") or "").strip().lower()
+        trails_text = request.form.get("trails_geojson", "")
+        pois_text = request.form.get("pois_geojson", "")
+
+        if action == "restore":
+            trails_text, trails_data, trails_error = read_geojson_file(trails_path)
+            pois_text, pois_data, pois_error = read_geojson_file(pois_path)
+            report = {
+                "ok": not (trails_error or pois_error),
+                "trails_count": len(trails_data.get("features", [])) if trails_data else 0,
+                "pois_count": len(pois_data.get("features", [])) if pois_data else 0,
+                "errors": [
+                    error
+                    for error in [trails_error, pois_error]
+                    if error
+                ],
+            }
+            flash("File ricaricati dal disco.", "info")
+        elif action in {"validate", "save"}:
+            trails_payload, trails_error = parse_geojson_text(trails_text)
+            pois_payload, pois_error = parse_geojson_text(pois_text)
+
+            trails_report = (
+                validate_feature_collection(trails_payload, kind="trails")
+                if not trails_error
+                else {"ok": False, "count": 0, "errors": [trails_error]}
+            )
+            pois_report = (
+                validate_feature_collection(pois_payload, kind="pois")
+                if not pois_error
+                else {"ok": False, "count": 0, "errors": [pois_error]}
+            )
+
+            errors: list[dict[str, str | None]] = []
+            for error in trails_report.get("errors", []):
+                errors.append(
+                    {
+                        "message": f"trails.geojson: {error.get('message')}",
+                        "line": error.get("line"),
+                    }
+                )
+            for error in pois_report.get("errors", []):
+                errors.append(
+                    {
+                        "message": f"pois.geojson: {error.get('message')}",
+                        "line": error.get("line"),
+                    }
+                )
+
+            report = {
+                "ok": trails_report["ok"] and pois_report["ok"],
+                "trails_count": trails_report["count"],
+                "pois_count": pois_report["count"],
+                "errors": errors[:10],
+            }
+
+            if action == "save" and report["ok"]:
+                data_dir.mkdir(parents=True, exist_ok=True)
+                trails_path.write_text(trails_text.strip() + "\n", encoding="utf-8")
+                pois_path.write_text(pois_text.strip() + "\n", encoding="utf-8")
+                flash("GeoJSON salvati correttamente.", "success")
+            elif action == "save":
+                flash("Correggi gli errori prima di salvare.", "error")
+        else:
+            flash("Azione non riconosciuta.", "error")
+
+    if request.method == "GET":
+        trails_text, trails_data, trails_error = read_geojson_file(trails_path)
+        pois_text, pois_data, pois_error = read_geojson_file(pois_path)
+        if trails_error or pois_error:
+            flash("Caricamento file sentieri incompleto.", "warning")
+        report = {
+            "ok": not (trails_error or pois_error),
+            "trails_count": len(trails_data.get("features", [])) if trails_data else 0,
+            "pois_count": len(pois_data.get("features", [])) if pois_data else 0,
+            "errors": [error for error in [trails_error, pois_error] if error],
+        }
+
+    _, saved_trails_data, _ = read_geojson_file(trails_path)
+    _, saved_pois_data, _ = read_geojson_file(pois_path)
+    current_trails = len(saved_trails_data.get("features", [])) if saved_trails_data else 0
+    current_pois = len(saved_pois_data.get("features", [])) if saved_pois_data else 0
+
+    return render_template(
+        "admin/sentieri.html",
+        trails_text=trails_text or "",
+        pois_text=pois_text or "",
+        report=report,
+        current_trails=current_trails,
+        current_pois=current_pois,
     )
 
 

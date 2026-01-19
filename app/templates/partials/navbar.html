@@ -3,7 +3,8 @@
   {'label': 'Grafici', 'url': url_for('main.index'), 'endpoint': 'main.index'},
   {'label': 'Osservatorio', 'url': url_for('main.observatory'), 'endpoint': 'main.observatory'},
   {'label': 'Etna 3D', 'url': url_for('main.etna3d'), 'endpoint': 'main.etna3d'},
-  {'label': 'Webcam Etna', 'url': url_for('main.webcam_etna'), 'endpoint': 'main.webcam_etna'}
+  {'label': 'Webcam Etna', 'url': url_for('main.webcam_etna'), 'endpoint': 'main.webcam_etna'},
+  {'label': 'Sentieri', 'url': url_for('main.sentieri'), 'endpoint': 'main.sentieri'}
 ] %}
 {% if config.HOTSPOTS_ENABLED %}
   {% set data_links = data_links + [

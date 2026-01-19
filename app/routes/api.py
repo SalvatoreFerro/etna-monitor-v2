@@ -23,6 +23,7 @@ from backend.utils.time import to_iso_utc
 from backend.services.hotspots.config import HotspotsConfig
 from backend.services.hotspots.diagnostics import diagnose_firms
 from backend.services.hotspots.significance import is_significant_record
+from ..services.sentieri_geojson import read_geojson_file, validate_feature_collection
 
 _RANGE_LIMITS: dict[str, int] = {
     "24h": 288,
@@ -502,6 +503,114 @@ def get_copernicus_latest():
             "status_detail": status_detail,
         }
     )
+
+def _sentieri_file_paths() -> tuple[Path, Path]:
+    data_dir = Path(current_app.root_path) / "static" / "data"
+    return data_dir / "trails.geojson", data_dir / "pois.geojson"
+
+
+def _sentieri_error_response(error: dict[str, object] | None, *, fallback_message: str) -> tuple[object, int]:
+    if not error:
+        return jsonify({"ok": False, "error": fallback_message}), 400
+    message = str(error.get("message") or fallback_message)
+    line = error.get("line")
+    status = 404 if "mancante" in message else 400
+    payload: dict[str, object] = {"ok": False, "error": message}
+    if line:
+        payload["line"] = line
+    return jsonify(payload), status
+
+
+@api_bp.get("/api/sentieri/trails")
+def sentieri_trails():
+    """Return the trails GeoJSON payload or an error response."""
+    trails_path, _ = _sentieri_file_paths()
+    _, data, error = read_geojson_file(trails_path)
+    if error:
+        return _sentieri_error_response(error, fallback_message="trails.geojson non disponibile")
+
+    report = validate_feature_collection(data, kind="trails")
+    if not report["ok"]:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": "trails.geojson non valido",
+                    "details": report["errors"],
+                }
+            ),
+            400,
+        )
+    return jsonify(data)
+
+
+@api_bp.get("/api/sentieri/pois")
+def sentieri_pois():
+    """Return the POI GeoJSON payload or an error response."""
+    _, pois_path = _sentieri_file_paths()
+    _, data, error = read_geojson_file(pois_path)
+    if error:
+        return _sentieri_error_response(error, fallback_message="pois.geojson non disponibile")
+
+    report = validate_feature_collection(data, kind="pois")
+    if not report["ok"]:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": "pois.geojson non valido",
+                    "details": report["errors"],
+                }
+            ),
+            400,
+        )
+    return jsonify(data)
+
+
+@api_bp.get("/api/sentieri/stats")
+def sentieri_stats():
+    """Return KPI for sentieri: totals, km sum, and POI count."""
+    trails_path, pois_path = _sentieri_file_paths()
+
+    _, trails_data, trails_error = read_geojson_file(trails_path)
+    if trails_error:
+        return _sentieri_error_response(trails_error, fallback_message="trails.geojson non disponibile")
+
+    _, pois_data, pois_error = read_geojson_file(pois_path)
+    if pois_error:
+        return _sentieri_error_response(pois_error, fallback_message="pois.geojson non disponibile")
+
+    trails_report = validate_feature_collection(trails_data, kind="trails")
+    pois_report = validate_feature_collection(pois_data, kind="pois")
+    if not trails_report["ok"] or not pois_report["ok"]:
+        return (
+            jsonify(
+                {
+                    "ok": False,
+                    "error": "GeoJSON non valido",
+                    "details": (trails_report["errors"] + pois_report["errors"])[:10],
+                }
+            ),
+            400,
+        )
+
+    total_km = 0.0
+    for feature in trails_data.get("features", []):
+        km_value = feature.get("properties", {}).get("km")
+        try:
+            total_km += float(km_value)
+        except (TypeError, ValueError):
+            continue
+
+    return jsonify(
+        {
+            "ok": True,
+            "trails": trails_report["count"],
+            "total_km": round(total_km, 2),
+            "pois": pois_report["count"],
+        }
+    )
+
 
 @api_bp.route("/api/force_update", methods=["GET", "POST"])
 def force_update():
