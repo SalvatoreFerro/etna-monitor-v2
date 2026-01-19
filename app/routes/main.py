@@ -43,6 +43,7 @@ from app.services.copernicus import (
     resolve_copernicus_bbox,
     resolve_copernicus_image_url,
 )
+from ..services.sentieri_geojson import read_geojson_file, validate_feature_collection
 
 bp = Blueprint("main", __name__)
 
@@ -147,6 +148,28 @@ def _format_display_datetime(value: datetime | None) -> str | None:
         return None
     dt = value.astimezone(timezone.utc) if value.tzinfo else value.replace(tzinfo=timezone.utc)
     return dt.strftime("%d/%m/%Y %H:%M UTC")
+
+
+def _sentieri_paths() -> tuple[Path, Path]:
+    """Return absolute paths to the trails/POI GeoJSON files."""
+    data_dir = Path(current_app.root_path) / "static" / "data"
+    return data_dir / "trails.geojson", data_dir / "pois.geojson"
+
+
+def _load_sentieri_geojson(kind: str) -> dict | None:
+    """Load GeoJSON from disk and validate minimal requirements for sentieri pages."""
+    trails_path, pois_path = _sentieri_paths()
+    path = trails_path if kind == "trails" else pois_path
+    _, data, error = read_geojson_file(path)
+    if error:
+        current_app.logger.warning("[SENTIERI] GeoJSON missing: %s", error.get("message"))
+        return None
+
+    report = validate_feature_collection(data, kind=kind)
+    if not report.get("ok"):
+        current_app.logger.warning("[SENTIERI] GeoJSON validation failed: %s", report.get("errors"))
+        return None
+    return data
 
 
 def _describe_weather_code(code: int | None) -> str | None:
@@ -752,6 +775,52 @@ def webcam_etna():
         weather_preview=weather_preview,
         weather_error=weather_error,
         page_structured_data=page_structured_data,
+    )
+
+
+@bp.route("/sentieri")
+def sentieri():
+    return render_template(
+        "sentieri.html",
+        page_title="Sentieri Etna – Mappa e percorsi con POI | EtnaMonitor",
+        page_description=(
+            "Esplora i sentieri dell'Etna con mappa interattiva, difficoltà, lunghezze e punti di interesse "
+            "filtrabili per categoria."
+        ),
+        page_og_title="Sentieri Etna – Mappa e percorsi",
+        page_og_description=(
+            "Mappa sentieri Etna con tracciati, POI e filtri per grotte, monti e rifugi."
+        ),
+        canonical_url=url_for("main.sentieri", _external=True),
+    )
+
+
+@bp.route("/sentieri/<slug>")
+def sentiero_detail(slug: str):
+    trails_data = _load_sentieri_geojson("trails")
+    if not trails_data:
+        abort(404)
+
+    trail_feature = None
+    for feature in trails_data.get("features", []):
+        properties = feature.get("properties", {}) if isinstance(feature, dict) else {}
+        if properties.get("slug") == slug:
+            trail_feature = properties
+            break
+
+    if not trail_feature:
+        abort(404)
+
+    # TODO: increment trail visits once a dedicated model/table is available.
+
+    return render_template(
+        "sentiero_detail.html",
+        page_title=f"{trail_feature.get('name')} – Sentiero Etna",
+        page_description=trail_feature.get("description"),
+        page_og_title=trail_feature.get("name"),
+        page_og_description=trail_feature.get("description"),
+        canonical_url=url_for("main.sentiero_detail", slug=slug, _external=True),
+        trail=trail_feature,
     )
 
 

@@ -1,0 +1,80 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Sentieri{% endblock %}
+
+{% block head_extra %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
+{% endblock %}
+
+{% block admin_content %}
+<section class="admin-page admin-container admin-sentieri">
+  <header class="admin-header">
+    <h1>Gestione Sentieri</h1>
+    <p>Incolla i GeoJSON di trails e POI per aggiornare la sezione Sentieri di EtnaMonitor.</p>
+    <div class="admin-actions">
+      <span class="admin-pill">Attualmente salvati: <strong>{{ current_trails }}</strong> trails, <strong>{{ current_pois }}</strong> POI</span>
+      <span class="admin-pill admin-pill--ghost">TODO: upload file (futuro)</span>
+    </div>
+  </header>
+
+  <section class="admin-card">
+    <div class="admin-section-header admin-section-header--split">
+      <div>
+        <h2>Editor GeoJSON</h2>
+        <p>Controlla prima la validazione, poi salva per pubblicare i dati.</p>
+      </div>
+    </div>
+
+    <form method="post" class="admin-sentieri-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <div class="admin-sentieri-grid">
+        <div class="admin-sentieri-panel">
+          <label for="trails_geojson">trails.geojson</label>
+          <textarea id="trails_geojson" name="trails_geojson" spellcheck="false" rows="18">{{ trails_text }}</textarea>
+        </div>
+        <div class="admin-sentieri-panel">
+          <label for="pois_geojson">pois.geojson</label>
+          <textarea id="pois_geojson" name="pois_geojson" spellcheck="false" rows="18">{{ pois_text }}</textarea>
+        </div>
+      </div>
+
+      <div class="admin-actions">
+        <button class="btn btn-secondary" type="submit" name="action" value="restore">Ripristina da file</button>
+        <button class="btn btn-secondary" type="submit" name="action" value="validate">Valida</button>
+        <button class="btn btn-premium" type="submit" name="action" value="save">Salva</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="admin-card">
+    <div class="admin-section-header">
+      <h2>Report validazione</h2>
+      <p>Controllo minimo su JSON, FeatureCollection e campi obbligatori.</p>
+    </div>
+    {% if report %}
+      <div class="admin-sentieri-report {{ 'is-ok' if report.ok else 'is-error' }}">
+        <div class="admin-sentieri-report__status">
+          <strong>{{ 'OK' if report.ok else 'ERROR' }}</strong>
+          <span>Trails: {{ report.trails_count }} · POI: {{ report.pois_count }}</span>
+        </div>
+        {% if report.errors %}
+          <ul class="admin-sentieri-errors">
+            {% for error in report.errors %}
+              <li>
+                <strong>{{ error.message }}</strong>
+                {% if error.line %}
+                  <span class="muted">(riga: {{ error.line }})</span>
+                {% endif %}
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <p class="muted">Nessun errore rilevato.</p>
+        {% endif %}
+      </div>
+    {% else %}
+      <p class="muted">Esegui una validazione per vedere il report.</p>
+    {% endif %}
+  </section>
+</section>
+{% endblock %}

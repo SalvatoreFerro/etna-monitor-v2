@@ -1,0 +1,63 @@
+{% extends "layout.html" %}
+
+{% block head_extra %}
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+{% endblock %}
+
+{% block content %}
+  {% from "partials/leaflet_map.html" import etna_map_shell %}
+  <section class="container sentieri-detail" data-trail-slug="{{ trail.slug }}" data-start-lat="{{ trail.start_lat }}" data-start-lng="{{ trail.start_lng }}">
+    <header class="sentieri-header">
+      <span class="sentieri-eyebrow">Sentiero Etna</span>
+      <h1>{{ trail.name }}</h1>
+      <div class="sentieri-meta">
+        <span>Difficoltà: <strong>{{ trail.difficulty }}</strong></span>
+        <span>Lunghezza: <strong>{{ trail.km }} km</strong></span>
+      </div>
+      <p class="sentieri-description">{{ trail.description }}</p>
+    </header>
+
+    <div class="sentieri-grid sentieri-grid--detail">
+      <div class="sentieri-panel">
+        {{ etna_map_shell(
+          'sentiero-map',
+          'sentiero-map-label',
+          'sentiero-loader',
+          'Mappa sentiero e POI',
+          aria_label='Mappa sentiero Etna',
+          map_class='sentieri-map'
+        ) }}
+        <div class="sentieri-filter" role="group" aria-label="Filtri punti di interesse">
+          <button class="sentieri-toggle is-active" type="button" data-layer="point">Punti</button>
+          <button class="sentieri-toggle is-active" type="button" data-layer="cave">Grotte</button>
+          <button class="sentieri-toggle is-active" type="button" data-layer="mount">Monti</button>
+          <button class="sentieri-toggle is-active" type="button" data-layer="hut">Rifugi</button>
+        </div>
+      </div>
+      <div class="sentieri-panel">
+        <section class="sentieri-poi-lists" id="sentiero-poi-lists"></section>
+      </div>
+    </div>
+
+    <aside class="sentieri-editorial">
+      <h2>Vuoi farlo in sicurezza?</h2>
+      <p>
+        Affrontare un sentiero sull’Etna richiede esperienza e conoscenza del territorio.
+        Scopri le guide e le esperienze selezionate da EtnaMonitor.
+      </p>
+      <a class="sentieri-editorial__cta" href="{{ url_for('main.experience') }}">Pianifica con una guida consigliata</a>
+    </aside>
+  </section>
+{% endblock %}
+
+{% block head %}
+  {{ super() }}
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="{{ url_for('static', filename='js/leaflet_common.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
+  <script src="{{ url_for('static', filename='js/sentiero_detail.js') }}?v={{ STATIC_ASSET_VERSION }}" defer></script>
+{% endblock %}

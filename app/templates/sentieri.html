@@ -1,0 +1,71 @@
+{% extends "layout.html" %}
+
+{% block head_extra %}
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+{% endblock %}
+
+{% block content %}
+  {% from "partials/leaflet_map.html" import etna_map_shell %}
+  <section class="container sentieri-page">
+    <header class="sentieri-header">
+      <span class="sentieri-eyebrow">Sentieri EtnaMonitor</span>
+      <h1>Sentieri dell'Etna</h1>
+      <p class="sentieri-subtitle">
+        Mappa interattiva dei sentieri e punti di interesse sull'Etna, con filtri per
+        categorie e KPI aggiornati dai GeoJSON ufficiali EtnaMonitor.
+      </p>
+    </header>
+
+    <section class="sentieri-kpis" id="sentieri-kpis">
+      <div class="sentieri-kpi">
+        <span>Totale sentieri</span>
+        <strong id="sentieri-count">—</strong>
+      </div>
+      <div class="sentieri-kpi">
+        <span>Km complessivi</span>
+        <strong id="sentieri-km">—</strong>
+      </div>
+      <div class="sentieri-kpi">
+        <span>POI totali</span>
+        <strong id="sentieri-pois">—</strong>
+      </div>
+    </section>
+
+    <div class="sentieri-grid">
+      <div class="sentieri-panel">
+        {{ etna_map_shell(
+          'sentieri-map',
+          'sentieri-map-label',
+          'sentieri-loader',
+          'Mappa sentieri e POI',
+          aria_label='Mappa Sentieri Etna',
+          map_class='sentieri-map'
+        ) }}
+        <p class="sentieri-note">Clicca una card per zoomare sulla partenza e aprire la scheda completa.</p>
+      </div>
+      <div class="sentieri-panel">
+        <div class="sentieri-filter" role="group" aria-label="Filtri sentieri">
+          <button class="sentieri-toggle is-active" type="button" data-layer="trails">Sentieri</button>
+          <button class="sentieri-toggle is-active" type="button" data-layer="point">Punti</button>
+          <button class="sentieri-toggle is-active" type="button" data-layer="cave">Grotte</button>
+          <button class="sentieri-toggle is-active" type="button" data-layer="mount">Monti</button>
+          <button class="sentieri-toggle is-active" type="button" data-layer="hut">Rifugi</button>
+        </div>
+
+        <div class="sentieri-list" id="sentieri-list"></div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
+
+{% block head %}
+  {{ super() }}
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="{{ url_for('static', filename='js/leaflet_common.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
+  <script src="{{ url_for('static', filename='js/sentieri.js') }}?v={{ STATIC_ASSET_VERSION }}" defer></script>
+{% endblock %}
