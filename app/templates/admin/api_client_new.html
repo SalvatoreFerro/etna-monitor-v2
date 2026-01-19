@@ -1,0 +1,49 @@
+{% extends 'admin/base.html' %}
+
+{% block head_extra %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
+{% endblock %}
+
+{% block title %}Nuovo client API{% endblock %}
+
+{% block admin_content %}
+<section class="admin-section">
+  <header class="admin-section__header">
+    <h1>Nuovo client API</h1>
+    <p class="muted">Crea un nuovo client per accedere alle API EtnaMonitor.</p>
+  </header>
+
+  <section class="admin-card">
+    <form method="post" class="admin-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <label class="admin-field">
+        <span class="admin-field__label">Nome client *</span>
+        <input type="text" name="name" class="admin-input" required maxlength="180" placeholder="Nome cliente" />
+      </label>
+      <label class="admin-field">
+        <span class="admin-field__label">Email contatto</span>
+        <input type="email" name="contact_email" class="admin-input" placeholder="contatto@email" />
+      </label>
+      <div class="form-grid">
+        <label class="admin-field">
+          <span class="admin-field__label">Piano</span>
+          <select name="plan" class="admin-input">
+            {% for plan in plans %}
+              <option value="{{ plan }}">{{ plan }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="form-switch">
+          <input type="checkbox" name="is_active" checked />
+          <span>Client attivo</span>
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Salva</button>
+        <a class="btn btn-secondary" href="{{ url_for('admin_api.api_clients') }}">Annulla</a>
+      </div>
+    </form>
+  </section>
+</section>
+{% endblock %}

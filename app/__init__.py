@@ -45,6 +45,8 @@ from .routes.admin_moderation import (
 )
 from .routes.auth import bp as auth_bp, legacy_bp as legacy_auth_bp
 from .routes.api import api_bp
+from .routes.api_v1 import api_v1_bp
+from .routes.admin_api import bp as admin_api_bp
 from .routes.status import status_bp
 from .routes.billing import bp as billing_bp
 from .routes.internal import internal_bp
@@ -1083,12 +1085,14 @@ def create_app(config_overrides: dict | None = None):
     app.register_blueprint(legacy_auth_bp)
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
     app.register_blueprint(admin_bp, url_prefix="/admin")
+    app.register_blueprint(admin_api_bp)
     app.register_blueprint(moderation_bp)
     app.register_blueprint(billing_bp)
     app.register_blueprint(community_bp)
     app.register_blueprint(account_bp)
     app.register_blueprint(admin_stats_bp, url_prefix="/admin/api")
     app.register_blueprint(api_bp)
+    app.register_blueprint(api_v1_bp)
     app.register_blueprint(status_bp)
     app.register_blueprint(internal_bp)
 

@@ -1,0 +1,63 @@
+{% extends 'admin/base.html' %}
+
+{% block head_extra %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
+{% endblock %}
+
+{% block title %}API Clients{% endblock %}
+
+{% block admin_content %}
+<section class="admin-section">
+  <header class="admin-section__header">
+    <h1>API Clients</h1>
+    <p class="muted">Gestisci clienti, piani e chiavi API della piattaforma EtnaMonitor.</p>
+  </header>
+
+  <div class="admin-card admin-card--wide">
+    <div class="admin-card__header">
+      <h2>Client registrati</h2>
+      <a class="btn btn-primary" href="{{ url_for('admin_api.api_clients_new') }}">Nuovo client</a>
+    </div>
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Nome</th>
+          <th>Piano</th>
+          <th>Attivo</th>
+          <th>API Keys</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for client, keys_count in clients %}
+          <tr>
+            <td>
+              <strong>{{ client.name }}</strong>
+              {% if client.contact_email %}
+                <div class="muted">{{ client.contact_email }}</div>
+              {% endif %}
+            </td>
+            <td>{{ client.plan }}</td>
+            <td>
+              <span class="badge {{ 'badge-success' if client.is_active else 'badge-danger' }}">
+                {{ 'Attivo' if client.is_active else 'Disattivo' }}
+              </span>
+            </td>
+            <td>{{ keys_count }}</td>
+            <td>
+              <a class="btn btn-secondary btn-sm" href="{{ url_for('admin_api.api_client_detail', client_id=client.id) }}">
+                Dettaglio
+              </a>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="5" class="muted">Nessun client registrato.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}
