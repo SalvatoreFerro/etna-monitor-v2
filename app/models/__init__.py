@@ -29,6 +29,7 @@ from .copernicus_image import CopernicusImage
 from .cron_run import CronRun
 from .alert_state import AlertState
 from .telegram_link_token import TelegramLinkToken
+from .api_access import ApiClient, ApiKey, ApiUsage, ApiUsageDaily, ApiUsageMinute
 
 try:
     from .sponsor_banner import (
@@ -69,6 +70,11 @@ __all__ = [
     'CronRun',
     'AlertState',
     'TelegramLinkToken',
+    'ApiClient',
+    'ApiKey',
+    'ApiUsage',
+    'ApiUsageDaily',
+    'ApiUsageMinute',
 ]
 
 if SponsorBanner is not None:

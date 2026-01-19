@@ -1,0 +1,151 @@
+{% extends 'admin/base.html' %}
+
+{% block head_extra %}
+  {{ super() }}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
+{% endblock %}
+
+{% block title %}Client API - {{ client.name }}{% endblock %}
+
+{% block admin_content %}
+<section class="admin-section">
+  <header class="admin-section__header">
+    <h1>Client: {{ client.name }}</h1>
+    <p class="muted">Gestisci piano, chiavi e attribution per questo client.</p>
+  </header>
+
+  {% if raw_key %}
+    <div class="admin-card admin-card--wide">
+      <h2>Nuova API key generata</h2>
+      <p class="muted">Mostrata una sola volta: copia la chiave e conservala in modo sicuro.</p>
+      <pre class="code-block">{{ raw_key }}</pre>
+    </div>
+  {% endif %}
+
+  <div class="admin-grid">
+    <section class="admin-card">
+      <h2>Dettagli client</h2>
+      <form method="post" class="admin-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="action" value="update_client" />
+        <label class="admin-field">
+          <span class="admin-field__label">Nome client *</span>
+          <input type="text" name="name" class="admin-input" required maxlength="180" value="{{ client.name }}" />
+        </label>
+        <label class="admin-field">
+          <span class="admin-field__label">Email contatto</span>
+          <input type="email" name="contact_email" class="admin-input" value="{{ client.contact_email or '' }}" />
+        </label>
+        <label class="admin-field">
+          <span class="admin-field__label">Piano</span>
+          <select name="plan" class="admin-input">
+            {% for plan in plans %}
+              <option value="{{ plan }}" {% if plan == client.plan %}selected{% endif %}>{{ plan }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label class="form-switch">
+          <input type="checkbox" name="is_active" {% if client.is_active %}checked{% endif %} />
+          <span>Client attivo</span>
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="btn btn-primary">Aggiorna</button>
+          <a class="btn btn-secondary" href="{{ url_for('admin_api.api_clients') }}">Torna alla lista</a>
+        </div>
+      </form>
+    </section>
+
+    <section class="admin-card">
+      <h2>Usage summary</h2>
+      <div class="admin-metrics admin-metrics--compact">
+        <div class="admin-metric">
+          <span class="admin-metric__label">Oggi</span>
+          <span class="admin-metric__value">{{ usage_summary.today }}</span>
+        </div>
+        <div class="admin-metric">
+          <span class="admin-metric__label">Ultimi 7 giorni</span>
+          <span class="admin-metric__value">{{ usage_summary.last_7_days }}</span>
+        </div>
+        <div class="admin-metric">
+          <span class="admin-metric__label">Ultimi 30 giorni</span>
+          <span class="admin-metric__value">{{ usage_summary.last_30_days }}</span>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section class="admin-card admin-card--wide">
+    <h2>Genera nuova API key</h2>
+    <form method="post" class="admin-form">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+      <input type="hidden" name="action" value="create_key" />
+      <label class="admin-field">
+        <span class="admin-field__label">Etichetta (opzionale)</span>
+        <input type="text" name="label" class="admin-input" placeholder="Danilo / etna.now" />
+      </label>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Genera key</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="admin-card admin-card--wide">
+    <h2>API keys</h2>
+    <table class="admin-table">
+      <thead>
+        <tr>
+          <th>Prefix</th>
+          <th>Label</th>
+          <th>Creato il</th>
+          <th>Ultimo uso</th>
+          <th>Stato</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for key in keys %}
+          <tr>
+            <td><code>{{ key.prefix }}</code></td>
+            <td>{{ key.label or '-' }}</td>
+            <td>{{ key.created_at.strftime('%Y-%m-%d') }}</td>
+            <td>{{ key.last_used_at.strftime('%Y-%m-%d %H:%M') if key.last_used_at else '-' }}</td>
+            <td>
+              <span class="badge {{ 'badge-danger' if key.is_revoked else 'badge-success' }}">
+                {{ 'Revocata' if key.is_revoked else 'Attiva' }}
+              </span>
+            </td>
+            <td>
+              <form method="post" action="{{ url_for('admin_api.api_key_toggle', key_id=key.id) }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button type="submit" class="btn btn-secondary btn-sm">
+                  {{ 'Riattiva' if key.is_revoked else 'Revoca' }}
+                </button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="6" class="muted">Nessuna API key disponibile.</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </section>
+
+  <section class="admin-card admin-card--wide">
+    <h2>Attribution / Powered by EtnaMonitor</h2>
+    <p class="muted">
+      I partner devono includere il link ufficiale nella pagina in cui mostrano i dati EtnaMonitor.
+    </p>
+    <label class="admin-field">
+      <span class="admin-field__label">Testo consigliato</span>
+      <input type="text" class="admin-input" readonly value="{{ attribution.text }}" />
+    </label>
+    <label class="admin-field">
+      <span class="admin-field__label">Snippet HTML ufficiale</span>
+      <textarea class="admin-input" rows="2" readonly>{{ attribution.html }}</textarea>
+    </label>
+    <p class="muted">URL: {{ attribution.url }}</p>
+  </section>
+</section>
+{% endblock %}
