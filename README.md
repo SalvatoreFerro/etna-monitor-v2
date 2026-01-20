@@ -195,6 +195,7 @@ CANONICAL_HOST=
 LOG_DIR=logs
 DATA_DIR=data
 DISABLE_SCHEDULER=false
+INGV_RMS_URL=https://www.ct.ingv.it/RMS_Etna/0.png
 INGV_URL=https://www.ct.ingv.it/RMS_Etna/2.png
 ALERT_THRESHOLD_DEFAULT=2.0
 ```
@@ -211,6 +212,7 @@ ALERT_THRESHOLD_DEFAULT=2.0
 | `ADMIN_EMAILS` | Lista di email (separate da virgola) da promuovere automaticamente come admin. |
 | `LOG_DIR`, `DATA_DIR` | Directory persistenti per log e dati. |
 | `DISABLE_SCHEDULER` | Imposta `true`/`1` per evitare l'avvio dello scheduler (utile nei test). |
+| `INGV_RMS_URL` | URL PNG RMS (0.png/1.png) per gli script di estrazione RMS; se presente ha priorità su `INGV_URL` in `etna.py`/`etna_loop.py`. |
 | `ALERT_THRESHOLD_DEFAULT` | Soglia tremore predefinita (mV). |
 | `PARTNER_DIRECTORY_ENABLED` | Imposta `0` per nascondere completamente la directory partner. |
 | `PARTNER_DEFAULT_MAX_SLOTS` | Numero massimo di partner approvati per categoria (default 10). |

@@ -175,6 +175,7 @@ project_root/
 Forces an update of the tremor data by downloading the latest PNG from INGV and processing it.
 
 **Environment Variables:**
+- `INGV_RMS_URL`: PNG source URL for RMS graphs (default: https://www.ct.ingv.it/RMS_Etna/0.png). Overrides `INGV_URL` for the RMS extraction scripts.
 - `INGV_URL`: PNG source URL (default: https://www.ct.ingv.it/RMS_Etna/2.png)
 - `CSV_PATH`: Output CSV path (default: /data/curva.csv)
 
@@ -204,6 +205,7 @@ Before deploying to Render, test locally:
 export LOG_DIR=/data/log
 export DATA_DIR=/data
 export CSV_PATH=/data/curva.csv
+export INGV_RMS_URL=https://www.ct.ingv.it/RMS_Etna/0.png
 export INGV_URL=https://www.ct.ingv.it/RMS_Etna/2.png
 export PORT=5000
 
