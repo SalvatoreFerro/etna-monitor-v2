@@ -115,9 +115,13 @@
             Modalità analisi attiva
           </span>
         </div>
-        {% if csv_snapshot.has_data and plot_html %}
+        {% if csv_snapshot.rows > 0 %}
           <div id="home-preview-plot" class="chart-plot">
-            {{ plot_html | safe }}
+            {% if plot_html %}
+              {{ plot_html | safe }}
+            {% else %}
+              <p class="muted">Grafico non disponibile al momento, riprova più tardi.</p>
+            {% endif %}
           </div>
         {% else %}
           <div class="chart-loading" aria-live="polite">
