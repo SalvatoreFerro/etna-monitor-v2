@@ -85,10 +85,22 @@ function renderHomePreview(data) {
     logMax += 1;
   }
   
-  const layout = {
-    margin: { l: 60, r: 20, t: 20, b: 50 },
+  const layoutBase = {
     paper_bgcolor: '#151821',
     plot_bgcolor: '#151821',
+    shapes: [{
+      type: 'line',
+      x0: timestamps[0],
+      x1: timestamps[timestamps.length - 1],
+      y0: threshold,
+      y1: threshold,
+      line: { color: '#ef4444', width: 2, dash: 'dash' }
+    }]
+  };
+
+  const layout_desktop = {
+    ...layoutBase,
+    margin: { l: 60, r: 20, t: 20, b: 50 },
     xaxis: { 
       title: 'Data/Ora',
       showgrid: true, 
@@ -111,16 +123,43 @@ function renderHomePreview(data) {
       color: '#e6e7ea'
     },
     font: { color: '#e6e7ea', size: 12 },
-    legend: { orientation: 'h', y: 1.05, x: 1, xanchor: 'right' },
-    shapes: [{
-      type: 'line',
-      x0: timestamps[0],
-      x1: timestamps[timestamps.length - 1],
-      y0: threshold,
-      y1: threshold,
-      line: { color: '#ef4444', width: 2, dash: 'dash' }
-    }]
+    hoverlabel: { font: { size: 12 } },
+    legend: { orientation: 'h', y: 1.05, x: 1, xanchor: 'right' }
   };
+
+  const layout_mobile = {
+    ...layoutBase,
+    height: 460,
+    autosize: true,
+    margin: { l: 48, r: 14, t: 10, b: 32 },
+    xaxis: { 
+      title: 'Data/Ora',
+      showgrid: true, 
+      gridcolor: 'rgba(255,255,255,0.1)',
+      tickfont: { size: 9, color: '#e6e7ea' },
+      titlefont: { size: 10, color: '#e6e7ea' },
+      showticklabels: true,
+      color: '#e6e7ea'
+    },
+    yaxis: { 
+      title: 'mV',
+      type: 'log', 
+      range: [logMin, logMax],
+      tickvals: [0.1, 10],
+      ticktext: ['10⁻¹', '10¹'],
+      tickfont: { size: 9, color: '#e6e7ea' },
+      titlefont: { size: 10, color: '#e6e7ea' },
+      showgrid: true,
+      gridcolor: 'rgba(255,255,255,0.1)',
+      color: '#e6e7ea'
+    },
+    font: { color: '#e6e7ea', size: 10 },
+    hoverlabel: { font: { size: 10 } },
+    legend: { orientation: 'h', y: 1.05, x: 1, xanchor: 'right' }
+  };
+
+  const isMobile = window.matchMedia('(max-width: 768px)').matches;
+  const layout = isMobile ? layout_mobile : layout_desktop;
   
   const config = { 
     displayModeBar: false, 
