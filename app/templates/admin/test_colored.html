@@ -48,24 +48,12 @@
 
   <section class="admin-card">
     <h2>Grafico Plotly (asse Y log, mV)</h2>
-    <pre>{{ plot_diagnostics }}</pre>
-    {% if plot_diagnostics and plot_diagnostics.num_valid_pairs < 10 %}
-      <div class="admin-card admin-flash admin-flash--warning">
-        <strong>Serie insufficiente per Plotly</strong>
-        <p class="muted">Sono necessari almeno 10 punti validi per il rendering.</p>
-        <ul class="muted">
-          <li>Timestamps: {{ plot_diagnostics.timestamps_len }}</li>
-          <li>Valori: {{ plot_diagnostics.values_len }}</li>
-          <li>Validi: {{ plot_diagnostics.num_valid_pairs }}</li>
-          <li>Scartati (NaN/None): {{ plot_diagnostics.removed_pairs }}</li>
-          <li>Campione (primi 3): {{ plot_diagnostics.sample_pairs }}</li>
-        </ul>
-      </div>
-    {% endif %}
     {% if plot_html %}
       {{ plot_html | safe }}
     {% else %}
-      <div class="alert">Plot HTML missing</div>
+      <div class="admin-card admin-flash admin-flash--error">
+        <strong>Grafico non disponibile.</strong>
+      </div>
     {% endif %}
   </section>
 </section>
