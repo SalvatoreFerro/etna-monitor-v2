@@ -2829,6 +2829,27 @@ def monitor_system():
 @bp.route("/test-colored")
 @admin_required
 def test_colored_extraction():
+    def _log_plot_html_state(app_logger, plot_html_value):
+        is_none = plot_html_value is None
+        plot_len = len(plot_html_value) if plot_html_value is not None else None
+        snippet = plot_html_value[:200] if plot_html_value else None
+        contains_plotly_div = (
+            "plotly-graph-div" in plot_html_value if plot_html_value else False
+        )
+        app_logger.info("[ADMIN] plot_html is None? %s", is_none)
+        app_logger.info("[ADMIN] plot_html length: %s", plot_len)
+        app_logger.info("[ADMIN] plot_html[:200]: %s", snippet)
+        app_logger.info(
+            "[ADMIN] plot_html contains plotly-graph-div? %s",
+            contains_plotly_div,
+        )
+        return {
+            "is_none": is_none,
+            "length": plot_len,
+            "snippet": snippet,
+            "contains_plotly_div": contains_plotly_div,
+        }
+
     user = get_current_user()
     if not _is_owner(user):
         flash("Accesso riservato al proprietario.", "error")
@@ -2838,16 +2859,14 @@ def test_colored_extraction():
     colored_url = (os.getenv("INGV_COLORED_URL") or "").strip()
     if not colored_url:
         plot_html = None
-        app.logger.info(f"plot_html length: {len(plot_html) if plot_html else 'None'}")
-        app.logger.info(
-            f"plot_html startswith: {plot_html[:80] if plot_html else None}"
-        )
+        plot_html_diagnostics = _log_plot_html_state(app.logger, plot_html)
         return render_template(
             "admin/test_colored.html",
             error_message="INGV_COLORED_URL non configurato.",
             plot_payload=None,
             plot_html=None,
             plot_diagnostics=None,
+            plot_html_diagnostics=plot_html_diagnostics,
             raw_image=None,
             overlay_image=None,
             mask_image=None,
@@ -2885,6 +2904,7 @@ def test_colored_extraction():
             clean_pairs[:3],
         )
         plot_html = None
+        plot_error_message = None
         if num_valid_pairs >= 10:
             plot_timestamps = [pair[0] for pair in clean_pairs]
             plot_values = [pair[1] for pair in clean_pairs]
@@ -2912,37 +2932,38 @@ def test_colored_extraction():
                 fig,
                 include_plotlyjs="inline",
                 output_type="div",
+                full_html=False,
+            )
+        else:
+            plot_error_message = (
+                "Dati insufficienti per generare il grafico (meno di 10 punti validi)."
             )
         raw_image = _encode_image_base64(png_path)
         overlay_image = _encode_image_base64(debug_paths.get("overlay"))
         mask_image = _encode_image_base64(debug_paths.get("mask"))
-        app.logger.info(f"plot_html length: {len(plot_html) if plot_html else 'None'}")
-        app.logger.info(
-            f"plot_html startswith: {plot_html[:80] if plot_html else None}"
-        )
+        plot_html_diagnostics = _log_plot_html_state(app.logger, plot_html)
         return render_template(
             "admin/test_colored.html",
             plot_payload=None,
             plot_html=plot_html,
             plot_diagnostics=plot_diagnostics,
+            plot_html_diagnostics=plot_html_diagnostics,
             raw_image=raw_image,
             overlay_image=overlay_image,
             mask_image=mask_image,
-            error_message=None,
+            error_message=plot_error_message,
         )
     except Exception as exc:  # pragma: no cover - debug view safety net
         current_app.logger.exception("[ADMIN] Colored extraction failed")
         plot_html = None
-        app.logger.info(f"plot_html length: {len(plot_html) if plot_html else 'None'}")
-        app.logger.info(
-            f"plot_html startswith: {plot_html[:80] if plot_html else None}"
-        )
+        plot_html_diagnostics = _log_plot_html_state(app.logger, plot_html)
         return render_template(
             "admin/test_colored.html",
             error_message=str(exc),
             plot_payload=None,
             plot_html=None,
             plot_diagnostics=None,
+            plot_html_diagnostics=plot_html_diagnostics,
             raw_image=None,
             overlay_image=None,
             mask_image=None,
