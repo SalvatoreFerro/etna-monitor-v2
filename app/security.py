@@ -111,9 +111,7 @@ def apply_csp_headers(response) -> object:
     policy = copy.deepcopy(BASE_CSP)
     if request.path == "/admin/test-colored":
         for directive in ("script-src", "script-src-elem"):
-            sources = policy.get(directive)
-            if isinstance(sources, list) and "'unsafe-inline'" not in sources:
-                sources.append("'unsafe-inline'")
+            policy[directive] = ["'self'"]
     nonce = getattr(request, "csp_nonce", None)
     if nonce:
         nonce_fragment = f"'nonce-{nonce}'"
