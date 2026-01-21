@@ -2882,6 +2882,12 @@ def test_colored_extraction():
         if num_valid_pairs >= 10:
             plot_timestamps = [pair[0] for pair in clean_pairs]
             plot_values = [pair[1] for pair in clean_pairs]
+            eps = 1e-2
+            clamped = sum(1 for value in plot_values if value < eps)
+            app.logger.info(
+                f"Plotly log clamp: {clamped}/{len(plot_values)} values < {eps}"
+            )
+            plot_values = [max(value, eps) for value in plot_values]
             fig = go.Figure(
                 data=[
                     go.Scatter(
