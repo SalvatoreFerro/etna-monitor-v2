@@ -76,6 +76,54 @@
 </section>
 
 <section class="monitor-graph-section" aria-label="Grafico del tremore vulcanico">
+  <div class="container container--wide">
+    {% set tremor_status = tremor_summary.status if tremor_summary else "NON_DISPONIBILE" %}
+    {% set tremor_status_label = "Dati non disponibili" %}
+    {% set tremor_status_class = "is-unknown" %}
+    {% if tremor_status == "STABILE" %}
+      {% set tremor_status_label = "Stabile" %}
+      {% set tremor_status_class = "is-stable" %}
+    {% elif tremor_status == "IN_AUMENTO" %}
+      {% set tremor_status_label = "In aumento" %}
+      {% set tremor_status_class = "is-rising" %}
+    {% elif tremor_status == "IN_CALO" %}
+      {% set tremor_status_label = "In calo" %}
+      {% set tremor_status_class = "is-falling" %}
+    {% endif %}
+    <article class="tremor-summary-card" aria-live="polite">
+      <div class="tremor-summary-card__header">
+        <h2 class="tremor-summary-card__title">Stato tremore spiegato semplice</h2>
+        <span class="pill tremor-summary-card__badge {{ tremor_status_class }}">{{ tremor_status_label }}</span>
+      </div>
+      <p class="tremor-summary-card__meta">
+        Ultimo dato:
+        {% if tremor_summary and tremor_summary.value_mv is not none %}
+          {{ "%.2f"|format(tremor_summary.value_mv) }}
+        {% else %}
+          --
+        {% endif %}
+        mV · aggiornato
+        {% if tremor_summary and tremor_summary.ts_utc %}
+          {{ tremor_summary.ts_utc }}
+        {% else %}
+          --
+        {% endif %}
+      </p>
+      {% if tremor_summary and tremor_summary.ai_explain %}
+        {% if tremor_summary.ai_headline %}
+          <p class="tremor-summary-card__headline">{{ tremor_summary.ai_headline }}</p>
+        {% endif %}
+        <p class="tremor-summary-card__body">{{ tremor_summary.ai_explain }}</p>
+      {% elif tremor_summary %}
+        <p class="tremor-summary-card__body">{{ tremor_summary.message_user_friendly }}</p>
+      {% else %}
+        <p class="tremor-summary-card__body">Dati INGV non disponibili al momento.</p>
+      {% endif %}
+      <p class="tremor-summary-card__disclaimer">
+        {{ tremor_summary.disclaimer if tremor_summary else "Solo informativo, non previsione; fai riferimento alle fonti ufficiali." }}
+      </p>
+    </article>
+  </div>
   <div class="container container--wide monitor-graph-layout">
     <div class="hero__chart-wrapper monitor-graph-primary">
       <div class="chart-card" id="grafico-etna" aria-labelledby="grafico-title">

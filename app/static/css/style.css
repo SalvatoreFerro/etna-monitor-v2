@@ -1059,6 +1059,91 @@
     margin-top: clamp(var(--space-3), 3vw, var(--space-5));
   }
 
+  .tremor-summary-card {
+    margin-bottom: clamp(var(--space-4), 3vw, var(--space-5));
+    padding: clamp(var(--space-3), 3vw, var(--space-5));
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(15, 23, 42, 0.7);
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.4), 0 0 30px rgba(56, 189, 248, 0.08);
+    backdrop-filter: blur(10px);
+  }
+
+  .tremor-summary-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    margin-bottom: var(--space-2);
+  }
+
+  .tremor-summary-card__title {
+    margin: 0;
+    font-size: clamp(1.2rem, 2vw, 1.6rem);
+    color: var(--color-heading);
+  }
+
+  .tremor-summary-card__badge {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.7rem;
+  }
+
+  .tremor-summary-card__badge.is-stable {
+    border-color: rgba(34, 197, 94, 0.4);
+    color: #bbf7d0;
+    background: rgba(34, 197, 94, 0.18);
+  }
+
+  .tremor-summary-card__badge.is-rising {
+    border-color: rgba(251, 146, 60, 0.4);
+    color: #fed7aa;
+    background: rgba(251, 146, 60, 0.18);
+  }
+
+  .tremor-summary-card__badge.is-falling {
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #bfdbfe;
+    background: rgba(59, 130, 246, 0.18);
+  }
+
+  .tremor-summary-card__badge.is-unknown {
+    border-color: rgba(148, 163, 184, 0.4);
+    color: rgba(226, 232, 240, 0.8);
+    background: rgba(148, 163, 184, 0.12);
+  }
+
+  .tremor-summary-card__meta {
+    margin: 0 0 var(--space-2);
+    color: var(--color-text-secondary);
+    font-size: 0.95rem;
+  }
+
+  .tremor-summary-card__headline {
+    margin: 0 0 var(--space-2);
+    font-weight: 600;
+    color: var(--color-heading);
+  }
+
+  .tremor-summary-card__body {
+    margin: 0 0 var(--space-3);
+    font-size: 1rem;
+    color: rgba(226, 232, 240, 0.9);
+  }
+
+  .tremor-summary-card__disclaimer {
+    margin: 0;
+    font-size: 0.85rem;
+    color: rgba(226, 232, 240, 0.7);
+  }
+
+  @media (max-width: 768px) {
+    .tremor-summary-card__header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+  }
+
   .pill--hotspots {
     border-color: rgba(56, 189, 248, 0.35);
     color: #bae6fd;

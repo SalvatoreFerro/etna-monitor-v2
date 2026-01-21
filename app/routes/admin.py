@@ -26,7 +26,7 @@ from sqlalchemy.orm import joinedload
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
-from ..utils.auth import admin_required, get_current_user
+from ..utils.auth import admin_required, get_current_user, is_owner_or_admin
 from ..utils.config import get_curva_csv_path, get_curva_csv_status
 from backend.utils.extract_colored import download_png as download_colored_png
 from backend.utils.extract_colored import extract_series_from_colored
@@ -93,6 +93,7 @@ from ..services.media_library import (
     upload_media_asset,
     validate_media_file,
 )
+from ..services.tremor_summary import build_tremor_summary, get_ai_cache_status
 from ..services.sentieri_geojson import (
     parse_geojson_text,
     read_geojson_file,
@@ -2851,6 +2852,24 @@ def datasource_status():
         page_title="Datasource status",
         statuses=statuses,
         mismatch=mismatch,
+    )
+
+
+@bp.get("/test-ai-summary")
+@admin_required
+def test_ai_summary():
+    user = get_current_user()
+    if not _is_owner(user):
+        return jsonify({"ok": False, "error": "Owner access required"}), 403
+
+    summary = build_tremor_summary()
+    cache_status = get_ai_cache_status()
+    return jsonify(
+        {
+            "ok": True,
+            "summary": summary,
+            "ai_cache": cache_status,
+        }
     )
 
 
