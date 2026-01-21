@@ -21,8 +21,11 @@ CROP_RIGHT_PCT = 0.05
 EDGE_MARGIN_PCT = 0.02
 EDGE_MARGIN_PX = 12
 
-BLACK_L_PERCENTILE = 8
-BLACK_L_MAX = 80
+PLOT_ROI_TOP_PCT = 0.04
+PLOT_ROI_BOTTOM_PCT = 0.1
+
+MAX_DELTA_Y = 18
+VERTICAL_GRADIENT_MIN = 10
 
 MAX_GAP_COLUMNS = 14
 SMOOTHING_WINDOW = 5
@@ -57,10 +60,12 @@ def extract_series_from_colored(path_png: str | Path):
         raise ValueError(f"Impossibile leggere PNG colorato: {image_path}")
 
     cropped, offsets = _crop_plot_area(image)
-    mask = _build_curve_mask(cropped)
+    ys_px, discarded_points, mask = _extract_curve_points(cropped)
 
     xs_px = list(range(mask.shape[1]))
-    ys_px = _extract_curve_points(mask)
+    valid_columns = sum(1 for y in ys_px if y is not None)
+    valid_ratio = (valid_columns / len(ys_px) * 100) if ys_px else 0.0
+
     ys_px = _interpolate_gaps(ys_px, max_gap=MAX_GAP_COLUMNS)
     ys_px = _smooth_series(ys_px, window=SMOOTHING_WINDOW)
 
@@ -79,9 +84,19 @@ def extract_series_from_colored(path_png: str | Path):
         timestamps.append(timestamp)
         values.append(_pixel_to_mv(y, mask.shape[0]))
 
-    debug_paths = _write_debug_artifacts(cropped, mask, xs_px, ys_px, image_path)
+    debug_paths = _write_debug_artifacts(
+        cropped,
+        mask,
+        xs_px,
+        ys_px,
+        image_path,
+        discarded_points,
+    )
     logger.info(
-        "[INGV COLORED] points=%s start_ref=%s end_ref=%s crop=%s",
+        "[INGV COLORED] valid_columns=%.1f%% (%s/%s) series_len=%s start_ref=%s end_ref=%s crop=%s",
+        valid_ratio,
+        valid_columns,
+        len(ys_px),
         len(values),
         start_time.isoformat(),
         end_time.isoformat(),
@@ -108,39 +123,57 @@ def _crop_plot_area(image: np.ndarray):
     return cropped, offsets
 
 
-def _build_curve_mask(cropped: np.ndarray) -> np.ndarray:
-    lab = cv2.cvtColor(cropped, cv2.COLOR_BGR2LAB)
-    luminance = lab[:, :, 0]
+def _extract_curve_points(
+    cropped: np.ndarray,
+) -> tuple[list[int | None], list[tuple[int, int]], np.ndarray]:
+    gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
+    height, width = gray.shape
 
-    threshold = np.percentile(luminance, BLACK_L_PERCENTILE)
-    threshold = min(threshold, BLACK_L_MAX)
-    mask = (luminance <= threshold).astype(np.uint8) * 255
+    roi_top = int(height * PLOT_ROI_TOP_PCT)
+    roi_bottom = int(height * (1 - PLOT_ROI_BOTTOM_PCT))
+    roi_bottom = max(roi_bottom, roi_top + 1)
 
-    mask = cv2.medianBlur(mask, 3)
-    kernel = np.ones((3, 3), np.uint8)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=1)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+    mask = np.zeros((height, width), dtype=np.uint8)
+    points: list[int | None] = []
+    discarded: list[tuple[int, int]] = []
+    previous_y = None
 
-    mask = _remove_grid_lines(mask)
+    for x in range(width):
+        column = gray[roi_top:roi_bottom, x]
+        if column.size == 0:
+            points.append(None)
+            continue
+
+        rel_y = int(np.argmin(column))
+        candidate_y = roi_top + rel_y
+
+        if not _has_vertical_contrast(column, rel_y):
+            discarded.append((x, candidate_y))
+            points.append(None)
+            continue
+
+        if previous_y is not None and abs(candidate_y - previous_y) > MAX_DELTA_Y:
+            discarded.append((x, candidate_y))
+            points.append(None)
+            continue
+
+        points.append(candidate_y)
+        mask[candidate_y, x] = 255
+        previous_y = candidate_y
+
     _apply_edge_margin(mask)
-    return mask
+    return points, discarded, mask
 
 
-def _remove_grid_lines(mask: np.ndarray) -> np.ndarray:
-    height, width = mask.shape
-    horizontal_kernel = cv2.getStructuringElement(
-        cv2.MORPH_RECT, (max(30, width // 20), 1)
-    )
-    vertical_kernel = cv2.getStructuringElement(
-        cv2.MORPH_RECT, (1, max(30, height // 15))
-    )
-
-    horizontal_lines = cv2.morphologyEx(mask, cv2.MORPH_OPEN, horizontal_kernel)
-    vertical_lines = cv2.morphologyEx(mask, cv2.MORPH_OPEN, vertical_kernel)
-
-    cleaned = cv2.subtract(mask, horizontal_lines)
-    cleaned = cv2.subtract(cleaned, vertical_lines)
-    return cleaned
+def _has_vertical_contrast(column: np.ndarray, rel_y: int) -> bool:
+    if column.size < 2:
+        return False
+    diffs = np.abs(np.diff(column.astype(np.int16)))
+    idx = min(rel_y, diffs.size - 1)
+    local = diffs[idx]
+    if rel_y > 0:
+        local = max(local, diffs[rel_y - 1])
+    return local >= VERTICAL_GRADIENT_MIN
 
 
 def _apply_edge_margin(mask: np.ndarray) -> None:
@@ -151,48 +184,6 @@ def _apply_edge_margin(mask: np.ndarray) -> None:
     mask[-margin_y:, :] = 0
     mask[:, :margin_x] = 0
     mask[:, -margin_x:] = 0
-
-
-def _extract_curve_points(mask: np.ndarray) -> list[int | None]:
-    height, width = mask.shape
-    points: list[int | None] = []
-    previous_y = None
-
-    for x in range(width):
-        y_values = np.where(mask[:, x] > 0)[0]
-        if len(y_values) == 0:
-            points.append(None)
-            continue
-
-        clusters = _cluster_candidates(y_values)
-        if previous_y is None:
-            best_cluster = max(clusters, key=lambda cluster: len(cluster))
-        else:
-            best_cluster = min(
-                clusters,
-                key=lambda cluster: (abs(int(np.median(cluster)) - previous_y), -len(cluster)),
-            )
-
-        selected_y = int(np.median(best_cluster))
-        points.append(selected_y)
-        previous_y = selected_y
-
-    return points
-
-
-def _cluster_candidates(y_values: np.ndarray, gap: int = 2) -> list[np.ndarray]:
-    if len(y_values) == 0:
-        return []
-    clusters = []
-    current = [y_values[0]]
-    for value in y_values[1:]:
-        if value - current[-1] <= gap:
-            current.append(value)
-        else:
-            clusters.append(np.array(current))
-            current = [value]
-    clusters.append(np.array(current))
-    return clusters
 
 
 def _interpolate_gaps(values: list[int | None], max_gap: int) -> list[int | None]:
@@ -244,20 +235,34 @@ def _write_debug_artifacts(
     xs: list[int],
     ys: list[int | None],
     source_path: Path,
+    discarded: list[tuple[int, int]] | None = None,
 ) -> dict:
     debug_dir = Path(os.getenv("INGV_COLORED_DEBUG_DIR", source_path.parent / "debug"))
     debug_dir.mkdir(parents=True, exist_ok=True)
 
     overlay = cropped.copy()
+    mask_overlay = np.zeros_like(mask)
+    previous_point = None
     for x, y in zip(xs, ys):
         if y is None:
+            previous_point = None
             continue
-        cv2.circle(overlay, (x, y), 1, (0, 0, 255), -1)
+        point = (x, y)
+        if previous_point is not None:
+            cv2.line(overlay, previous_point, point, (0, 0, 255), 1)
+            cv2.line(mask_overlay, previous_point, point, 255, 1)
+        else:
+            mask_overlay[y, x] = 255
+        previous_point = point
+
+    if discarded:
+        for x, y in discarded:
+            cv2.circle(overlay, (x, y), 1, (0, 165, 255), -1)
 
     mask_path = debug_dir / f"mask_{source_path.stem}.png"
     overlay_path = debug_dir / f"overlay_{source_path.stem}.png"
 
-    cv2.imwrite(str(mask_path), mask)
+    cv2.imwrite(str(mask_path), mask_overlay if np.any(mask_overlay) else mask)
     cv2.imwrite(str(overlay_path), overlay)
 
     return {
