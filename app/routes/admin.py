@@ -2910,7 +2910,7 @@ def test_colored_extraction():
             )
             plot_html = plotly_offline.plot(
                 fig,
-                include_plotlyjs=True,
+                include_plotlyjs="inline",
                 output_type="div",
             )
         raw_image = _encode_image_base64(png_path)
