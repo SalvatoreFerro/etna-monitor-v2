@@ -1,4 +1,5 @@
 import base64
+import copy
 import csv
 import io
 import json
@@ -99,8 +100,18 @@ from ..services.sentieri_geojson import (
     read_geojson_file,
     validate_feature_collection,
 )
+from ..security import BASE_CSP, talisman
 
 bp = Blueprint("admin", __name__)
+
+_TEST_COLORED_CSP = copy.deepcopy(BASE_CSP)
+for directive in ("script-src", "script-src-elem"):
+    allowed_sources = _TEST_COLORED_CSP.setdefault(directive, [])
+    if isinstance(allowed_sources, str):
+        allowed_sources = [allowed_sources]
+        _TEST_COLORED_CSP[directive] = allowed_sources
+    if "'unsafe-inline'" not in allowed_sources:
+        allowed_sources.append("'unsafe-inline'")
 
 
 def _is_csrf_valid(submitted_token: str | None) -> bool:
@@ -2827,6 +2838,7 @@ def monitor_system():
 
 
 @bp.route("/test-colored")
+@talisman(content_security_policy=_TEST_COLORED_CSP)
 @admin_required
 def test_colored_extraction():
     user = get_current_user()
