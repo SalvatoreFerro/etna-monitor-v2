@@ -48,6 +48,7 @@
 
   <section class="admin-card">
     <h2>Grafico Plotly (asse Y log, mV)</h2>
+    <pre>{{ plot_diagnostics }}</pre>
     {% if plot_diagnostics and plot_diagnostics.num_valid_pairs < 10 %}
       <div class="admin-card admin-flash admin-flash--warning">
         <strong>Serie insufficiente per Plotly</strong>
@@ -61,7 +62,13 @@
         </ul>
       </div>
     {% endif %}
-    {% if plot_html %}
+    {% if plot_diagnostics and plot_diagnostics.num_valid_pairs >= 10 %}
+      {% if plot_html %}
+        {{ plot_html | safe }}
+      {% else %}
+        <div class="alert">Plot HTML missing</div>
+      {% endif %}
+    {% elif plot_html %}
       {{ plot_html | safe }}
     {% else %}
       <p class="muted">Grafico Plotly non disponibile.</p>
