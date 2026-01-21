@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import traceback as tb
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -18,6 +17,7 @@ from app.models import CronRun, db
 from app.models.user import User
 from app.services.runlog_service import log_cron_run
 from app.services.telegram_service import TelegramService
+from app.utils.config import get_curva_csv_path, load_curva_dataframe
 from config import Config
 
 internal_bp = Blueprint("internal", __name__, url_prefix="/internal")
@@ -69,13 +69,16 @@ def _is_authorized_cron() -> bool:
 
 
 def _collect_csv_diagnostics() -> tuple[dict, pd.DataFrame | None, str | None]:
-    data_dir = os.getenv("DATA_DIR", "data")
-    csv_path = Path(data_dir) / "curva.csv"
+    csv_path = get_curva_csv_path()
     diagnostics: dict = {
         "csv_path": str(csv_path),
+        "mtime": None,
         "csv_exists": csv_path.exists(),
         "csv_size_bytes": None,
         "csv_mtime": None,
+        "rowcount": 0,
+        "first_ts": None,
+        "last_ts": None,
         "last_point_ts": None,
         "moving_avg": None,
         "peak_value": None,
@@ -91,6 +94,7 @@ def _collect_csv_diagnostics() -> tuple[dict, pd.DataFrame | None, str | None]:
         stat = csv_path.stat()
         diagnostics["csv_size_bytes"] = stat.st_size
         diagnostics["csv_mtime"] = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
+        diagnostics["mtime"] = diagnostics["csv_mtime"]
     except OSError:
         diagnostics["csv_size_bytes"] = None
         diagnostics["csv_mtime"] = None
@@ -98,22 +102,30 @@ def _collect_csv_diagnostics() -> tuple[dict, pd.DataFrame | None, str | None]:
     if diagnostics["csv_size_bytes"] == 0:
         return diagnostics, None, "csv_empty"
 
-    try:
-        df = pd.read_csv(csv_path)
-    except Exception as exc:  # pragma: no cover - defensive logging
-        current_app.logger.exception("[CRON] Failed reading CSV for diagnostics: %s", exc)
-        return diagnostics, None, "dataset_invalid"
-
-    if "timestamp" not in df.columns or "value" not in df.columns:
-        return diagnostics, None, "dataset_invalid"
-
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
-    df = df.dropna(subset=["timestamp"])
-
-    if df.empty:
-        return diagnostics, None, "csv_empty"
+    df, reason = load_curva_dataframe(csv_path)
+    if reason:
+        if reason.startswith("read_error::"):
+            current_app.logger.exception(
+                "[CRON] Failed reading CSV for diagnostics: %s", reason
+            )
+        return diagnostics, None, "dataset_invalid" if reason.startswith("read_error") else reason
 
     recent_data = df.tail(10)
+    df = df.sort_values("timestamp")
+    diagnostics["rowcount"] = int(len(df))
+    if len(df):
+        first_ts = df["timestamp"].iloc[0]
+        last_ts = df["timestamp"].iloc[-1]
+        diagnostics["first_ts"] = (
+            first_ts.to_pydatetime().isoformat()
+            if hasattr(first_ts, "to_pydatetime")
+            else str(first_ts)
+        )
+        diagnostics["last_ts"] = (
+            last_ts.to_pydatetime().isoformat()
+            if hasattr(last_ts, "to_pydatetime")
+            else str(last_ts)
+        )
     window_size = max(1, int(Config.ALERT_MOVING_AVG_WINDOW))
     moving_avg_real = TelegramService().calculate_moving_average(
         recent_data["value"].tolist(), window_size=window_size

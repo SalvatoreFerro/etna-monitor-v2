@@ -30,6 +30,7 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
 from ..utils.auth import admin_required, get_current_user
+from ..utils.config import get_curva_csv_path, get_curva_csv_status
 from backend.utils.extract_colored import download_png as download_colored_png
 from backend.utils.extract_colored import extract_series_from_colored
 from ..utils.metrics import get_csv_metrics
@@ -2823,6 +2824,36 @@ def admin_sentieri():
 @admin_required
 def monitor_system():
     return render_template("admin/monitor.html")
+
+
+@bp.route("/datasource-status")
+@admin_required
+def datasource_status():
+    user = get_current_user()
+    if not _is_owner(user):
+        flash("Accesso riservato al proprietario.", "error")
+        return redirect(url_for("admin.admin_home"))
+
+    sources = [
+        {"label": "Homepage", "key": "homepage", "path": get_curva_csv_path()},
+        {"label": "/api/curva", "key": "api", "path": get_curva_csv_path()},
+        {"label": "Telegram alerts", "key": "alerts", "path": get_curva_csv_path()},
+    ]
+
+    statuses: list[dict] = []
+    for source in sources:
+        status = get_curva_csv_status(source["path"])
+        statuses.append({**source, **status})
+
+    unique_paths = {item.get("csv_path_used") for item in statuses if item.get("csv_path_used")}
+    mismatch = len(unique_paths) > 1
+
+    return render_template(
+        "admin/datasource_status.html",
+        page_title="Datasource status",
+        statuses=statuses,
+        mismatch=mismatch,
+    )
 
 
 @bp.route("/test-colored")

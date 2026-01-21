@@ -1,0 +1,57 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Datasource status{% endblock %}
+
+{% block head_extra %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
+{% endblock %}
+
+{% block admin_content %}
+<section class="admin-page admin-container">
+  <header class="admin-header">
+    <h1>Datasource status</h1>
+    <p>Verifica l’allineamento del dataset curva_colored.csv tra homepage, API e alert Telegram.</p>
+  </header>
+
+  {% if mismatch %}
+    <div class="alert alert-danger" role="alert">DATASET MISMATCH</div>
+  {% endif %}
+
+  <section class="admin-card">
+    <div class="admin-table-wrapper">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>Source</th>
+            <th>csv_path_used</th>
+            <th>file_exists</th>
+            <th>mtime_utc</th>
+            <th>rowcount</th>
+            <th>last_ts_utc</th>
+            <th>last_value_mv</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in statuses %}
+            <tr>
+              <td>{{ item.label }}</td>
+              <td><code>{{ item.csv_path_used }}</code></td>
+              <td>{{ "✅" if item.file_exists else "❌" }}</td>
+              <td>{{ item.mtime_utc or "—" }}</td>
+              <td>{{ item.rowcount or 0 }}</td>
+              <td>{{ item.last_ts or "—" }}</td>
+              <td>
+                {% if item.last_value_mv is not none %}
+                  {{ "%.3f" | format(item.last_value_mv) }}
+                {% else %}
+                  —
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</section>
+{% endblock %}

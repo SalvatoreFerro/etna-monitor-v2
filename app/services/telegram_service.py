@@ -12,6 +12,7 @@ from app.models import db
 from app.models.alert_state import AlertState
 from app.models.event import Event
 from app.models.user import User
+from app.utils.config import get_curva_csv_path, warn_if_stale_timestamp
 from app.utils.logger import get_logger
 from app.utils.metrics import record_csv_error, record_csv_read
 from alerts.notifier import send_telegram_alert
@@ -328,8 +329,7 @@ class TelegramService:
     # --- Internal helpers -------------------------------------------------
 
     def _load_dataset(self) -> Optional[pd.DataFrame]:
-        data_dir = os.getenv("DATA_DIR", "data")
-        curva_file = os.path.join(data_dir, "curva.csv")
+        curva_file = str(get_curva_csv_path())
 
         if not os.path.exists(curva_file):
             logger.warning("No tremor data available for alert checking")
@@ -354,6 +354,7 @@ class TelegramService:
 
         last_ts = df['timestamp'].iloc[-1].to_pydatetime()
         last_ts = self._utc(last_ts)
+        warn_if_stale_timestamp(last_ts, logger, "telegram_alerts")
         record_csv_read(len(df), last_ts)
 
         return df

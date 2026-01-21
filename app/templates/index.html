@@ -45,6 +45,20 @@
       </div>
     </div>
   </div>
+  {% if show_csv_debug and csv_debug %}
+    <div class="container container--wide">
+      <div class="chart-card" aria-label="Debug CSV">
+        <h3>Debug CSV (owner/admin)</h3>
+        <ul class="muted">
+          <li><strong>Path:</strong> <code>{{ csv_debug.csv_path }}</code></li>
+          <li><strong>Mtime (UTC):</strong> {{ csv_debug.mtime_utc or "—" }}</li>
+          <li><strong>Righe:</strong> {{ csv_debug.rowcount or 0 }}</li>
+          <li><strong>First ts:</strong> {{ csv_debug.first_ts or "—" }}</li>
+          <li><strong>Last ts:</strong> {{ csv_debug.last_ts or "—" }}</li>
+        </ul>
+      </div>
+    </div>
+  {% endif %}
 </section>
 
 <section class="home-telegram-banner" aria-label="Avviso Telegram">
@@ -101,21 +115,10 @@
             Modalità analisi attiva
           </span>
         </div>
-        {% if csv_snapshot.has_data %}
-          <div id="home-preview-loading" class="chart-loading" aria-live="polite">
-            <div class="chart-spinner" aria-hidden="true">
-              <span></span>
-              <span></span>
-              <span></span>
-            </div>
-            <p>Caricamento dati INGV…</p>
+        {% if csv_snapshot.has_data and plot_html %}
+          <div id="home-preview-plot" class="chart-plot">
+            {{ plot_html | safe }}
           </div>
-          <div id="home-preview-plot" aria-hidden="true"></div>
-          {% if preview_rows %}
-            <script id="home-bootstrap-data" type="application/json" nonce="{{ csp_nonce() }}">
-              {{ preview_rows | tojson(indent=0) | safe }}
-            </script>
-          {% endif %}
         {% else %}
           <div class="chart-loading" aria-live="polite">
             <p><strong>Dati in preparazione</strong></p>
@@ -504,5 +507,4 @@
 {% set STATIC_ASSET_VERSION = static_asset_version %}
 <script defer src="{{ url_for('static', filename='js/plotly.min.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
 <script defer src="{{ url_for('static', filename='js/home.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
-<script defer src="{{ url_for('static', filename='js/chart.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
 {% endblock %}

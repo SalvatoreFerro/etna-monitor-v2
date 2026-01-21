@@ -7,7 +7,8 @@ from flask import Blueprint, current_app, jsonify, request
 from sqlalchemy.exc import SQLAlchemyError
 
 from ..utils.metrics import record_csv_error, record_csv_read, record_csv_update
-from ..utils.auth import get_current_user
+from ..utils.auth import get_current_user, is_owner_or_admin
+from ..utils.config import get_curva_csv_path, warn_if_stale_timestamp
 from ..models.hotspots_cache import HotspotsCache
 from ..models.hotspots_record import HotspotsRecord
 from ..services.copernicus import (
@@ -18,7 +19,7 @@ from ..services.copernicus import (
     resolve_copernicus_image_url,
     resolve_latest_and_available_items,
 )
-from backend.utils.extract_png import process_png_to_csv
+from backend.utils.extract_colored import process_colored_png_to_csv
 from backend.utils.time import to_iso_utc
 from backend.services.hotspots.config import HotspotsConfig
 from backend.services.hotspots.diagnostics import diagnose_firms
@@ -105,65 +106,31 @@ def _prepare_tremor_dataframe(raw_df: pd.DataFrame) -> tuple[pd.DataFrame, str |
 @api_bp.get("/api/curva")
 def get_curva():
     """Return curva.csv data as JSON with no-cache headers"""
-    csv_path_setting = current_app.config.get("CURVA_CSV_PATH") or current_app.config.get("CSV_PATH") or "/var/tmp/curva.csv"
-    csv_path = Path(csv_path_setting)
-
-    fallback_used = False
-    preloaded_df = None
-    preloaded_reason: str | None = None
+    csv_path = get_curva_csv_path()
+    include_csv_path = is_owner_or_admin(get_current_user())
 
     if not csv_path.exists() or csv_path.stat().st_size <= 20:
         try:
-            ingv_url = os.getenv('INGV_URL', 'https://www.ct.ingv.it/RMS_Etna/2.png')
-            result = process_png_to_csv(ingv_url, str(csv_path))
-            current_app.logger.info("[API] Auto-generated curva.csv with %s rows", result['rows'])
+            colored_url = os.getenv("INGV_COLORED_URL", "")
+            result = process_colored_png_to_csv(colored_url, str(csv_path))
+            current_app.logger.info(
+                "[API] Auto-generated curva.csv with %s rows", result["rows"]
+            )
         except Exception as e:
             current_app.logger.exception("[API] Failed to auto-generate curva.csv")
             record_csv_error(str(e))
-
-            fallback_setting = current_app.config.get("CURVA_FALLBACK_PATH")
-            fallback_path = (
-                Path(fallback_setting)
-                if fallback_setting
-                else Path(current_app.root_path).parent / "data" / "curva.csv"
-            )
-
-            if fallback_path.exists() and fallback_path.stat().st_size > 20:
-                try:
-                    raw_fallback_df = pd.read_csv(fallback_path)
-                    preloaded_df, preloaded_reason = _prepare_tremor_dataframe(raw_fallback_df)
-                    if preloaded_reason is None:
-                        fallback_used = True
-                        df_to_save = preloaded_df.copy()
-                        df_to_save["timestamp"] = df_to_save["timestamp"].apply(to_iso_utc)
-                        df_to_save.to_csv(csv_path, index=False)
-                        current_app.logger.info(
-                            "[API] Served fallback curva.csv from %s", fallback_path
-                        )
-                    else:
-                        record_csv_error(f"fallback::{preloaded_reason}")
-                except Exception as fallback_exc:
-                    current_app.logger.exception(
-                        "[API] Failed to load fallback curva.csv from %s", fallback_path
-                    )
-                    record_csv_error(f"fallback_error::{fallback_exc}")
-                    preloaded_df = None
-
-            if preloaded_df is None:
-                return jsonify({
-                    "ok": False,
-                    "error": "Dati INGV non disponibili al momento",
-                    "csv_path": str(csv_path),
-                    "placeholder_reason": "bootstrap_failed",
-                }), 503
+            payload = {
+                "ok": False,
+                "error": "Dati INGV non disponibili al momento",
+                "placeholder_reason": "bootstrap_failed",
+            }
+            if include_csv_path:
+                payload["csv_path_used"] = str(csv_path)
+            return jsonify(payload), 503
 
     try:
-        if preloaded_df is not None:
-            df = preloaded_df.copy()
-            reason = preloaded_reason
-        else:
-            raw_df = pd.read_csv(csv_path)
-            df, reason = _prepare_tremor_dataframe(raw_df)
+        raw_df = pd.read_csv(csv_path)
+        df, reason = _prepare_tremor_dataframe(raw_df)
 
         if reason is not None:
             record_csv_error(reason)
@@ -173,8 +140,8 @@ def get_curva():
                 "reason": reason,
                 "rows": 0,
             }
-            if fallback_used:
-                payload["source"] = "fallback"
+            if include_csv_path:
+                payload["csv_path_used"] = str(csv_path)
             return jsonify(payload), status_code
 
         df = df.sort_values("timestamp")
@@ -204,6 +171,7 @@ def get_curva():
         df = df.tail(limit)
 
         last_ts = df["timestamp"].iloc[-1]
+        warn_if_stale_timestamp(last_ts, current_app.logger, "api_curva")
         record_csv_read(len(df), last_ts.to_pydatetime())
 
         response_df = df.copy()
@@ -217,31 +185,35 @@ def get_curva():
             "last_ts": to_iso_utc(last_ts),
             "rows": len(data),
         }
-        if fallback_used:
-            payload["source"] = "fallback"
+        if include_csv_path:
+            payload["csv_path_used"] = str(csv_path)
 
         response = jsonify(payload)
 
         response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         response.headers['Pragma'] = 'no-cache'
         response.headers['Expires'] = '0'
+        if include_csv_path:
+            response.headers["X-Csv-Path-Used"] = str(csv_path)
+            response.headers["X-Csv-Last-Ts"] = payload.get("last_ts") or ""
         
         return response
         
     except Exception as e:
         current_app.logger.exception("[API] Failed to read curva.csv")
         record_csv_error(str(e))
-        return jsonify({
+        payload = {
             "ok": False,
             "error": str(e),
-            "csv_path": str(csv_path)
-        }), 500
+        }
+        if include_csv_path:
+            payload["csv_path_used"] = str(csv_path)
+        return jsonify(payload), 500
 
 @api_bp.route("/api/status")
 def get_status():
     """Return current status and metrics"""
-    csv_path_setting = current_app.config.get("CURVA_CSV_PATH") or current_app.config.get("CSV_PATH") or "/var/tmp/curva.csv"
-    csv_path = Path(csv_path_setting)
+    csv_path = get_curva_csv_path()
     threshold = float(os.getenv("ALERT_THRESHOLD_DEFAULT", "2.0"))
     track_event = request.args.get("track")
     if track_event:
@@ -616,10 +588,10 @@ def sentieri_stats():
 def force_update():
     """Force update of tremor data from INGV source"""
     try:
-        ingv_url = os.getenv('INGV_URL', 'https://www.ct.ingv.it/RMS_Etna/2.png')
-        csv_path_setting = current_app.config.get('CURVA_CSV_PATH') or current_app.config.get('CSV_PATH') or '/var/tmp/curva.csv'
+        ingv_url = os.getenv("INGV_COLORED_URL", "")
+        csv_path = get_curva_csv_path()
 
-        result = process_png_to_csv(ingv_url, csv_path_setting)
+        result = process_colored_png_to_csv(ingv_url, csv_path)
         last_ts_value = None
         if result.get("last_ts"):
             parsed = pd.to_datetime(result["last_ts"], utc=True, errors="coerce")

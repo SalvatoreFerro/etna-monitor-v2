@@ -5,6 +5,7 @@ flow. Legacy password utilities are kept for reference but should be
 considered deprecated and unused within the application.
 """
 
+import os
 import warnings
 from functools import wraps
 
@@ -118,3 +119,14 @@ def get_current_user():
         session.pop('user_id', None)
 
     return user
+
+
+def is_owner_or_admin(user: User | None) -> bool:
+    if not user:
+        return False
+    if user.is_admin:
+        return True
+    owner_email = (os.getenv("OWNER_EMAIL") or "").strip().lower()
+    if not owner_email:
+        return False
+    return (user.email or "").strip().lower() == owner_email

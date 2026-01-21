@@ -8,6 +8,8 @@ import cv2
 import numpy as np
 import requests
 
+from backend.utils.time import to_iso_utc
+
 
 EXTRACTION_DURATION = timedelta(days=7)
 
@@ -36,6 +38,35 @@ SMOOTHING_WINDOW = 5
 
 
 logger = logging.getLogger(__name__)
+
+
+def process_colored_png_to_csv(url: str, output_path: str | Path | None = None) -> dict:
+    if not url:
+        raise ValueError("INGV_COLORED_URL not configured")
+    png_path = download_png(url)
+    timestamps, values, _ = extract_series_from_colored(png_path)
+    if not timestamps or not values:
+        raise ValueError("No data extracted from colored PNG")
+
+    output_target = Path(output_path) if output_path else Path("data") / "curva_colored.csv"
+    output_target.parent.mkdir(parents=True, exist_ok=True)
+
+    with output_target.open("w", encoding="utf-8", newline="") as handle:
+        handle.write("timestamp,value\n")
+        for ts, value in zip(timestamps, values):
+            iso_ts = to_iso_utc(ts)
+            if iso_ts is None:
+                continue
+            handle.write(f"{iso_ts},{value}\n")
+
+    first_ts = to_iso_utc(timestamps[0]) if timestamps else None
+    last_ts = to_iso_utc(timestamps[-1]) if timestamps else None
+    return {
+        "output_path": str(output_target),
+        "rows": len(timestamps),
+        "first_ts": first_ts,
+        "last_ts": last_ts,
+    }
 
 
 def download_png(url: str) -> Path:
