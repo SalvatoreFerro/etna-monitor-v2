@@ -48,11 +48,31 @@
 
   <section class="admin-card">
     <h2>Grafico Plotly (asse Y log, mV)</h2>
+    <pre class="admin-code-block">
+{% if plot_html_diagnostics %}
+plot_html_is_none: {{ plot_html_diagnostics.is_none }}
+plot_html_length: {{ plot_html_diagnostics.length }}
+plot_html_snippet: {{ plot_html_diagnostics.snippet }}
+contains_plotly_div: {{ plot_html_diagnostics.contains_plotly_div }}
+{% else %}
+plot_html diagnostics not available.
+{% endif %}
+{% if plot_diagnostics %}
+data_diagnostics: {{ plot_diagnostics | tojson(indent=2) }}
+{% endif %}
+    </pre>
     {% if plot_html %}
       {{ plot_html | safe }}
     {% else %}
       <div class="admin-card admin-flash admin-flash--error">
         <strong>Grafico non disponibile.</strong>
+        <span>
+          {% if error_message %}
+            Causa: {{ error_message }}
+          {% else %}
+            Causa: plot_html è None o vuoto.
+          {% endif %}
+        </span>
       </div>
     {% endif %}
   </section>
