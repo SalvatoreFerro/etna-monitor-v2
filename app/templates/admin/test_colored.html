@@ -48,13 +48,8 @@
 
   <section class="admin-card">
     <h2>Grafico Plotly (asse Y log, mV)</h2>
-    {% if fig_json %}
-      <script src="{{ url_for('static', filename='vendor/plotly.min.js') }}" nonce="{{ csp_nonce() }}"></script>
-      <div id="plot"></div>
-      <script nonce="{{ csp_nonce() }}">
-        const fig = {{ fig_json | safe }};
-        Plotly.newPlot('plot', fig.data, fig.layout, {responsive: true});
-      </script>
+    {% if plot_html %}
+      {{ plot_html | safe }}
     {% else %}
       <div class="admin-card admin-flash admin-flash--error">
         <strong>Grafico non disponibile.</strong>
@@ -62,10 +57,89 @@
           {% if error_message %}
             Causa: {{ error_message }}
           {% else %}
-            Causa: fig_json è None o vuoto.
+            Causa: plot_html è None o vuoto.
           {% endif %}
         </span>
       </div>
+    {% endif %}
+  </section>
+
+  <section class="admin-card">
+    <h2>Debug dati estratti</h2>
+    {% if debug_data %}
+      <div style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="admin-card" style="margin: 0;">
+          <h3>Statistiche (ultimi {{ debug_data.limits.tail }} punti)</h3>
+          <ul>
+            <li><strong>Min:</strong> {{ "%.3f" | format(debug_data.stats.min) if debug_data.stats.min is not none else "N/A" }}</li>
+            <li><strong>Max:</strong> {{ "%.3f" | format(debug_data.stats.max) if debug_data.stats.max is not none else "N/A" }}</li>
+            <li><strong>Mean:</strong> {{ "%.3f" | format(debug_data.stats.mean) if debug_data.stats.mean is not none else "N/A" }}</li>
+          </ul>
+        </div>
+        <div class="admin-card" style="margin: 0;">
+          <h3>Contatori</h3>
+          <ul>
+            <li><strong>Total points:</strong> {{ debug_data.counts.total_points }}</li>
+            <li><strong>Tail points:</strong> {{ debug_data.counts.tail_points }}</li>
+            <li><strong>Removed pairs:</strong> {{ debug_data.counts.removed_pairs }}</li>
+            <li><strong>Clamped count:</strong> {{ debug_data.counts.clamped_count }}</li>
+            <li><strong>Nonfinite count:</strong> {{ debug_data.counts.nonfinite_count }}</li>
+            <li><strong>Nonpositive count:</strong> {{ debug_data.counts.nonpositive_count }}</li>
+          </ul>
+        </div>
+        <div class="admin-card" style="margin: 0;">
+          <h3>Top {{ debug_data.limits.peaks }} picchi</h3>
+          <div class="admin-table-wrapper" style="max-height: 240px; overflow-y: auto;">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>mV</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in debug_data.peaks %}
+                  <tr>
+                    <td><code>{{ item.timestamp }}</code></td>
+                    <td>{{ "%.3f" | format(item.value) }}</td>
+                  </tr>
+                {% else %}
+                  <tr>
+                    <td colspan="2">Nessun picco disponibile.</td>
+                  </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="admin-card" style="margin-top: 1rem;">
+        <h3>Ultimi {{ debug_data.limits.tail }} punti</h3>
+        <div class="admin-table-wrapper" style="max-height: 360px; overflow-y: auto;">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Timestamp (ISO)</th>
+                <th>mV</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in debug_data.tail %}
+                <tr>
+                  <td><code>{{ item.timestamp }}</code></td>
+                  <td>{{ "%.3f" | format(item.value) }}</td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="2">Nessun dato disponibile.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    {% else %}
+      <p class="muted">Dati di debug non disponibili.</p>
     {% endif %}
   </section>
 </section>
