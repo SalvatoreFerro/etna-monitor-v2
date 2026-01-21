@@ -2871,14 +2871,12 @@ def test_colored_extraction():
     colored_url = (os.getenv("INGV_COLORED_URL") or "").strip()
     if not colored_url:
         plot_html = None
-        plot_html_diagnostics = _log_plot_html_state(app.logger, plot_html)
+        _log_plot_html_state(app.logger, plot_html)
         return render_template(
             "admin/test_colored.html",
             error_message="INGV_COLORED_URL non configurato.",
             plot_payload=None,
             plot_html=None,
-            plot_diagnostics=None,
-            plot_html_diagnostics=plot_html_diagnostics,
             raw_image=None,
             overlay_image=None,
             mask_image=None,
@@ -2899,14 +2897,6 @@ def test_colored_extraction():
         num_valid_pairs = len(clean_pairs)
         eps = 1e-2
         clamped_count = sum(1 for v in values if v is not None and v < eps)
-        plot_diagnostics = {
-            "timestamps_len": len(timestamps),
-            "values_len": len(values),
-            "num_valid_pairs": num_valid_pairs,
-            "removed_pairs": removed_pairs,
-            "clamped": clamped_count,
-            "sample_pairs": clean_pairs[:3],
-        }
         current_app.logger.info(
             "[ADMIN] Colored plot data: timestamps=%s values=%s valid_pairs=%s removed=%s sample=%s",
             len(timestamps),
@@ -2952,13 +2942,10 @@ def test_colored_extraction():
         raw_image = _encode_image_base64(png_path)
         overlay_image = _encode_image_base64(debug_paths.get("overlay"))
         mask_image = _encode_image_base64(debug_paths.get("mask"))
-        plot_html_diagnostics = _log_plot_html_state(app.logger, plot_html)
         return render_template(
             "admin/test_colored.html",
             plot_payload=None,
             plot_html=plot_html,
-            plot_diagnostics=plot_diagnostics,
-            plot_html_diagnostics=plot_html_diagnostics,
             raw_image=raw_image,
             overlay_image=overlay_image,
             mask_image=mask_image,
@@ -2967,14 +2954,12 @@ def test_colored_extraction():
     except Exception as exc:  # pragma: no cover - debug view safety net
         current_app.logger.exception("[ADMIN] Colored extraction failed")
         plot_html = None
-        plot_html_diagnostics = _log_plot_html_state(app.logger, plot_html)
+        _log_plot_html_state(app.logger, plot_html)
         return render_template(
             "admin/test_colored.html",
             error_message=str(exc),
             plot_payload=None,
             plot_html=None,
-            plot_diagnostics=None,
-            plot_html_diagnostics=plot_html_diagnostics,
             raw_image=None,
             overlay_image=None,
             mask_image=None,
