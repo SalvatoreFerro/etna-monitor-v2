@@ -1,6 +1,8 @@
+import base64
 import csv
 import io
 import json
+import os
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -25,6 +27,8 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
 from ..utils.auth import admin_required, get_current_user
+from backend.utils.extract_colored import download_png as download_colored_png
+from backend.utils.extract_colored import extract_series_from_colored
 from ..utils.metrics import get_csv_metrics
 from ..models import (
     db,
@@ -165,6 +169,25 @@ def _parse_range_window(value: str | None) -> timedelta:
         except ValueError:
             return timedelta(days=1)
     return timedelta(hours=24)
+
+
+def _is_owner(user: User | None) -> bool:
+    if user is None:
+        return False
+    owner_email = (os.getenv("OWNER_EMAIL") or "").strip().lower()
+    if not owner_email:
+        return bool(user.is_admin)
+    return (user.email or "").strip().lower() == owner_email
+
+
+def _encode_image_base64(path: str | Path | None) -> str | None:
+    if not path:
+        return None
+    image_path = Path(path)
+    if not image_path.exists():
+        return None
+    encoded = base64.b64encode(image_path.read_bytes()).decode("utf-8")
+    return f"data:image/png;base64,{encoded}"
 
 
 def _apply_tracking_filters(query, model, start_dt, end_dt, banner_id, page_filter):
@@ -2798,6 +2821,55 @@ def admin_sentieri():
 @admin_required
 def monitor_system():
     return render_template("admin/monitor.html")
+
+
+@bp.route("/test-colored")
+@admin_required
+def test_colored_extraction():
+    user = get_current_user()
+    if not _is_owner(user):
+        flash("Accesso riservato al proprietario.", "error")
+        return redirect(url_for("admin.admin_home"))
+
+    colored_url = (os.getenv("INGV_COLORED_URL") or "").strip()
+    if not colored_url:
+        return render_template(
+            "admin/test_colored.html",
+            error_message="INGV_COLORED_URL non configurato.",
+            plot_payload=None,
+            raw_image=None,
+            overlay_image=None,
+            mask_image=None,
+        )
+
+    try:
+        png_path = download_colored_png(colored_url)
+        timestamps, values, debug_paths = extract_series_from_colored(png_path)
+        plot_payload = {
+            "x": [ts.isoformat() for ts in timestamps],
+            "y": values,
+        }
+        raw_image = _encode_image_base64(png_path)
+        overlay_image = _encode_image_base64(debug_paths.get("overlay"))
+        mask_image = _encode_image_base64(debug_paths.get("mask"))
+        return render_template(
+            "admin/test_colored.html",
+            plot_payload=plot_payload,
+            raw_image=raw_image,
+            overlay_image=overlay_image,
+            mask_image=mask_image,
+            error_message=None,
+        )
+    except Exception as exc:  # pragma: no cover - debug view safety net
+        current_app.logger.exception("[ADMIN] Colored extraction failed")
+        return render_template(
+            "admin/test_colored.html",
+            error_message=str(exc),
+            plot_payload=None,
+            raw_image=None,
+            overlay_image=None,
+            mask_image=None,
+        )
 
 
 @bp.route("/cron/summary")
