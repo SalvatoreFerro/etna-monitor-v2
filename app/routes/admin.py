@@ -10,7 +10,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import plotly.graph_objects as go
-import plotly.utils
+from plotly import offline as plotly_offline
 from flask import (
     Blueprint,
     render_template,
@@ -2835,31 +2835,79 @@ def test_colored_extraction():
 
     app = current_app
     colored_url = (os.getenv("INGV_COLORED_URL") or "").strip()
+    tail_param = request.args.get("tail", "200")
+    peaks_param = request.args.get("peaks", "10")
+    try:
+        tail_limit = int(tail_param)
+    except (TypeError, ValueError):
+        tail_limit = 200
+    try:
+        peaks_limit = int(peaks_param)
+    except (TypeError, ValueError):
+        peaks_limit = 10
+    tail_limit = max(1, min(tail_limit, 2000))
+    peaks_limit = max(1, min(peaks_limit, 50))
     if not colored_url:
         return render_template(
             "admin/test_colored.html",
             error_message="INGV_COLORED_URL non configurato.",
-            fig_json=None,
+            plot_html=None,
             raw_image=None,
             overlay_image=None,
             mask_image=None,
+            debug_data=None,
         )
 
     try:
         png_path = download_colored_png(colored_url)
         timestamps, values, debug_paths = extract_series_from_colored(png_path)
-        removed_pairs = 0
+        total_points = len(timestamps)
+        nonfinite_count = 0
         clean_pairs = []
         for timestamp, value in zip(timestamps, values):
             if timestamp is None or value is None or not isfinite(value):
-                removed_pairs += 1
+                nonfinite_count += 1
                 continue
             if isinstance(timestamp, datetime):
                 timestamp = timestamp.isoformat()
-            clean_pairs.append((timestamp, value))
+            elif not isinstance(timestamp, str):
+                timestamp = str(timestamp)
+            value_float = float(value)
+            clean_pairs.append((timestamp, value_float))
         num_valid_pairs = len(clean_pairs)
+        removed_pairs = total_points - num_valid_pairs
         eps = 1e-2
-        clamped_count = sum(1 for v in values if v is not None and v < eps)
+        clamped_count = sum(1 for _, v in clean_pairs if v < eps)
+        nonpositive_count = sum(1 for _, v in clean_pairs if v <= 0)
+        tail_pairs = clean_pairs[-tail_limit:] if tail_limit else []
+        tail_values = [value for _, value in tail_pairs]
+        tail_stats = {
+            "min": min(tail_values) if tail_values else None,
+            "max": max(tail_values) if tail_values else None,
+            "mean": (sum(tail_values) / len(tail_values)) if tail_values else None,
+        }
+        peaks_pairs = sorted(tail_pairs, key=lambda item: item[1], reverse=True)[
+            :peaks_limit
+        ]
+        debug_data = {
+            "tail": [
+                {"timestamp": timestamp, "value": value} for timestamp, value in tail_pairs
+            ],
+            "peaks": [
+                {"timestamp": timestamp, "value": value}
+                for timestamp, value in peaks_pairs
+            ],
+            "stats": tail_stats,
+            "counts": {
+                "total_points": total_points,
+                "tail_points": len(tail_pairs),
+                "removed_pairs": removed_pairs,
+                "clamped_count": clamped_count,
+                "nonfinite_count": nonfinite_count,
+                "nonpositive_count": nonpositive_count,
+            },
+            "limits": {"tail": tail_limit, "peaks": peaks_limit},
+        }
         current_app.logger.info(
             "[ADMIN] Colored plot data: timestamps=%s values=%s valid_pairs=%s removed=%s sample=%s",
             len(timestamps),
@@ -2868,7 +2916,7 @@ def test_colored_extraction():
             removed_pairs,
             clean_pairs[:3],
         )
-        fig_json = None
+        plot_html = None
         plot_error_message = None
         if num_valid_pairs >= 10:
             plot_timestamps = [pair[0] for pair in clean_pairs]
@@ -2893,7 +2941,9 @@ def test_colored_extraction():
                     "xaxis": {"title": "Timestamp", "type": "date"},
                 },
             )
-            fig_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+            plot_html = plotly_offline.plot(
+                fig, include_plotlyjs="inline", output_type="div"
+            )
         else:
             plot_error_message = (
                 "Dati insufficienti per generare il grafico (meno di 10 punti validi)."
@@ -2903,21 +2953,23 @@ def test_colored_extraction():
         mask_image = _encode_image_base64(debug_paths.get("mask"))
         return render_template(
             "admin/test_colored.html",
-            fig_json=fig_json,
+            plot_html=plot_html,
             raw_image=raw_image,
             overlay_image=overlay_image,
             mask_image=mask_image,
             error_message=plot_error_message,
+            debug_data=debug_data,
         )
     except Exception as exc:  # pragma: no cover - debug view safety net
         current_app.logger.exception("[ADMIN] Colored extraction failed")
         return render_template(
             "admin/test_colored.html",
             error_message=str(exc),
-            fig_json=None,
+            plot_html=None,
             raw_image=None,
             overlay_image=None,
             mask_image=None,
+            debug_data=None,
         )
 
 
