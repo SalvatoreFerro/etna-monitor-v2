@@ -1,5 +1,4 @@
 import base64
-import copy
 import csv
 import io
 import json
@@ -11,7 +10,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import plotly.graph_objects as go
-import plotly.offline as plotly_offline
+import plotly.utils
 from flask import (
     Blueprint,
     render_template,
@@ -100,19 +99,8 @@ from ..services.sentieri_geojson import (
     read_geojson_file,
     validate_feature_collection,
 )
-from ..security import BASE_CSP, talisman
 
 bp = Blueprint("admin", __name__)
-
-_TEST_COLORED_CSP = copy.deepcopy(BASE_CSP)
-for directive in ("script-src", "script-src-elem"):
-    allowed_sources = _TEST_COLORED_CSP.setdefault(directive, [])
-    if isinstance(allowed_sources, str):
-        allowed_sources = [allowed_sources]
-        _TEST_COLORED_CSP[directive] = allowed_sources
-    if "'unsafe-inline'" not in allowed_sources:
-        allowed_sources.append("'unsafe-inline'")
-
 
 def _is_csrf_valid(submitted_token: str | None) -> bool:
     """Return True when the provided CSRF token is valid or tests are running."""
@@ -2838,30 +2826,8 @@ def monitor_system():
 
 
 @bp.route("/test-colored")
-@talisman(content_security_policy=_TEST_COLORED_CSP)
 @admin_required
 def test_colored_extraction():
-    def _log_plot_html_state(app_logger, plot_html_value):
-        is_none = plot_html_value is None
-        plot_len = len(plot_html_value) if plot_html_value is not None else None
-        snippet = plot_html_value[:200] if plot_html_value else None
-        contains_plotly_div = (
-            "plotly-graph-div" in plot_html_value if plot_html_value else False
-        )
-        app_logger.info("[ADMIN] plot_html is None? %s", is_none)
-        app_logger.info("[ADMIN] plot_html length: %s", plot_len)
-        app_logger.info("[ADMIN] plot_html[:200]: %s", snippet)
-        app_logger.info(
-            "[ADMIN] plot_html contains plotly-graph-div? %s",
-            contains_plotly_div,
-        )
-        return {
-            "is_none": is_none,
-            "length": plot_len,
-            "snippet": snippet,
-            "contains_plotly_div": contains_plotly_div,
-        }
-
     user = get_current_user()
     if not _is_owner(user):
         flash("Accesso riservato al proprietario.", "error")
@@ -2870,13 +2836,10 @@ def test_colored_extraction():
     app = current_app
     colored_url = (os.getenv("INGV_COLORED_URL") or "").strip()
     if not colored_url:
-        plot_html = None
-        _log_plot_html_state(app.logger, plot_html)
         return render_template(
             "admin/test_colored.html",
             error_message="INGV_COLORED_URL non configurato.",
-            plot_payload=None,
-            plot_html=None,
+            fig_json=None,
             raw_image=None,
             overlay_image=None,
             mask_image=None,
@@ -2905,7 +2868,7 @@ def test_colored_extraction():
             removed_pairs,
             clean_pairs[:3],
         )
-        plot_html = None
+        fig_json = None
         plot_error_message = None
         if num_valid_pairs >= 10:
             plot_timestamps = [pair[0] for pair in clean_pairs]
@@ -2930,11 +2893,7 @@ def test_colored_extraction():
                     "xaxis": {"title": "Timestamp", "type": "date"},
                 },
             )
-            plot_html = plotly_offline.plot(
-                fig,
-                include_plotlyjs="inline",
-                output_type="div",
-            )
+            fig_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
         else:
             plot_error_message = (
                 "Dati insufficienti per generare il grafico (meno di 10 punti validi)."
@@ -2944,8 +2903,7 @@ def test_colored_extraction():
         mask_image = _encode_image_base64(debug_paths.get("mask"))
         return render_template(
             "admin/test_colored.html",
-            plot_payload=None,
-            plot_html=plot_html,
+            fig_json=fig_json,
             raw_image=raw_image,
             overlay_image=overlay_image,
             mask_image=mask_image,
@@ -2953,13 +2911,10 @@ def test_colored_extraction():
         )
     except Exception as exc:  # pragma: no cover - debug view safety net
         current_app.logger.exception("[ADMIN] Colored extraction failed")
-        plot_html = None
-        _log_plot_html_state(app.logger, plot_html)
         return render_template(
             "admin/test_colored.html",
             error_message=str(exc),
-            plot_payload=None,
-            plot_html=None,
+            fig_json=None,
             raw_image=None,
             overlay_image=None,
             mask_image=None,

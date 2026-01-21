@@ -48,8 +48,13 @@
 
   <section class="admin-card">
     <h2>Grafico Plotly (asse Y log, mV)</h2>
-    {% if plot_html %}
-      {{ plot_html | safe }}
+    {% if fig_json %}
+      <script src="{{ url_for('static', filename='vendor/plotly.min.js') }}" nonce="{{ csp_nonce() }}"></script>
+      <div id="plot"></div>
+      <script nonce="{{ csp_nonce() }}">
+        const fig = {{ fig_json | safe }};
+        Plotly.newPlot('plot', fig.data, fig.layout, {responsive: true});
+      </script>
     {% else %}
       <div class="admin-card admin-flash admin-flash--error">
         <strong>Grafico non disponibile.</strong>
@@ -57,7 +62,7 @@
           {% if error_message %}
             Causa: {{ error_message }}
           {% else %}
-            Causa: plot_html è None o vuoto.
+            Causa: fig_json è None o vuoto.
           {% endif %}
         </span>
       </div>
