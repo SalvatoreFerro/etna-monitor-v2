@@ -7,8 +7,9 @@ project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
 from flask import Flask, jsonify, send_file
-from backend.utils.extract_png import process_png_to_csv
+from backend.utils.extract_colored import process_colored_png_to_csv
 from backend.utils.time import to_iso_utc
+from app.utils.config import CURVA_CANONICAL_PATH
 from backend.utils.archive import ArchiveManager
 import pandas as pd
 import io
@@ -20,12 +21,11 @@ archive_manager = ArchiveManager()
 
 @app.route('/api/force_update', methods=['POST', 'GET'])
 def force_update():
-    """Force update of PNG data and curva.csv"""
+    """Force update of PNG data and curva_colored.csv"""
     try:
-        ingv_url = os.getenv('INGV_URL', 'https://www.ct.ingv.it/RMS_Etna/2.png')
+        ingv_url = os.getenv("INGV_COLORED_URL", "")
         
-        DATA_DIR = os.getenv('DATA_DIR', 'data')
-        result = process_png_to_csv(ingv_url, os.path.join(DATA_DIR, "curva.csv"))
+        result = process_colored_png_to_csv(ingv_url, CURVA_CANONICAL_PATH)
 
         return jsonify({
             "ok": True,

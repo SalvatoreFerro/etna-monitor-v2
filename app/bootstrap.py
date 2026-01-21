@@ -19,9 +19,10 @@ from sqlalchemy.exc import SQLAlchemyError
 from .models import db
 
 try:  # pragma: no cover - optional dependency guard
-    from backend.utils.extract_png import process_png_to_csv
+    from backend.utils.extract_colored import process_colored_png_to_csv
+    from app.utils.config import get_curva_csv_path
 except Exception:  # pragma: no cover - backend utilities may be unavailable in tests
-    process_png_to_csv = None  # type: ignore[assignment]
+    process_colored_png_to_csv = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -339,22 +340,21 @@ def ensure_curva_csv(app: Flask | None = None) -> Path:
     """Ensure the tremor CSV exists, generating a placeholder when necessary."""
 
     app = app or current_app
-    data_dir = Path(app.config.get("DATA_DIR", "/var/tmp"))
-    csv_path = Path(app.config.get("CSV_PATH", data_dir / "curva.csv"))
+    csv_path = get_curva_csv_path()
 
-    data_dir.mkdir(parents=True, exist_ok=True)
     csv_path.parent.mkdir(parents=True, exist_ok=True)
 
     if csv_path.exists() and csv_path.stat().st_size > 0:
         return csv_path
 
     skip_bootstrap = os.getenv("SKIP_CURVA_BOOTSTRAP", "0").lower() in {"1", "true", "yes"}
-    if process_png_to_csv and not skip_bootstrap:
+    if process_colored_png_to_csv and not skip_bootstrap:
         try:
-            result = process_png_to_csv(output_path=str(csv_path))
+            colored_url = os.getenv("INGV_COLORED_URL", "")
+            result = process_colored_png_to_csv(colored_url, output_path=str(csv_path))
         except Exception as exc:  # pragma: no cover - external dependency failures
             app.logger.warning(
-                "[BOOT] Failed to bootstrap curva.csv from INGV source: %s", exc
+                "[BOOT] Failed to bootstrap curva.csv from INGV colored source: %s", exc
             )
         else:
             rows = result.get("rows", 0)
@@ -383,4 +383,3 @@ __all__ = [
     "get_alembic_status",
     "init_db",
 ]
-

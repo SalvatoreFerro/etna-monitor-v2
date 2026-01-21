@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pandas as pd
 import requests
+import plotly.graph_objects as go
+from plotly import offline as plotly_offline
 from flask import (
     Blueprint,
     current_app,
@@ -21,7 +23,7 @@ from flask import (
 )
 from flask_login import current_user
 
-from ..utils.auth import get_current_user
+from ..utils.auth import get_current_user, is_owner_or_admin
 
 from app.bootstrap import get_alembic_status
 from app.models import db
@@ -44,6 +46,7 @@ from app.services.copernicus import (
     resolve_copernicus_image_url,
 )
 from ..services.sentieri_geojson import read_geojson_file, validate_feature_collection
+from ..utils.config import get_curva_csv_path, load_curva_dataframe, warn_if_stale_timestamp
 
 bp = Blueprint("main", __name__)
 
@@ -232,11 +235,9 @@ def csp_test():
 @bp.route("/")
 @cache.cached(timeout=180, key_prefix=_index_cache_key)
 def index():
-    csv_path_setting = current_app.config.get("CURVA_CSV_PATH") or current_app.config.get("CSV_PATH")
-    csv_path = Path(csv_path_setting or "/var/tmp/curva.csv")
+    csv_path = get_curva_csv_path()
     timestamps: list[str] = []
     values: list[float] = []
-    preview_rows: list[dict[str, object]] = []
     temporal_start_iso: str | None = None
     temporal_end_iso: str | None = None
     temporal_coverage: str | None = None
@@ -245,63 +246,143 @@ def index():
     latest_timestamp_display: str | None = None
     data_points = 0
     placeholder_reason: str | None = None
+    csv_mtime_utc: str | None = None
+    csv_debug: dict[str, str | int | None] | None = None
+    df = None
+    plot_html: str | None = None
 
     if csv_path.exists():
         try:
-            df = pd.read_csv(csv_path)
-        except Exception as exc:
-            placeholder_reason = "error"
-            current_app.logger.exception("[HOME] Failed to read tremor CSV")
-            record_csv_error(str(exc))
-        else:
-            if "timestamp" not in df.columns:
+            stat = csv_path.stat()
+            csv_mtime_utc = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
+        except OSError:
+            csv_mtime_utc = None
+        df, load_reason = load_curva_dataframe(csv_path)
+        if load_reason:
+            placeholder_reason = load_reason
+            if load_reason == "csv_missing":
+                placeholder_reason = "missing"
+            elif load_reason in {"missing_timestamp", "missing_value"}:
                 placeholder_reason = "missing_timestamp"
-                record_csv_error("curva.csv missing timestamp column")
+            elif load_reason == "empty":
+                placeholder_reason = "empty"
             else:
-                df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
-                df = df.dropna(subset=["timestamp"])
+                placeholder_reason = "error"
+            if load_reason.startswith("read_error"):
+                current_app.logger.exception("[HOME] Failed to read tremor CSV: %s", load_reason)
+            else:
+                current_app.logger.warning("[HOME] CSV validation failed: %s", load_reason)
+            record_csv_error(str(load_reason))
+        elif df is not None:
+            df = df.sort_values("timestamp")
+            timestamps = df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S").tolist()
+            values = df["value"].tolist()
+            data_points = len(df)
 
-                if df.empty:
-                    placeholder_reason = "empty"
-                    record_csv_error("curva.csv empty")
-                else:
-                    df = df.sort_values("timestamp")
-                    timestamps = df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S").tolist()
-                    values = df["value"].tolist()
-                    data_points = len(df)
+            temporal_start = df["timestamp"].iloc[0]
+            temporal_end = df["timestamp"].iloc[-1]
+            warn_if_stale_timestamp(temporal_end, current_app.logger, "homepage")
+            temporal_start_iso = to_iso_utc(temporal_start)
+            temporal_end_iso = to_iso_utc(temporal_end)
+            temporal_coverage = (
+                f"{temporal_start_iso}/{temporal_end_iso}"
+                if temporal_start_iso and temporal_end_iso
+                else None
+            )
+            latest_value = float(df["value"].iloc[-1])
+            latest_timestamp_iso = temporal_end_iso
+            temporal_end_display = (
+                temporal_end.tz_convert("UTC")
+                if getattr(temporal_end, "tz", None) is not None
+                else temporal_end.tz_localize("UTC")
+            )
+            latest_timestamp_display = temporal_end_display.strftime("%d/%m/%Y %H:%M")
+            record_csv_read(len(df), temporal_end.to_pydatetime())
 
-                    preview_slice = df.tail(2016)
-                    preview_rows = []
-                    for row in preview_slice.itertuples(index=False):
-                        value = getattr(row, "value", None)
-                        if value is None:
-                            continue
-                        ts = row.timestamp
-                        preview_rows.append(
-                            {
-                                "timestamp": to_iso_utc(ts),
-                                "value": float(value),
-                            }
-                        )
-
-                    temporal_start = df["timestamp"].iloc[0]
-                    temporal_end = df["timestamp"].iloc[-1]
-                    temporal_start_iso = to_iso_utc(temporal_start)
-                    temporal_end_iso = to_iso_utc(temporal_end)
-                    temporal_coverage = (
-                        f"{temporal_start_iso}/{temporal_end_iso}"
-                        if temporal_start_iso and temporal_end_iso
-                        else None
+            plot_df = df[df["value"].notna() & (df["value"] > 0)].copy()
+            if not plot_df.empty:
+                plot_df["value"] = plot_df["value"].apply(lambda v: max(float(v), 0.1))
+            plot_pairs = []
+            if not plot_df.empty:
+                plot_pairs = [
+                    (to_iso_utc(ts), value)
+                    for ts, value in zip(
+                        plot_df["timestamp"].tolist(),
+                        plot_df["value"].tolist(),
                     )
-                    latest_value = float(df["value"].iloc[-1])
-                    latest_timestamp_iso = temporal_end_iso
-                    temporal_end_display = (
-                        temporal_end.tz_convert("UTC")
-                        if getattr(temporal_end, "tz", None) is not None
-                        else temporal_end.tz_localize("UTC")
+                    if to_iso_utc(ts) is not None
+                ]
+            plot_timestamps = [pair[0] for pair in plot_pairs]
+            plot_values = [pair[1] for pair in plot_pairs]
+            if plot_values:
+                threshold_level = 4
+                trace = go.Scatter(
+                    x=plot_timestamps,
+                    y=plot_values,
+                    mode="lines",
+                    name="Tremore",
+                    line={"color": "#4ade80", "width": 2.4, "shape": "spline", "smoothing": 1.15},
+                    fill="tozeroy",
+                    fillcolor="rgba(74, 222, 128, 0.08)",
+                    hovertemplate="<b>%{y:.2f} mV</b><br>%{x|%d/%m %H:%M}<extra></extra>",
+                    showlegend=False,
+                )
+                shapes = []
+                if threshold_level:
+                    shapes.append(
+                        {
+                            "type": "line",
+                            "x0": plot_timestamps[0],
+                            "x1": plot_timestamps[-1],
+                            "y0": threshold_level,
+                            "y1": threshold_level,
+                            "line": {"color": "#ef4444", "width": 2, "dash": "dash"},
+                        }
                     )
-                    latest_timestamp_display = temporal_end_display.strftime("%d/%m/%Y %H:%M")
-                    record_csv_read(len(df), temporal_end.to_pydatetime())
+                layout = {
+                    "margin": {"l": 64, "r": 32, "t": 24, "b": 56},
+                    "hovermode": "x unified",
+                    "plot_bgcolor": "rgba(0,0,0,0)",
+                    "paper_bgcolor": "rgba(0,0,0,0)",
+                    "font": {"color": "#e2e8f0"},
+                    "xaxis": {
+                        "type": "date",
+                        "title": "",
+                        "showgrid": True,
+                        "gridcolor": "#1f2937",
+                        "linewidth": 1,
+                        "linecolor": "#334155",
+                        "hoverformat": "%d/%m %H:%M",
+                        "tickfont": {"size": 12},
+                        "ticks": "outside",
+                        "tickcolor": "#334155",
+                    },
+                    "yaxis": {
+                        "title": "Ampiezza (mV)",
+                        "type": "log",
+                        "showgrid": True,
+                        "gridcolor": "#1f2937",
+                        "linewidth": 1,
+                        "linecolor": "#334155",
+                        "tickfont": {"size": 12},
+                        "tickvals": [0.1, 0.2, 0.5, 1, 2, 5, 10],
+                        "ticktext": ["10⁻¹", "0.2", "0.5", "1", "2", "5", "10¹"],
+                        "ticksuffix": " mV",
+                        "exponentformat": "power",
+                        "minor": {"ticklen": 4, "showgrid": False},
+                        "zeroline": False,
+                    },
+                    "shapes": shapes,
+                    "hoverlabel": {
+                        "bgcolor": "rgba(15, 23, 42, 0.92)",
+                        "bordercolor": "#ef4444",
+                        "font": {"color": "#f8fafc"},
+                    },
+                }
+                fig = go.Figure(data=[trace], layout=layout)
+                plot_html = plotly_offline.plot(
+                    fig, include_plotlyjs=False, output_type="div"
+                )
     else:
         placeholder_reason = "missing"
         if not current_app.config.get("_home_csv_missing_warned"):
@@ -442,6 +523,25 @@ def index():
         "has_data": placeholder_reason is None,
     }
 
+    debug_requested = (request.args.get("dbg") or "").strip().lower() in {"1", "true", "yes"}
+    show_csv_debug = debug_requested and is_owner_or_admin(get_current_user())
+    if show_csv_debug:
+        csv_debug = {
+            "csv_path": str(csv_path),
+            "mtime_utc": csv_mtime_utc,
+            "rowcount": data_points,
+            "first_ts": temporal_start_iso,
+            "last_ts": temporal_end_iso,
+        }
+        current_app.logger.info(
+            "[HOME] CSV debug path=%s mtime=%s rows=%s first_ts=%s last_ts=%s",
+            csv_debug["csv_path"],
+            csv_debug["mtime_utc"],
+            csv_debug["rowcount"],
+            csv_debug["first_ts"],
+            csv_debug["last_ts"],
+        )
+
     return render_template(
         "index.html",
         labels=timestamps,
@@ -458,7 +558,9 @@ def index():
         data_points_count=data_points,
         temporal_coverage=temporal_coverage,
         csv_snapshot=csv_snapshot,
-        preview_rows=preview_rows,
+        show_csv_debug=show_csv_debug,
+        csv_debug=csv_debug,
+        plot_html=plot_html,
     )
 
 
