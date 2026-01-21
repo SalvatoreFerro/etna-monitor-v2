@@ -1,6 +1,7 @@
 from flask import Blueprint, render_template, request, redirect, url_for, flash, jsonify, current_app
 from ..utils.auth import login_required, get_current_user
 from ..utils.logger import get_logger
+from ..utils.config import get_curva_csv_path
 from ..utils.csrf import validate_csrf_token
 from ..models import db, TelegramLinkToken
 from ..models.event import Event
@@ -25,12 +26,10 @@ def dashboard_home():
 
     user = get_current_user()
     
-    DATA_DIR = os.getenv("DATA_DIR", "data")
-    
     try:
-        curva_file = os.path.join(DATA_DIR, "curva.csv")
-        if os.path.exists(curva_file):
-            df = pd.read_csv(curva_file)
+        curva_path = get_curva_csv_path()
+        if curva_path.exists():
+            df = pd.read_csv(curva_path)
             if 'timestamp' in df.columns:
                 df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
                 df = df.dropna(subset=['timestamp'])
@@ -42,9 +41,9 @@ def dashboard_home():
             last_ts = df['timestamp'].iloc[-1].to_pydatetime() if not df.empty else None
             record_csv_read(len(df), last_ts)
         else:
-            Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
+            curva_path.parent.mkdir(parents=True, exist_ok=True)
             empty_df = pd.DataFrame(columns=['timestamp', 'value'])
-            empty_df.to_csv(curva_file, index=False)
+            empty_df.to_csv(curva_path, index=False)
             df = empty_df
         
         debug_alerts_enabled = os.getenv("ETNAMONITOR_DEBUG_ALERTS") == "1"

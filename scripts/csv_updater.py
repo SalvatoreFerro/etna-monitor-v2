@@ -20,12 +20,14 @@ from backend.utils.extract_colored import extract_series_from_colored
 from backend.utils.extract_png import download_png as download_white_png
 from backend.utils.extract_png import clean_and_save_data, process_png_bytes_to_csv
 from app.services.runlog_service import log_cron_run_external
+from app.utils.config import get_curva_csv_path
 
 
 DEFAULT_INTERVAL_SECONDS = 3600
 MAX_RETRIES = 3
 RETRY_BACKOFF_SECONDS = 30
 DEFAULT_STALE_THRESHOLD = 8
+DEFAULT_PIPELINE_MODE = "colored"
 
 log = logging.getLogger("csv_updater")
 
@@ -165,6 +167,11 @@ def _process_colored_png(path_png: Path, csv_path: Path) -> dict:
     return result
 
 
+def _resolve_pipeline_mode() -> str:
+    mode = (os.getenv("CURVA_PIPELINE_MODE") or DEFAULT_PIPELINE_MODE).strip().lower()
+    return mode if mode in {"colored", "white"} else DEFAULT_PIPELINE_MODE
+
+
 def update_with_retries(ingv_url: str, colored_url: str | None, csv_path: Path) -> dict:
     last_error = None
     last_exception = None
@@ -173,32 +180,46 @@ def update_with_retries(ingv_url: str, colored_url: str | None, csv_path: Path) 
     pipeline_id = (os.getenv("CRON_PIPELINE_ID") or "").strip() or None
     previous_last_ts = _read_csv_last_timestamp(csv_path)
     stale_threshold = int(os.getenv("INGV_WHITE_STALE_THRESHOLD", str(DEFAULT_STALE_THRESHOLD)))
+    pipeline_mode = _resolve_pipeline_mode()
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            png_bytes, reference_time = download_white_png(ingv_url)
-            png_hash = hashlib.sha256(png_bytes).hexdigest()
-            stale_count, is_stale = _update_hash_state(png_hash, stale_threshold)
+            if pipeline_mode == "white":
+                png_bytes, reference_time = download_white_png(ingv_url)
+                png_hash = hashlib.sha256(png_bytes).hexdigest()
+                stale_count, is_stale = _update_hash_state(png_hash, stale_threshold)
 
-            if is_stale:
+                if is_stale:
+                    if not colored_url:
+                        raise ValueError("Sorgente bianca stale e INGV_COLORED_URL non configurato.")
+                    colored_path = download_colored_png(colored_url)
+                    result = _process_colored_png(colored_path, csv_path)
+                    result["source"] = "colored"
+                    result["stale_count"] = stale_count
+                    log.info(
+                        "[CSV] fallback colored source=colored stale_count=%s output=%s",
+                        stale_count,
+                        result.get("output_path"),
+                    )
+                else:
+                    result = _process_white_png(png_bytes, reference_time, csv_path)
+                    result["source"] = "white"
+                    result["stale_count"] = stale_count
+                    log.info(
+                        "[CSV] update source=white stale_count=%s rows=%s output=%s",
+                        stale_count,
+                        result.get("rows"),
+                        result.get("output_path"),
+                    )
+            else:
                 if not colored_url:
-                    raise ValueError("Sorgente bianca stale e INGV_COLORED_URL non configurato.")
+                    raise ValueError("INGV_COLORED_URL non configurato.")
                 colored_path = download_colored_png(colored_url)
                 result = _process_colored_png(colored_path, csv_path)
                 result["source"] = "colored"
-                result["stale_count"] = stale_count
+                result["stale_count"] = None
                 log.info(
-                    "[CSV] fallback colored source=colored stale_count=%s output=%s",
-                    stale_count,
-                    result.get("output_path"),
-                )
-            else:
-                result = _process_white_png(png_bytes, reference_time, csv_path)
-                result["source"] = "white"
-                result["stale_count"] = stale_count
-                log.info(
-                    "[CSV] update source=white stale_count=%s rows=%s output=%s",
-                    stale_count,
+                    "[CSV] update source=colored rows=%s output=%s",
                     result.get("rows"),
                     result.get("output_path"),
                 )
@@ -329,7 +350,7 @@ def main() -> None:
 
     ingv_url = os.getenv("INGV_URL", "https://www.ct.ingv.it/RMS_Etna/2.png")
     colored_url = (os.getenv("INGV_COLORED_URL") or "").strip() or None
-    csv_path = Path(os.getenv("CSV_PATH", "/data/curva.csv"))
+    csv_path = get_curva_csv_path()
     interval_seconds = int(os.getenv("CSV_UPDATE_INTERVAL", str(DEFAULT_INTERVAL_SECONDS)))
     run_once = os.getenv("RUN_ONCE", "").lower() in {"1", "true", "yes"}
 

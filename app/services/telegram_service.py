@@ -651,7 +651,7 @@ class TelegramService:
                 user.id,
                 user.email,
             )
-            return float(Config.ALERT_THRESHOLD_DEFAULT), True
+            return float(Config.PREMIUM_DEFAULT_THRESHOLD), True
         return float(Config.ALERT_THRESHOLD_DEFAULT), False
 
     @staticmethod

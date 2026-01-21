@@ -1,5 +1,4 @@
 import builtins
-import csv
 import importlib
 import importlib.util
 import sys
@@ -30,21 +29,25 @@ def test_csv_updater_runs_without_pandas(monkeypatch, tmp_path):
 
     csv_updater = importlib.import_module("scripts.csv_updater")
 
-    def fake_process_png_to_csv(_url, output_path):
-        with open(output_path, "w", encoding="utf-8", newline="") as handle:
-            writer = csv.writer(handle)
-            writer.writerow(["timestamp", "value"])
-            writer.writerow(["2025-01-01T00:00:00Z", "1.5"])
-        return {
-            "rows": 1,
-            "last_ts": "2025-01-01T00:00:00Z",
-            "output_path": output_path,
-        }
+    def fake_download_colored_png(_url):
+        return tmp_path / "fake.png"
 
-    monkeypatch.setattr(csv_updater, "process_png_to_csv", fake_process_png_to_csv)
+    def fake_extract_series_from_colored(_path):
+        return (
+            [datetime(2025, 1, 1, tzinfo=timezone.utc)],
+            [1.5],
+            {},
+        )
+
+    monkeypatch.setattr(csv_updater, "download_colored_png", fake_download_colored_png)
+    monkeypatch.setattr(csv_updater, "extract_series_from_colored", fake_extract_series_from_colored)
 
     csv_path = tmp_path / "curva.csv"
-    result = csv_updater.update_with_retries("http://example.com", csv_path)
+    result = csv_updater.update_with_retries(
+        "http://example.com",
+        "http://example.com/colored.png",
+        csv_path,
+    )
     assert result["ok"] is True
 
     assert csv_path.exists()
