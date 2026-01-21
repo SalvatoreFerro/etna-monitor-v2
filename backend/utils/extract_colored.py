@@ -26,6 +26,10 @@ PLOT_ROI_BOTTOM_PCT = 0.1
 
 MAX_DELTA_Y = 18
 VERTICAL_GRADIENT_MIN = 10
+DARK_INTENSITY_THRESHOLD = 55
+LOCAL_WINDOW_PX = 12
+SPIKE_DELTA = 22
+SPIKE_MEDIAN_WINDOW = 7
 
 MAX_GAP_COLUMNS = 14
 SMOOTHING_WINDOW = 5
@@ -60,14 +64,16 @@ def extract_series_from_colored(path_png: str | Path):
         raise ValueError(f"Impossibile leggere PNG colorato: {image_path}")
 
     cropped, offsets = _crop_plot_area(image)
-    ys_px, discarded_points, mask = _extract_curve_points(cropped)
+    ys_px, intensities, discarded_points, mask = _extract_curve_points(cropped)
 
     xs_px = list(range(mask.shape[1]))
     valid_columns = sum(1 for y in ys_px if y is not None)
     valid_ratio = (valid_columns / len(ys_px) * 100) if ys_px else 0.0
 
+    spike_mask, spike_points, max_jump_px = _detect_spikes(ys_px, intensities)
+
     ys_px = _interpolate_gaps(ys_px, max_gap=MAX_GAP_COLUMNS)
-    ys_px = _smooth_series(ys_px, window=SMOOTHING_WINDOW)
+    ys_px = _smooth_series(ys_px, window=SMOOTHING_WINDOW, spike_mask=spike_mask)
 
     end_time = datetime.now(timezone.utc)
     start_time = end_time - EXTRACTION_DURATION
@@ -91,13 +97,16 @@ def extract_series_from_colored(path_png: str | Path):
         ys_px,
         image_path,
         discarded_points,
+        spike_points,
     )
     logger.info(
-        "[INGV COLORED] valid_columns=%.1f%% (%s/%s) series_len=%s start_ref=%s end_ref=%s crop=%s",
+        "[INGV COLORED] valid_columns=%.1f%% (%s/%s) series_len=%s num_spikes=%s max_jump_px=%s start_ref=%s end_ref=%s crop=%s",
         valid_ratio,
         valid_columns,
         len(ys_px),
         len(values),
+        len(spike_points),
+        max_jump_px,
         start_time.isoformat(),
         end_time.isoformat(),
         offsets,
@@ -125,7 +134,7 @@ def _crop_plot_area(image: np.ndarray):
 
 def _extract_curve_points(
     cropped: np.ndarray,
-) -> tuple[list[int | None], list[tuple[int, int]], np.ndarray]:
+) -> tuple[list[int | None], list[int | None], list[tuple[int, int]], np.ndarray]:
     gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
     height, width = gray.shape
 
@@ -135,6 +144,7 @@ def _extract_curve_points(
 
     mask = np.zeros((height, width), dtype=np.uint8)
     points: list[int | None] = []
+    intensities: list[int | None] = []
     discarded: list[tuple[int, int]] = []
     previous_y = None
 
@@ -142,27 +152,50 @@ def _extract_curve_points(
         column = gray[roi_top:roi_bottom, x]
         if column.size == 0:
             points.append(None)
+            intensities.append(None)
             continue
 
         rel_y = int(np.argmin(column))
         candidate_y = roi_top + rel_y
+        candidate_intensity = int(column[rel_y])
 
         if not _has_vertical_contrast(column, rel_y):
             discarded.append((x, candidate_y))
             points.append(None)
+            intensities.append(None)
             continue
 
-        if previous_y is not None and abs(candidate_y - previous_y) > MAX_DELTA_Y:
-            discarded.append((x, candidate_y))
-            points.append(None)
-            continue
+        if previous_y is not None:
+            delta = abs(candidate_y - previous_y)
+            if delta > MAX_DELTA_Y:
+                if candidate_intensity < DARK_INTENSITY_THRESHOLD:
+                    points.append(candidate_y)
+                    intensities.append(candidate_intensity)
+                    mask[candidate_y, x] = 255
+                    previous_y = candidate_y
+                    continue
+
+                local_y = _local_min_nearby(column, previous_y, roi_top)
+                if local_y is not None:
+                    local_intensity = int(column[local_y - roi_top])
+                    if local_intensity < candidate_intensity:
+                        candidate_y = local_y
+                        candidate_intensity = local_intensity
+                    delta = abs(candidate_y - previous_y)
+
+                if delta > MAX_DELTA_Y and candidate_intensity >= DARK_INTENSITY_THRESHOLD:
+                    discarded.append((x, candidate_y))
+                    points.append(None)
+                    intensities.append(None)
+                    continue
 
         points.append(candidate_y)
+        intensities.append(candidate_intensity)
         mask[candidate_y, x] = 255
         previous_y = candidate_y
 
     _apply_edge_margin(mask)
-    return points, discarded, mask
+    return points, intensities, discarded, mask
 
 
 def _has_vertical_contrast(column: np.ndarray, rel_y: int) -> bool:
@@ -174,6 +207,23 @@ def _has_vertical_contrast(column: np.ndarray, rel_y: int) -> bool:
     if rel_y > 0:
         local = max(local, diffs[rel_y - 1])
     return local >= VERTICAL_GRADIENT_MIN
+
+
+def _local_min_nearby(
+    column: np.ndarray,
+    previous_y: int,
+    roi_top: int,
+) -> int | None:
+    target_rel = previous_y - roi_top
+    if target_rel < 0 or target_rel >= column.size:
+        return None
+    start = max(0, target_rel - LOCAL_WINDOW_PX)
+    end = min(column.size, target_rel + LOCAL_WINDOW_PX + 1)
+    window = column[start:end]
+    if window.size == 0:
+        return None
+    window_rel = int(np.argmin(window)) + start
+    return roi_top + window_rel
 
 
 def _apply_edge_margin(mask: np.ndarray) -> None:
@@ -204,18 +254,65 @@ def _interpolate_gaps(values: list[int | None], max_gap: int) -> list[int | None
     return filled
 
 
-def _smooth_series(values: list[int | None], window: int) -> list[int | None]:
+def _detect_spikes(
+    values: list[int | None],
+    intensities: list[int | None],
+) -> tuple[list[bool], list[tuple[int, int]], int]:
+    median = _median_filter(values, window=SPIKE_MEDIAN_WINDOW)
+    spike_mask: list[bool] = []
+    spike_points: list[tuple[int, int]] = []
+    max_jump_px = 0
+    prev_val = None
+    for idx, (value, med, intensity) in enumerate(zip(values, median, intensities)):
+        is_spike = False
+        if value is not None and med is not None and intensity is not None:
+            if abs(value - med) > SPIKE_DELTA and intensity < DARK_INTENSITY_THRESHOLD:
+                is_spike = True
+                spike_points.append((idx, value))
+        spike_mask.append(is_spike)
+        if value is not None and prev_val is not None:
+            max_jump_px = max(max_jump_px, abs(value - prev_val))
+        if value is not None:
+            prev_val = value
+    return spike_mask, spike_points, max_jump_px
+
+
+def _median_filter(values: list[int | None], window: int) -> list[int | None]:
+    if window <= 1:
+        return values[:]
+    half = window // 2
+    filtered: list[int | None] = []
+    for idx in range(len(values)):
+        start = max(0, idx - half)
+        end = min(len(values), idx + half + 1)
+        window_vals = [v for v in values[start:end] if v is not None]
+        filtered.append(int(np.median(window_vals)) if window_vals else None)
+    return filtered
+
+
+def _smooth_series(
+    values: list[int | None],
+    window: int,
+    spike_mask: list[bool] | None = None,
+) -> list[int | None]:
     if window <= 1:
         return values
     smoothed: list[int | None] = []
     half = window // 2
     for idx, value in enumerate(values):
+        if spike_mask and idx < len(spike_mask) and spike_mask[idx] and value is not None:
+            smoothed.append(value)
+            continue
         if value is None:
             smoothed.append(None)
             continue
         start = max(0, idx - half)
         end = min(len(values), idx + half + 1)
-        window_vals = [v for v in values[start:end] if v is not None]
+        window_vals = [
+            v
+            for j, v in enumerate(values[start:end], start=start)
+            if v is not None and not (spike_mask and j < len(spike_mask) and spike_mask[j])
+        ]
         if not window_vals:
             smoothed.append(value)
         else:
@@ -236,6 +333,7 @@ def _write_debug_artifacts(
     ys: list[int | None],
     source_path: Path,
     discarded: list[tuple[int, int]] | None = None,
+    spikes: list[tuple[int, int]] | None = None,
 ) -> dict:
     debug_dir = Path(os.getenv("INGV_COLORED_DEBUG_DIR", source_path.parent / "debug"))
     debug_dir.mkdir(parents=True, exist_ok=True)
@@ -258,6 +356,10 @@ def _write_debug_artifacts(
     if discarded:
         for x, y in discarded:
             cv2.circle(overlay, (x, y), 1, (0, 165, 255), -1)
+
+    if spikes:
+        for x, y in spikes:
+            cv2.circle(overlay, (x, y), 2, (255, 0, 0), -1)
 
     mask_path = debug_dir / f"mask_{source_path.stem}.png"
     overlay_path = debug_dir / f"overlay_{source_path.stem}.png"
