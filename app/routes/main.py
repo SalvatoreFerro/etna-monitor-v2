@@ -3,11 +3,10 @@ import copy
 import json
 import os
 from pathlib import Path
+from math import isfinite
 
 import pandas as pd
 import requests
-import plotly.graph_objects as go
-from plotly import offline as plotly_offline
 from flask import (
     Blueprint,
     current_app,
@@ -34,6 +33,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from ..extensions import cache
 from ..utils.metrics import get_csv_metrics, record_csv_error, record_csv_read
+from ..utils.plotly_helpers import build_plotly_html_from_pairs
 from app.security import BASE_CSP, apply_csp_headers, serialize_csp, talisman
 from backend.utils.time import to_iso_utc
 from backend.services.hotspots.config import HotspotsConfig
@@ -299,41 +299,27 @@ def index():
             latest_timestamp_display = temporal_end_display.strftime("%d/%m/%Y %H:%M")
             record_csv_read(len(df), temporal_end.to_pydatetime())
 
-            plot_df = df[df["value"].notna() & (df["value"] > 0)].copy()
+            plot_df = df[df["value"].notna()].copy()
+            clean_pairs = []
             if not plot_df.empty:
-                plot_df["value"] = plot_df["value"].apply(lambda v: max(float(v), 0.1))
-            plot_pairs = []
-            if not plot_df.empty:
-                plot_pairs = [
-                    (to_iso_utc(ts), value)
-                    for ts, value in zip(
-                        plot_df["timestamp"].tolist(),
-                        plot_df["value"].tolist(),
-                    )
-                    if to_iso_utc(ts) is not None
-                ]
-            plot_timestamps = [pair[0] for pair in plot_pairs]
-            plot_values = [pair[1] for pair in plot_pairs]
-            if plot_values:
+                for ts, value in zip(
+                    plot_df["timestamp"].tolist(), plot_df["value"].tolist()
+                ):
+                    if value is None or not isfinite(value) or value <= 0:
+                        continue
+                    ts_iso = to_iso_utc(ts)
+                    if ts_iso is None:
+                        continue
+                    clean_pairs.append((ts_iso, float(value)))
+            if clean_pairs:
                 threshold_level = 4
-                trace = go.Scatter(
-                    x=plot_timestamps,
-                    y=plot_values,
-                    mode="lines",
-                    name="Tremore",
-                    line={"color": "#4ade80", "width": 2.4, "shape": "spline", "smoothing": 1.15},
-                    fill="tozeroy",
-                    fillcolor="rgba(74, 222, 128, 0.08)",
-                    hovertemplate="<b>%{y:.2f} mV</b><br>%{x|%d/%m %H:%M}<extra></extra>",
-                    showlegend=False,
-                )
                 shapes = []
                 if threshold_level:
                     shapes.append(
                         {
                             "type": "line",
-                            "x0": plot_timestamps[0],
-                            "x1": plot_timestamps[-1],
+                            "x0": clean_pairs[0][0],
+                            "x1": clean_pairs[-1][0],
                             "y0": threshold_level,
                             "y1": threshold_level,
                             "line": {"color": "#ef4444", "width": 2, "dash": "dash"},
@@ -379,9 +365,25 @@ def index():
                         "font": {"color": "#f8fafc"},
                     },
                 }
-                fig = go.Figure(data=[trace], layout=layout)
-                plot_html = plotly_offline.plot(
-                    fig, include_plotlyjs=False, output_type="div"
+                plot_html = build_plotly_html_from_pairs(
+                    clean_pairs,
+                    include_plotlyjs=False,
+                    line={
+                        "color": "#4ade80",
+                        "width": 2.4,
+                        "shape": "spline",
+                        "smoothing": 1.15,
+                    },
+                    layout=layout,
+                    name="Tremore",
+                    min_points=1,
+                    eps=0.1,
+                    trace_kwargs={
+                        "fill": "tozeroy",
+                        "fillcolor": "rgba(74, 222, 128, 0.08)",
+                        "hovertemplate": "<b>%{y:.2f} mV</b><br>%{x|%d/%m %H:%M}<extra></extra>",
+                        "showlegend": False,
+                    },
                 )
     else:
         placeholder_reason = "missing"

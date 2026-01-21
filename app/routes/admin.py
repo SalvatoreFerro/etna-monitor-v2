@@ -8,9 +8,6 @@ from decimal import Decimal
 from math import isfinite
 from pathlib import Path
 from uuid import uuid4
-
-import plotly.graph_objects as go
-from plotly import offline as plotly_offline
 from flask import (
     Blueprint,
     render_template,
@@ -34,6 +31,7 @@ from ..utils.config import get_curva_csv_path, get_curva_csv_status
 from backend.utils.extract_colored import download_png as download_colored_png
 from backend.utils.extract_colored import extract_series_from_colored
 from ..utils.metrics import get_csv_metrics
+from ..utils.plotly_helpers import build_plotly_html_from_pairs
 from ..models import (
     db,
     BlogPost,
@@ -2947,35 +2945,24 @@ def test_colored_extraction():
             removed_pairs,
             clean_pairs[:3],
         )
-        plot_html = None
         plot_error_message = None
-        if num_valid_pairs >= 10:
-            plot_timestamps = [pair[0] for pair in clean_pairs]
-            plot_values = [pair[1] for pair in clean_pairs]
-            app.logger.info(
-                f"Plotly log clamp: {clamped_count}/{len(plot_values)} values < {eps}"
-            )
-            plot_values = [max(value, eps) for value in plot_values]
-            fig = go.Figure(
-                data=[
-                    go.Scatter(
-                        x=plot_timestamps,
-                        y=plot_values,
-                        mode="lines",
-                        line={"color": "#111", "width": 2},
-                        name="RMS",
-                    )
-                ],
-                layout={
-                    "margin": {"t": 20, "r": 20, "b": 40, "l": 60},
-                    "yaxis": {"type": "log", "title": "mV"},
-                    "xaxis": {"title": "Timestamp", "type": "date"},
-                },
-            )
-            plot_html = plotly_offline.plot(
-                fig, include_plotlyjs="inline", output_type="div"
-            )
-        else:
+        app.logger.info(
+            f"Plotly log clamp: {clamped_count}/{len(clean_pairs)} values < {eps}"
+        )
+        plot_html = build_plotly_html_from_pairs(
+            clean_pairs,
+            include_plotlyjs="inline",
+            line={"color": "#111", "width": 2},
+            layout={
+                "margin": {"t": 20, "r": 20, "b": 40, "l": 60},
+                "yaxis": {"type": "log", "title": "mV"},
+                "xaxis": {"title": "Timestamp", "type": "date"},
+            },
+            name="RMS",
+            min_points=10,
+            eps=eps,
+        )
+        if plot_html is None:
             plot_error_message = (
                 "Dati insufficienti per generare il grafico (meno di 10 punti validi)."
             )
