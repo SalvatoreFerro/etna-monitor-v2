@@ -2834,8 +2834,11 @@ def test_colored_extraction():
         flash("Accesso riservato al proprietario.", "error")
         return redirect(url_for("admin.admin_home"))
 
+    app = current_app
     colored_url = (os.getenv("INGV_COLORED_URL") or "").strip()
     if not colored_url:
+        plot_html = None
+        app.logger.info(f"plot_html length: {len(plot_html) if plot_html else 'None'}")
         return render_template(
             "admin/test_colored.html",
             error_message="INGV_COLORED_URL non configurato.",
@@ -2903,6 +2906,7 @@ def test_colored_extraction():
         raw_image = _encode_image_base64(png_path)
         overlay_image = _encode_image_base64(debug_paths.get("overlay"))
         mask_image = _encode_image_base64(debug_paths.get("mask"))
+        app.logger.info(f"plot_html length: {len(plot_html) if plot_html else 'None'}")
         return render_template(
             "admin/test_colored.html",
             plot_payload=None,
@@ -2915,6 +2919,8 @@ def test_colored_extraction():
         )
     except Exception as exc:  # pragma: no cover - debug view safety net
         current_app.logger.exception("[ADMIN] Colored extraction failed")
+        plot_html = None
+        app.logger.info(f"plot_html length: {len(plot_html) if plot_html else 'None'}")
         return render_template(
             "admin/test_colored.html",
             error_message=str(exc),
