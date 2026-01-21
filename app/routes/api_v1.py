@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from pathlib import Path
-
 import pandas as pd
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint, jsonify
 
 from ..utils.api_keys import require_api_key
 from ..utils.attribution import attribution_snippet, powered_by_payload
+from ..utils.config import get_curva_csv_path
 from backend.utils.time import to_iso_utc
 
 api_v1_bp = Blueprint("api_v1", __name__)
@@ -26,12 +25,7 @@ def _error_response(code: str, message: str, status_code: int):
 
 
 def _load_tremor_dataframe() -> tuple[pd.DataFrame | None, str | None]:
-    csv_path_setting = (
-        current_app.config.get("CURVA_CSV_PATH")
-        or current_app.config.get("CSV_PATH")
-        or "/var/tmp/curva.csv"
-    )
-    csv_path = Path(csv_path_setting)
+    csv_path = get_curva_csv_path()
 
     if not csv_path.exists() or csv_path.stat().st_size <= 20:
         return None, "missing_data"
