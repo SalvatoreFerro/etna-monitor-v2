@@ -207,20 +207,13 @@ def clean_and_save_data(data, output_path=None):
 
     return output_path, cleaned_rows
 
-def process_png_to_csv(url="https://www.ct.ingv.it/RMS_Etna/2.png", output_path=None):
-    """Complete pipeline: download PNG, extract curve, save CSV"""
-    DATA_DIR = os.getenv('DATA_DIR', 'data')
-    Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
-
-    png_bytes, reference_time = download_png(url)
+def process_png_bytes_to_csv(png_bytes, reference_time, output_path=None):
+    """Process downloaded PNG bytes, extract curve, and save CSV."""
     data, metadata = extract_green_curve_from_png(
         png_bytes,
         end_time=reference_time,
         duration=EXTRACTION_DURATION,
     )
-
-    if output_path is None:
-        output_path = os.path.join(DATA_DIR, 'curva.csv')
 
     final_path, cleaned_rows = clean_and_save_data(data, output_path)
 
@@ -278,3 +271,16 @@ def process_png_to_csv(url="https://www.ct.ingv.it/RMS_Etna/2.png", output_path=
         "interval_minutes": interval_minutes,
         "pixel_columns": metadata.get("pixel_columns"),
     }
+
+
+def process_png_to_csv(url="https://www.ct.ingv.it/RMS_Etna/2.png", output_path=None):
+    """Complete pipeline: download PNG, extract curve, save CSV."""
+    DATA_DIR = os.getenv('DATA_DIR', 'data')
+    Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
+
+    png_bytes, reference_time = download_png(url)
+
+    if output_path is None:
+        output_path = os.path.join(DATA_DIR, 'curva.csv')
+
+    return process_png_bytes_to_csv(png_bytes, reference_time, output_path)

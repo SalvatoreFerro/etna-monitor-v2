@@ -1,0 +1,76 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Test estrazione PNG colorato{% endblock %}
+
+{% block head_extra %}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}?v={{ STATIC_ASSET_VERSION }}">
+{% endblock %}
+
+{% block admin_content %}
+<section class="admin-page admin-container">
+  <header class="admin-header">
+    <h1>Test estrazione curva PNG colorato</h1>
+    <p>Debug per la pipeline di estrazione curva nera su sfondo colorato.</p>
+  </header>
+
+  {% if error_message %}
+    <div class="admin-card admin-flash admin-flash--error">
+      <strong>Errore:</strong> {{ error_message }}
+    </div>
+  {% endif %}
+
+  <section class="admin-card">
+    <h2>PNG colorato (ultimo download)</h2>
+    {% if raw_image %}
+      <img src="{{ raw_image }}" alt="PNG colorato INGV" style="max-width: 100%; height: auto;" />
+    {% else %}
+      <p class="muted">Nessuna immagine disponibile.</p>
+    {% endif %}
+  </section>
+
+  <section class="admin-card">
+    <h2>Overlay curva estratta</h2>
+    {% if overlay_image %}
+      <img src="{{ overlay_image }}" alt="Overlay punti curva" style="max-width: 100%; height: auto;" />
+    {% else %}
+      <p class="muted">Overlay non disponibile.</p>
+    {% endif %}
+  </section>
+
+  <section class="admin-card">
+    <h2>Maschera binaria</h2>
+    {% if mask_image %}
+      <img src="{{ mask_image }}" alt="Maschera binaria curva" style="max-width: 100%; height: auto;" />
+    {% else %}
+      <p class="muted">Maschera non disponibile.</p>
+    {% endif %}
+  </section>
+
+  <section class="admin-card">
+    <h2>Grafico Plotly (asse Y log, mV)</h2>
+    <div id="colored-chart" style="width: 100%; height: 420px;"></div>
+  </section>
+</section>
+{% endblock %}
+
+{% block admin_scripts %}
+  <script src="{{ url_for('static', filename='js/plotly.min.js') }}"></script>
+  <script>
+    const plotPayload = {{ plot_payload | tojson }};
+    if (plotPayload) {
+      const trace = {
+        x: plotPayload.x,
+        y: plotPayload.y,
+        mode: 'lines',
+        line: { color: '#111', width: 2 },
+        name: 'RMS',
+      };
+      const layout = {
+        margin: { t: 20, r: 20, b: 40, l: 60 },
+        yaxis: { type: 'log', title: 'mV' },
+        xaxis: { title: 'Timestamp', type: 'date' },
+      };
+      Plotly.newPlot('colored-chart', [trace], layout, { responsive: true });
+    }
+  </script>
+{% endblock %}
