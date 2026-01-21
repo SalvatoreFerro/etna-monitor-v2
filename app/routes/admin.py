@@ -2944,7 +2944,6 @@ def test_colored_extraction():
                 fig,
                 include_plotlyjs="inline",
                 output_type="div",
-                full_html=False,
             )
         else:
             plot_error_message = (
