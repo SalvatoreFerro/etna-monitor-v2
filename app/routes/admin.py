@@ -5,9 +5,12 @@ import json
 import os
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
+from math import isfinite
 from pathlib import Path
 from uuid import uuid4
 
+import plotly.graph_objects as go
+import plotly.offline as plotly_offline
 from flask import (
     Blueprint,
     render_template,
@@ -2837,6 +2840,8 @@ def test_colored_extraction():
             "admin/test_colored.html",
             error_message="INGV_COLORED_URL non configurato.",
             plot_payload=None,
+            plot_html=None,
+            plot_diagnostics=None,
             raw_image=None,
             overlay_image=None,
             mask_image=None,
@@ -2845,16 +2850,64 @@ def test_colored_extraction():
     try:
         png_path = download_colored_png(colored_url)
         timestamps, values, debug_paths = extract_series_from_colored(png_path)
-        plot_payload = {
-            "x": [ts.isoformat() for ts in timestamps],
-            "y": values,
+        removed_pairs = 0
+        clean_pairs = []
+        for timestamp, value in zip(timestamps, values):
+            if timestamp is None or value is None or not isfinite(value):
+                removed_pairs += 1
+                continue
+            if isinstance(timestamp, datetime):
+                timestamp = timestamp.isoformat()
+            clean_pairs.append((timestamp, value))
+        num_valid_pairs = len(clean_pairs)
+        plot_diagnostics = {
+            "timestamps_len": len(timestamps),
+            "values_len": len(values),
+            "num_valid_pairs": num_valid_pairs,
+            "removed_pairs": removed_pairs,
+            "sample_pairs": clean_pairs[:3],
         }
+        current_app.logger.info(
+            "[ADMIN] Colored plot data: timestamps=%s values=%s valid_pairs=%s removed=%s sample=%s",
+            len(timestamps),
+            len(values),
+            num_valid_pairs,
+            removed_pairs,
+            clean_pairs[:3],
+        )
+        plot_html = None
+        if num_valid_pairs >= 10:
+            plot_timestamps = [pair[0] for pair in clean_pairs]
+            plot_values = [pair[1] for pair in clean_pairs]
+            fig = go.Figure(
+                data=[
+                    go.Scatter(
+                        x=plot_timestamps,
+                        y=plot_values,
+                        mode="lines",
+                        line={"color": "#111", "width": 2},
+                        name="RMS",
+                    )
+                ],
+                layout={
+                    "margin": {"t": 20, "r": 20, "b": 40, "l": 60},
+                    "yaxis": {"type": "log", "title": "mV"},
+                    "xaxis": {"title": "Timestamp", "type": "date"},
+                },
+            )
+            plot_html = plotly_offline.plot(
+                fig,
+                include_plotlyjs="cdn",
+                output_type="div",
+            )
         raw_image = _encode_image_base64(png_path)
         overlay_image = _encode_image_base64(debug_paths.get("overlay"))
         mask_image = _encode_image_base64(debug_paths.get("mask"))
         return render_template(
             "admin/test_colored.html",
-            plot_payload=plot_payload,
+            plot_payload=None,
+            plot_html=plot_html,
+            plot_diagnostics=plot_diagnostics,
             raw_image=raw_image,
             overlay_image=overlay_image,
             mask_image=mask_image,
@@ -2866,6 +2919,8 @@ def test_colored_extraction():
             "admin/test_colored.html",
             error_message=str(exc),
             plot_payload=None,
+            plot_html=None,
+            plot_diagnostics=None,
             raw_image=None,
             overlay_image=None,
             mask_image=None,

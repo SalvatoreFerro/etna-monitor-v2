@@ -48,29 +48,24 @@
 
   <section class="admin-card">
     <h2>Grafico Plotly (asse Y log, mV)</h2>
-    <div id="colored-chart" style="width: 100%; height: 420px;"></div>
+    {% if plot_diagnostics and plot_diagnostics.num_valid_pairs < 10 %}
+      <div class="admin-card admin-flash admin-flash--warning">
+        <strong>Serie insufficiente per Plotly</strong>
+        <p class="muted">Sono necessari almeno 10 punti validi per il rendering.</p>
+        <ul class="muted">
+          <li>Timestamps: {{ plot_diagnostics.timestamps_len }}</li>
+          <li>Valori: {{ plot_diagnostics.values_len }}</li>
+          <li>Validi: {{ plot_diagnostics.num_valid_pairs }}</li>
+          <li>Scartati (NaN/None): {{ plot_diagnostics.removed_pairs }}</li>
+          <li>Campione (primi 3): {{ plot_diagnostics.sample_pairs }}</li>
+        </ul>
+      </div>
+    {% endif %}
+    {% if plot_html %}
+      {{ plot_html | safe }}
+    {% else %}
+      <p class="muted">Grafico Plotly non disponibile.</p>
+    {% endif %}
   </section>
 </section>
-{% endblock %}
-
-{% block admin_scripts %}
-  <script src="{{ url_for('static', filename='js/plotly.min.js') }}"></script>
-  <script>
-    const plotPayload = {{ plot_payload | tojson }};
-    if (plotPayload) {
-      const trace = {
-        x: plotPayload.x,
-        y: plotPayload.y,
-        mode: 'lines',
-        line: { color: '#111', width: 2 },
-        name: 'RMS',
-      };
-      const layout = {
-        margin: { t: 20, r: 20, b: 40, l: 60 },
-        yaxis: { type: 'log', title: 'mV' },
-        xaxis: { title: 'Timestamp', type: 'date' },
-      };
-      Plotly.newPlot('colored-chart', [trace], layout, { responsive: true });
-    }
-  </script>
 {% endblock %}
