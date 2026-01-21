@@ -33,12 +33,12 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from ..extensions import cache
 from ..utils.metrics import get_csv_metrics, record_csv_error, record_csv_read
-from ..utils.plotly_helpers import build_plotly_html_from_pairs
+from ..utils.plotly_helpers import build_plotly_figure_from_pairs
 from app.security import BASE_CSP, apply_csp_headers, serialize_csp, talisman
 from backend.utils.time import to_iso_utc
 from backend.services.hotspots.config import HotspotsConfig
 from backend.services.hotspots.storage import read_cache, unavailable_payload
-from config import DEFAULT_GA_MEASUREMENT_ID
+from config import DEFAULT_GA_MEASUREMENT_ID, Config
 from app.models.hotspots_record import HotspotsRecord
 from app.services.copernicus import (
     get_latest_copernicus_image,
@@ -47,6 +47,7 @@ from app.services.copernicus import (
 )
 from ..services.sentieri_geojson import read_geojson_file, validate_feature_collection
 from ..utils.config import get_curva_csv_path, load_curva_dataframe, warn_if_stale_timestamp
+from plotly import io as plotly_io
 
 bp = Blueprint("main", __name__)
 
@@ -249,7 +250,7 @@ def index():
     csv_mtime_utc: str | None = None
     csv_debug: dict[str, str | int | None] | None = None
     df = None
-    plot_html: str | None = None
+    fig_json: dict | None = None
 
     if csv_path.exists():
         try:
@@ -312,7 +313,13 @@ def index():
                         continue
                     clean_pairs.append((ts_iso, float(value)))
             if clean_pairs:
-                threshold_level = 4
+                threshold_level = Config.ALERT_THRESHOLD_DEFAULT
+                user = get_current_user()
+                if user and getattr(user, "has_premium_access", False):
+                    if getattr(user, "threshold", None):
+                        threshold_level = user.threshold
+                    else:
+                        threshold_level = Config.PREMIUM_DEFAULT_THRESHOLD
                 shapes = []
                 if threshold_level:
                     shapes.append(
@@ -365,9 +372,8 @@ def index():
                         "font": {"color": "#f8fafc"},
                     },
                 }
-                plot_html = build_plotly_html_from_pairs(
+                fig = build_plotly_figure_from_pairs(
                     clean_pairs,
-                    include_plotlyjs=False,
                     line={
                         "color": "#4ade80",
                         "width": 2.4,
@@ -385,6 +391,8 @@ def index():
                         "showlegend": False,
                     },
                 )
+                if fig is not None:
+                    fig_json = json.loads(plotly_io.to_json(fig))
     else:
         placeholder_reason = "missing"
         if not current_app.config.get("_home_csv_missing_warned"):
@@ -393,6 +401,18 @@ def index():
             )
             current_app.config["_home_csv_missing_warned"] = True
         record_csv_error(f"Missing CSV at {csv_path}")
+
+    current_app.logger.info(
+        "[HOME] CSV status path=%s rows=%s min_ts=%s max_ts=%s last_ts=%s fig_json=%s plot_html=%s placeholder=%s",
+        csv_path,
+        data_points,
+        temporal_start_iso,
+        temporal_end_iso,
+        latest_timestamp_iso,
+        fig_json is not None,
+        False,
+        placeholder_reason,
+    )
 
     canonical_home = url_for("main.index", _external=True)
     chart_url = f"{canonical_home}#grafico-etna"
@@ -562,7 +582,7 @@ def index():
         csv_snapshot=csv_snapshot,
         show_csv_debug=show_csv_debug,
         csv_debug=csv_debug,
-        plot_html=plot_html,
+        fig_json=fig_json,
     )
 
 
@@ -624,8 +644,7 @@ def eruzione_oggi():
     """Real-time eruption monitoring page for high-volume search queries."""
     from datetime import datetime
     
-    csv_path_setting = current_app.config.get("CURVA_CSV_PATH") or current_app.config.get("CSV_PATH")
-    csv_path = Path(csv_path_setting or "/var/tmp/curva.csv")
+    csv_path = get_curva_csv_path()
     
     # Reuse data loading logic from index
     preview_rows: list[dict[str, object]] = []
@@ -970,8 +989,7 @@ def hotspots():
 
 @bp.route("/observatory")
 def observatory():
-    csv_path_setting = current_app.config.get("CURVA_CSV_PATH") or current_app.config.get("CSV_PATH")
-    csv_path = Path(csv_path_setting or "/var/tmp/curva.csv")
+    csv_path = get_curva_csv_path()
     preview_rows: list[dict[str, object]] = []
     latest_timestamp_display: str | None = None
     data_points = 0

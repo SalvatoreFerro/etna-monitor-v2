@@ -3,7 +3,6 @@ from __future__ import annotations
 import csv
 from datetime import date, datetime, timedelta, timezone
 import html
-from pathlib import Path
 from typing import Tuple
 
 from flask import Blueprint, Response, current_app, request, url_for
@@ -13,6 +12,7 @@ from sqlalchemy.orm import joinedload
 from app.models.blog import BlogPost
 from app.models.forum import ForumThread
 from app.models.partner import Partner, PartnerCategory, PartnerSubscription
+from app.utils.config import get_curva_csv_path
 
 
 bp = Blueprint("seo", __name__)
@@ -124,12 +124,7 @@ def _parse_timestamp(value: str) -> datetime | None:
 
 
 def _homepage_lastmod() -> str:
-    csv_path_setting = (
-        current_app.config.get("CURVA_CSV_PATH")
-        or current_app.config.get("CSV_PATH")
-        or "/var/tmp/curva.csv"
-    )
-    csv_path = Path(csv_path_setting)
+    csv_path = get_curva_csv_path()
     latest_timestamp: datetime | None = None
 
     try:

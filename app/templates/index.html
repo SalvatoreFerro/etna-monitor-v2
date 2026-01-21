@@ -1,5 +1,11 @@
 {% extends "layout.html" %}
 
+{% block head %}
+  {{ super() }}
+  <script defer src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  <script defer src="{{ url_for('static', filename='js/tremor_plot.js') }}?v={{ STATIC_ASSET_VERSION }}"></script>
+{% endblock %}
+
 {% block content %}
 {% set share_url = request.url_root %}
 {% set share_text = "Monitora il tremore vulcanico dell'Etna in tempo reale su EtnaMonitor" %}
@@ -117,19 +123,28 @@
         </div>
         {% if csv_snapshot.rows > 0 %}
           <div id="home-preview-plot" class="chart-plot">
-            {% if plot_html %}
-              {{ plot_html | safe }}
-            {% else %}
-              <p class="muted">Grafico non disponibile al momento, riprova più tardi.</p>
-            {% endif %}
+            <div
+              id="tremorPlot"
+              class="chart-plot__canvas"
+              data-fig='{{ fig_json | tojson }}'
+              aria-label="Grafico tremore Etna"
+            ></div>
+            <p class="muted chart-plot__fallback" id="tremorPlotFallback" hidden>
+              Grafico non disponibile al momento, riprova più tardi.
+            </p>
           </div>
         {% else %}
           <div class="chart-loading" aria-live="polite">
-            <p><strong>Dati in preparazione</strong></p>
+            <p><strong>Dataset temporaneamente vuoto / aggiornamento in corso</strong></p>
             <p>
-              Il file <code>{{ csv_snapshot.path }}</code> risulta temporaneamente vuoto (motivo: {{ csv_snapshot.placeholder_reason }}).
               Riprova più tardi: il grafico si popolerà automaticamente.
+              {% if csv_snapshot.placeholder_reason %}
+                Motivo: {{ csv_snapshot.placeholder_reason }}.
+              {% endif %}
             </p>
+            <button class="btn btn-primary" type="button" data-scroll-target="#btn-aggiorna-dati-live">
+              Aggiorna dati live
+            </button>
           </div>
         {% endif %}
       </div>
@@ -160,7 +175,15 @@
             </div>
             <div class="metric">
               <dt>Attività</dt>
-              <dd><span id="live-activity-badge" class="activity-badge">In caricamento…</span></dd>
+              <dd>
+                <span id="live-activity-badge" class="activity-badge">
+                  {% if data_points_count %}
+                    Dati disponibili
+                  {% else %}
+                    Dataset non disponibile
+                  {% endif %}
+                </span>
+              </dd>
             </div>
           </dl>
         </div>
