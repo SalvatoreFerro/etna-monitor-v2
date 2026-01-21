@@ -45,6 +45,7 @@ from app.services.copernicus import (
     resolve_copernicus_bbox,
     resolve_copernicus_image_url,
 )
+from app.services.tremor_summary import build_tremor_summary
 from ..services.sentieri_geojson import read_geojson_file, validate_feature_collection
 from ..utils.config import get_curva_csv_path, load_curva_dataframe, warn_if_stale_timestamp
 from plotly import io as plotly_io
@@ -545,6 +546,8 @@ def index():
         "has_data": placeholder_reason is None,
     }
 
+    tremor_summary = build_tremor_summary()
+
     debug_requested = (request.args.get("dbg") or "").strip().lower() in {"1", "true", "yes"}
     show_csv_debug = debug_requested and is_owner_or_admin(get_current_user())
     if show_csv_debug:
@@ -580,6 +583,7 @@ def index():
         data_points_count=data_points,
         temporal_coverage=temporal_coverage,
         csv_snapshot=csv_snapshot,
+        tremor_summary=tremor_summary,
         show_csv_debug=show_csv_debug,
         csv_debug=csv_debug,
         fig_json=fig_json,
