@@ -128,7 +128,10 @@
 
     {% block head %}{% endblock %}
   </head>
-  <body class="site-body">
+  <body
+    class="site-body"
+    data-owner="{% if current_user and current_user.is_authenticated and current_user.is_owner %}1{% else %}0{% endif %}"
+  >
     <a href="#main-content" class="skip-link">Salta al contenuto</a>
 
     {% include 'partials/navbar.html' %}

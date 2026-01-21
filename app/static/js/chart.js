@@ -1,7 +1,7 @@
 /* global window, document, fetch */
 (function () {
   const CURVA_ENDPOINT = '/api/curva';
-  const STATUS_ENDPOINT = '/api/status';
+  const STATUS_LIMIT = 1;
   const FORCE_UPDATE_ENDPOINT = '/api/force_update';
   const DEFAULT_LIMIT = 2016;
   const LIMIT_BOUNDS = { min: 1, max: 4032 };
@@ -47,6 +47,9 @@
   const activityBadge = document.getElementById('live-activity-badge');
   const statusIndicator = document.getElementById('live-status-indicator');
   const statusText = document.getElementById('live-status-text');
+  const bodyDataset = document.body ? document.body.dataset : null;
+  const debugParam = new URLSearchParams(window.location.search).get('debug');
+  const shouldDebug = debugParam === '1' || (bodyDataset && bodyDataset.owner === '1');
   const defaultLoadingMarkup = loadingElement ? loadingElement.innerHTML : '';
   const bootstrapScript = document.getElementById('home-bootstrap-data');
   let bootstrapRows = [];
@@ -84,6 +87,7 @@
   let currentLimit = DEFAULT_LIMIT;
   let autoRefreshTimer = null;
   let analyzeModeEnabled = false;
+  let dataVerifiedOnline = false;
   const ANALYZE_HINT_KEY = 'chartAnalyzeHintSeen';
 
   if (rangeButtons.length) {
@@ -272,8 +276,40 @@
     if (statusState === 'fallback') {
       statusText.textContent = 'Dati backup';
     } else {
-      statusText.textContent = statusState === 'online' ? 'Dati online' : 'Connessione assente';
+      statusText.textContent = statusState === 'online' ? 'Online' : 'Offline';
     }
+  }
+
+  function parseCount(value) {
+    if (!value) return null;
+    const digits = String(value).replace(/[^\d]/g, '');
+    if (!digits) return null;
+    const parsed = Number(digits);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  function hasValidDataset(payload) {
+    if (!payload) return false;
+    const rows = typeof payload.rows === 'number'
+      ? payload.rows
+      : (Array.isArray(payload.data) ? payload.data.length : 0);
+    const lastTs = payload.last_ts || payload.last_update;
+    return rows > 0 || Boolean(lastTs);
+  }
+
+  function ensureOnlineFromInitialData() {
+    const pointsCount = pointsEl ? parseCount(pointsEl.textContent) : null;
+    const lastUpdateText = lastUpdateEl ? lastUpdateEl.textContent.trim() : '';
+    if ((pointsCount && pointsCount > 0) || (lastUpdateText && lastUpdateText !== '--')) {
+      dataVerifiedOnline = true;
+      updateStatus('online');
+    }
+  }
+
+  function logStatusPayload(details) {
+    if (!shouldDebug) return;
+    // eslint-disable-next-line no-console
+    console.debug('[KPI live] status ping', details);
   }
 
   function updateActivity(value) {
@@ -323,6 +359,9 @@
     const rows = Array.isArray(payload.data) ? payload.data : [];
     const lastRecord = rows.length ? rows[rows.length - 1] : null;
     const lastTimestamp = payload.last_ts || (lastRecord && lastRecord.timestamp);
+    if (hasValidDataset(payload)) {
+      dataVerifiedOnline = true;
+    }
 
     if (lastUpdateEl) {
       lastUpdateEl.textContent = formatDate(lastTimestamp);
@@ -655,28 +694,65 @@
   }
 
   async function refreshStatus() {
+    const endpoint = buildCurvaUrl(STATUS_LIMIT);
+    let responseStatus = null;
+    let responseSnippet = '';
+    let parsedFields = null;
+    let errorMessage = null;
     try {
-      const response = await fetchWithTimeout(STATUS_ENDPOINT, { cache: 'no-store' });
+      const response = await fetchWithTimeout(endpoint, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+      responseStatus = response.status;
+      const responseText = await response.text();
+      responseSnippet = responseText.slice(0, 160);
       if (!response.ok) {
         throw new Error('Risposta status non valida');
       }
-      const payload = await response.json();
-      if (payload.ok) {
-        if (typeof payload.total_points === 'number' && pointsEl) {
-          pointsEl.textContent = payload.total_points.toLocaleString('it-IT');
+      const payload = responseText ? JSON.parse(responseText) : null;
+      parsedFields = payload ? {
+        ok: payload.ok,
+        rows: payload.rows,
+        last_ts: payload.last_ts,
+        data_length: Array.isArray(payload.data) ? payload.data.length : 0,
+      } : null;
+      if (payload && payload.ok) {
+        const rows = Array.isArray(payload.data) ? payload.data : [];
+        const lastRecord = rows.length ? rows[rows.length - 1] : null;
+        const lastTimestamp = payload.last_ts || (lastRecord && lastRecord.timestamp);
+        if (lastUpdateEl) {
+          lastUpdateEl.textContent = formatDate(lastTimestamp);
         }
-        if (payload.last_update && lastUpdateEl) {
-          lastUpdateEl.textContent = formatDate(payload.last_update);
-        }
-        if (typeof payload.current_value === 'number') {
-          updateActivity(payload.current_value);
+        if (lastRecord && typeof lastRecord.value !== 'undefined') {
+          updateActivity(Number(lastRecord.value));
         }
         const fallbackActive = (lastSuccessfulPayload && lastSuccessfulPayload.source === 'fallback')
           || (statusIndicator && statusIndicator.classList.contains('fallback'));
-        updateStatus(fallbackActive ? 'fallback' : 'online');
+        if (hasValidDataset(payload)) {
+          dataVerifiedOnline = true;
+          updateStatus(fallbackActive ? 'fallback' : 'online');
+        } else {
+          dataVerifiedOnline = false;
+          updateStatus('offline');
+        }
+      } else {
+        dataVerifiedOnline = false;
+        updateStatus('offline');
       }
     } catch (error) {
-      updateStatus(false);
+      if (!dataVerifiedOnline) {
+        updateStatus('offline');
+      }
+      errorMessage = error && error.message ? error.message : String(error);
+    } finally {
+      logStatusPayload({
+        endpoint,
+        status_code: responseStatus,
+        response_snippet: responseSnippet,
+        parsed_fields: parsedFields,
+        error: errorMessage
+      });
     }
   }
 
@@ -833,10 +909,13 @@
     } else {
       showError(message);
     }
-    updateStatus('offline');
+    if (!dataVerifiedOnline) {
+      updateStatus('offline');
+    }
   }
 
   async function init() {
+    ensureOnlineFromInitialData();
     if (bootstrapRows.length) {
       try {
         await drawPlot(bootstrapRows);

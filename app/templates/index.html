@@ -159,8 +159,18 @@
         <div class="hero__meta">
           <div class="chart-card__status">
             <span>
-              <span class="status-dot" id="live-status-indicator" aria-hidden="true"></span>
-              <span id="live-status-text">Connessione in corso…</span>
+              <span
+                class="status-dot{% if data_points_count %} online{% endif %}"
+                id="live-status-indicator"
+                aria-hidden="true"
+              ></span>
+              <span id="live-status-text">
+                {% if data_points_count %}
+                  Online
+                {% else %}
+                  Connessione in corso…
+                {% endif %}
+              </span>
             </span>
           </div>
           <p class="muted">I KPI sintetizzano lo stato live: orario aggiornamento, campioni e livello di attività.</p>
