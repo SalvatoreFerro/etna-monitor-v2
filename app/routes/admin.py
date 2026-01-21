@@ -3175,9 +3175,8 @@ def monitor_kpis():
         db.session.rollback()
         health_checks["db_reachable"] = False
 
-    csv_path_value = current_app.config.get("CURVA_CSV_PATH") or current_app.config.get("CSV_PATH")
-    csv_path = Path(csv_path_value) if csv_path_value else None
-    if csv_path and csv_path.exists():
+    csv_path = get_curva_csv_path()
+    if csv_path.exists():
         health_checks["csv_exists"] = True
         try:
             stat = csv_path.stat()

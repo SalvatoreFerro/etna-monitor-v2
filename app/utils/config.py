@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+import os
 from pathlib import Path
 
 import pandas as pd
 
 from backend.utils.time import to_iso_utc
 
-CURVA_CANONICAL_PATH = Path("data") / "curva_colored.csv"
+CURVA_CANONICAL_PATH = Path(
+    os.getenv("CURVA_CSV_PATH", "data/curva_colored.csv")
+)
 
 
 def get_curva_csv_path() -> Path:
