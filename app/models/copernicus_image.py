@@ -30,6 +30,8 @@ class CopernicusImage(db.Model):
     cloud_cover: Mapped[float | None] = mapped_column(db.Float)
     bbox: Mapped[dict | list | None] = mapped_column(_json_type())
     image_path: Mapped[str | None] = mapped_column(db.String(256))
+    preview_path: Mapped[str | None] = mapped_column(db.String(256))
+    status: Mapped[str | None] = mapped_column(db.String(32))
     created_at: Mapped[datetime] = mapped_column(
         db.DateTime(timezone=True),
         nullable=False,
