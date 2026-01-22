@@ -11,14 +11,7 @@ from ..utils.auth import get_current_user, is_owner_or_admin
 from ..utils.config import get_curva_csv_path, warn_if_stale_timestamp
 from ..models.hotspots_cache import HotspotsCache
 from ..models.hotspots_record import HotspotsRecord
-from ..services.copernicus_preview_cache import (
-    build_preview_payload,
-    load_preview_cache,
-    resolve_copernicus_bbox,
-    resolve_mode,
-    resolve_preview_entry,
-    resolve_preview_url,
-)
+from ..services.copernicus_smart_view import build_copernicus_view_payload
 from backend.utils.extract_colored import process_colored_png_to_csv
 from backend.utils.time import to_iso_utc
 from backend.services.hotspots.config import HotspotsConfig
@@ -389,67 +382,31 @@ def get_hotspots_diagnose():
 
 @api_bp.get("/api/copernicus/latest")
 def get_copernicus_latest():
-    cache = load_preview_cache()
-    default_mode = resolve_mode(cache)
-    latest_entry = resolve_preview_entry(cache, "latest")
-    best_entry = resolve_preview_entry(cache, "best")
-
-    latest_bbox = resolve_copernicus_bbox(latest_entry)
-    best_bbox = resolve_copernicus_bbox(best_entry)
-    latest_preview_url = resolve_preview_url(latest_entry)
-    best_preview_url = resolve_preview_url(best_entry)
-
-    latest_payload = build_preview_payload(
-        latest_entry,
-        latest_preview_url,
-        "latest",
-        latest_bbox,
-    )
-    best_payload = build_preview_payload(
-        best_entry,
-        best_preview_url,
-        "best",
-        best_bbox,
-    )
-
-    modes_payload = {"latest": latest_payload, "best": best_payload}
-    active_payload = modes_payload.get(default_mode) or best_payload or latest_payload
-
-    status_reason = "ready" if active_payload["available"] else "missing_preview"
-    if not active_payload["available"]:
-        status_reason = "no_record" if active_payload["status"] == "UNAVAILABLE" else "error"
-        current_app.logger.warning(
-            "[API] Copernicus missing image mode=%s status=%s reason=%s product_id=%s cloud_cover=%s bbox=%s",
-            active_payload["mode"],
-            active_payload["status"],
-            status_reason,
-            active_payload.get("product_id"),
-            active_payload.get("cloud_cover"),
-            active_payload.get("bbox"),
-        )
+    payload = build_copernicus_view_payload()
 
     current_app.logger.info(
-        "[API] Copernicus preview mode=%s status=%s bbox=%s product_id=%s",
-        active_payload["mode"],
-        active_payload["status"],
-        active_payload.get("bbox"),
-        active_payload.get("product_id"),
+        "[API] Copernicus preview source=%s bbox=%s s2_product=%s s1_product=%s",
+        payload.get("selected_source"),
+        payload.get("bbox"),
+        payload.get("s2", {}).get("product_id"),
+        payload.get("s1", {}).get("product_id"),
     )
 
     return jsonify(
         {
-            "mode": active_payload["mode"],
-            "default_mode": default_mode,
-            "available": active_payload["available"],
-            "bbox": active_payload.get("bbox"),
-            "preview_path": active_payload.get("preview_path"),
-            "preview_url": active_payload.get("preview_url"),
-            "status": active_payload.get("status"),
-            "status_label": active_payload.get("status_label"),
-            "status_reason": status_reason,
-            "status_detail": active_payload.get("status_detail"),
-            "status_badge_class": active_payload.get("status_badge_class"),
-            "modes": modes_payload,
+            "selected_source": payload.get("selected_source"),
+            "preview_url": payload.get("preview_url"),
+            "preview_url_s2": payload.get("preview_url_s2"),
+            "preview_url_s1": payload.get("preview_url_s1"),
+            "generated_at": payload.get("generated_at"),
+            "generated_at_epoch": payload.get("generated_at_epoch"),
+            "bbox": payload.get("bbox"),
+            "badge_label": payload.get("badge_label"),
+            "badge_class": payload.get("badge_class"),
+            "fallback_note": payload.get("fallback_note"),
+            "s2": payload.get("s2"),
+            "s1": payload.get("s1"),
+            "errors": payload.get("errors"),
         }
     )
 

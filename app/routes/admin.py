@@ -61,13 +61,10 @@ from ..services.copernicus_preview import (
     fetch_latest_copernicus_item,
     select_preview_asset,
 )
-from ..services.copernicus_preview_cache import (
-    build_preview_payload,
-    load_preview_cache,
-    resolve_copernicus_bbox as resolve_preview_bbox,
-    resolve_mode,
-    resolve_preview_entry,
-    resolve_preview_url,
+from ..services.copernicus_smart_view import (
+    build_copernicus_view_payload,
+    load_copernicus_log,
+    load_copernicus_status,
 )
 from ..services.partner_categories import (
     CATEGORY_FORM_FIELDS,
@@ -154,21 +151,16 @@ def test_copernicus_preview():
     if not _require_owner_user():
         return jsonify({"ok": False, "error": "Owner access required"}), 403
 
-    cache = load_preview_cache()
-    default_mode = resolve_mode(cache)
-    modes_payload = {}
-    for mode in ("best", "latest"):
-        entry = resolve_preview_entry(cache, mode)
-        bbox = resolve_preview_bbox(entry)
-        preview_url = resolve_preview_url(entry)
-        modes_payload[mode] = build_preview_payload(entry, preview_url, mode, bbox)
-
+    status = load_copernicus_status()
+    payload = build_copernicus_view_payload()
+    log_text = load_copernicus_log()
     return render_template(
         "admin/copernicus_preview_test.html",
-        copernicus_cache=cache,
-        copernicus_modes=modes_payload,
-        copernicus_default_mode=default_mode,
+        copernicus_status=status,
+        copernicus_payload=payload,
+        copernicus_log=log_text,
     )
+
 
 def _is_csrf_valid(submitted_token: str | None) -> bool:
     """Return True when the provided CSRF token is valid or tests are running."""
