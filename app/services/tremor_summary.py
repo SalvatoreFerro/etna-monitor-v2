@@ -11,6 +11,7 @@ from flask import current_app
 from openai import OpenAI
 
 from ..utils.config import get_curva_csv_path
+from ..utils.ingv_bands import get_ingv_band_thresholds
 from backend.utils.time import to_iso_utc
 from config import Config
 
@@ -72,25 +73,25 @@ def calculate_trend(df: pd.DataFrame, window_minutes: int = 60) -> dict | None:
 
     latest_ts = df["timestamp"].max()
     window_start = latest_ts - timedelta(minutes=window_minutes)
-    window_df = df[df["timestamp"] >= window_start].copy()
+    prev_start = latest_ts - timedelta(minutes=window_minutes * 2)
 
-    if window_df.empty:
+    last_df = df[df["timestamp"] >= window_start].copy()
+    prev_df = df[(df["timestamp"] < window_start) & (df["timestamp"] >= prev_start)].copy()
+
+    if last_df.empty or prev_df.empty:
         return None
 
-    window_df = window_df.sort_values("timestamp")
-
-    sample_size = min(3, len(window_df))
-    head_mean = window_df["value"].head(sample_size).mean()
-    tail_mean = window_df["value"].tail(sample_size).mean()
+    median_last_hour = float(last_df["value"].median())
+    median_prev_hour = float(prev_df["value"].median())
 
     eps = 1e-6
-    delta = (tail_mean - head_mean) / max(head_mean, eps)
+    delta_pct = (median_last_hour - median_prev_hour) / max(median_prev_hour, eps)
 
-    if abs(delta) < 0.05:
+    if abs(delta_pct) < 0.07:
         status = "STABILE"
         direction = "flat"
         message = "Tremore stabile nell’ultima ora"
-    elif delta >= 0.05:
+    elif delta_pct >= 0.07:
         status = "IN_AUMENTO"
         direction = "up"
         message = "Tremore in aumento nell’ultima ora"
@@ -99,29 +100,83 @@ def calculate_trend(df: pd.DataFrame, window_minutes: int = 60) -> dict | None:
         direction = "down"
         message = "Tremore in calo nell’ultima ora"
 
-    latest_value = float(window_df["value"].iloc[-1])
-
     return {
         "ts_utc": to_iso_utc(latest_ts.to_pydatetime()),
         "status": status,
         "direction": direction,
-        "value_mv": latest_value,
+        "value_mv": median_last_hour,
         "window_min": window_minutes,
         "message": message,
+        "median_last_hour": median_last_hour,
+        "median_prev_hour": median_prev_hour,
+        "delta_pct": delta_pct,
         "source": "INGV",
     }
 
 
-def _build_fallback_message(status: str, direction: str, window_min: int) -> str:
-    if status == "STABILE" or direction == "flat":
-        return "Tremore stabile nell’ultima ora."
-    if status == "IN_AUMENTO" or direction == "up":
-        return "Tremore in aumento nell’ultima ora: monitora l’evoluzione."
-    if status == "IN_CALO" or direction == "down":
-        return "Tremore in calo nell’ultima ora: la pressione sembra ridursi."
-    if window_min:
-        return f"Aggiornamento basato sugli ultimi {window_min} minuti di dati INGV."
-    return "Aggiornamento basato sugli ultimi dati INGV disponibili."
+def _build_level_message(trend: str, level_label: str, level_band: str) -> str:
+    band_lower = level_band.lower()
+    if level_band == "UNKNOWN":
+        if trend == "IN_AUMENTO":
+            return "Tremore in aumento nell’ultima ora (livello non disponibile)."
+        if trend == "IN_CALO":
+            return "Tremore in calo nell’ultima ora (livello non disponibile)."
+        if trend == "STABILE":
+            return "Tremore stabile nell’ultima ora (livello non disponibile)."
+        return "Dati INGV non disponibili al momento."
+    if trend == "IN_AUMENTO" and level_band == "GREEN":
+        return (
+            "Tremore in lieve aumento nell’ultima ora, "
+            f"ma resta su livelli bassi (fascia {band_lower})."
+        )
+    if trend == "IN_AUMENTO" and level_band in {"YELLOW", "ORANGE", "RED"}:
+        return (
+            "Tremore in aumento e su livelli elevati "
+            f"(fascia {band_lower}): monitora con attenzione."
+        )
+    if trend == "IN_CALO":
+        return f"Tremore in calo e su livelli {level_label} (fascia {band_lower})."
+    if trend == "STABILE":
+        return f"Tremore stabile e su livelli {level_label} (fascia {band_lower})."
+    return "Dati INGV non disponibili al momento."
+
+
+def _classify_level_band(value: float, thresholds: dict[str, float]) -> str:
+    t1 = thresholds.get("t1")
+    t2 = thresholds.get("t2")
+    t3 = thresholds.get("t3")
+    if t1 is None or t2 is None or t3 is None:
+        return "UNKNOWN"
+    if value < t1:
+        return "GREEN"
+    if value < t2:
+        return "YELLOW"
+    if t3 > t2 and value < t3:
+        return "ORANGE"
+    return "RED"
+
+
+def _level_label(level_band: str) -> tuple[str, str]:
+    mapping = {
+        "GREEN": ("bassi", "green"),
+        "YELLOW": ("moderati", "yellow"),
+        "ORANGE": ("elevati", "orange"),
+        "RED": ("molto elevati", "red"),
+        "UNKNOWN": ("non disponibili", "gray"),
+    }
+    return mapping.get(level_band, ("non disponibili", "gray"))
+
+
+def _badge_label(trend: str, level_band: str) -> str:
+    if trend == "IN_AUMENTO" and level_band == "GREEN":
+        return "IN LIEVE AUMENTO"
+    if trend == "IN_AUMENTO":
+        return "IN AUMENTO"
+    if trend == "IN_CALO":
+        return "IN CALO"
+    if trend == "STABILE":
+        return "STABILE"
+    return "DATI NON DISPONIBILI"
 
 
 def _ai_enabled() -> bool:
@@ -297,28 +352,64 @@ def build_tremor_summary(window_minutes: int = 60) -> dict[str, Any]:
     df, reason = load_tremor_dataframe()
     trend = calculate_trend(df, window_minutes=window_minutes) if df is not None and not reason else None
 
+    ingv_bands = get_ingv_band_thresholds(_get_logger())
+    thresholds = ingv_bands.get("thresholds_mv") or {}
+    verification = ingv_bands.get("verification") or {}
+
     if trend:
         status = trend.get("status")
         direction = trend.get("direction")
         value_mv = trend.get("value_mv")
         ts_utc = trend.get("ts_utc")
         window_min = trend.get("window_min", window_minutes)
-        message_user_friendly = _build_fallback_message(status, direction, window_min)
+        median_last_hour = trend.get("median_last_hour")
+        median_prev_hour = trend.get("median_prev_hour")
+        delta_pct = trend.get("delta_pct")
     else:
         status = "NON_DISPONIBILE"
         direction = "unknown"
         value_mv = None
         ts_utc = None
         window_min = window_minutes
-        message_user_friendly = "Dati INGV non disponibili al momento."
+        median_last_hour = None
+        median_prev_hour = None
+        delta_pct = None
+
+    level_band = _classify_level_band(value_mv, thresholds) if value_mv is not None else "UNKNOWN"
+    level_label, band_color = _level_label(level_band)
+    trend_label = _badge_label(status, level_band)
+    message_user_friendly = _build_level_message(status, level_label, level_band)
 
     summary: dict[str, Any] = {
         "status": status,
+        "trend": status,
+        "trend_label": trend_label,
         "direction": direction,
+        "level_band": level_band,
+        "level_label": level_label,
+        "band_color": band_color,
         "value_mv": value_mv,
         "ts_utc": ts_utc,
         "window_min": window_min,
         "message_user_friendly": message_user_friendly,
+        "message": message_user_friendly,
+        "badge": f"{trend_label} · {level_band}" if level_band != "UNKNOWN" else trend_label,
+        "median_last_hour": median_last_hour,
+        "median_prev_hour": median_prev_hour,
+        "delta_pct": delta_pct,
+        "thresholds_used": {
+            "t1": thresholds.get("t1"),
+            "t2": thresholds.get("t2"),
+            "t3": thresholds.get("t3"),
+            "source": ingv_bands.get("source"),
+        },
+        "bands_px_used": ingv_bands.get("bands_px"),
+        "verification_status": verification.get("status"),
+        "debug": {
+            "median_last_hour": median_last_hour,
+            "median_prev_hour": median_prev_hour,
+            "delta_pct": delta_pct,
+        },
         "disclaimer": _DEFAULT_DISCLAIMER,
     }
 

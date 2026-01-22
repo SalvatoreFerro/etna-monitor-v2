@@ -20,6 +20,50 @@
   {% endif %}
 
   <section class="admin-card">
+    <h2>Tremor Summary Debug</h2>
+    {% if tremor_summary %}
+      <div style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+        <div class="admin-card" style="margin: 0;">
+          <h3>KPI</h3>
+          <ul>
+            <li><strong>Median last hour:</strong> {{ "%.3f" | format(tremor_summary.median_last_hour) if tremor_summary.median_last_hour is not none else "N/A" }} mV</li>
+            <li><strong>Median prev hour:</strong> {{ "%.3f" | format(tremor_summary.median_prev_hour) if tremor_summary.median_prev_hour is not none else "N/A" }} mV</li>
+            <li><strong>Delta %:</strong> {{ "%.2f" | format(tremor_summary.delta_pct * 100) if tremor_summary.delta_pct is not none else "N/A" }}%</li>
+            <li><strong>Trend:</strong> {{ tremor_summary.trend or "N/A" }}</li>
+            <li><strong>Level band:</strong> {{ tremor_summary.level_band or "N/A" }}</li>
+          </ul>
+        </div>
+        <div class="admin-card" style="margin: 0;">
+          <h3>Soglie e bande</h3>
+          <ul>
+            <li><strong>t1:</strong> {{ "%.3f" | format(tremor_summary.thresholds_used.t1) if tremor_summary.thresholds_used and tremor_summary.thresholds_used.t1 is not none else "N/A" }} mV</li>
+            <li><strong>t2:</strong> {{ "%.3f" | format(tremor_summary.thresholds_used.t2) if tremor_summary.thresholds_used and tremor_summary.thresholds_used.t2 is not none else "N/A" }} mV</li>
+            <li><strong>t3:</strong> {{ "%.3f" | format(tremor_summary.thresholds_used.t3) if tremor_summary.thresholds_used and tremor_summary.thresholds_used.t3 is not none else "N/A" }} mV</li>
+            <li><strong>Source:</strong> {{ tremor_summary.thresholds_used.source if tremor_summary.thresholds_used else "N/A" }}</li>
+            <li><strong>Band PX:</strong> {{ tremor_summary.bands_px_used if tremor_summary.bands_px_used else "N/A" }}</li>
+          </ul>
+        </div>
+        <div class="admin-card" style="margin: 0;">
+          <h3>Verifica cache</h3>
+          {% if bands_debug %}
+            <ul>
+              <li><strong>Updated at:</strong> {{ bands_debug.updated_at or "N/A" }}</li>
+              <li><strong>Detected today:</strong> {{ "yes" if bands_debug.detected_today else "no" }}</li>
+              <li><strong>Verification status:</strong> {{ bands_debug.verification_status or "N/A" }}</li>
+              <li><strong>Checked at:</strong> {{ bands_debug.verification_checked_at or "N/A" }}</li>
+              <li><strong>Notes:</strong> {{ bands_debug.verification_notes or "N/A" }}</li>
+            </ul>
+          {% else %}
+            <p class="muted">Cache bande non disponibile.</p>
+          {% endif %}
+        </div>
+      </div>
+    {% else %}
+      <p class="muted">Tremor summary non disponibile.</p>
+    {% endif %}
+  </section>
+
+  <section class="admin-card">
     <h2>PNG colorato (ultimo download)</h2>
     {% if raw_image %}
       <img src="{{ raw_image }}" alt="PNG colorato INGV" style="max-width: 100%; height: auto;" />
