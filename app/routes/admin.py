@@ -61,6 +61,14 @@ from ..services.copernicus_preview import (
     fetch_latest_copernicus_item,
     select_preview_asset,
 )
+from ..services.copernicus_preview_cache import (
+    build_preview_payload,
+    load_preview_cache,
+    resolve_copernicus_bbox as resolve_preview_bbox,
+    resolve_mode,
+    resolve_preview_entry,
+    resolve_preview_url,
+)
 from ..services.partner_categories import (
     CATEGORY_FORM_FIELDS,
     ensure_partner_categories,
@@ -138,6 +146,28 @@ def debug_copernicus_item():
             "assets": [asdict(asset) for asset in assets],
             "selected_asset": asdict(selected) if selected else None,
         }
+    )
+
+
+@bp.get("/admin/test-copernicus-preview")
+def test_copernicus_preview():
+    if not _require_owner_user():
+        return jsonify({"ok": False, "error": "Owner access required"}), 403
+
+    cache = load_preview_cache()
+    default_mode = resolve_mode(cache)
+    modes_payload = {}
+    for mode in ("best", "latest"):
+        entry = resolve_preview_entry(cache, mode)
+        bbox = resolve_preview_bbox(entry)
+        preview_url = resolve_preview_url(entry)
+        modes_payload[mode] = build_preview_payload(entry, preview_url, mode, bbox)
+
+    return render_template(
+        "admin/copernicus_preview_test.html",
+        copernicus_cache=cache,
+        copernicus_modes=modes_payload,
+        copernicus_default_mode=default_mode,
     )
 
 def _is_csrf_valid(submitted_token: str | None) -> bool:

@@ -11,11 +11,13 @@ from ..utils.auth import get_current_user, is_owner_or_admin
 from ..utils.config import get_curva_csv_path, warn_if_stale_timestamp
 from ..models.hotspots_cache import HotspotsCache
 from ..models.hotspots_record import HotspotsRecord
-from ..services.copernicus import (
-    build_copernicus_status,
-    get_latest_copernicus_image,
+from ..services.copernicus_preview_cache import (
+    build_preview_payload,
+    load_preview_cache,
     resolve_copernicus_bbox,
-    resolve_copernicus_preview_url,
+    resolve_mode,
+    resolve_preview_entry,
+    resolve_preview_url,
 )
 from backend.utils.extract_colored import process_colored_png_to_csv
 from backend.utils.time import to_iso_utc
@@ -387,57 +389,67 @@ def get_hotspots_diagnose():
 
 @api_bp.get("/api/copernicus/latest")
 def get_copernicus_latest():
-    record = get_latest_copernicus_image()
-    bbox = resolve_copernicus_bbox(record)
-    preview_url = resolve_copernicus_preview_url(record)
-    status_payload = build_copernicus_status(record, preview_url)
-    status = status_payload["status"]
-    has_image = bool(status_payload["available"])
-    datetime_epoch = int(record.acquired_at.timestamp()) if record else None
+    cache = load_preview_cache()
+    default_mode = resolve_mode(cache)
+    latest_entry = resolve_preview_entry(cache, "latest")
+    best_entry = resolve_preview_entry(cache, "best")
 
-    status_reason = "ready" if has_image else "missing_preview"
-    status_detail = str(status_payload["message"])
+    latest_bbox = resolve_copernicus_bbox(latest_entry)
+    best_bbox = resolve_copernicus_bbox(best_entry)
+    latest_preview_url = resolve_preview_url(latest_entry)
+    best_preview_url = resolve_preview_url(best_entry)
 
-    if not has_image:
-        if record is None:
-            status_reason = "no_record"
-        elif status == "NO_ASSET":
-            status_reason = "no_asset"
-        elif status == "ERROR":
-            status_reason = "error"
-        elif status == "AVAILABLE":
-            status_reason = "preview_missing"
-        current_app.logger.warning(
-            "[API] Copernicus missing image status=%s reason=%s product_id=%s cloud_cover=%s bbox=%s",
-            status,
-            status_reason,
-            record.product_id if record else None,
-            record.cloud_cover if record else None,
-            bbox,
-        )
-    current_app.logger.info(
-        "[API] Copernicus latest status=%s bbox=%s product_id=%s",
-        status,
-        bbox,
-        record.product_id if record else None,
+    latest_payload = build_preview_payload(
+        latest_entry,
+        latest_preview_url,
+        "latest",
+        latest_bbox,
     )
+    best_payload = build_preview_payload(
+        best_entry,
+        best_preview_url,
+        "best",
+        best_bbox,
+    )
+
+    modes_payload = {"latest": latest_payload, "best": best_payload}
+    active_payload = modes_payload.get(default_mode) or best_payload or latest_payload
+
+    status_reason = "ready" if active_payload["available"] else "missing_preview"
+    if not active_payload["available"]:
+        status_reason = "no_record" if active_payload["status"] == "UNAVAILABLE" else "error"
+        current_app.logger.warning(
+            "[API] Copernicus missing image mode=%s status=%s reason=%s product_id=%s cloud_cover=%s bbox=%s",
+            active_payload["mode"],
+            active_payload["status"],
+            status_reason,
+            active_payload.get("product_id"),
+            active_payload.get("cloud_cover"),
+            active_payload.get("bbox"),
+        )
+
+    current_app.logger.info(
+        "[API] Copernicus preview mode=%s status=%s bbox=%s product_id=%s",
+        active_payload["mode"],
+        active_payload["status"],
+        active_payload.get("bbox"),
+        active_payload.get("product_id"),
+    )
+
     return jsonify(
         {
-            "available": has_image,
-            "acquired_at": to_iso_utc(record.acquired_at) if record else None,
-            "product_id": record.product_id if record else None,
-            "cloud_cover": record.cloud_cover if record else None,
-            "cloud_coverage": record.cloud_cover if record else None,
-            "bbox": bbox,
-            "preview_path": preview_url,
-            "preview_url": preview_url,
-            "created_at": to_iso_utc(record.created_at) if record else None,
-            "datetime_epoch": datetime_epoch,
-            "status": status,
-            "status_label": status_payload["label"],
+            "mode": active_payload["mode"],
+            "default_mode": default_mode,
+            "available": active_payload["available"],
+            "bbox": active_payload.get("bbox"),
+            "preview_path": active_payload.get("preview_path"),
+            "preview_url": active_payload.get("preview_url"),
+            "status": active_payload.get("status"),
+            "status_label": active_payload.get("status_label"),
             "status_reason": status_reason,
-            "status_detail": status_detail,
-            "status_badge_class": status_payload["badge_class"],
+            "status_detail": active_payload.get("status_detail"),
+            "status_badge_class": active_payload.get("status_badge_class"),
+            "modes": modes_payload,
         }
     )
 

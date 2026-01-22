@@ -40,11 +40,13 @@ from backend.services.hotspots.config import HotspotsConfig
 from backend.services.hotspots.storage import read_cache, unavailable_payload
 from config import DEFAULT_GA_MEASUREMENT_ID, Config
 from app.models.hotspots_record import HotspotsRecord
-from app.services.copernicus import (
+from app.services.copernicus_preview_cache import (
     build_copernicus_status,
-    get_latest_copernicus_image,
+    load_preview_cache,
     resolve_copernicus_bbox,
-    resolve_copernicus_preview_url,
+    resolve_mode,
+    resolve_preview_entry,
+    resolve_preview_url,
 )
 from app.services.tremor_summary import build_tremor_summary
 from app.utils.meteo import (
@@ -92,6 +94,16 @@ def _format_display_datetime(value: datetime | None) -> str | None:
         return None
     dt = value.astimezone(timezone.utc) if value.tzinfo else value.replace(tzinfo=timezone.utc)
     return dt.strftime("%d/%m/%Y %H:%M UTC")
+
+
+def _parse_iso_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+    normalized = value.replace("Z", "+00:00")
+    try:
+        return datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
 
 
 def _sentieri_paths() -> tuple[Path, Path]:
@@ -1020,21 +1032,27 @@ def observatory():
     except SQLAlchemyError:
         current_app.logger.exception("[OBSERVATORY] Hotspots summary lookup failed")
 
-    copernicus_latest = get_latest_copernicus_image()
-    copernicus_preview_url = resolve_copernicus_preview_url(copernicus_latest)
+    copernicus_cache = load_preview_cache()
+    copernicus_default_mode = resolve_mode(copernicus_cache)
+    copernicus_latest = resolve_preview_entry(copernicus_cache, copernicus_default_mode)
+    copernicus_bbox = resolve_copernicus_bbox(copernicus_latest)
+    copernicus_preview_url = resolve_preview_url(copernicus_latest)
     copernicus_status = build_copernicus_status(copernicus_latest, copernicus_preview_url)
 
     copernicus_acquired_display = _format_display_datetime(
-        copernicus_latest.acquired_at if copernicus_latest else None
+        _parse_iso_datetime(copernicus_latest.get("sensing_time"))
+        if copernicus_latest
+        else None
     )
     copernicus_updated_display = _format_display_datetime(
-        copernicus_latest.created_at if copernicus_latest else None
+        _parse_iso_datetime(copernicus_latest.get("generated_at"))
+        if copernicus_latest
+        else None
     )
-    copernicus_bbox = resolve_copernicus_bbox(copernicus_latest)
     current_app.logger.info(
         "[OBSERVATORY] Copernicus bbox=%s product_id=%s",
         copernicus_bbox,
-        copernicus_latest.product_id if copernicus_latest else None,
+        copernicus_latest.get("product_id") if copernicus_latest else None,
     )
 
     return render_template(
@@ -1059,7 +1077,17 @@ def observatory():
         copernicus_latest=copernicus_latest,
         copernicus_preview_url=copernicus_preview_url,
         copernicus_preview_epoch=(
-            int(copernicus_latest.acquired_at.timestamp()) if copernicus_latest else None
+            int(
+                datetime.fromisoformat(
+                    (
+                        copernicus_latest.get("sensing_time")
+                        or copernicus_latest.get("generated_at")
+                    ).replace("Z", "+00:00")
+                ).timestamp()
+            )
+            if copernicus_latest
+            and (copernicus_latest.get("sensing_time") or copernicus_latest.get("generated_at"))
+            else None
         ),
         copernicus_status_label=copernicus_status["label"],
         copernicus_status_message=copernicus_status["message"],
@@ -1068,6 +1096,7 @@ def observatory():
         copernicus_acquired_display=copernicus_acquired_display,
         copernicus_updated_display=copernicus_updated_display,
         copernicus_bbox=copernicus_bbox,
+        copernicus_default_mode=copernicus_default_mode,
     )
 
 
