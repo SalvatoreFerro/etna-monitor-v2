@@ -12,12 +12,10 @@ from ..utils.config import get_curva_csv_path, warn_if_stale_timestamp
 from ..models.hotspots_cache import HotspotsCache
 from ..models.hotspots_record import HotspotsRecord
 from ..services.copernicus import (
-    fetch_latest_copernicus_items,
+    build_copernicus_status,
     get_latest_copernicus_image,
-    is_available_status,
     resolve_copernicus_bbox,
-    resolve_copernicus_image_url,
-    resolve_latest_and_available_items,
+    resolve_copernicus_preview_url,
 )
 from backend.utils.extract_colored import process_colored_png_to_csv
 from backend.utils.time import to_iso_utc
@@ -391,50 +389,24 @@ def get_hotspots_diagnose():
 def get_copernicus_latest():
     record = get_latest_copernicus_image()
     bbox = resolve_copernicus_bbox(record)
-    items = fetch_latest_copernicus_items(bbox, current_app.logger)
-    latest_item, available_item = resolve_latest_and_available_items(items)
-    latest_status = latest_item.status if latest_item else None
-    latest_is_available = is_available_status(latest_status)
+    preview_url = resolve_copernicus_preview_url(record)
+    status_payload = build_copernicus_status(record, preview_url)
+    status = status_payload["status"]
+    has_image = bool(status_payload["available"])
+    datetime_epoch = int(record.acquired_at.timestamp()) if record else None
 
-    image_url = resolve_copernicus_image_url(record)
-    has_image = image_url is not None
-    available_image_date = (
-        to_iso_utc(record.acquired_at)
-        if record
-        else to_iso_utc(available_item.acquired_at) if available_item else None
-    )
-    available_image_product_id = (
-        record.product_id if record else available_item.product_id if available_item else None
-    )
-
-    is_fallback_image = bool(has_image and latest_item and not latest_is_available)
-    status = "available" if has_image else "processing"
-    status_label = "Immagine disponibile" if has_image else "In elaborazione"
-    status_reason = "ready" if has_image else "image_pending"
-    status_detail = (
-        "Disponibile per la visualizzazione." if has_image else "Miniatura in elaborazione."
-    )
-
-    if is_fallback_image:
-        status_label = "Ultima immagine disponibile"
-        status_reason = "fallback_image"
-        status_detail = "L’immagine più recente è in fase di elaborazione Copernicus."
+    status_reason = "ready" if has_image else "missing_preview"
+    status_detail = str(status_payload["message"])
 
     if not has_image:
         if record is None:
-            status = "unavailable"
-            status_label = "Non disponibile"
             status_reason = "no_record"
-            status_detail = "Dati in aggiornamento."
-        elif not record.image_path:
-            status_reason = "missing_image_path"
-            status_detail = "Percorso immagine mancante."
-        else:
-            static_folder = current_app.static_folder or ""
-            image_path = Path(static_folder) / record.image_path
-            if not image_path.exists():
-                status_reason = "image_file_missing"
-                status_detail = "File immagine non ancora presente."
+        elif status == "NO_ASSET":
+            status_reason = "no_asset"
+        elif status == "ERROR":
+            status_reason = "error"
+        elif status == "AVAILABLE":
+            status_reason = "preview_missing"
         current_app.logger.warning(
             "[API] Copernicus missing image status=%s reason=%s product_id=%s cloud_cover=%s bbox=%s",
             status,
@@ -444,10 +416,8 @@ def get_copernicus_latest():
             bbox,
         )
     current_app.logger.info(
-        "[API] Copernicus latest status=%s latest_status=%s fallback=%s bbox=%s product_id=%s",
+        "[API] Copernicus latest status=%s bbox=%s product_id=%s",
         status,
-        latest_status,
-        is_fallback_image,
         bbox,
         record.product_id if record else None,
     )
@@ -459,20 +429,15 @@ def get_copernicus_latest():
             "cloud_cover": record.cloud_cover if record else None,
             "cloud_coverage": record.cloud_cover if record else None,
             "bbox": bbox,
-            "image_path": record.image_path if record else None,
-            "image_url": image_url,
+            "preview_path": preview_url,
+            "preview_url": preview_url,
             "created_at": to_iso_utc(record.created_at) if record else None,
-            "latest_acquisition_date": (
-                to_iso_utc(latest_item.acquired_at) if latest_item else None
-            ),
-            "latest_acquisition_status": latest_status,
-            "available_image_date": available_image_date,
-            "available_image_product_id": available_image_product_id,
-            "is_fallback_image": is_fallback_image,
+            "datetime_epoch": datetime_epoch,
             "status": status,
-            "status_label": status_label,
+            "status_label": status_payload["label"],
             "status_reason": status_reason,
             "status_detail": status_detail,
+            "status_badge_class": status_payload["badge_class"],
         }
     )
 

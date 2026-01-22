@@ -131,10 +131,7 @@
             </div>
           </header>
           <div class="observatory-card__body">
-            {% set copernicus_available = copernicus_image_url is not none %}
             {% set copernicus_cloud_high = copernicus_latest and copernicus_latest.cloud_cover is not none and copernicus_latest.cloud_cover >= 65 %}
-            {% set copernicus_status_label = '✅ Immagine disponibile' if copernicus_available else ('⏳ In elaborazione (pipeline ESA)' if copernicus_latest else '❌ Nessun prodotto recente') %}
-            {% set copernicus_status_message = 'Immagine pronta per la visualizzazione.' if copernicus_available else ('Il satellite ha acquisito i dati. L’immagine è in fase di elaborazione da ESA. Nel frattempo vedi l’area osservata.' if copernicus_latest else 'Nessun prodotto recente disponibile per l’area dell’Etna. La mappa mostra il footprint di riferimento.') %}
             {% call etna_map_shell(
               'observatory-map',
               'observatory-map-label',
@@ -165,10 +162,7 @@
               <div class="observatory-map-meta-group">
                 <div class="observatory-map-meta-title">Copernicus Sentinel-2</div>
                 <div class="observatory-copernicus-status-card">
-                  <span
-                    class="observatory-badge observatory-badge--info"
-                    id="observatory-copernicus-status-badge"
-                  >
+                  <span class="observatory-badge {{ copernicus_status_class }}" id="observatory-copernicus-status-badge">
                     {{ copernicus_status_label }}
                   </span>
                   <p class="observatory-copernicus-status-message" id="observatory-copernicus-status-message">
@@ -230,14 +224,14 @@
               </div>
             </div>
             <div class="observatory-image">
-              <div class="observatory-image__frame" id="observatory-copernicus-image" {% if not copernicus_image_url %}hidden{% endif %}>
+              <div class="observatory-image__frame" id="observatory-copernicus-image" {% if not copernicus_available %}hidden{% endif %}>
                 <img
                   id="observatory-copernicus-img"
-                  src="{{ copernicus_image_url or '' }}"
+                  src="{{ copernicus_preview_url ~ '?v=' ~ copernicus_preview_epoch if copernicus_available else '' }}"
                   alt="Immagine satellitare Copernicus Sentinel-2 dell'Etna"
                   loading="lazy"
                   decoding="async"
-                  {% if not copernicus_image_url %}hidden{% endif %}
+                  {% if not copernicus_available %}hidden{% endif %}
                 />
                 <div class="observatory-image__overlay">
                   <span class="observatory-summit-marker" aria-hidden="true"></span>
@@ -249,7 +243,7 @@
                 id="observatory-copernicus-fallback"
                 data-poll-interval-ms="{{ config.COPERNICUS_POLL_INTERVAL_SECONDS * 1000 }}"
                 data-poll-max-minutes="{{ config.COPERNICUS_POLL_TIMEOUT_MINUTES }}"
-                {% if copernicus_image_url %}hidden{% endif %}
+                {% if copernicus_available %}hidden{% endif %}
               >
                 {% call etna_map_shell(
                   'observatory-copernicus-map',
@@ -260,7 +254,7 @@
                   map_class='etna-map--compact',
                   badge_text=copernicus_status_label,
                   badge_id='observatory-copernicus-fallback-badge',
-                  badge_class='observatory-badge observatory-badge--info'
+                  badge_class='observatory-badge ' ~ copernicus_status_class
                 ) %}
                   {{ etna_copernicus_legend() }}
                 {% endcall %}
@@ -293,7 +287,7 @@
                 class="btn btn-secondary"
                 data-modal-open
                 id="observatory-copernicus-open"
-                {% if not copernicus_image_url %}disabled{% endif %}
+                {% if not copernicus_available %}disabled{% endif %}
               >
                 Apri grande
               </button>
@@ -310,11 +304,11 @@
       <button class="observatory-modal__close" type="button" data-modal-close aria-label="Chiudi">×</button>
       <img
         id="observatory-copernicus-modal-image"
-        src="{{ copernicus_image_url or '' }}"
+        src="{{ copernicus_preview_url ~ '?v=' ~ copernicus_preview_epoch if copernicus_available else '' }}"
         alt="Immagine satellitare Copernicus Sentinel-2 dell'Etna in formato grande"
         loading="lazy"
         decoding="async"
-        {% if not copernicus_image_url %}hidden{% endif %}
+        {% if not copernicus_available %}hidden{% endif %}
       />
     </div>
   </div>
@@ -413,8 +407,6 @@
       };
 
       const resolveCopernicusStatus = (payload) => {
-        const fallbackDate = payload?.acquired_at || payload?.available_image_date;
-        const latestAcquisition = payload?.latest_acquisition_date || payload?.acquired_at;
         if (!payload) {
           return {
             label: '❌ Nessun prodotto recente',
@@ -423,41 +415,10 @@
               'Nessun prodotto recente disponibile per l’area dell’Etna. La mappa mostra il footprint di riferimento.',
           };
         }
-        if (payload.is_fallback_image) {
-          const fallbackText = fallbackDate
-            ? `Ultima immagine disponibile (fallback) del ${formatDateTime(fallbackDate)}. `
-            : 'Ultima immagine disponibile (fallback). ';
-          return {
-            label: '♻️ Visualizzazione fallback',
-            badgeClass: 'observatory-badge--fallback',
-            message: `${fallbackText}L’acquisizione più recente è in fase di elaborazione da ESA.`,
-          };
-        }
-        if (payload.available) {
-          const acquiredText = payload.acquired_at
-            ? `Immagine pronta per la visualizzazione (acquisita ${formatDateTime(payload.acquired_at)}).`
-            : 'Immagine pronta per la visualizzazione.';
-          return {
-            label: '✅ Immagine disponibile',
-            badgeClass: 'observatory-badge--success',
-            message: acquiredText,
-          };
-        }
-        if (payload.product_id || payload.latest_acquisition_date) {
-          const acquisitionText = latestAcquisition
-            ? `Il satellite ha acquisito i dati il ${formatDateTime(latestAcquisition)}.`
-            : 'Il satellite ha acquisito i dati.';
-          return {
-            label: '⏳ In elaborazione (pipeline ESA)',
-            badgeClass: 'observatory-badge--info',
-            message: `${acquisitionText} L’immagine è in fase di elaborazione da ESA. Nel frattempo vedi l’area osservata.`,
-          };
-        }
         return {
-          label: '❌ Nessun prodotto recente',
-          badgeClass: 'observatory-badge--danger',
-          message:
-            'Nessun prodotto recente disponibile per l’area dell’Etna. La mappa mostra il footprint di riferimento.',
+          label: payload.status_label || '⏳ Anteprima in aggiornamento',
+          badgeClass: payload.status_badge_class || 'observatory-badge--info',
+          message: payload.status_detail || 'Anteprima non ancora disponibile per l’ultima acquisizione.',
         };
       };
 
@@ -483,7 +444,9 @@
       };
 
       const updateCopernicusImage = (payload) => {
-        const hasImage = Boolean(payload?.available && payload?.image_url);
+        const hasImage = Boolean(payload?.status === 'AVAILABLE' && payload?.preview_path);
+        const cacheBuster = payload?.datetime_epoch ? `?v=${payload.datetime_epoch}` : '';
+        const previewUrl = hasImage ? `${payload.preview_path}${cacheBuster}` : '';
         if (imageFrame) {
           imageFrame.hidden = !hasImage;
         }
@@ -492,7 +455,7 @@
         }
         if (imageEl) {
           if (hasImage) {
-            imageEl.src = payload.image_url;
+            imageEl.src = previewUrl;
             imageEl.hidden = false;
           } else {
             imageEl.hidden = true;
@@ -500,7 +463,7 @@
         }
         if (modalImage) {
           if (hasImage) {
-            modalImage.src = payload.image_url;
+            modalImage.src = previewUrl;
             modalImage.hidden = false;
           } else {
             modalImage.hidden = true;
@@ -591,7 +554,7 @@
           .then((response) => response.json())
           .then((payload) => {
             updateCopernicusMeta(payload);
-            if (payload?.available && payload?.image_url) {
+            if (payload?.status === 'AVAILABLE' && payload?.preview_path) {
               stopPolling(false);
             }
             return payload;
