@@ -77,7 +77,7 @@
 
 <section class="monitor-graph-section" aria-label="Grafico del tremore vulcanico">
   <div class="container container--wide">
-    {% set tremor_status = tremor_summary.status if tremor_summary else "NON_DISPONIBILE" %}
+    {% set tremor_status = tremor_summary.trend if tremor_summary else "NON_DISPONIBILE" %}
     {% set tremor_status_label = "Dati non disponibili" %}
     {% set tremor_status_class = "is-unknown" %}
     {% if tremor_status == "STABILE" %}
@@ -93,12 +93,14 @@
     <article class="tremor-summary-card" aria-live="polite">
       <div class="tremor-summary-card__header">
         <h2 class="tremor-summary-card__title">Stato tremore spiegato semplice</h2>
-        <span class="pill tremor-summary-card__badge {{ tremor_status_class }}">{{ tremor_status_label }}</span>
+        <span class="pill tremor-summary-card__badge {{ tremor_status_class }}">
+          {{ tremor_summary.badge if tremor_summary and tremor_summary.badge else tremor_status_label }}
+        </span>
       </div>
       <p class="tremor-summary-card__meta">
-        Ultimo dato:
-        {% if tremor_summary and tremor_summary.value_mv is not none %}
-          {{ "%.2f"|format(tremor_summary.value_mv) }}
+        Mediana ultima ora:
+        {% if tremor_summary and tremor_summary.median_last_hour is not none %}
+          {{ "%.2f"|format(tremor_summary.median_last_hour) }}
         {% else %}
           --
         {% endif %}
@@ -115,7 +117,7 @@
         {% endif %}
         <p class="tremor-summary-card__body">{{ tremor_summary.ai_explain }}</p>
       {% elif tremor_summary %}
-        <p class="tremor-summary-card__body">{{ tremor_summary.message_user_friendly }}</p>
+        <p class="tremor-summary-card__body">{{ tremor_summary.message }}</p>
       {% else %}
         <p class="tremor-summary-card__body">Dati INGV non disponibili al momento.</p>
       {% endif %}

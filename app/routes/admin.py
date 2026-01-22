@@ -32,6 +32,7 @@ from ..utils.config import get_curva_csv_path, get_curva_csv_status
 from backend.utils.extract_colored import download_png as download_colored_png
 from backend.utils.extract_colored import extract_series_from_colored
 from ..utils.metrics import get_csv_metrics
+from ..utils.ingv_bands import load_cached_thresholds
 from ..utils.plotly_helpers import build_plotly_html_from_pairs
 from ..models import (
     db,
@@ -2942,6 +2943,30 @@ def test_colored_extraction():
         return redirect(url_for("admin.admin_home"))
 
     app = current_app
+    tremor_summary = build_tremor_summary()
+    bands_cache = load_cached_thresholds()
+    bands_debug = None
+    if bands_cache:
+        updated_at = bands_cache.get("updated_at")
+        verification = bands_cache.get("verification") or {}
+        checked_at = verification.get("checked_at")
+        today = datetime.now(timezone.utc).date()
+        detected_today = False
+        if updated_at:
+            try:
+                detected_today = datetime.fromisoformat(updated_at).date() == today
+            except ValueError:
+                detected_today = False
+        bands_debug = {
+            "updated_at": updated_at,
+            "detected_today": detected_today,
+            "verification_status": verification.get("status"),
+            "verification_checked_at": checked_at,
+            "verification_notes": verification.get("notes"),
+            "bands_px": bands_cache.get("bands_px") or {},
+            "thresholds_mv": bands_cache.get("thresholds_mv") or {},
+            "source": bands_cache.get("source"),
+        }
     colored_url = (os.getenv("INGV_COLORED_URL") or "").strip()
     tail_param = request.args.get("tail", "200")
     peaks_param = request.args.get("peaks", "10")
@@ -2964,6 +2989,8 @@ def test_colored_extraction():
             overlay_image=None,
             mask_image=None,
             debug_data=None,
+            tremor_summary=tremor_summary,
+            bands_debug=bands_debug,
         )
 
     try:
@@ -3056,6 +3083,8 @@ def test_colored_extraction():
             mask_image=mask_image,
             error_message=plot_error_message,
             debug_data=debug_data,
+            tremor_summary=tremor_summary,
+            bands_debug=bands_debug,
         )
     except Exception as exc:  # pragma: no cover - debug view safety net
         current_app.logger.exception("[ADMIN] Colored extraction failed")
@@ -3067,6 +3096,8 @@ def test_colored_extraction():
             overlay_image=None,
             mask_image=None,
             debug_data=None,
+            tremor_summary=tremor_summary,
+            bands_debug=bands_debug,
         )
 
 
