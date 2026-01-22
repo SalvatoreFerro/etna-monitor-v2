@@ -224,6 +224,24 @@
               </div>
             </div>
             <div class="observatory-image">
+              <div class="observatory-copernicus-toggle" role="group" aria-label="Seleziona modalità Copernicus">
+                <button
+                  class="btn btn-ghost btn-sm {% if copernicus_default_mode != 'latest' %}is-active{% endif %}"
+                  type="button"
+                  data-copernicus-mode="best"
+                  aria-pressed="{{ 'true' if copernicus_default_mode != 'latest' else 'false' }}"
+                >
+                  Migliore
+                </button>
+                <button
+                  class="btn btn-ghost btn-sm {% if copernicus_default_mode == 'latest' %}is-active{% endif %}"
+                  type="button"
+                  data-copernicus-mode="latest"
+                  aria-pressed="{{ 'true' if copernicus_default_mode == 'latest' else 'false' }}"
+                >
+                  Ultima
+                </button>
+              </div>
               <div class="observatory-image__frame" id="observatory-copernicus-image" {% if not copernicus_available %}hidden{% endif %}>
                 <img
                   id="observatory-copernicus-img"
@@ -365,6 +383,9 @@
       const bboxEl = document.getElementById('observatory-copernicus-bbox');
       const imageStatusEl = document.getElementById('observatory-image-status');
       const imageDetailEl = document.getElementById('observatory-image-detail');
+      const copernicusToggleButtons = document.querySelectorAll('[data-copernicus-mode]');
+      let copernicusMode = '{{ copernicus_default_mode or "best" }}';
+      let copernicusModes = null;
 
       const setLoaderVisible = (visible) => {
         if (!loaderEl) {
@@ -444,9 +465,9 @@
       };
 
       const updateCopernicusImage = (payload) => {
-        const hasImage = Boolean(payload?.status === 'AVAILABLE' && payload?.preview_path);
+        const hasImage = Boolean(payload?.available && payload?.preview_url);
         const cacheBuster = payload?.datetime_epoch ? `?v=${payload.datetime_epoch}` : '';
-        const previewUrl = hasImage ? `${payload.preview_path}${cacheBuster}` : '';
+        const previewUrl = hasImage ? `${payload.preview_url}${cacheBuster}` : '';
         if (imageFrame) {
           imageFrame.hidden = !hasImage;
         }
@@ -538,6 +559,34 @@
         updateCopernicusImage(payload);
       };
 
+      const resolveModePayload = (payload, mode) => {
+        if (payload?.modes) {
+          return payload.modes[mode] || payload.modes.best || payload.modes.latest || payload;
+        }
+        if (copernicusModes) {
+          return copernicusModes[mode] || copernicusModes.best || copernicusModes.latest || payload;
+        }
+        return payload;
+      };
+
+      const updateCopernicusToggle = (mode) => {
+        copernicusToggleButtons.forEach((button) => {
+          const isActive = button.dataset.copernicusMode === mode;
+          button.classList.toggle('is-active', isActive);
+          button.setAttribute('aria-pressed', String(isActive));
+        });
+      };
+
+      const applyCopernicusMode = (payload, mode) => {
+        const modePayload = resolveModePayload(payload, mode);
+        if (!modePayload) {
+          return;
+        }
+        copernicusMode = modePayload.mode || mode;
+        updateCopernicusToggle(copernicusMode);
+        updateCopernicusMeta(modePayload);
+      };
+
       const stopPolling = (showRetry) => {
         if (pollTimer) {
           window.clearInterval(pollTimer);
@@ -553,8 +602,13 @@
         fetch('/api/copernicus/latest', { headers: { Accept: 'application/json' } })
           .then((response) => response.json())
           .then((payload) => {
-            updateCopernicusMeta(payload);
-            if (payload?.status === 'AVAILABLE' && payload?.preview_path) {
+            if (payload?.modes) {
+              copernicusModes = payload.modes;
+            }
+            const defaultMode = payload?.default_mode || copernicusMode;
+            applyCopernicusMode(payload, copernicusMode || defaultMode);
+            const activePayload = resolveModePayload(payload, copernicusMode || defaultMode);
+            if (activePayload?.available && activePayload?.preview_url) {
               stopPolling(false);
             }
             return payload;
@@ -661,7 +715,8 @@
       }
 
       fetchCopernicus().then((payload) => {
-        if (payload && !payload.available) {
+        const activePayload = resolveModePayload(payload, copernicusMode);
+        if (activePayload && !activePayload.available) {
           startPolling();
         }
       });
@@ -670,7 +725,8 @@
         retryButton.addEventListener('click', () => {
           stopPolling(false);
           fetchCopernicus().then((payload) => {
-            if (payload && !payload.available) {
+            const activePayload = resolveModePayload(payload, copernicusMode);
+            if (activePayload && !activePayload.available) {
               startPolling();
             }
           });
@@ -697,6 +753,19 @@
         };
         modalOpen.addEventListener('click', openModal);
         modalCloseButtons.forEach((button) => button.addEventListener('click', closeModal));
+      }
+
+      if (copernicusToggleButtons.length) {
+        copernicusToggleButtons.forEach((button) => {
+          button.addEventListener('click', () => {
+            const mode = button.dataset.copernicusMode;
+            if (!mode) {
+              return;
+            }
+            copernicusMode = mode;
+            applyCopernicusMode(copernicusModes ? { modes: copernicusModes } : null, mode);
+          });
+        });
       }
     });
   </script>

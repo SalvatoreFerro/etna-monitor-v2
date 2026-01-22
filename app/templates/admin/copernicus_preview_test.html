@@ -1,0 +1,29 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+  <section class="admin-section">
+    <h1>Copernicus Preview Test</h1>
+    <p>Modalità predefinita: <strong>{{ copernicus_default_mode or '—' }}</strong></p>
+
+    <div class="admin-grid">
+      {% for mode, payload in copernicus_modes.items() %}
+        <div class="admin-card">
+          <h2>{{ mode|capitalize }}</h2>
+          {% if payload.preview_url %}
+            <img
+              src="{{ payload.preview_url }}"
+              alt="Preview Copernicus {{ mode }}"
+              style="max-width: 100%; border-radius: 12px; border: 1px solid rgba(148, 163, 184, 0.35);"
+            />
+          {% else %}
+            <p>Nessuna immagine disponibile.</p>
+          {% endif %}
+          <pre style="white-space: pre-wrap; margin-top: 1rem;">{{ payload | tojson(indent=2) }}</pre>
+        </div>
+      {% endfor %}
+    </div>
+
+    <h2>Cache raw</h2>
+    <pre style="white-space: pre-wrap;">{{ copernicus_cache | tojson(indent=2) }}</pre>
+  </section>
+{% endblock %}
