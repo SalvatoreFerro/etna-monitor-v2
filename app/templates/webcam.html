@@ -14,6 +14,8 @@
   {% set telegram_cta_url = url_for('dashboard.dashboard_home') ~ '#alert-settings' %}
 {% endif %}
 {% set graph_live_url = url_for('main.index') ~ '#grafico-etna' %}
+{% set weather_ready = weather_preview is not none %}
+{% set operational_ready = operational_index is not none %}
 
 {% block content %}
 <section class="page page--webcam">
@@ -28,9 +30,151 @@
       <a class="link-arrow" href="#webcam-live">Vai subito alle webcam live</a>
     </header>
 
+    <section class="webcam-dashboard" aria-label="Selettore e meteo operativo Etna">
+      <div class="webcam-poi" aria-labelledby="webcam-poi-title">
+        <div class="webcam-poi__header">
+          <div>
+            <h2 id="webcam-poi-title">Punti di interesse</h2>
+            <p class="muted">Scegli l'area da monitorare per adattare meteo, indice operativo e trend 24h.</p>
+          </div>
+          <i class="fa-solid fa-location-dot"></i>
+        </div>
+        <div class="webcam-poi__tabs" role="tablist" aria-label="Selettore punti di interesse">
+          {% for poi in poi_presets.values() %}
+            <button
+              class="webcam-poi__tab {% if poi.id == selected_poi.id %}is-active{% endif %}"
+              type="button"
+              role="tab"
+              aria-selected="{{ 'true' if poi.id == selected_poi.id else 'false' }}"
+              data-poi-tab="{{ poi.id }}"
+            >
+              {{ poi.label }}
+            </button>
+          {% endfor %}
+        </div>
+        <div class="webcam-poi__details" data-poi-details>
+          <strong data-poi-label>{{ selected_poi.label }}</strong>
+          <span class="webcam-poi__altitude" data-poi-altitude>{{ selected_poi.altitude }}</span>
+          <p class="muted" data-poi-note>{{ selected_poi.note }}</p>
+        </div>
+      </div>
+
+      <div class="webcam-index" aria-live="polite" aria-labelledby="webcam-index-title">
+        <div class="webcam-index__card">
+          <div class="webcam-index__header">
+            <div>
+              <h2 id="webcam-index-title">Indice Operativo</h2>
+              <p class="muted">Sintesi decisionale basata su vento, nuvole, precipitazioni e visibilità stimata.</p>
+            </div>
+            <span class="webcam-index__badge {{ operational_index.badge_class if operational_index else 'badge--warning' }}" data-index-badge>
+              {{ operational_index.label if operational_index else "IN ATTESA" }}
+            </span>
+          </div>
+          <div class="webcam-index__body">
+            <div class="webcam-index__score" data-index-score>{{ operational_index.score if operational_index else "—" }}/100</div>
+            <p class="webcam-index__message" data-index-message>
+              {{ operational_index.message if operational_index else "Indice in aggiornamento: in attesa dei dati Open-Meteo." }}
+            </p>
+            <div class="webcam-index__meta">
+              <span data-index-wind>Vento {{ weather_preview.wind_speed | round(0) if weather_preview and weather_preview.wind_speed is not none else "—" }} {{ weather_preview.wind_speed_unit if weather_preview and weather_preview.wind_speed is not none else "" }}</span>
+              <span data-index-cloud>Nuvole {{ weather_preview.cloud_cover | round(0) if weather_preview and weather_preview.cloud_cover is not none else "—" }}{{ weather_preview.cloud_cover_unit if weather_preview and weather_preview.cloud_cover is not none else "" }}</span>
+              <span data-index-precip>Precipitazioni {{ weather_preview.precipitation_probability | round(0) if weather_preview and weather_preview.precipitation_probability is not none else "—" }}{{ weather_preview.precipitation_unit if weather_preview and weather_preview.precipitation_probability is not none else "" }}</span>
+            </div>
+          </div>
+          {% if weather_error %}
+            <p class="webcam-weather__error">{{ weather_error }}</p>
+          {% elif not operational_ready %}
+            <p class="webcam-weather__loading">Caricamento dell'indice operativo…</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <section class="webcam-operativo" aria-labelledby="webcam-operativo-title">
+        <div class="webcam-operativo__header">
+          <div>
+            <h2 id="webcam-operativo-title">Meteo operativo Etna (visibilità e lettura live)</h2>
+            <p class="muted">Traduciamo i dati meteo in indicazioni semplici per capire cosa si vede davvero sulle webcam.</p>
+          </div>
+          <i class="fa-solid fa-wind"></i>
+        </div>
+
+        <div class="webcam-operativo__cards">
+          <article class="webcam-operativo__card">
+            <div>
+              <span class="webcam-operativo__label">Visibilità stimata</span>
+              <strong class="webcam-operativo__value" data-kpi="visibility_label">{{ weather_preview.visibility_label if weather_preview else "—" }}</strong>
+              <p class="webcam-operativo__meta" data-kpi="visibility_note">{{ weather_preview.visibility_note if weather_preview else "In attesa dei dati meteo live." }}</p>
+            </div>
+          </article>
+          <article class="webcam-operativo__card">
+            <div>
+              <span class="webcam-operativo__label">Vento in quota</span>
+              <strong class="webcam-operativo__value" data-kpi="wind_speed">
+                {{ weather_preview.wind_speed | round(1) if weather_preview and weather_preview.wind_speed is not none else "—" }}
+                {{ weather_preview.wind_speed_unit if weather_preview and weather_preview.wind_speed is not none else "" }}
+              </strong>
+              <p class="webcam-operativo__meta">
+                Direzione <span data-kpi="wind_direction_cardinal">{{ weather_preview.wind_direction_cardinal if weather_preview else "—" }}</span>. Può spostare fumi e cenere.
+              </p>
+            </div>
+          </article>
+          <article class="webcam-operativo__card">
+            <div>
+              <span class="webcam-operativo__label">Copertura nuvolosa</span>
+              <strong class="webcam-operativo__value" data-kpi="cloud_cover">
+                {{ weather_preview.cloud_cover | round(0) if weather_preview and weather_preview.cloud_cover is not none else "—" }}{{ weather_preview.cloud_cover_unit or "" }}
+              </strong>
+              <p class="webcam-operativo__meta">Con nubi alte i crateri possono restare nascosti.</p>
+            </div>
+          </article>
+          <article class="webcam-operativo__card">
+            <div>
+              <span class="webcam-operativo__label">Precipitazioni</span>
+              <strong class="webcam-operativo__value" data-kpi="precipitation_probability">
+                {{ weather_preview.precipitation_probability | round(0) if weather_preview and weather_preview.precipitation_probability is not none else "—" }}{{ weather_preview.precipitation_unit or "" }}
+              </strong>
+              <p class="webcam-operativo__meta">Pioggia o neve riducono drasticamente la visibilità.</p>
+            </div>
+          </article>
+        </div>
+        <p class="webcam-operativo__note" data-kpi="operational_note">
+          {{ weather_preview.operational_note if weather_preview else "Le condizioni meteo possono cambiare rapidamente in quota." }}
+        </p>
+        {% if weather_error %}
+          <p class="webcam-weather__error">{{ weather_error }}</p>
+        {% elif not weather_ready %}
+          <p class="webcam-weather__loading">Caricamento delle condizioni meteo…</p>
+        {% endif %}
+      </section>
+
+      <div class="webcam-dashboard__cta">
+        <a class="btn btn-primary" href="#webcam-live">Vai alle webcam live</a>
+      </div>
+    </section>
+
+    <section class="webcam-trend" aria-labelledby="webcam-trend-title">
+      <div class="webcam-trend__card">
+        <div class="webcam-trend__header">
+          <div>
+            <h2 id="webcam-trend-title">Trend ultime 24 ore</h2>
+            <p class="muted">Andamento orario di temperatura, vento e copertura nuvolosa sul punto selezionato.</p>
+          </div>
+          <i class="fa-solid fa-chart-line"></i>
+        </div>
+        <div class="webcam-trend__canvas" {% if not trend or not trend.labels %}style="display: none;"{% endif %}>
+          <canvas id="webcamTrendChart" aria-label="Grafico trend meteo ultime 24 ore" role="img"></canvas>
+        </div>
+        {% if weather_error %}
+          <p class="webcam-weather__error">{{ weather_error }}</p>
+        {% elif not trend or not trend.labels %}
+          <p class="webcam-weather__loading">Caricamento del trend meteo…</p>
+        {% endif %}
+      </div>
+    </section>
+
     <section class="webcam-grid" id="webcam-live" aria-label="Elenco webcam live dell'Etna">
       {% for camera in webcams %}
-        <article class="webcam-card">
+        <article class="webcam-card {% if camera.key == selected_poi.webcam_key %}webcam-card--highlight{% endif %}" data-webcam-key="{{ camera.key }}">
           <a class="webcam-card__link" href="{{ camera.url }}" target="_blank" rel="noopener" aria-label="Apri {{ camera.name }} in una nuova scheda">
             <figure class="webcam-card__media">
               <img src="{{ camera.thumbnail }}" alt="Anteprima live di {{ camera.name }}" loading="lazy" width="640" height="360" />
@@ -48,125 +192,65 @@
       {% endfor %}
     </section>
 
-    <section class="webcam-operativo" aria-labelledby="webcam-operativo-title">
-      <div class="webcam-operativo__header">
-        <div>
-          <h2 id="webcam-operativo-title">Meteo operativo Etna (visibilità e lettura live)</h2>
-          <p class="muted">Traduciamo i dati meteo in indicazioni semplici per capire cosa si vede davvero sulle webcam.</p>
-        </div>
-        <i class="fa-solid fa-wind"></i>
-      </div>
-
-      {% if weather_preview %}
-        <div class="webcam-operativo__cards">
-          <article class="webcam-operativo__card">
-            <div>
-              <span class="webcam-operativo__label">Visibilità stimata</span>
-              <strong class="webcam-operativo__value">{{ weather_preview.visibility_label }}</strong>
-              <p class="webcam-operativo__meta">{{ weather_preview.visibility_note }}</p>
-            </div>
-          </article>
-          <article class="webcam-operativo__card">
-            <div>
-              <span class="webcam-operativo__label">Vento in quota</span>
-              <strong class="webcam-operativo__value">
-                {{ weather_preview.wind_speed | round(1) if weather_preview.wind_speed is not none else "—" }}
-                {{ weather_preview.wind_speed_unit if weather_preview.wind_speed is not none else "" }}
-              </strong>
-              <p class="webcam-operativo__meta">Direzione {{ weather_preview.wind_direction_cardinal or "—" }}. Può spostare fumi e cenere.</p>
-            </div>
-          </article>
-          <article class="webcam-operativo__card">
-            <div>
-              <span class="webcam-operativo__label">Copertura nuvolosa</span>
-              <strong class="webcam-operativo__value">
-                {{ weather_preview.cloud_cover | round(0) if weather_preview.cloud_cover is not none else "—" }}{{ weather_preview.cloud_cover_unit or "" }}
-              </strong>
-              <p class="webcam-operativo__meta">Con nubi alte i crateri possono restare nascosti.</p>
-            </div>
-          </article>
-          <article class="webcam-operativo__card">
-            <div>
-              <span class="webcam-operativo__label">Precipitazioni</span>
-              <strong class="webcam-operativo__value">
-                {{ weather_preview.precipitation_probability | round(0) if weather_preview.precipitation_probability is not none else "—" }}{{ weather_preview.precipitation_unit or "" }}
-              </strong>
-              <p class="webcam-operativo__meta">Pioggia o neve riducono drasticamente la visibilità.</p>
-            </div>
-          </article>
-        </div>
-        <p class="webcam-operativo__note">
-          {{ weather_preview.operational_note }}
-        </p>
-      {% elif weather_error %}
-        <p class="webcam-weather__error">{{ weather_error }}</p>
-      {% else %}
-        <p class="webcam-weather__loading">Caricamento delle condizioni meteo…</p>
-      {% endif %}
-    </section>
-
     <section class="webcam-weather" aria-labelledby="webcam-weather-title">
       <div class="webcam-weather__card">
         <div class="webcam-weather__header">
           <div>
             <h2 id="webcam-weather-title">Condizioni meteo live sull'Etna</h2>
-            <p class="muted">Dati in tempo reale dall'API Open-Meteo per l'area sommitale del vulcano.</p>
+            <p class="muted">Dati in tempo reale dall'API Open-Meteo per <span data-poi-summary>{{ selected_poi.label | lower }}</span>.</p>
           </div>
           <i class="fa-solid fa-cloud-sun"></i>
         </div>
 
-        {% if weather_preview %}
-          <div class="webcam-weather__summary">
-            {% if weather_preview.weather_description %}
-              <p class="webcam-weather__condition">{{ weather_preview.weather_description }}</p>
-            {% endif %}
-            <div class="webcam-weather__grid" role="list">
-              <div class="webcam-weather__item" role="listitem">
-                <span class="webcam-weather__label">Temperatura</span>
-                {% if weather_preview.temperature is not none %}
-                  <strong class="webcam-weather__value">{{ weather_preview.temperature | round(1) }} {{ weather_preview.temperature_unit }}</strong>
-                {% else %}
-                  <strong class="webcam-weather__value">—</strong>
+        <div class="webcam-weather__summary">
+          <p class="webcam-weather__condition" data-weather="description">{{ weather_preview.weather_description if weather_preview else "" }}</p>
+          <div class="webcam-weather__grid" role="list">
+            <div class="webcam-weather__item" role="listitem">
+              <span class="webcam-weather__label">Temperatura</span>
+              <strong class="webcam-weather__value" data-weather="temperature">
+                {{ weather_preview.temperature | round(1) if weather_preview and weather_preview.temperature is not none else "—" }}
+                {{ weather_preview.temperature_unit if weather_preview and weather_preview.temperature is not none else "" }}
+              </strong>
+              <span class="webcam-weather__meta" data-weather="apparent_temperature">
+                {% if weather_preview and weather_preview.apparent_temperature is not none %}
+                  Percepita {{ weather_preview.apparent_temperature | round(1) }} {{ weather_preview.apparent_temperature_unit }}
                 {% endif %}
-                {% if weather_preview.apparent_temperature is not none %}
-                  <span class="webcam-weather__meta">Percepita {{ weather_preview.apparent_temperature | round(1) }} {{ weather_preview.apparent_temperature_unit }}</span>
-                {% endif %}
-              </div>
-              <div class="webcam-weather__item" role="listitem">
-                <span class="webcam-weather__label">Umidità</span>
-                {% if weather_preview.humidity is not none %}
-                  <strong class="webcam-weather__value">{{ weather_preview.humidity | round(0) }}{{ weather_preview.humidity_unit }}</strong>
-                {% else %}
-                  <strong class="webcam-weather__value">—</strong>
-                {% endif %}
-              </div>
-              <div class="webcam-weather__item" role="listitem">
-                <span class="webcam-weather__label">Vento</span>
-                {% if weather_preview.wind_speed is not none %}
-                  <strong class="webcam-weather__value">{{ weather_preview.wind_speed | round(1) }} {{ weather_preview.wind_speed_unit }}</strong>
-                {% else %}
-                  <strong class="webcam-weather__value">—</strong>
-                {% endif %}
-                {% if weather_preview.wind_direction_cardinal %}
-                  <span class="webcam-weather__meta">Direzione {{ weather_preview.wind_direction_cardinal }}</span>
-                {% endif %}
-              </div>
-              <div class="webcam-weather__item" role="listitem">
-                <span class="webcam-weather__label">Probabilità precipitazioni</span>
-                {% if weather_preview.precipitation_probability is not none %}
-                  <strong class="webcam-weather__value">{{ weather_preview.precipitation_probability | round(0) }}{{ weather_preview.precipitation_unit }}</strong>
-                {% else %}
-                  <strong class="webcam-weather__value">—</strong>
-                {% endif %}
-              </div>
+              </span>
             </div>
-            {% if weather_preview.updated_at %}
-              <p class="webcam-weather__timestamp">Aggiornato alle {{ weather_preview.updated_at }} (ora locale).</p>
-            {% endif %}
+            <div class="webcam-weather__item" role="listitem">
+              <span class="webcam-weather__label">Umidità</span>
+              <strong class="webcam-weather__value" data-weather="humidity">
+                {{ weather_preview.humidity | round(0) if weather_preview and weather_preview.humidity is not none else "—" }}{{ weather_preview.humidity_unit if weather_preview and weather_preview.humidity is not none else "" }}
+              </strong>
+            </div>
+            <div class="webcam-weather__item" role="listitem">
+              <span class="webcam-weather__label">Vento</span>
+              <strong class="webcam-weather__value" data-weather="wind_speed">
+                {{ weather_preview.wind_speed | round(1) if weather_preview and weather_preview.wind_speed is not none else "—" }}
+                {{ weather_preview.wind_speed_unit if weather_preview and weather_preview.wind_speed is not none else "" }}
+              </strong>
+              <span class="webcam-weather__meta" data-weather="wind_direction">
+                {% if weather_preview and weather_preview.wind_direction_cardinal %}
+                  Direzione {{ weather_preview.wind_direction_cardinal }}
+                {% endif %}
+              </span>
+            </div>
+            <div class="webcam-weather__item" role="listitem">
+              <span class="webcam-weather__label">Probabilità precipitazioni</span>
+              <strong class="webcam-weather__value" data-weather="precipitation_probability">
+                {{ weather_preview.precipitation_probability | round(0) if weather_preview and weather_preview.precipitation_probability is not none else "—" }}{{ weather_preview.precipitation_unit if weather_preview and weather_preview.precipitation_probability is not none else "" }}
+              </strong>
+            </div>
           </div>
-        {% elif weather_error %}
+          <p class="webcam-weather__timestamp" data-weather="updated_at">
+            {% if weather_preview and weather_preview.updated_at %}
+              Aggiornato alle {{ weather_preview.updated_at }} (ora locale).
+            {% endif %}
+          </p>
+        </div>
+        {% if weather_error %}
           <p class="webcam-weather__error">{{ weather_error }}</p>
-        {% else %}
+        {% elif not weather_ready %}
           <p class="webcam-weather__loading">Caricamento delle condizioni meteo…</p>
         {% endif %}
       </div>
@@ -228,17 +312,17 @@
           </p>
         </article>
         <article>
-          <h3>Le webcam bastano per capire l’attività dell’Etna?</h3>
+          <h3>Che cosa indica l’Indice Operativo?</h3>
           <p>
-            Sono utili, ma non sufficienti. Il tremore e i segnali sismici raccontano cosa accade all’interno del vulcano e
-            spesso anticipano ciò che si vede in superficie.
+            È una sintesi numerica della qualità di osservazione: combina vento, nuvole, precipitazioni e visibilità stimata
+            per capire se conviene osservare i crateri o aspettare condizioni migliori.
           </p>
         </article>
         <article>
-          <h3>Perché i dati sono più affidabili delle immagini?</h3>
+          <h3>Quando è più utile controllare le webcam?</h3>
           <p>
-            I dati provengono da sensori scientifici continui e non dipendono dalla visibilità. Le immagini aiutano a
-            interpretare, ma i numeri spiegano se l’attività sta davvero aumentando.
+            Quando l’indice è buono o in miglioramento e le nubi sono basse. In quel caso le webcam danno più dettagli sui
+            crateri e sulle eventuali emissioni.
           </p>
         </article>
         <article>
@@ -267,4 +351,332 @@
     </aside>
   </div>
 </section>
+{% endblock %}
+
+{% block extra_scripts %}
+  <script
+    src="https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js"
+    crossorigin="anonymous"
+    nonce="{{ csp_nonce() }}"
+    defer
+  ></script>
+  <script nonce="{{ csp_nonce() }}">
+    document.addEventListener('DOMContentLoaded', () => {
+      const webcamInitialData = {{ {
+        "poi": selected_poi,
+        "trend": trend,
+        "weather_preview": weather_preview,
+        "operational_index": operational_index
+      } | tojson }};
+
+      const poiTabs = document.querySelectorAll('[data-poi-tab]');
+      const poiDetails = document.querySelector('[data-poi-details]');
+      const poiLabel = document.querySelector('[data-poi-label]');
+      const poiAltitude = document.querySelector('[data-poi-altitude]');
+      const poiNote = document.querySelector('[data-poi-note]');
+      const poiSummary = document.querySelector('[data-poi-summary]');
+      const indexBadge = document.querySelector('[data-index-badge]');
+      const indexScore = document.querySelector('[data-index-score]');
+      const indexMessage = document.querySelector('[data-index-message]');
+      const indexWind = document.querySelector('[data-index-wind]');
+      const indexCloud = document.querySelector('[data-index-cloud]');
+      const indexPrecip = document.querySelector('[data-index-precip]');
+      const weatherDescription = document.querySelector('[data-weather="description"]');
+      const weatherTemperature = document.querySelector('[data-weather="temperature"]');
+      const weatherApparent = document.querySelector('[data-weather="apparent_temperature"]');
+      const weatherHumidity = document.querySelector('[data-weather="humidity"]');
+      const weatherWind = document.querySelector('[data-weather="wind_speed"]');
+      const weatherWindDirection = document.querySelector('[data-weather="wind_direction"]');
+      const weatherPrecip = document.querySelector('[data-weather="precipitation_probability"]');
+      const weatherUpdated = document.querySelector('[data-weather="updated_at"]');
+      const kpiVisibility = document.querySelector('[data-kpi="visibility_label"]');
+      const kpiVisibilityNote = document.querySelector('[data-kpi="visibility_note"]');
+      const kpiWind = document.querySelector('[data-kpi="wind_speed"]');
+      const kpiWindDirection = document.querySelector('[data-kpi="wind_direction_cardinal"]');
+      const kpiCloud = document.querySelector('[data-kpi="cloud_cover"]');
+      const kpiPrecip = document.querySelector('[data-kpi="precipitation_probability"]');
+      const kpiOperationalNote = document.querySelector('[data-kpi="operational_note"]');
+      const webcamCards = document.querySelectorAll('[data-webcam-key]');
+      const trendContainer = document.querySelector('.webcam-trend__canvas');
+      const trendCard = document.querySelector('.webcam-trend__card');
+
+      let trendChart = null;
+
+      const formatValue = (value, unit = "") => {
+        if (value === null || value === undefined) {
+          return "—";
+        }
+        if (typeof value === "number") {
+          if (unit === "%") {
+            return `${Math.round(value)}${unit}`;
+          }
+          return `${value.toFixed(1)}${unit ? ` ${unit}` : ""}`.trim();
+        }
+        return `${value}${unit ? ` ${unit}` : ""}`.trim();
+      };
+
+    const updateIndex = (operationalIndex, weatherPreview) => {
+      if (!operationalIndex) {
+        return;
+      }
+      if (indexBadge) {
+        indexBadge.textContent = operationalIndex.label;
+        indexBadge.className = `webcam-index__badge ${operationalIndex.badge_class}`;
+      }
+      if (indexScore) {
+        indexScore.textContent = `${operationalIndex.score}/100`;
+      }
+      if (indexMessage) {
+        indexMessage.textContent = operationalIndex.message;
+      }
+      if (indexWind) {
+        indexWind.textContent = `Vento ${formatValue(weatherPreview?.wind_speed, weatherPreview?.wind_speed_unit)}`;
+      }
+      if (indexCloud) {
+        indexCloud.textContent = `Nuvole ${formatValue(weatherPreview?.cloud_cover, weatherPreview?.cloud_cover_unit)}`;
+      }
+      if (indexPrecip) {
+        indexPrecip.textContent = `Precipitazioni ${formatValue(weatherPreview?.precipitation_probability, weatherPreview?.precipitation_unit)}`;
+      }
+    };
+
+    const updateWeatherPreview = (weatherPreview) => {
+      if (!weatherPreview) {
+        return;
+      }
+      if (weatherDescription) {
+        weatherDescription.textContent = weatherPreview.weather_description || "";
+      }
+      if (weatherTemperature) {
+        weatherTemperature.textContent = formatValue(weatherPreview.temperature, weatherPreview.temperature_unit);
+      }
+      if (weatherApparent) {
+        if (weatherPreview.apparent_temperature === null || weatherPreview.apparent_temperature === undefined) {
+          weatherApparent.textContent = '';
+        } else {
+          weatherApparent.textContent = `Percepita ${formatValue(weatherPreview.apparent_temperature, weatherPreview.apparent_temperature_unit)}`;
+        }
+      }
+      if (weatherHumidity) {
+        weatherHumidity.textContent = formatValue(weatherPreview.humidity, weatherPreview.humidity_unit);
+      }
+      if (weatherWind) {
+        weatherWind.textContent = formatValue(weatherPreview.wind_speed, weatherPreview.wind_speed_unit);
+      }
+      if (weatherWindDirection) {
+        weatherWindDirection.textContent = `Direzione ${weatherPreview.wind_direction_cardinal || "—"}`;
+      }
+      if (weatherPrecip) {
+        weatherPrecip.textContent = formatValue(weatherPreview.precipitation_probability, weatherPreview.precipitation_unit);
+      }
+      if (weatherUpdated) {
+        if (weatherPreview.updated_at) {
+          weatherUpdated.textContent = `Aggiornato alle ${weatherPreview.updated_at} (ora locale).`;
+        }
+      }
+      if (kpiVisibility) {
+        kpiVisibility.textContent = weatherPreview.visibility_label || "—";
+      }
+      if (kpiVisibilityNote) {
+        kpiVisibilityNote.textContent = weatherPreview.visibility_note || "";
+      }
+      if (kpiWind) {
+        kpiWind.textContent = formatValue(weatherPreview.wind_speed, weatherPreview.wind_speed_unit);
+      }
+      if (kpiWindDirection) {
+        kpiWindDirection.textContent = weatherPreview.wind_direction_cardinal || "—";
+      }
+      if (kpiCloud) {
+        kpiCloud.textContent = formatValue(weatherPreview.cloud_cover, weatherPreview.cloud_cover_unit);
+      }
+      if (kpiPrecip) {
+        kpiPrecip.textContent = formatValue(weatherPreview.precipitation_probability, weatherPreview.precipitation_unit);
+      }
+      if (kpiOperationalNote) {
+        kpiOperationalNote.textContent = weatherPreview.operational_note || "";
+      }
+    };
+
+    const updatePoiDetails = (poi) => {
+      if (!poi) {
+        return;
+      }
+      if (poiLabel) {
+        poiLabel.textContent = poi.label;
+      }
+      if (poiAltitude) {
+        poiAltitude.textContent = poi.altitude;
+      }
+      if (poiNote) {
+        poiNote.textContent = poi.note;
+      }
+      if (poiSummary) {
+        poiSummary.textContent = poi.label.toLowerCase();
+      }
+      if (poiDetails) {
+        poiDetails.dataset.poiId = poi.id;
+      }
+      webcamCards.forEach((card) => {
+        const key = card.dataset.webcamKey;
+        card.classList.toggle('webcam-card--highlight', key === poi.webcam_key);
+      });
+    };
+
+    const renderTrend = (trend) => {
+      if (!trend || !trend.labels || !trend.labels.length || !trendContainer || !window.Chart) {
+        return;
+      }
+      const ctx = document.getElementById('webcamTrendChart');
+      if (!ctx) {
+        return;
+      }
+      if (trendChart) {
+        trendChart.destroy();
+      }
+      trendChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: trend.labels,
+          datasets: [
+            {
+              label: 'Temperatura (°C)',
+              data: trend.temperature,
+              borderColor: '#38bdf8',
+              backgroundColor: 'rgba(56, 189, 248, 0.2)',
+              tension: 0.35,
+              pointRadius: 0,
+              borderWidth: 2,
+            },
+            {
+              label: 'Vento (km/h)',
+              data: trend.wind,
+              borderColor: '#a855f7',
+              backgroundColor: 'rgba(168, 85, 247, 0.18)',
+              tension: 0.35,
+              pointRadius: 0,
+              borderWidth: 2,
+            },
+            {
+              label: 'Nuvolosità (%)',
+              data: trend.cloud,
+              borderColor: '#f97316',
+              backgroundColor: 'rgba(249, 115, 22, 0.16)',
+              tension: 0.35,
+              pointRadius: 0,
+              borderWidth: 2,
+              yAxisID: 'cloud',
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: {
+            mode: 'index',
+            intersect: false,
+          },
+          scales: {
+            x: {
+              grid: {
+                color: 'rgba(148, 163, 184, 0.12)',
+              },
+              ticks: {
+                maxTicksLimit: 8,
+                color: '#cbd5f5',
+              },
+            },
+            y: {
+              grid: {
+                color: 'rgba(148, 163, 184, 0.12)',
+              },
+              ticks: {
+                color: '#cbd5f5',
+              },
+            },
+            cloud: {
+              position: 'right',
+              grid: {
+                drawOnChartArea: false,
+              },
+              ticks: {
+                color: '#cbd5f5',
+              },
+              suggestedMin: 0,
+              suggestedMax: 100,
+            },
+          },
+          plugins: {
+            legend: {
+              labels: {
+                color: '#e2e8f0',
+              },
+            },
+          },
+        },
+      });
+    };
+
+    const updateTrend = (trend) => {
+      if (!trendContainer || !trendCard) {
+        return;
+      }
+      if (trend && trend.labels && trend.labels.length) {
+        trendContainer.style.display = 'block';
+        renderTrend(trend);
+      } else {
+        trendContainer.style.display = 'none';
+      }
+    };
+
+    const applyPayload = (payload) => {
+      updatePoiDetails(payload.poi);
+      updateIndex(payload.operational_index, payload.weather_preview);
+      updateWeatherPreview(payload.weather_preview);
+      updateTrend(payload.trend);
+    };
+
+    const fetchPoiData = async (poiId) => {
+      try {
+        const response = await fetch(`/api/webcam-meteo?poi=${encodeURIComponent(poiId)}`);
+        if (!response.ok) {
+          throw new Error('Meteo non disponibile');
+        }
+        const data = await response.json();
+        if (!data.ok) {
+          throw new Error(data.error || 'Meteo non disponibile');
+        }
+        applyPayload(data);
+      } catch (error) {
+        if (trendCard) {
+          let message = trendCard.querySelector('.webcam-weather__error');
+          if (!message) {
+            message = document.createElement('p');
+            message.className = 'webcam-weather__error';
+            message.textContent = 'Dati meteo temporaneamente non disponibili.';
+            trendCard.appendChild(message);
+          } else {
+            message.textContent = 'Dati meteo temporaneamente non disponibili.';
+          }
+        }
+      }
+    };
+
+    poiTabs.forEach((tab) => {
+      tab.addEventListener('click', () => {
+        poiTabs.forEach((item) => {
+          item.classList.remove('is-active');
+          item.setAttribute('aria-selected', 'false');
+        });
+        tab.classList.add('is-active');
+        tab.setAttribute('aria-selected', 'true');
+        const poiId = tab.dataset.poiTab;
+        fetchPoiData(poiId);
+      });
+    });
+
+      if (webcamInitialData) {
+        applyPayload(webcamInitialData);
+      }
+    });
+  </script>
 {% endblock %}

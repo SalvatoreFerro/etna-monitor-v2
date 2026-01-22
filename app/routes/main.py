@@ -46,6 +46,12 @@ from app.services.copernicus import (
     resolve_copernicus_image_url,
 )
 from app.services.tremor_summary import build_tremor_summary
+from app.utils.meteo import (
+    DEFAULT_POI_ID,
+    POI_PRESETS,
+    get_poi_preset,
+    get_webcam_weather_payload,
+)
 from ..services.sentieri_geojson import read_geojson_file, validate_feature_collection
 from ..utils.config import get_curva_csv_path, load_curva_dataframe, warn_if_stale_timestamp
 from plotly import io as plotly_io
@@ -65,74 +71,6 @@ def author_detail(slug: str):
         author_name=author_name,
         author_url=author_url,
     )
-
-
-WEATHER_CODE_DESCRIPTIONS: dict[int, str] = {
-    0: "Cielo sereno",
-    1: "Cielo prevalentemente sereno",
-    2: "Parzialmente nuvoloso",
-    3: "Coperto",
-    45: "Nebbia",
-    48: "Nebbia gelata",
-    51: "Pioviggine debole",
-    53: "Pioviggine moderata",
-    55: "Pioviggine intensa",
-    61: "Pioggia debole",
-    63: "Pioggia moderata",
-    65: "Pioggia forte",
-    66: "Pioggia gelata debole",
-    67: "Pioggia gelata intensa",
-    71: "Neve debole",
-    73: "Neve moderata",
-    75: "Neve intensa",
-    77: "Cristalli di ghiaccio",
-    80: "Rovesci deboli",
-    81: "Rovesci moderati",
-    82: "Rovesci violenti",
-    85: "Rovesci di neve deboli",
-    86: "Rovesci di neve intensi",
-    95: "Temporale",
-    96: "Temporale con grandine debole",
-    99: "Temporale con grandine intensa",
-}
-
-
-def _wind_direction_to_cardinal(degrees: float | None) -> str | None:
-    if degrees is None:
-        return None
-
-    directions = [
-        "N",
-        "NNE",
-        "NE",
-        "ENE",
-        "E",
-        "ESE",
-        "SE",
-        "SSE",
-        "S",
-        "SSO",
-        "SO",
-        "OSO",
-        "O",
-        "ONO",
-        "NO",
-        "NNO",
-    ]
-    index = int((degrees % 360) / 22.5 + 0.5) % len(directions)
-    return directions[index]
-
-
-def _format_weather_timestamp(value: str | None) -> tuple[str | None, str | None]:
-    if not value:
-        return None, None
-
-    try:
-        dt = datetime.fromisoformat(value)
-    except ValueError:
-        return None, value
-
-    return dt.strftime("%d/%m/%Y %H:%M"), dt.isoformat()
 
 
 def _format_hotspots_timestamp(value: str | None) -> str | None:
@@ -175,13 +113,6 @@ def _load_sentieri_geojson(kind: str) -> dict | None:
         current_app.logger.warning("[SENTIERI] GeoJSON validation failed: %s", report.get("errors"))
         return None
     return data
-
-
-def _describe_weather_code(code: int | None) -> str | None:
-    if code is None:
-        return None
-
-    return WEATHER_CODE_DESCRIPTIONS.get(code)
 
 
 def _index_cache_key() -> str:
@@ -777,6 +708,8 @@ def eruzione_oggi():
 def webcam_etna():
     og_image = "https://embed.skylinewebcams.com/img/741.jpg"
     canonical = url_for("main.webcam_etna", _external=True)
+    selected_poi_id = request.args.get("poi") or DEFAULT_POI_ID
+    poi = get_poi_preset(selected_poi_id)
 
     webcams = [
         {
@@ -784,107 +717,28 @@ def webcam_etna():
             "url": "https://www.skylinewebcams.com/it/webcam/italia/sicilia/catania/vulcano-etna.html",
             "thumbnail": "https://embed.skylinewebcams.com/img/741.jpg",
             "description": "Vista panoramica sulle Bocchette e i crateri sommitali dell'Etna.",
+            "key": "summit",
         },
         {
             "name": "Vulcano Etna – Versante Nord",
             "url": "https://www.skylinewebcams.com/it/webcam/italia/sicilia/catania/vulcano-etna-versante-nord.html",
             "thumbnail": "https://embed.skylinewebcams.com/img/1737.jpg",
             "description": "Inquadratura dal versante nord con dettaglio sull'area di Piano Provenzana.",
+            "key": "north",
         },
         {
             "name": "Vulcano Etna – Versante Sud",
             "url": "https://www.skylinewebcams.com/it/webcam/italia/sicilia/catania/vulcano-etna-crateri.html",
             "thumbnail": "https://embed.skylinewebcams.com/img/1092.jpg",
             "description": "Prospettiva sui crateri meridionali con il Rifugio Sapienza in primo piano.",
+            "key": "south",
         },
     ]
 
-    weather_preview: dict[str, object] | None = None
-    weather_error: str | None = None
-
-    try:
-        weather_response = requests.get(
-            "https://api.open-meteo.com/v1/forecast",
-            params={
-                "latitude": 37.75,
-                "longitude": 14.99,
-                "current": (
-                    "temperature_2m,relative_humidity_2m,apparent_temperature,"
-                    "wind_speed_10m,wind_direction_10m,weather_code,cloud_cover"
-                ),
-                "hourly": "precipitation_probability",
-                "forecast_days": 1,
-                "timezone": "Europe/Rome",
-            },
-            timeout=5,
-        )
-        weather_response.raise_for_status()
-        weather_data = weather_response.json()
-    except requests.RequestException:
-        weather_error = "Impossibile recuperare i dati meteo in tempo reale. Riprova più tardi."
-    else:
-        current = (weather_data or {}).get("current") or {}
-        units = (weather_data or {}).get("current_units") or {}
-        hourly = (weather_data or {}).get("hourly") or {}
-        precipitation_probability = None
-
-        hourly_probabilities = hourly.get("precipitation_probability") or []
-        hourly_times = hourly.get("time") or []
-        current_time = current.get("time")
-
-        if hourly_probabilities and hourly_times and current_time in hourly_times:
-            try:
-                precipitation_probability = hourly_probabilities[hourly_times.index(current_time)]
-            except (ValueError, IndexError):
-                precipitation_probability = hourly_probabilities[0]
-        elif hourly_probabilities:
-            precipitation_probability = hourly_probabilities[0]
-
-        wind_direction_deg = current.get("wind_direction_10m")
-        cloud_cover = current.get("cloud_cover")
-        updated_at_display, updated_at_iso = _format_weather_timestamp(current.get("time"))
-
-        precipitation_value = precipitation_probability or 0
-        cloud_value = cloud_cover or 0
-        weather_code = current.get("weather_code")
-
-        if precipitation_value >= 70 or cloud_value >= 75 or weather_code in {51, 53, 55, 61, 63, 65, 71, 73, 75, 77, 80, 81, 82, 95, 96, 99}:
-            visibility_label = "Bassa"
-            visibility_note = "Nubi o precipitazioni possono coprire i crateri."
-        elif precipitation_value >= 35 or cloud_value >= 45:
-            visibility_label = "Media"
-            visibility_note = "Possibili banchi di nube o foschia: la vista può variare."
-        else:
-            visibility_label = "Buona"
-            visibility_note = "Condizioni favorevoli per osservare i crateri."
-
-        operational_note = (
-            "Le webcam dipendono da luce e meteo: se l'immagine è poco chiara, controlla le condizioni prima di trarre conclusioni."
-        )
-
-        weather_preview = {
-            "temperature": current.get("temperature_2m"),
-            "temperature_unit": units.get("temperature_2m", "°C"),
-            "apparent_temperature": current.get("apparent_temperature"),
-            "apparent_temperature_unit": units.get("apparent_temperature", "°C"),
-            "humidity": current.get("relative_humidity_2m"),
-            "humidity_unit": units.get("relative_humidity_2m", "%"),
-            "wind_speed": current.get("wind_speed_10m"),
-            "wind_speed_unit": units.get("wind_speed_10m", "km/h"),
-            "wind_direction": wind_direction_deg,
-            "wind_direction_cardinal": _wind_direction_to_cardinal(wind_direction_deg),
-            "precipitation_probability": precipitation_probability,
-            "precipitation_unit": "%",
-            "cloud_cover": cloud_cover,
-            "cloud_cover_unit": units.get("cloud_cover", "%"),
-            "updated_at": updated_at_display,
-            "updated_at_iso": updated_at_iso,
-            "weather_code": current.get("weather_code"),
-            "weather_description": _describe_weather_code(current.get("weather_code")),
-            "visibility_label": visibility_label,
-            "visibility_note": visibility_note,
-            "operational_note": operational_note,
-        }
+    weather_payload, weather_error = get_webcam_weather_payload(poi["id"])
+    weather_preview = weather_payload["weather_preview"] if weather_payload else None
+    operational_index = weather_payload["operational_index"] if weather_payload else None
+    trend = weather_payload["trend"] if weather_payload else None
 
     page_structured_data: list[dict[str, object]] = [
         {
@@ -920,6 +774,62 @@ def webcam_etna():
             }
         )
 
+    page_structured_data.append(
+        {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": [
+                {
+                    "@type": "Question",
+                    "name": "Le webcam mostrano sempre un’eruzione?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": (
+                            "No. Le webcam mostrano ciò che è visibile in quel momento: una fase "
+                            "eruttiva può essere nascosta da nuvole o luce sfavorevole. Per conferme "
+                            "affidabili servono i dati INGV."
+                        ),
+                    },
+                },
+                {
+                    "@type": "Question",
+                    "name": "Che cosa indica l’Indice Operativo?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": (
+                            "È una sintesi numerica della qualità di osservazione: combina vento, "
+                            "nuvole, precipitazioni e visibilità stimata per capire se conviene "
+                            "osservare i crateri o aspettare condizioni migliori."
+                        ),
+                    },
+                },
+                {
+                    "@type": "Question",
+                    "name": "Quando è più utile controllare le webcam?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": (
+                            "Quando l’indice è buono o in miglioramento e le nubi sono basse. In quel "
+                            "caso le webcam danno più dettagli sui crateri e sulle eventuali emissioni."
+                        ),
+                    },
+                },
+                {
+                    "@type": "Question",
+                    "name": "Quando conviene controllare anche il grafico del tremore?",
+                    "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": (
+                            "Quando noti bagliori o fumi insoliti, oppure se vuoi capire se un "
+                            "cambiamento è reale. Il grafico è il modo più chiaro per leggere "
+                            "l’andamento delle ultime ore."
+                        ),
+                    },
+                },
+            ],
+        }
+    )
+
     return render_template(
         "webcam.html",
         page_title="Webcam Etna in diretta e meteo – EtnaMonitor",
@@ -934,10 +844,32 @@ def webcam_etna():
         page_og_image=og_image,
         canonical_url=canonical,
         webcams=webcams,
+        poi_presets=POI_PRESETS,
+        selected_poi=poi,
         weather_preview=weather_preview,
         weather_error=weather_error,
+        operational_index=operational_index,
+        trend=trend,
         page_structured_data=page_structured_data,
     )
+
+
+@bp.route("/api/webcam-meteo")
+def webcam_meteo_api():
+    poi_id = request.args.get("poi") or DEFAULT_POI_ID
+    poi = get_poi_preset(poi_id)
+    payload, error = get_webcam_weather_payload(poi["id"])
+    if error or not payload:
+        return jsonify({"ok": False, "error": error or "Dati meteo non disponibili."}), 503
+
+    response = {
+        "ok": True,
+        "poi": payload["poi"],
+        "weather_preview": payload["weather_preview"],
+        "operational_index": payload["operational_index"],
+        "trend": payload["trend"],
+    }
+    return jsonify(response)
 
 
 @bp.route("/sentieri")
