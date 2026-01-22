@@ -23,3 +23,8 @@ app/static/images/og-image.png
 
 # Generated partner invoices
 app/static/invoices/
+
+# Copernicus Smart View runtime artifacts
+data/copernicus_status.json
+data/copernicus_preview.log
+app/static/copernicus/*.png

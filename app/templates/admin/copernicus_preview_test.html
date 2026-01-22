@@ -3,27 +3,39 @@
 {% block content %}
   <section class="admin-section">
     <h1>Copernicus Preview Test</h1>
-    <p>Modalità predefinita: <strong>{{ copernicus_default_mode or '—' }}</strong></p>
+    <p>Sorgente selezionata: <strong>{{ copernicus_payload.selected_source or '—' }}</strong></p>
 
     <div class="admin-grid">
-      {% for mode, payload in copernicus_modes.items() %}
-        <div class="admin-card">
-          <h2>{{ mode|capitalize }}</h2>
-          {% if payload.preview_url %}
-            <img
-              src="{{ payload.preview_url }}"
-              alt="Preview Copernicus {{ mode }}"
-              style="max-width: 100%; border-radius: 12px; border: 1px solid rgba(148, 163, 184, 0.35);"
-            />
-          {% else %}
-            <p>Nessuna immagine disponibile.</p>
-          {% endif %}
-          <pre style="white-space: pre-wrap; margin-top: 1rem;">{{ payload | tojson(indent=2) }}</pre>
-        </div>
-      {% endfor %}
+      <div class="admin-card">
+        <h2>Sentinel-2 (Ottico)</h2>
+        {% if copernicus_payload.preview_url_s2 %}
+          <img
+            src="{{ copernicus_payload.preview_url_s2 }}{% if copernicus_payload.generated_at_epoch %}?v={{ copernicus_payload.generated_at_epoch }}{% endif %}"
+            alt="Preview Copernicus Sentinel-2"
+            style="max-width: 100%; border-radius: 12px; border: 1px solid rgba(148, 163, 184, 0.35);"
+          />
+        {% else %}
+          <p>Nessuna immagine disponibile.</p>
+        {% endif %}
+      </div>
+      <div class="admin-card">
+        <h2>Sentinel-1 (Radar)</h2>
+        {% if copernicus_payload.preview_url_s1 %}
+          <img
+            src="{{ copernicus_payload.preview_url_s1 }}{% if copernicus_payload.generated_at_epoch %}?v={{ copernicus_payload.generated_at_epoch }}{% endif %}"
+            alt="Preview Copernicus Sentinel-1"
+            style="max-width: 100%; border-radius: 12px; border: 1px solid rgba(148, 163, 184, 0.35);"
+          />
+        {% else %}
+          <p>Nessuna immagine disponibile.</p>
+        {% endif %}
+      </div>
     </div>
 
-    <h2>Cache raw</h2>
-    <pre style="white-space: pre-wrap;">{{ copernicus_cache | tojson(indent=2) }}</pre>
+    <h2>Status JSON</h2>
+    <pre style="white-space: pre-wrap;">{{ copernicus_status | tojson(indent=2) }}</pre>
+
+    <h2>Log ultimo run</h2>
+    <pre style="white-space: pre-wrap;">{{ copernicus_log or 'Nessun log disponibile.' }}</pre>
   </section>
 {% endblock %}

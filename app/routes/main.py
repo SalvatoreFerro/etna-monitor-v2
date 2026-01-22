@@ -40,14 +40,7 @@ from backend.services.hotspots.config import HotspotsConfig
 from backend.services.hotspots.storage import read_cache, unavailable_payload
 from config import DEFAULT_GA_MEASUREMENT_ID, Config
 from app.models.hotspots_record import HotspotsRecord
-from app.services.copernicus_preview_cache import (
-    build_copernicus_status,
-    load_preview_cache,
-    resolve_copernicus_bbox,
-    resolve_mode,
-    resolve_preview_entry,
-    resolve_preview_url,
-)
+from app.services.copernicus_smart_view import build_copernicus_view_payload
 from app.services.tremor_summary import build_tremor_summary
 from app.utils.meteo import (
     DEFAULT_POI_ID,
@@ -1032,27 +1025,26 @@ def observatory():
     except SQLAlchemyError:
         current_app.logger.exception("[OBSERVATORY] Hotspots summary lookup failed")
 
-    copernicus_cache = load_preview_cache()
-    copernicus_default_mode = resolve_mode(copernicus_cache)
-    copernicus_latest = resolve_preview_entry(copernicus_cache, copernicus_default_mode)
-    copernicus_bbox = resolve_copernicus_bbox(copernicus_latest)
-    copernicus_preview_url = resolve_preview_url(copernicus_latest)
-    copernicus_status = build_copernicus_status(copernicus_latest, copernicus_preview_url)
-
-    copernicus_acquired_display = _format_display_datetime(
-        _parse_iso_datetime(copernicus_latest.get("sensing_time"))
-        if copernicus_latest
-        else None
-    )
+    copernicus_payload = build_copernicus_view_payload()
+    copernicus_bbox = copernicus_payload.get("bbox")
+    copernicus_preview_url = copernicus_payload.get("preview_url")
     copernicus_updated_display = _format_display_datetime(
-        _parse_iso_datetime(copernicus_latest.get("generated_at"))
-        if copernicus_latest
-        else None
+        _parse_iso_datetime(copernicus_payload.get("generated_at"))
     )
+    s2_meta = copernicus_payload.get("s2") or {}
+    s1_meta = copernicus_payload.get("s1") or {}
+    copernicus_s2_acquired_display = _format_display_datetime(
+        _parse_iso_datetime(s2_meta.get("datetime"))
+    )
+    copernicus_s1_acquired_display = _format_display_datetime(
+        _parse_iso_datetime(s1_meta.get("datetime"))
+    )
+    s2_cloud_cover = s2_meta.get("cloud_cover")
+    copernicus_s2_cloud_high = s2_cloud_cover is not None and s2_cloud_cover >= 40
     current_app.logger.info(
         "[OBSERVATORY] Copernicus bbox=%s product_id=%s",
         copernicus_bbox,
-        copernicus_latest.get("product_id") if copernicus_latest else None,
+        s2_meta.get("product_id"),
     )
 
     return render_template(
@@ -1060,7 +1052,7 @@ def observatory():
         page_title="Osservatorio Etna – Tremore, Hotspot NASA e Copernicus",
         page_description=(
             "Pagina unica di osservazione EtnaMonitor con grafico del tremore INGV, "
-            "hotspot NASA FIRMS e immagini satellitari Copernicus Sentinel-2."
+            "hotspot NASA FIRMS e Copernicus Smart View (Sentinel-2 ottico + Sentinel-1 radar)."
         ),
         canonical_url=url_for("main.observatory", _external=True),
         csv_snapshot=csv_snapshot,
@@ -1074,29 +1066,21 @@ def observatory():
                 hotspot_latest_record.acq_datetime if hotspot_latest_record else None
             ),
         },
-        copernicus_latest=copernicus_latest,
+        copernicus_payload=copernicus_payload,
         copernicus_preview_url=copernicus_preview_url,
-        copernicus_preview_epoch=(
-            int(
-                datetime.fromisoformat(
-                    (
-                        copernicus_latest.get("sensing_time")
-                        or copernicus_latest.get("generated_at")
-                    ).replace("Z", "+00:00")
-                ).timestamp()
-            )
-            if copernicus_latest
-            and (copernicus_latest.get("sensing_time") or copernicus_latest.get("generated_at"))
-            else None
-        ),
-        copernicus_status_label=copernicus_status["label"],
-        copernicus_status_message=copernicus_status["message"],
-        copernicus_status_class=copernicus_status["badge_class"],
-        copernicus_available=copernicus_status["available"],
-        copernicus_acquired_display=copernicus_acquired_display,
+        copernicus_preview_epoch=copernicus_payload.get("generated_at_epoch"),
+        copernicus_source_label=copernicus_payload.get("badge_label"),
+        copernicus_source_badge_class=copernicus_payload.get("badge_class"),
+        copernicus_fallback_note=copernicus_payload.get("fallback_note"),
+        copernicus_selected_source=copernicus_payload.get("selected_source"),
+        copernicus_s2_acquired_display=copernicus_s2_acquired_display,
+        copernicus_s1_acquired_display=copernicus_s1_acquired_display,
+        copernicus_s2_cloud_cover=s2_cloud_cover,
+        copernicus_s2_cloud_high=copernicus_s2_cloud_high,
+        copernicus_s2_product_id=s2_meta.get("product_id"),
+        copernicus_s1_product_id=s1_meta.get("product_id"),
         copernicus_updated_display=copernicus_updated_display,
         copernicus_bbox=copernicus_bbox,
-        copernicus_default_mode=copernicus_default_mode,
     )
 
 

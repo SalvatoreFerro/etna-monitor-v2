@@ -10,15 +10,15 @@
 {% endblock %}
 
 {% block content %}
-  {% from "partials/leaflet_map.html" import etna_map_shell, etna_hotspots_legend, etna_copernicus_legend %}
+{% from "partials/leaflet_map.html" import etna_map_shell, etna_hotspots_legend %}
   <section class="observatory-hero">
     <div class="container">
       <div class="observatory-header">
         <span class="observatory-pill">🛰️ Osservatorio multisorgente</span>
-        <h1>Osservatorio Etna: tremore, hotspot NASA e Copernicus Sentinel-2</h1>
+        <h1>Osservatorio Etna: tremore, hotspot NASA e Copernicus Smart View</h1>
         <p>
           Una vista unica per monitorare il vulcano con dati INGV, anomalie termiche NASA FIRMS e
-          immagini satellitari Copernicus Sentinel-2 pronte per il web.
+          immagini satellitari Copernicus Smart View (Sentinel-2 ottico + fallback Sentinel-1 radar).
         </p>
       </div>
     </div>
@@ -123,7 +123,7 @@
           <header class="observatory-card__header">
             <div>
               <h2>Mappa satellitare</h2>
-              <p>Hotspot NASA FIRMS e area Copernicus Sentinel-2 in un’unica vista.</p>
+              <p>Hotspot NASA FIRMS e Copernicus Smart View in un’unica vista.</p>
             </div>
             <div class="observatory-card__meta">
               <span>Ultimo aggiornamento Copernicus</span>
@@ -131,12 +131,11 @@
             </div>
           </header>
           <div class="observatory-card__body">
-            {% set copernicus_cloud_high = copernicus_latest and copernicus_latest.cloud_cover is not none and copernicus_latest.cloud_cover >= 65 %}
             {% call etna_map_shell(
               'observatory-map',
               'observatory-map-label',
               'observatory-map-loader',
-              'Hotspot FIRMS e area Copernicus Sentinel-2 sull’Etna',
+              'Hotspot FIRMS e Copernicus Smart View sull’Etna',
               aria_label='Mappa hotspot FIRMS e footprint Copernicus'
             ) %}
               {{ etna_hotspots_legend() }}
@@ -160,17 +159,17 @@
                 </div>
               </div>
               <div class="observatory-map-meta-group">
-                <div class="observatory-map-meta-title">Copernicus Sentinel-2</div>
+                <div class="observatory-map-meta-title">Copernicus Smart View</div>
                 <div class="observatory-copernicus-status-card">
-                  <span class="observatory-badge {{ copernicus_status_class }}" id="observatory-copernicus-status-badge">
-                    {{ copernicus_status_label }}
+                  <span class="observatory-badge {{ copernicus_source_badge_class }}" id="observatory-copernicus-status-badge">
+                    {{ copernicus_source_label }}
                   </span>
                   <p class="observatory-copernicus-status-message" id="observatory-copernicus-status-message">
-                    {{ copernicus_status_message }}
+                    Ultima immagine disponibile: {{ copernicus_updated_display or '—' }}.
                   </p>
                 </div>
                 <div class="observatory-copernicus-badges" id="observatory-copernicus-badges">
-                  {% if copernicus_cloud_high %}
+                  {% if copernicus_s2_cloud_high %}
                     <span class="observatory-badge observatory-badge--warning">Nuvolosità alta</span>
                   {% endif %}
                 </div>
@@ -178,28 +177,36 @@
                   <summary>Dettagli Copernicus</summary>
                   <div class="observatory-copernicus-meta">
                     <div>
-                      <span>Acquisizione (UTC)</span>
-                      <strong id="observatory-copernicus-acquired">{{ copernicus_acquired_display or '—' }}</strong>
+                      <span>Sentinel-2 acquisizione (UTC)</span>
+                      <strong id="observatory-copernicus-acquired">{{ copernicus_s2_acquired_display or '—' }}</strong>
                     </div>
                     <div>
-                      <span>Copertura nuvolosa</span>
+                      <span>Sentinel-2 copertura nuvolosa</span>
                       <strong id="observatory-copernicus-cloud">
-                        {% if copernicus_latest and copernicus_latest.cloud_cover is not none %}
-                          {{ '%.1f' | format(copernicus_latest.cloud_cover) }}%
+                        {% if copernicus_s2_cloud_cover is not none %}
+                          {{ '%.1f' | format(copernicus_s2_cloud_cover) }}%
                         {% else %}
                           —
                         {% endif %}
                       </strong>
                     </div>
                     <div>
-                      <span>Product ID</span>
+                      <span>Sentinel-2 product ID</span>
                       <strong id="observatory-copernicus-product">
-                        {% if copernicus_latest and copernicus_latest.product_id %}
-                          {{ copernicus_latest.product_id }}
+                        {% if copernicus_s2_product_id %}
+                          {{ copernicus_s2_product_id }}
                         {% else %}
                           —
                         {% endif %}
                       </strong>
+                    </div>
+                    <div>
+                      <span>Sentinel-1 acquisizione (UTC)</span>
+                      <strong>{{ copernicus_s1_acquired_display or '—' }}</strong>
+                    </div>
+                    <div>
+                      <span>Sentinel-1 product ID</span>
+                      <strong>{{ copernicus_s1_product_id or '—' }}</strong>
                     </div>
                     <div>
                       <span>BBOX (EPSG:4326)</span>
@@ -224,77 +231,27 @@
               </div>
             </div>
             <div class="observatory-image">
-              <div class="observatory-copernicus-toggle" role="group" aria-label="Seleziona modalità Copernicus">
-                <button
-                  class="btn btn-ghost btn-sm {% if copernicus_default_mode != 'latest' %}is-active{% endif %}"
-                  type="button"
-                  data-copernicus-mode="best"
-                  aria-pressed="{{ 'true' if copernicus_default_mode != 'latest' else 'false' }}"
-                >
-                  Migliore
-                </button>
-                <button
-                  class="btn btn-ghost btn-sm {% if copernicus_default_mode == 'latest' %}is-active{% endif %}"
-                  type="button"
-                  data-copernicus-mode="latest"
-                  aria-pressed="{{ 'true' if copernicus_default_mode == 'latest' else 'false' }}"
-                >
-                  Ultima
-                </button>
-              </div>
-              <div class="observatory-image__frame" id="observatory-copernicus-image" {% if not copernicus_available %}hidden{% endif %}>
+              <div class="observatory-image__frame is-loading" id="observatory-copernicus-image">
                 <img
                   id="observatory-copernicus-img"
-                  src="{{ copernicus_preview_url ~ '?v=' ~ copernicus_preview_epoch if copernicus_available else '' }}"
-                  alt="Immagine satellitare Copernicus Sentinel-2 dell'Etna"
+                  src="{{ copernicus_preview_url ~ ('?v=' ~ copernicus_preview_epoch if copernicus_preview_epoch else '') if copernicus_preview_url else '' }}"
+                  alt="Immagine satellitare Copernicus dell'Etna"
                   loading="lazy"
                   decoding="async"
-                  {% if not copernicus_available %}hidden{% endif %}
                 />
                 <div class="observatory-image__overlay">
                   <span class="observatory-summit-marker" aria-hidden="true"></span>
                   <span class="observatory-summit-label">Etna summit</span>
                 </div>
               </div>
-              <div
-                class="observatory-image__fallback"
-                id="observatory-copernicus-fallback"
-                data-poll-interval-ms="{{ config.COPERNICUS_POLL_INTERVAL_SECONDS * 1000 }}"
-                data-poll-max-minutes="{{ config.COPERNICUS_POLL_TIMEOUT_MINUTES }}"
-                {% if copernicus_available %}hidden{% endif %}
-              >
-                {% call etna_map_shell(
-                  'observatory-copernicus-map',
-                  'observatory-copernicus-map-label',
-                  none,
-                  'Copertura Copernicus Sentinel-2 sull’Etna',
-                  aria_label='Footprint Copernicus Sentinel-2 sull’Etna',
-                  map_class='etna-map--compact',
-                  badge_text=copernicus_status_label,
-                  badge_id='observatory-copernicus-fallback-badge',
-                  badge_class='observatory-badge ' ~ copernicus_status_class
-                ) %}
-                  {{ etna_copernicus_legend() }}
-                {% endcall %}
-                <div class="observatory-copernicus-fallback-info">
-                  <div class="observatory-copernicus-fallback-status">
-                    <span class="observatory-image__status" id="observatory-image-status">{{ copernicus_status_label }}</span>
-                    <span class="observatory-image__detail" id="observatory-image-detail">
-                      {{ copernicus_status_message }}
-                    </span>
-                  </div>
-                  <p class="observatory-copernicus-fallback-note">
-                    La mappa evidenzia il footprint dell’area osservata dal satellite Sentinel-2.
-                  </p>
-                  <button class="btn btn-ghost btn-sm" type="button" id="observatory-copernicus-retry" hidden>
-                    Riprova
-                  </button>
-                </div>
-              </div>
+              {% if copernicus_fallback_note %}
+                <p class="observatory-copernicus-fallback-note" id="observatory-copernicus-note">
+                  {{ copernicus_fallback_note }}
+                </p>
+              {% endif %}
             </div>
             <p class="observatory-note">
-              Immagine satellitare Copernicus Sentinel-2 (CDSE). La disponibilità dipende dalla copertura
-              nuvolosa e dai passaggi del satellite.
+              Copernicus Smart View: Sentinel-2 ottico quando possibile, fallback Sentinel-1 radar in caso di nuvole.
             </p>
             <div class="observatory-card__footer">
               {% if config.HOTSPOTS_ENABLED %}
@@ -305,7 +262,6 @@
                 class="btn btn-secondary"
                 data-modal-open
                 id="observatory-copernicus-open"
-                {% if not copernicus_available %}disabled{% endif %}
               >
                 Apri grande
               </button>
@@ -318,15 +274,14 @@
 
   <div class="observatory-modal" data-modal hidden>
     <div class="observatory-modal__backdrop" data-modal-close></div>
-    <div class="observatory-modal__content" role="dialog" aria-modal="true" aria-label="Immagine Copernicus Sentinel-2">
+    <div class="observatory-modal__content" role="dialog" aria-modal="true" aria-label="Immagine Copernicus">
       <button class="observatory-modal__close" type="button" data-modal-close aria-label="Chiudi">×</button>
       <img
         id="observatory-copernicus-modal-image"
-        src="{{ copernicus_preview_url ~ '?v=' ~ copernicus_preview_epoch if copernicus_available else '' }}"
-        alt="Immagine satellitare Copernicus Sentinel-2 dell'Etna in formato grande"
+        src="{{ copernicus_preview_url ~ ('?v=' ~ copernicus_preview_epoch if copernicus_preview_epoch else '') if copernicus_preview_url else '' }}"
+        alt="Immagine satellitare Copernicus dell'Etna in formato grande"
         loading="lazy"
         decoding="async"
-        {% if not copernicus_available %}hidden{% endif %}
       />
     </div>
   </div>
@@ -346,11 +301,6 @@
     document.addEventListener('DOMContentLoaded', () => {
       const copernicusBbox = {{ copernicus_bbox | tojson }};
       const mapElement = document.getElementById('observatory-map');
-      const fallbackContainer = document.getElementById('observatory-copernicus-fallback');
-      const fallbackMapElement = document.getElementById('observatory-copernicus-map');
-      const fallbackLabelEl = document.getElementById('observatory-copernicus-map-label');
-      const fallbackBadgeEl = document.getElementById('observatory-copernicus-fallback-badge');
-      const retryButton = document.getElementById('observatory-copernicus-retry');
       const modal = document.querySelector('[data-modal]');
       const modalOpen = document.querySelector('[data-modal-open]');
       const modalCloseButtons = document.querySelectorAll('[data-modal-close]');
@@ -358,34 +308,13 @@
       const imageEl = document.getElementById('observatory-copernicus-img');
       const modalImage = document.getElementById('observatory-copernicus-modal-image');
 
-      const pollIntervalMs = Number(fallbackContainer?.dataset.pollIntervalMs || 60000);
-      const pollMaxMinutes = Number(fallbackContainer?.dataset.pollMaxMinutes || 20);
-      const pollMaxMs = pollMaxMinutes * 60 * 1000;
-      let pollStart = null;
-      let pollTimer = null;
-
       let map = null;
       let copernicusFootprint = null;
-      let fallbackMap = null;
-      let fallbackFootprint = null;
 
       const countEl = document.getElementById('observatory-hotspots-count');
       const latestEl = document.getElementById('observatory-hotspots-latest');
       const labelEl = document.getElementById('observatory-map-label');
       const loaderEl = document.getElementById('observatory-map-loader');
-      const statusBadgeEl = document.getElementById('observatory-copernicus-status-badge');
-      const statusMessageEl = document.getElementById('observatory-copernicus-status-message');
-      const badgesEl = document.getElementById('observatory-copernicus-badges');
-      const productEl = document.getElementById('observatory-copernicus-product');
-      const cloudEl = document.getElementById('observatory-copernicus-cloud');
-      const acquiredEl = document.getElementById('observatory-copernicus-acquired');
-      const updatedEl = document.getElementById('observatory-copernicus-updated');
-      const bboxEl = document.getElementById('observatory-copernicus-bbox');
-      const imageStatusEl = document.getElementById('observatory-image-status');
-      const imageDetailEl = document.getElementById('observatory-image-detail');
-      const copernicusToggleButtons = document.querySelectorAll('[data-copernicus-mode]');
-      let copernicusMode = '{{ copernicus_default_mode or "best" }}';
-      let copernicusModes = null;
 
       const setLoaderVisible = (visible) => {
         if (!loaderEl) {
@@ -401,239 +330,11 @@
         element.classList.toggle('is-visible', visible);
       };
 
-      const formatDateTime = (value) => {
-        if (!value) {
-          return '—';
-        }
-        const parsed = new Date(value);
-        if (Number.isNaN(parsed.getTime())) {
-          return value;
-        }
-        return parsed.toLocaleString('it-IT', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          timeZone: 'UTC',
-          timeZoneName: 'short',
-        });
-      };
-
-      const formatBbox = (bbox) => {
-        if (!Array.isArray(bbox) || bbox.length !== 4) {
-          return '—';
-        }
-        return bbox.map((value) => Number(value).toFixed(3)).join(', ');
-      };
-
-      const resolveCopernicusStatus = (payload) => {
-        if (!payload) {
-          return {
-            label: '❌ Nessun prodotto recente',
-            badgeClass: 'observatory-badge--danger',
-            message:
-              'Nessun prodotto recente disponibile per l’area dell’Etna. La mappa mostra il footprint di riferimento.',
-          };
-        }
-        return {
-          label: payload.status_label || '⏳ Anteprima in aggiornamento',
-          badgeClass: payload.status_badge_class || 'observatory-badge--info',
-          message: payload.status_detail || 'Anteprima non ancora disponibile per l’ultima acquisizione.',
-        };
-      };
-
-      const renderCopernicusBadges = (payload) => {
-        if (!badgesEl) {
-          return;
-        }
-        badgesEl.innerHTML = '';
-        const cloudCoverage = payload?.cloud_coverage ?? payload?.cloud_cover ?? null;
-        if (cloudCoverage != null && cloudCoverage >= 65) {
-          const badge = document.createElement('span');
-          badge.className = 'observatory-badge observatory-badge--warning';
-          badge.textContent = 'Nuvolosità alta';
-          badgesEl.appendChild(badge);
-        }
-      };
-
-      const updateCopernicusFootprint = (targetMap, payload, options) => {
-        if (!targetMap || !payload?.bbox || !window.EtnaLeaflet?.addCopernicusFootprint) {
+      const updateCopernicusFootprint = (targetMap, bbox, options) => {
+        if (!targetMap || !bbox || !window.EtnaLeaflet?.addCopernicusFootprint) {
           return null;
         }
-        return window.EtnaLeaflet.addCopernicusFootprint(targetMap, payload.bbox, options);
-      };
-
-      const updateCopernicusImage = (payload) => {
-        const hasImage = Boolean(payload?.available && payload?.preview_url);
-        const cacheBuster = payload?.datetime_epoch ? `?v=${payload.datetime_epoch}` : '';
-        const previewUrl = hasImage ? `${payload.preview_url}${cacheBuster}` : '';
-        if (imageFrame) {
-          imageFrame.hidden = !hasImage;
-        }
-        if (fallbackContainer) {
-          fallbackContainer.hidden = hasImage;
-        }
-        if (imageEl) {
-          if (hasImage) {
-            imageEl.src = previewUrl;
-            imageEl.hidden = false;
-          } else {
-            imageEl.hidden = true;
-          }
-        }
-        if (modalImage) {
-          if (hasImage) {
-            modalImage.src = previewUrl;
-            modalImage.hidden = false;
-          } else {
-            modalImage.hidden = true;
-          }
-        }
-        if (modalOpen) {
-          modalOpen.disabled = !hasImage;
-          modalOpen.setAttribute('aria-disabled', String(!hasImage));
-        }
-      };
-
-      const updateCopernicusMeta = (payload) => {
-        if (!payload) {
-          return;
-        }
-        if (productEl) {
-          productEl.textContent = payload.product_id || '—';
-        }
-        if (cloudEl) {
-          const cloudCoverage = payload.cloud_coverage ?? payload.cloud_cover;
-          cloudEl.textContent = cloudCoverage == null ? '—' : `${cloudCoverage.toFixed(1)}%`;
-        }
-        if (acquiredEl) {
-          acquiredEl.textContent = formatDateTime(payload.acquired_at);
-        }
-        if (updatedEl) {
-          updatedEl.textContent = formatDateTime(payload.created_at);
-        }
-        if (bboxEl) {
-          bboxEl.textContent = formatBbox(payload.bbox);
-        }
-        const status = resolveCopernicusStatus(payload);
-        if (statusBadgeEl) {
-          statusBadgeEl.textContent = status.label;
-          statusBadgeEl.className = `observatory-badge ${status.badgeClass}`;
-        }
-        if (statusMessageEl) {
-          statusMessageEl.textContent = status.message;
-        }
-        if (imageStatusEl) {
-          imageStatusEl.textContent = status.label;
-        }
-        if (fallbackBadgeEl) {
-          fallbackBadgeEl.textContent = status.label;
-          fallbackBadgeEl.className = `observatory-badge ${status.badgeClass}`;
-        }
-        if (imageDetailEl) {
-          imageDetailEl.textContent = status.message;
-        }
-        renderCopernicusBadges(payload);
-        if (map) {
-          if (copernicusFootprint) {
-            map.removeLayer(copernicusFootprint);
-          }
-          copernicusFootprint = updateCopernicusFootprint(map, payload, {
-            color: '#38bdf8',
-            fillColor: '#38bdf8',
-          });
-        }
-        if (fallbackMap) {
-          if (fallbackFootprint) {
-            fallbackMap.removeLayer(fallbackFootprint);
-          }
-          fallbackFootprint = updateCopernicusFootprint(fallbackMap, payload, {
-            color: '#facc15',
-            fillColor: '#facc15',
-            dashArray: '6 6',
-            fillOpacity: 0.12,
-            fitBounds: true,
-          });
-        }
-        updateCopernicusImage(payload);
-      };
-
-      const resolveModePayload = (payload, mode) => {
-        if (payload?.modes) {
-          return payload.modes[mode] || payload.modes.best || payload.modes.latest || payload;
-        }
-        if (copernicusModes) {
-          return copernicusModes[mode] || copernicusModes.best || copernicusModes.latest || payload;
-        }
-        return payload;
-      };
-
-      const updateCopernicusToggle = (mode) => {
-        copernicusToggleButtons.forEach((button) => {
-          const isActive = button.dataset.copernicusMode === mode;
-          button.classList.toggle('is-active', isActive);
-          button.setAttribute('aria-pressed', String(isActive));
-        });
-      };
-
-      const applyCopernicusMode = (payload, mode) => {
-        const modePayload = resolveModePayload(payload, mode);
-        if (!modePayload) {
-          return;
-        }
-        copernicusMode = modePayload.mode || mode;
-        updateCopernicusToggle(copernicusMode);
-        updateCopernicusMeta(modePayload);
-      };
-
-      const stopPolling = (showRetry) => {
-        if (pollTimer) {
-          window.clearInterval(pollTimer);
-        }
-        pollTimer = null;
-        pollStart = null;
-        if (retryButton) {
-          retryButton.hidden = !showRetry;
-        }
-      };
-
-      const fetchCopernicus = () =>
-        fetch('/api/copernicus/latest', { headers: { Accept: 'application/json' } })
-          .then((response) => response.json())
-          .then((payload) => {
-            if (payload?.modes) {
-              copernicusModes = payload.modes;
-            }
-            const defaultMode = payload?.default_mode || copernicusMode;
-            applyCopernicusMode(payload, copernicusMode || defaultMode);
-            const activePayload = resolveModePayload(payload, copernicusMode || defaultMode);
-            if (activePayload?.available && activePayload?.preview_url) {
-              stopPolling(false);
-            }
-            return payload;
-          })
-          .catch(() => null);
-
-      const startPolling = () => {
-        if (!fallbackContainer || pollTimer || pollIntervalMs <= 0) {
-          return;
-        }
-        pollStart = Date.now();
-        if (retryButton) {
-          retryButton.hidden = true;
-        }
-        pollTimer = window.setInterval(() => {
-          if (document.hidden) {
-            stopPolling(false);
-            return;
-          }
-          if (pollStart && Date.now() - pollStart >= pollMaxMs) {
-            stopPolling(true);
-            return;
-          }
-          fetchCopernicus();
-        }, pollIntervalMs);
+        return window.EtnaLeaflet.addCopernicusFootprint(targetMap, bbox, options);
       };
 
       if (mapElement && window.EtnaLeaflet) {
@@ -641,26 +342,11 @@
           addFirmsBadge: true,
         });
 
-        copernicusFootprint = window.EtnaLeaflet.addCopernicusFootprint(map, copernicusBbox, {
+        copernicusFootprint = updateCopernicusFootprint(map, copernicusBbox, {
           color: '#38bdf8',
           fillColor: '#38bdf8',
         });
         window.EtnaLeaflet.addEtnaMarker(map);
-      }
-
-      if (fallbackMapElement && window.EtnaLeaflet) {
-        fallbackMap = window.EtnaLeaflet.createEtnaMap(fallbackMapElement, {
-          mapOptions: { zoomControl: true },
-        });
-        fallbackFootprint = window.EtnaLeaflet.addCopernicusFootprint(fallbackMap, copernicusBbox, {
-          color: '#facc15',
-          fillColor: '#facc15',
-          dashArray: '6 6',
-          fillOpacity: 0.12,
-          fitBounds: true,
-        });
-        window.EtnaLeaflet.addEtnaMarker(fallbackMap);
-        setLabelVisible(fallbackLabelEl, true);
       }
 
       if (map) {
@@ -714,30 +400,15 @@
           .finally(() => setLoaderVisible(false));
       }
 
-      fetchCopernicus().then((payload) => {
-        const activePayload = resolveModePayload(payload, copernicusMode);
-        if (activePayload && !activePayload.available) {
-          startPolling();
+      if (imageEl && imageFrame) {
+        const handleLoad = () => imageFrame.classList.remove('is-loading');
+        if (imageEl.complete) {
+          handleLoad();
+        } else {
+          imageEl.addEventListener('load', handleLoad, { once: true });
+          imageEl.addEventListener('error', handleLoad, { once: true });
         }
-      });
-
-      if (retryButton) {
-        retryButton.addEventListener('click', () => {
-          stopPolling(false);
-          fetchCopernicus().then((payload) => {
-            const activePayload = resolveModePayload(payload, copernicusMode);
-            if (activePayload && !activePayload.available) {
-              startPolling();
-            }
-          });
-        });
       }
-
-      document.addEventListener('visibilitychange', () => {
-        if (document.hidden) {
-          stopPolling(false);
-        }
-      });
 
       if (modal && modalOpen) {
         const openModal = () => {
@@ -753,19 +424,6 @@
         };
         modalOpen.addEventListener('click', openModal);
         modalCloseButtons.forEach((button) => button.addEventListener('click', closeModal));
-      }
-
-      if (copernicusToggleButtons.length) {
-        copernicusToggleButtons.forEach((button) => {
-          button.addEventListener('click', () => {
-            const mode = button.dataset.copernicusMode;
-            if (!mode) {
-              return;
-            }
-            copernicusMode = mode;
-            applyCopernicusMode(copernicusModes ? { modes: copernicusModes } : null, mode);
-          });
-        });
       }
     });
   </script>

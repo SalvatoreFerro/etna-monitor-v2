@@ -6309,18 +6309,54 @@
 .observatory-image__frame {
   position: relative;
   width: 100%;
+  aspect-ratio: 16 / 9;
+  background: rgba(15, 23, 42, 0.6);
+  overflow: hidden;
 }
 
 .observatory-image img {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  height: auto;
+  height: 100%;
   display: block;
+  object-fit: cover;
+  transition: opacity 0.3s ease;
+}
+
+.observatory-image__frame.is-loading img {
+  opacity: 0;
+}
+
+.observatory-image__frame.is-loading::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    120deg,
+    rgba(148, 163, 184, 0.08) 0%,
+    rgba(148, 163, 184, 0.24) 45%,
+    rgba(148, 163, 184, 0.08) 100%
+  );
+  background-size: 200% 100%;
+  animation: observatory-skeleton 1.5s ease-in-out infinite;
+  z-index: 0;
+}
+
+@keyframes observatory-skeleton {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
 }
 
 .observatory-image__overlay {
   position: absolute;
   inset: 0;
   pointer-events: none;
+  z-index: 2;
 }
 
 .observatory-summit-marker {
