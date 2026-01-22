@@ -99,6 +99,46 @@ def _parse_iso_datetime(value: str | None) -> datetime | None:
         return None
 
 
+def _build_live_meta(
+    latest_value: float | None,
+    latest_timestamp_display: str | None,
+    *,
+    attention_threshold: float,
+) -> tuple[str, str]:
+    base_title = "Monitoraggio Etna in tempo reale – Grafico INGV | EtnaMonitor"
+    base_description = (
+        "Dati ufficiali INGV e grafico del tremore dell'Etna aggiornato con lettura chiara delle soglie. "
+        "EtnaMonitor offre un monitoraggio affidabile e avvisi Telegram quando serve."
+    )
+
+    if latest_value is None:
+        return base_title, base_description
+
+    timestamp_label = latest_timestamp_display or "ora"
+    if latest_timestamp_display:
+        timestamp_label = f"{latest_timestamp_display} UTC"
+
+    if latest_value >= attention_threshold:
+        status_title = "Tremore in aumento"
+        status_description = "attività oltre la soglia di attenzione"
+    elif latest_value >= 1.0:
+        status_title = "Tremore moderato"
+        status_description = "attività moderata, da monitorare"
+    elif latest_value >= 0.5:
+        status_title = "Tremore basso"
+        status_description = "attività contenuta"
+    else:
+        status_title = "Tremore stabile"
+        status_description = "attività bassa"
+
+    title = f"Etna in diretta: {status_title} ({timestamp_label}) | EtnaMonitor"
+    description = (
+        f"Ultimo valore INGV {latest_value:.2f} mV aggiornato alle {timestamp_label}: "
+        f"{status_description}. Consulta il grafico live e le soglie EtnaMonitor."
+    )
+    return title, description
+
+
 def _sentieri_paths() -> tuple[Path, Path]:
     """Return absolute paths to the trails/POI GeoJSON files."""
     data_dir = Path(current_app.root_path) / "static" / "data"
@@ -355,10 +395,11 @@ def index():
     canonical_home = url_for("main.index", _external=True)
     chart_url = f"{canonical_home}#grafico-etna"
     og_image = url_for("static", filename="icons/icon-512.png", _external=True)
-    page_title = "Monitoraggio Etna in tempo reale – Grafico INGV | EtnaMonitor"
-    page_description = (
-        "Dati ufficiali INGV e grafico del tremore dell'Etna aggiornato con lettura chiara delle soglie. "
-        "EtnaMonitor offre un monitoraggio affidabile e avvisi Telegram quando serve."
+    attention_threshold = Config.ALERT_THRESHOLD_DEFAULT
+    page_title, page_description = _build_live_meta(
+        latest_value,
+        latest_timestamp_display,
+        attention_threshold=attention_threshold,
     )
 
     webpage_structured_data = {

@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 from datetime import date, datetime, timedelta, timezone
 import html
+from pathlib import Path
 from typing import Tuple
 
 from flask import Blueprint, Response, current_app, request, url_for
@@ -11,8 +12,10 @@ from sqlalchemy.orm import joinedload
 
 from app.models.blog import BlogPost
 from app.models.forum import ForumThread
+from app.models.hotspots_record import HotspotsRecord
 from app.models.partner import Partner, PartnerCategory, PartnerSubscription
 from app.utils.config import get_curva_csv_path
+from backend.services.hotspots.config import HotspotsConfig
 
 
 bp = Blueprint("seo", __name__)
@@ -20,24 +23,7 @@ bp = Blueprint("seo", __name__)
 # SEO exclusion patterns shared between sitemap and tests
 EXCLUDED_PREFIXES = (
     "/admin",
-    "/dashboard",
     "/auth",
-    "/api",
-    "/internal",
-    "/seo",
-    "/billing",
-    "/account",
-    "/livez",
-    "/readyz",
-    "/healthz",
-    "/ga4",
-    "/csp",
-    "/__csp",
-    "/community/new",
-    "/community/my-posts",
-    "/lead",
-    "/ads/i",
-    "/ads/c",
 )
 
 EXCLUDED_ENDPOINTS = {
@@ -46,6 +32,7 @@ EXCLUDED_ENDPOINTS = {
     "main.ads_txt",
     "seo.robots_txt",
     "seo.sitemap",
+    "seo.sitemap_index",
     "main.ga4_diagnostics",
     "main.ga4_test_csp",
     "main.csp_test",
@@ -150,6 +137,35 @@ def _homepage_lastmod() -> str:
     return _default_lastmod()
 
 
+def _analysis_lastmod() -> str:
+    try:
+        latest_record = (
+            HotspotsRecord.query.order_by(HotspotsRecord.acq_datetime.desc()).first()
+        )
+    except Exception as exc:  # pragma: no cover - defensive logging
+        current_app.logger.warning("[SITEMAP] Failed to fetch hotspots record: %s", exc)
+        return _default_lastmod()
+
+    if not latest_record or not latest_record.acq_datetime:
+        return _default_lastmod()
+    latest_dt = latest_record.acq_datetime
+    if latest_dt.tzinfo is None:
+        latest_dt = latest_dt.replace(tzinfo=timezone.utc)
+    else:
+        latest_dt = latest_dt.astimezone(timezone.utc)
+    return latest_dt.date().isoformat()
+
+
+def _render_static_seo_file(filename: str) -> str | None:
+    static_dir = Path(current_app.static_folder or "")
+    file_path = static_dir / filename
+    if not file_path.exists():
+        return None
+    content = file_path.read_text(encoding="utf-8")
+    base_url = _canonical_base_url()
+    return content.replace("{{BASE_URL}}", base_url)
+
+
 def _append_url(
     urls: list[tuple[str, str, str, str]],
     seen: set[str],
@@ -202,6 +218,18 @@ def sitemap() -> Response:
         except Exception:
             continue
         lastmod = _default_lastmod() if endpoint == "main.about" else static_lastmod
+        _append_url(urls, seen_urls, absolute, lastmod, changefreq, priority)
+
+    analysis_pages = []
+    hotspots_config = HotspotsConfig.from_env()
+    if hotspots_config.enabled:
+        analysis_pages.append(("main.hotspots", _analysis_lastmod(), "hourly", "0.8"))
+    analysis_pages.append(("main.observatory", _homepage_lastmod(), "hourly", "0.9"))
+    for endpoint, lastmod, changefreq, priority in analysis_pages:
+        try:
+            absolute = _normalize_external_url(url_for(endpoint, _external=True), base_url)
+        except Exception:
+            continue
         _append_url(urls, seen_urls, absolute, lastmod, changefreq, priority)
 
     # Blog index and articles
@@ -378,6 +406,28 @@ def sitemap() -> Response:
     return Response(payload, mimetype="application/xml")
 
 
+@bp.route("/sitemap_index.xml")
+def sitemap_index() -> Response:
+    static_payload = _render_static_seo_file("sitemap_index.xml")
+    if static_payload:
+        return Response(static_payload, mimetype="application/xml")
+
+    base_url = _canonical_base_url()
+    xml = [
+        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>",
+        "<sitemapindex xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">",
+        "  <sitemap>",
+        f"    <loc>{base_url}/sitemap.xml</loc>",
+        "  </sitemap>",
+        "  <sitemap>",
+        f"    <loc>{base_url}/news-sitemap.xml</loc>",
+        "  </sitemap>",
+        "</sitemapindex>",
+    ]
+    payload = "\n".join(xml)
+    return Response(payload, mimetype="application/xml")
+
+
 @bp.route("/news-sitemap.xml")
 def news_sitemap() -> Response:
     base_url = _canonical_base_url()
@@ -440,8 +490,12 @@ def news_sitemap() -> Response:
 
 @bp.route("/robots.txt")
 def robots_txt() -> Response:
+    static_payload = _render_static_seo_file("robots.txt")
+    if static_payload:
+        return Response(static_payload, mimetype="text/plain")
+
     base_url = _canonical_base_url()
-    sitemap_url = f"{base_url}/sitemap.xml"
+    sitemap_index_url = f"{base_url}/sitemap_index.xml"
     news_sitemap_url = f"{base_url}/news-sitemap.xml"
     
     # Build content dynamically using shared exclusion constants
@@ -451,7 +505,7 @@ def robots_txt() -> Response:
     for prefix in EXCLUDED_PREFIXES:
         content_lines.append(f"Disallow: {prefix}")
     
-    content_lines.extend([f"Sitemap: {sitemap_url}", f"Sitemap: {news_sitemap_url}", ""])
+    content_lines.extend([f"Sitemap: {sitemap_index_url}", f"Sitemap: {news_sitemap_url}", ""])
     
     content = "\n".join(content_lines)
     return Response(content, mimetype="text/plain")
