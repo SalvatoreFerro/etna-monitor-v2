@@ -41,9 +41,10 @@ from backend.services.hotspots.storage import read_cache, unavailable_payload
 from config import DEFAULT_GA_MEASUREMENT_ID, Config
 from app.models.hotspots_record import HotspotsRecord
 from app.services.copernicus import (
+    build_copernicus_status,
     get_latest_copernicus_image,
     resolve_copernicus_bbox,
-    resolve_copernicus_image_url,
+    resolve_copernicus_preview_url,
 )
 from app.services.tremor_summary import build_tremor_summary
 from app.utils.meteo import (
@@ -1020,7 +1021,8 @@ def observatory():
         current_app.logger.exception("[OBSERVATORY] Hotspots summary lookup failed")
 
     copernicus_latest = get_latest_copernicus_image()
-    copernicus_image_url = resolve_copernicus_image_url(copernicus_latest)
+    copernicus_preview_url = resolve_copernicus_preview_url(copernicus_latest)
+    copernicus_status = build_copernicus_status(copernicus_latest, copernicus_preview_url)
 
     copernicus_acquired_display = _format_display_datetime(
         copernicus_latest.acquired_at if copernicus_latest else None
@@ -1055,7 +1057,14 @@ def observatory():
             ),
         },
         copernicus_latest=copernicus_latest,
-        copernicus_image_url=copernicus_image_url,
+        copernicus_preview_url=copernicus_preview_url,
+        copernicus_preview_epoch=(
+            int(copernicus_latest.acquired_at.timestamp()) if copernicus_latest else None
+        ),
+        copernicus_status_label=copernicus_status["label"],
+        copernicus_status_message=copernicus_status["message"],
+        copernicus_status_class=copernicus_status["badge_class"],
+        copernicus_available=copernicus_status["available"],
         copernicus_acquired_display=copernicus_acquired_display,
         copernicus_updated_display=copernicus_updated_display,
         copernicus_bbox=copernicus_bbox,

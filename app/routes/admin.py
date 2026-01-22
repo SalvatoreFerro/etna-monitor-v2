@@ -4,6 +4,7 @@ import io
 import json
 import os
 from datetime import datetime, timedelta, timezone
+from dataclasses import asdict
 from decimal import Decimal
 from math import isfinite
 from pathlib import Path
@@ -54,6 +55,12 @@ from ..models.partner import (
     PartnerSubscription,
 )
 from ..services.gamification_service import ensure_demo_profiles
+from ..services.copernicus import resolve_copernicus_bbox
+from ..services.copernicus_preview import (
+    extract_copernicus_assets,
+    fetch_latest_copernicus_item,
+    select_preview_asset,
+)
 from ..services.partner_categories import (
     CATEGORY_FORM_FIELDS,
     ensure_partner_categories,
@@ -101,6 +108,37 @@ from ..services.sentieri_geojson import (
 )
 
 bp = Blueprint("admin", __name__)
+
+
+def _require_owner_user() -> bool:
+    user = get_current_user()
+    owner_email = (os.getenv("OWNER_EMAIL") or "").strip().lower()
+    if not owner_email or not user:
+        return False
+    return (user.email or "").strip().lower() == owner_email
+
+
+@bp.get("/admin/debug-copernicus-item")
+def debug_copernicus_item():
+    if not _require_owner_user():
+        return jsonify({"ok": False, "error": "Owner access required"}), 403
+
+    bbox = resolve_copernicus_bbox(None)
+    item = fetch_latest_copernicus_item(bbox, current_app.logger)
+    if not item:
+        return jsonify({"ok": False, "error": "Nessun item Copernicus disponibile"}), 404
+
+    assets = extract_copernicus_assets(item)
+    selected = select_preview_asset(assets)
+    return jsonify(
+        {
+            "ok": True,
+            "bbox": bbox,
+            "item": item,
+            "assets": [asdict(asset) for asset in assets],
+            "selected_asset": asdict(selected) if selected else None,
+        }
+    )
 
 def _is_csrf_valid(submitted_token: str | None) -> bool:
     """Return True when the provided CSRF token is valid or tests are running."""
