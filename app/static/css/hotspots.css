@@ -1,0 +1,454 @@
+.hotspots-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: var(--space-6) 0 var(--space-5);
+}
+
+.hotspots-header h1 {
+  margin-bottom: 0;
+  font-size: clamp(1.8rem, 1.2rem + 1.6vw, 2.6rem);
+  letter-spacing: -0.02em;
+}
+
+.hotspots-new-badge {
+  align-self: flex-start;
+  padding: 0.35rem 0.9rem;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: rgba(14, 116, 144, 0.2);
+  color: #bae6fd;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.hotspots-subtitle {
+  font-size: var(--font-size-md);
+  color: var(--color-text);
+  max-width: 720px;
+}
+
+.hotspots-source {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.hotspots-source a {
+  color: #7dd3fc;
+  text-decoration: none;
+}
+
+.hotspots-source a:hover {
+  text-decoration: underline;
+}
+
+.hotspots-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.hotspots-meta span {
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.hotspots-note {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.7));
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.hotspots-note strong {
+  color: var(--color-text);
+}
+
+.hotspots-callouts {
+  display: grid;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+.hotspots-callout {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(15, 23, 42, 0.45);
+  display: grid;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.hotspots-callout strong {
+  color: var(--color-text);
+}
+
+.hotspots-telegram-cta {
+  color: #7dd3fc;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.hotspots-telegram-cta:hover {
+  text-decoration: underline;
+}
+
+.hotspots-grid {
+  display: grid;
+  gap: var(--space-6);
+}
+
+.hotspots-panel {
+  background: var(--color-surface);
+  border-radius: var(--radius-xl);
+  padding: var(--space-5);
+  border: 1px solid rgba(148, 163, 184, 0.1);
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.35);
+}
+
+.hotspots-status {
+  display: grid;
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+
+.hotspots-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-4);
+}
+
+.hotspots-kpi {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: linear-gradient(150deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.55));
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 96px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.35s ease, transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.hotspots-kpi.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hotspots-kpi span {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.hotspots-kpi strong {
+  font-size: clamp(1.3rem, 1.1rem + 0.8vw, 2rem);
+  font-weight: var(--font-weight-semibold);
+  color: #e2e8f0;
+}
+
+.hotspots-kpi-note {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.hotspots-message {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(30, 41, 59, 0.6);
+  color: var(--color-text-secondary);
+}
+
+.hotspots-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #fecaca;
+  font-size: var(--font-size-sm);
+}
+
+.hotspots-list {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.hotspots-filter {
+  display: grid;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.7);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.hotspots-filter-label {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.65rem;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.hotspots-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.hotspots-toggle-button {
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  background: rgba(15, 23, 42, 0.4);
+  color: #e2e8f0;
+  padding: var(--space-2) var(--space-3);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.hotspots-toggle-button:hover {
+  border-color: rgba(248, 250, 252, 0.6);
+  background: rgba(30, 41, 59, 0.6);
+}
+
+.hotspots-toggle-button.is-active {
+  background: rgba(14, 116, 144, 0.85);
+  border-color: rgba(34, 211, 238, 0.9);
+  color: #fff;
+}
+
+.hotspots-toggle-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.hotspots-card {
+  border-radius: var(--radius-lg);
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.85), rgba(30, 41, 59, 0.45));
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  padding: var(--space-4) var(--space-4);
+  display: grid;
+  gap: var(--space-4);
+  cursor: pointer;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, opacity 0.25s ease;
+}
+
+.hotspots-card:hover,
+.hotspots-card.is-active {
+  transform: translateY(-2px);
+  border-color: rgba(56, 189, 248, 0.5);
+  box-shadow: 0 12px 24px rgba(15, 23, 42, 0.4);
+}
+
+.hotspots-card--peak {
+  border-color: rgba(248, 113, 113, 0.6);
+  box-shadow: 0 18px 32px rgba(15, 23, 42, 0.5), 0 0 0 1px rgba(248, 113, 113, 0.15);
+}
+
+.hotspots-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.hotspots-card-title {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.hotspots-card-title strong {
+  display: block;
+  color: var(--color-text);
+  font-weight: var(--font-weight-semibold);
+}
+
+.hotspots-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: 0.25rem 0.6rem;
+  border-radius: 999px;
+  font-size: var(--font-size-xs);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #0f172a;
+  background: #facc15;
+}
+
+.hotspots-pill--mid {
+  background: #fb923c;
+}
+
+.hotspots-pill--high {
+  background: #f87171;
+  color: #0f172a;
+}
+
+.hotspots-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+.hotspots-card-grid span {
+  color: var(--color-text-secondary);
+  display: block;
+  font-size: var(--font-size-xs);
+  margin-bottom: 0.2rem;
+}
+
+.hotspots-card a {
+  color: #7dd3fc;
+  text-decoration: none;
+  font-size: var(--font-size-xs);
+}
+
+.hotspots-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid rgba(56, 189, 248, 0.6);
+  background: rgba(14, 116, 144, 0.2);
+  font-weight: var(--font-weight-semibold);
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.hotspots-cta:hover {
+  background: rgba(56, 189, 248, 0.22);
+  border-color: rgba(125, 211, 252, 0.85);
+}
+
+.hotspots-fade {
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+
+.hotspots-fade.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.hotspots-empty {
+  padding: var(--space-5);
+  border-radius: var(--radius-lg);
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.hotspots-disclaimer {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.leaflet-popup.hotspots-popup .leaflet-popup-content-wrapper {
+  background: rgba(15, 23, 42, 0.95);
+  color: var(--color-text);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.6);
+}
+
+.leaflet-popup.hotspots-popup .leaflet-popup-tip {
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.hotspots-popup {
+  font-size: var(--font-size-sm);
+  padding: var(--space-2);
+  line-height: 1.5;
+}
+
+.hotspots-popup-title {
+  font-weight: var(--font-weight-semibold);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-2);
+}
+
+.hotspots-popup-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.hotspots-popup-label {
+  color: var(--color-text-secondary);
+  display: block;
+  margin-bottom: 0.15rem;
+}
+
+.hotspots-popup .hotspots-cta {
+  margin-top: var(--space-2);
+  font-size: var(--font-size-xs);
+}
+
+.hotspots-seo {
+  display: grid;
+  gap: var(--space-5);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}
+
+.hotspots-seo h2 {
+  margin-bottom: var(--space-2);
+  color: var(--color-text);
+  font-size: clamp(1.2rem, 1rem + 0.6vw, 1.5rem);
+}
+
+.hotspots-seo-grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.hotspots-seo h3 {
+  margin-bottom: var(--space-2);
+  color: var(--color-text);
+  font-size: var(--font-size-sm);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.hotspots-panel--spaced {
+  margin-top: var(--space-6);
+}
+
+@media (max-width: 768px) {
+  .hotspots-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
