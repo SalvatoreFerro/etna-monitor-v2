@@ -25,7 +25,85 @@
         Tre punti di osservazione privilegiati per seguire l'attività del vulcano 24/7 con un colpo d'occhio sulle condizioni
         meteo aggiornate in quota.
       </p>
+      <a class="link-arrow" href="#webcam-live">Vai subito alle webcam live</a>
     </header>
+
+    <section class="webcam-grid" id="webcam-live" aria-label="Elenco webcam live dell'Etna">
+      {% for camera in webcams %}
+        <article class="webcam-card">
+          <a class="webcam-card__link" href="{{ camera.url }}" target="_blank" rel="noopener" aria-label="Apri {{ camera.name }} in una nuova scheda">
+            <figure class="webcam-card__media">
+              <img src="{{ camera.thumbnail }}" alt="Anteprima live di {{ camera.name }}" loading="lazy" width="640" height="360" />
+              <figcaption class="webcam-card__overlay">
+                <span class="webcam-card__cta">Guarda la webcam</span>
+                <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
+              </figcaption>
+            </figure>
+            <div class="webcam-card__body">
+              <h3>{{ camera.name }}</h3>
+              <p>{{ camera.description }}</p>
+            </div>
+          </a>
+        </article>
+      {% endfor %}
+    </section>
+
+    <section class="webcam-operativo" aria-labelledby="webcam-operativo-title">
+      <div class="webcam-operativo__header">
+        <div>
+          <h2 id="webcam-operativo-title">Meteo operativo Etna (visibilità e lettura live)</h2>
+          <p class="muted">Traduciamo i dati meteo in indicazioni semplici per capire cosa si vede davvero sulle webcam.</p>
+        </div>
+        <i class="fa-solid fa-wind"></i>
+      </div>
+
+      {% if weather_preview %}
+        <div class="webcam-operativo__cards">
+          <article class="webcam-operativo__card">
+            <div>
+              <span class="webcam-operativo__label">Visibilità stimata</span>
+              <strong class="webcam-operativo__value">{{ weather_preview.visibility_label }}</strong>
+              <p class="webcam-operativo__meta">{{ weather_preview.visibility_note }}</p>
+            </div>
+          </article>
+          <article class="webcam-operativo__card">
+            <div>
+              <span class="webcam-operativo__label">Vento in quota</span>
+              <strong class="webcam-operativo__value">
+                {{ weather_preview.wind_speed | round(1) if weather_preview.wind_speed is not none else "—" }}
+                {{ weather_preview.wind_speed_unit if weather_preview.wind_speed is not none else "" }}
+              </strong>
+              <p class="webcam-operativo__meta">Direzione {{ weather_preview.wind_direction_cardinal or "—" }}. Può spostare fumi e cenere.</p>
+            </div>
+          </article>
+          <article class="webcam-operativo__card">
+            <div>
+              <span class="webcam-operativo__label">Copertura nuvolosa</span>
+              <strong class="webcam-operativo__value">
+                {{ weather_preview.cloud_cover | round(0) if weather_preview.cloud_cover is not none else "—" }}{{ weather_preview.cloud_cover_unit or "" }}
+              </strong>
+              <p class="webcam-operativo__meta">Con nubi alte i crateri possono restare nascosti.</p>
+            </div>
+          </article>
+          <article class="webcam-operativo__card">
+            <div>
+              <span class="webcam-operativo__label">Precipitazioni</span>
+              <strong class="webcam-operativo__value">
+                {{ weather_preview.precipitation_probability | round(0) if weather_preview.precipitation_probability is not none else "—" }}{{ weather_preview.precipitation_unit or "" }}
+              </strong>
+              <p class="webcam-operativo__meta">Pioggia o neve riducono drasticamente la visibilità.</p>
+            </div>
+          </article>
+        </div>
+        <p class="webcam-operativo__note">
+          {{ weather_preview.operational_note }}
+        </p>
+      {% elif weather_error %}
+        <p class="webcam-weather__error">{{ weather_error }}</p>
+      {% else %}
+        <p class="webcam-weather__loading">Caricamento delle condizioni meteo…</p>
+      {% endif %}
+    </section>
 
     <section class="webcam-weather" aria-labelledby="webcam-weather-title">
       <div class="webcam-weather__card">
@@ -94,6 +172,27 @@
       </div>
     </section>
 
+    <section class="webcam-insights" aria-labelledby="webcam-insights-title">
+      <div class="webcam-insights__card">
+        <div class="webcam-insights__text">
+          <h2 id="webcam-insights-title">Immagini e dati: due livelli di lettura</h2>
+          <p>
+            Le webcam mostrano immagini live e possono essere influenzate da meteo, nuvole e luce. Sono perfette per vedere
+            cosa accade in superficie, ma non raccontano sempre l'attività interna del vulcano.
+          </p>
+          <p>
+            EtnaMonitor integra dati reali come tremore, hotspot e segnali sismici per capire se la situazione cambia davvero.
+            Per un quadro completo consulta la pagina <a class="link-arrow" href="{{ url_for('main.eruzione_oggi') }}">Eruzione Etna oggi</a>.
+          </p>
+        </div>
+        <div class="webcam-insights__cta">
+          <p class="webcam-insights__cta-text">Vuoi sapere se qualcosa cambia davvero? Ricevi un avviso su Telegram quando serve.</p>
+          <a class="btn btn-secondary" href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">Ricevi avvisi su Telegram</a>
+          <a class="link-arrow" href="{{ url_for('community.community_landing') }}">Scopri la community EtnaMonitor</a>
+        </div>
+      </div>
+    </section>
+
     <section class="webcam-notes" aria-label="Avvisi Telegram e grafico live">
       <div class="webcam-notes__content">
         <h2>Segui l’Etna con avvisi puntuali</h2>
@@ -115,47 +214,6 @@
           >Apri il grafico live</a>
         </div>
         <p class="muted">Gratis con un account EtnaMonitor.</p>
-      </div>
-    </section>
-
-    <section class="webcam-grid" aria-label="Elenco webcam live dell'Etna">
-      {% for camera in webcams %}
-        <article class="webcam-card">
-          <a class="webcam-card__link" href="{{ camera.url }}" target="_blank" rel="noopener" aria-label="Apri {{ camera.name }} in una nuova scheda">
-            <figure class="webcam-card__media">
-              <img src="{{ camera.thumbnail }}" alt="Anteprima live di {{ camera.name }}" loading="lazy" width="640" height="360" />
-              <figcaption class="webcam-card__overlay">
-                <span class="webcam-card__cta">Guarda la webcam</span>
-                <i class="fa-solid fa-arrow-up-right-from-square" aria-hidden="true"></i>
-              </figcaption>
-            </figure>
-            <div class="webcam-card__body">
-              <h3>{{ camera.name }}</h3>
-              <p>{{ camera.description }}</p>
-            </div>
-          </a>
-        </article>
-      {% endfor %}
-    </section>
-
-    <section class="webcam-insights" aria-labelledby="webcam-insights-title">
-      <div class="webcam-insights__card">
-        <div class="webcam-insights__text">
-          <h2 id="webcam-insights-title">Immagini e dati: due livelli di lettura</h2>
-          <p>
-            Le webcam mostrano immagini live e possono essere influenzate da meteo, nuvole e luce. Sono perfette per vedere
-            cosa accade in superficie, ma non raccontano sempre l'attività interna del vulcano.
-          </p>
-          <p>
-            EtnaMonitor integra dati reali come tremore, hotspot e segnali sismici per capire se la situazione cambia davvero.
-            Per un quadro completo consulta la pagina <a class="link-arrow" href="{{ url_for('main.eruzione_oggi') }}">Eruzione Etna oggi</a>.
-          </p>
-        </div>
-        <div class="webcam-insights__cta">
-          <p class="webcam-insights__cta-text">Vuoi sapere se qualcosa cambia davvero? Ricevi un avviso su Telegram quando serve.</p>
-          <a class="btn btn-secondary" href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">Ricevi avvisi su Telegram</a>
-          <a class="link-arrow" href="{{ url_for('community.community_landing') }}">Scopri la community EtnaMonitor</a>
-        </div>
       </div>
     </section>
 

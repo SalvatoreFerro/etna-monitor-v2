@@ -808,7 +808,10 @@ def webcam_etna():
             params={
                 "latitude": 37.75,
                 "longitude": 14.99,
-                "current": "temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,weather_code",
+                "current": (
+                    "temperature_2m,relative_humidity_2m,apparent_temperature,"
+                    "wind_speed_10m,wind_direction_10m,weather_code,cloud_cover"
+                ),
                 "hourly": "precipitation_probability",
                 "forecast_days": 1,
                 "timezone": "Europe/Rome",
@@ -838,7 +841,26 @@ def webcam_etna():
             precipitation_probability = hourly_probabilities[0]
 
         wind_direction_deg = current.get("wind_direction_10m")
+        cloud_cover = current.get("cloud_cover")
         updated_at_display, updated_at_iso = _format_weather_timestamp(current.get("time"))
+
+        precipitation_value = precipitation_probability or 0
+        cloud_value = cloud_cover or 0
+        weather_code = current.get("weather_code")
+
+        if precipitation_value >= 70 or cloud_value >= 75 or weather_code in {51, 53, 55, 61, 63, 65, 71, 73, 75, 77, 80, 81, 82, 95, 96, 99}:
+            visibility_label = "Bassa"
+            visibility_note = "Nubi o precipitazioni possono coprire i crateri."
+        elif precipitation_value >= 35 or cloud_value >= 45:
+            visibility_label = "Media"
+            visibility_note = "Possibili banchi di nube o foschia: la vista può variare."
+        else:
+            visibility_label = "Buona"
+            visibility_note = "Condizioni favorevoli per osservare i crateri."
+
+        operational_note = (
+            "Le webcam dipendono da luce e meteo: se l'immagine è poco chiara, controlla le condizioni prima di trarre conclusioni."
+        )
 
         weather_preview = {
             "temperature": current.get("temperature_2m"),
@@ -853,10 +875,15 @@ def webcam_etna():
             "wind_direction_cardinal": _wind_direction_to_cardinal(wind_direction_deg),
             "precipitation_probability": precipitation_probability,
             "precipitation_unit": "%",
+            "cloud_cover": cloud_cover,
+            "cloud_cover_unit": units.get("cloud_cover", "%"),
             "updated_at": updated_at_display,
             "updated_at_iso": updated_at_iso,
             "weather_code": current.get("weather_code"),
             "weather_description": _describe_weather_code(current.get("weather_code")),
+            "visibility_label": visibility_label,
+            "visibility_note": visibility_note,
+            "operational_note": operational_note,
         }
 
     page_structured_data: list[dict[str, object]] = [
