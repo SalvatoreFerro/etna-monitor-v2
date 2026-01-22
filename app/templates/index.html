@@ -172,6 +172,32 @@
           </span>
         </div>
         {% if csv_snapshot.rows > 0 %}
+          <div class="chart-quick-summary" role="status" aria-live="polite">
+            <p class="muted">Dato immediato (renderizzato server-side):</p>
+            <dl class="metric-list">
+              <div class="metric">
+                <dt>Ultimo valore</dt>
+                <dd>
+                  {% if latest_value is not none %}
+                    {{ "%.2f"|format(latest_value) }} mV
+                  {% else %}
+                    --
+                  {% endif %}
+                </dd>
+              </div>
+              <div class="metric">
+                <dt>Aggiornato</dt>
+                <dd>
+                  {% if latest_timestamp_display %}
+                    {{ latest_timestamp_display }} UTC
+                  {% else %}
+                    --
+                  {% endif %}
+                </dd>
+              </div>
+            </dl>
+            <p class="muted">Il grafico interattivo si carica in background per offrire la vista completa.</p>
+          </div>
           <div id="home-preview-plot" class="chart-plot">
             <div
               id="tremorPlot"
