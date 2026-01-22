@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import json
 import logging
 import math
 import os
 import time
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -16,18 +15,15 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.engine.url import URL, make_url
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
 
+from app.services.copernicus_preview import (
+    extract_copernicus_assets,
+    fetch_latest_copernicus_item,
+    select_preview_asset,
+)
 
-STAC_URL = "https://stac.dataspace.copernicus.eu/v1/search"
-TOKEN_URL = "https://identity.dataspace.copernicus.eu/auth/realms/CDSE/protocol/openid-connect/token"
-PROCESS_URL = "https://sh.dataspace.copernicus.eu/api/v1/process"
-DEFAULT_COLLECTION = "sentinel-2-l2a"
 DEFAULT_SOURCE = "Copernicus Sentinel-2 / CDSE"
 DEFAULT_DAYS_LOOKBACK = 5
-DEFAULT_MAX_CLOUD = 80
 DEFAULT_BBOX_DELTA_DEG = 0.06
-OUTPUT_WIDTH = 1024
-OUTPUT_MIN_HEIGHT = 256
-OUTPUT_MAX_HEIGHT = 1024
 REQUEST_TIMEOUT = (8, 35)
 RETRY_DELAYS = [1.0, 2.5]
 ETNA_CENTER = (37.751, 14.993)
@@ -53,6 +49,8 @@ class CopernicusImage(Base):
     cloud_cover: Mapped[float | None] = mapped_column(Float)
     bbox: Mapped[dict | list | None] = mapped_column(_json_type())
     image_path: Mapped[str | None] = mapped_column(String(256))
+    preview_path: Mapped[str | None] = mapped_column(String(256))
+    status: Mapped[str | None] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -70,11 +68,8 @@ class StacItem:
 
 @dataclass(frozen=True)
 class CopernicusConfig:
-    client_id: str
-    client_secret: str
     bbox: list[float]
     days_lookback: int
-    max_cloud: int
 
 
 def _normalize_database_url(raw_url: str) -> URL:
@@ -130,22 +125,13 @@ def _request_with_retry(
 
 
 def _load_config() -> CopernicusConfig:
-    client_id = os.getenv("CDSE_CLIENT_ID")
-    client_secret = os.getenv("CDSE_CLIENT_SECRET")
-    if not client_id or not client_secret:
-        raise RuntimeError("CDSE_CLIENT_ID and CDSE_CLIENT_SECRET are required.")
-
     bbox = _resolve_bbox()
 
     days_lookback = int(os.getenv("CDSE_DAYS_LOOKBACK", str(DEFAULT_DAYS_LOOKBACK)))
-    max_cloud = int(os.getenv("CDSE_MAX_CLOUD", str(DEFAULT_MAX_CLOUD)))
 
     return CopernicusConfig(
-        client_id=client_id,
-        client_secret=client_secret,
         bbox=bbox,
         days_lookback=days_lookback,
-        max_cloud=max_cloud,
     )
 
 
@@ -177,140 +163,35 @@ def _resolve_bbox() -> list[float]:
     ]
 
 
-def _fetch_stac_items(config: CopernicusConfig, session: requests.Session, logger: logging.Logger) -> list[StacItem]:
-    now = datetime.now(timezone.utc)
-    start = now - timedelta(days=config.days_lookback)
-    payload = {
-        "collections": [DEFAULT_COLLECTION],
-        "bbox": config.bbox,
-        "datetime": f"{start.isoformat()}/{now.isoformat()}",
-        "limit": 25,
-        "sortby": [{"field": "properties.datetime", "direction": "desc"}],
-    }
-
-    response = _request_with_retry(session, "POST", STAC_URL, logger, json=payload)
-    data = response.json()
-    features = data.get("features") or []
-    items: list[StacItem] = []
-    for feature in features:
-        props = feature.get("properties") or {}
-        acquired_at = _parse_dt(props.get("datetime"))
-        product_id = feature.get("id")
-        if not acquired_at or not product_id:
-            continue
-        cloud_cover = props.get("eo:cloud_cover")
-        if cloud_cover is not None:
-            try:
-                cloud_cover = float(cloud_cover)
-            except (TypeError, ValueError):
-                cloud_cover = None
-        bbox = list(config.bbox)
-        items.append(
-            StacItem(
-                product_id=str(product_id),
-                acquired_at=acquired_at,
-                cloud_cover=cloud_cover,
-                bbox=list(bbox),
-            )
-        )
-    return items
-
-
-def _select_best_item(items: list[StacItem]) -> StacItem | None:
-    if not items:
+def _parse_stac_item(item: dict, fallback_bbox: list[float]) -> StacItem | None:
+    props = item.get("properties") or {}
+    acquired_at = _parse_dt(props.get("datetime"))
+    product_id = item.get("id")
+    if not acquired_at or not product_id:
         return None
-    return sorted(
-        items,
-        key=lambda item: (
-            -item.acquired_at.timestamp(),
-            item.cloud_cover if item.cloud_cover is not None else float("inf"),
-        ),
-    )[0]
+    cloud_cover = props.get("eo:cloud_cover")
+    if cloud_cover is not None:
+        try:
+            cloud_cover = float(cloud_cover)
+        except (TypeError, ValueError):
+            cloud_cover = None
+    bbox = item.get("bbox") or fallback_bbox
+    if not isinstance(bbox, list) or len(bbox) != 4:
+        bbox = fallback_bbox
+    return StacItem(
+        product_id=str(product_id),
+        acquired_at=acquired_at,
+        cloud_cover=cloud_cover,
+        bbox=list(bbox),
+    )
 
 
-def _fetch_access_token(config: CopernicusConfig, session: requests.Session, logger: logging.Logger) -> str:
-    payload = {
-        "grant_type": "client_credentials",
-        "client_id": config.client_id,
-        "client_secret": config.client_secret,
-    }
-    response = _request_with_retry(session, "POST", TOKEN_URL, logger, data=payload)
-    token = response.json().get("access_token")
-    if not token:
-        raise RuntimeError("CDSE token response missing access_token")
-    return str(token)
-
-
-def _compute_output_height(bbox: list[float]) -> int:
-    west, south, east, north = bbox
-    width_deg = max(east - west, 0.0001)
-    height_deg = max(north - south, 0.0001)
-    ratio = height_deg / width_deg
-    height = int(round(OUTPUT_WIDTH * ratio))
-    return max(OUTPUT_MIN_HEIGHT, min(OUTPUT_MAX_HEIGHT, height))
-
-
-def _build_evalscript() -> str:
-    return """//VERSION=3
-function setup() {
-  return {
-    input: ["B04", "B03", "B02"],
-    output: { bands: 3 }
-  };
-}
-
-function evaluatePixel(sample) {
-  return [sample.B04, sample.B03, sample.B02];
-}
-"""
-
-
-def _download_image(
-    item: StacItem,
-    config: CopernicusConfig,
+def _download_asset(
+    href: str,
     session: requests.Session,
     logger: logging.Logger,
 ) -> bytes:
-    time_from = (item.acquired_at - timedelta(hours=2)).isoformat()
-    time_to = (item.acquired_at + timedelta(hours=2)).isoformat()
-    payload = {
-        "input": {
-            "bounds": {
-                "bbox": item.bbox,
-                "properties": {"crs": "http://www.opengis.net/def/crs/EPSG/0/4326"},
-            },
-            "data": [
-                {
-                    "type": DEFAULT_COLLECTION,
-                    "dataFilter": {
-                        "timeRange": {"from": time_from, "to": time_to},
-                        "maxCloudCoverage": config.max_cloud,
-                        "mosaickingOrder": "mostRecent",
-                    },
-                }
-            ],
-        },
-        "output": {
-            "width": OUTPUT_WIDTH,
-            "height": _compute_output_height(item.bbox),
-            "responses": [{"identifier": "default", "format": {"type": "image/png"}}],
-        },
-        "evalscript": _build_evalscript(),
-    }
-
-    token = _fetch_access_token(config, session, logger)
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-    }
-    response = _request_with_retry(
-        session,
-        "POST",
-        PROCESS_URL,
-        logger,
-        data=json.dumps(payload),
-        headers=headers,
-    )
+    response = _request_with_retry(session, "GET", href, logger)
     return response.content
 
 
@@ -321,9 +202,12 @@ def _write_image(content: bytes, target_path: Path) -> None:
     temp_path.replace(target_path)
 
 
-def _static_image_path() -> Path:
+def _static_image_paths(acquired_at: datetime) -> tuple[Path, Path]:
     base_dir = Path(__file__).resolve().parents[2]
-    return base_dir / "app" / "static" / "copernicus" / "last.png"
+    folder = base_dir / "app" / "static" / "copernicus"
+    latest_path = folder / "latest.png"
+    dated_path = folder / f"{acquired_at:%Y%m%d}.png"
+    return latest_path, dated_path
 
 
 def _latest_record(session: Session) -> CopernicusImage | None:
@@ -345,16 +229,19 @@ def main() -> int:
     logger.info("Copernicus bbox used: %s", config.bbox)
 
     session = requests.Session()
-    try:
-        items = _fetch_stac_items(config, session, logger)
-    except Exception:
-        logger.exception("Copernicus STAC query failed")
-        return 1
-
-    item = _select_best_item(items)
-    if item is None:
+    item_payload = fetch_latest_copernicus_item(
+        config.bbox,
+        logger,
+        days_lookback=config.days_lookback,
+    )
+    if not item_payload:
         logger.warning("Copernicus: nessuna acquisizione disponibile")
         return 0
+
+    item = _parse_stac_item(item_payload, config.bbox)
+    if item is None:
+        logger.error("Copernicus: item STAC non valido")
+        return 1
 
     logger.info(
         "Copernicus: selezionato prodotto %s (cloud cover: %s)",
@@ -365,42 +252,63 @@ def main() -> int:
     engine = _build_engine()
     session_factory = sessionmaker(bind=engine)
 
+    assets = extract_copernicus_assets(item_payload)
+    preview_asset = select_preview_asset(assets)
+
+    preview_path: str | None = None
+    status = "NO_ASSET"
+    if preview_asset is None:
+        logger.warning("Copernicus: nessun asset immagine disponibile (%s)", item.product_id)
+    else:
+        logger.info("Copernicus: preview asset selezionato=%s", preview_asset.key)
+        try:
+            image_content = _download_asset(preview_asset.href, session, logger)
+        except Exception:
+            logger.exception("Copernicus preview download failed")
+            status = "ERROR"
+        else:
+            if not image_content or len(image_content) < 100:
+                logger.error("Copernicus: immagine vuota o non valida")
+                status = "ERROR"
+            else:
+                latest_path, dated_path = _static_image_paths(item.acquired_at)
+                _write_image(image_content, latest_path)
+                _write_image(image_content, dated_path)
+                preview_path = str(Path("copernicus") / latest_path.name)
+                status = "AVAILABLE"
+
     with session_factory() as db_session:
         existing = _latest_record(db_session)
-        if existing and existing.product_id == item.product_id:
+        if (
+            existing
+            and existing.product_id == item.product_id
+            and existing.status == "AVAILABLE"
+            and status == "AVAILABLE"
+        ):
             logger.info("Copernicus: nessun aggiornamento (%s)", item.product_id)
             return 0
 
-    try:
-        image_content = _download_image(item, config, session, logger)
-    except Exception:
-        logger.exception("Copernicus Process API failed")
-        return 1
+        target = None
+        if existing and existing.product_id == item.product_id:
+            target = existing
+        else:
+            target = CopernicusImage()
+            db_session.add(target)
 
-    if not image_content or len(image_content) < 100:
-        logger.error("Copernicus: immagine vuota o non valida")
-        return 1
-
-    image_path = _static_image_path()
-    _write_image(image_content, image_path)
-
-    relative_path = str(Path("copernicus") / image_path.name)
-
-    with session_factory() as db_session:
-        record = CopernicusImage(
-            acquired_at=item.acquired_at,
-            source=DEFAULT_SOURCE,
-            product_id=item.product_id,
-            cloud_cover=item.cloud_cover,
-            bbox=item.bbox,
-            image_path=relative_path,
-        )
-        db_session.add(record)
+        target.acquired_at = item.acquired_at
+        target.source = DEFAULT_SOURCE
+        target.product_id = item.product_id
+        target.cloud_cover = item.cloud_cover
+        target.bbox = item.bbox
+        target.image_path = preview_path
+        target.preview_path = preview_path
+        target.status = status
+        target.created_at = datetime.now(timezone.utc)
         db_session.commit()
 
-    logger.info("Copernicus: immagine salvata in %s", relative_path)
+    logger.info("Copernicus: status=%s preview_path=%s", status, preview_path)
     logger.info(
-        "Copernicus: immagine aggiornata (%s, %s)",
+        "Copernicus: record aggiornato (%s, %s)",
         item.acquired_at.isoformat(),
         item.product_id,
     )
