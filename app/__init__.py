@@ -543,11 +543,7 @@ def create_app(config_overrides: dict | None = None):
 
     copernicus_static_dir = Path(app.static_folder) / "copernicus"
     copernicus_static_dir.mkdir(parents=True, exist_ok=True)
-    app.logger.info(
-        "[BOOT] Static folder=%s static_url_path=%s",
-        app.static_folder,
-        app.static_url_path,
-    )
+    app.logger.info("[BOOT] static_folder=%s", app.static_folder)
 
     warnings.filterwarnings("ignore", message="Using the in-memory storage")
 
@@ -566,6 +562,19 @@ def create_app(config_overrides: dict | None = None):
             "[BOOT] ALEMBIC_RUNNING detected – skipping startup side-effects"
         )
     elif not app.config.get("TESTING"):
+        swir_preview_path = copernicus_static_dir / "s2_latest.png"
+        if not swir_preview_path.exists():
+            try:
+                with app.app_context():
+                    from .services.copernicus_swir import refresh_swir_image
+
+                    result = refresh_swir_image(force=True, bypass_owner=True)
+                if not result.ok:
+                    app.logger.error(
+                        "[SWIR] bootstrap failed: %s", result.error or "unknown error"
+                    )
+            except Exception as exc:  # pragma: no cover - defensive guard
+                app.logger.error("[SWIR] bootstrap failed: %s", exc)
         try:
             ensure_copernicus_previews(app)
         except Exception as exc:  # pragma: no cover - defensive guard
