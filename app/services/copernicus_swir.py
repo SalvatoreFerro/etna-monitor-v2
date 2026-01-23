@@ -36,8 +36,8 @@ def _swir_image_path() -> Path:
 
 
 def _build_wms_params(bbox: list[float], width: int, height: int) -> dict[str, str]:
-    west, south, east, north = bbox
-    bbox_value = f"{south},{west},{north},{east}"
+    lon_min, lat_min, lon_max, lat_max = bbox
+    bbox_value = f"{lat_min},{lon_min},{lat_max},{lon_max}"
     return {
         "SERVICE": "WMS",
         "REQUEST": "GetMap",
@@ -49,7 +49,6 @@ def _build_wms_params(bbox: list[float], width: int, height: int) -> dict[str, s
         "BBOX": bbox_value,
         "WIDTH": str(width),
         "HEIGHT": str(height),
-        "TIME": "latest",
     }
 
 
