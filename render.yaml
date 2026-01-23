@@ -23,6 +23,20 @@ services:
         sync: false
       - key: TELEGRAM_BOT_MODE
         value: off
+      - key: OBJECT_STORAGE
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_PUBLIC_BASE_URL
+        sync: false
+      - key: S3_REGION
+        sync: false
   - type: worker
     name: etnamonitor-telegram-bot
     env: python
@@ -51,3 +65,33 @@ services:
         value: /data/curva.csv
       - key: RUN_ONCE
         value: "1"
+  - type: cron
+    name: etnamonitor-copernicus-previews
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.cron.txt
+    schedule: "0 */12 * * *"
+    command: python scripts/update_copernicus_previews.py
+    envVars:
+      - key: DATA_DIR
+        value: /data
+      - key: LOG_DIR
+        value: /data/log
+      - key: CDSE_CLIENT_ID
+        sync: false
+      - key: CDSE_CLIENT_SECRET
+        sync: false
+      - key: OBJECT_STORAGE
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ACCESS_KEY
+        sync: false
+      - key: S3_SECRET_KEY
+        sync: false
+      - key: S3_PUBLIC_BASE_URL
+        sync: false
+      - key: S3_REGION
+        sync: false

@@ -163,6 +163,50 @@ def test_copernicus_preview():
     )
 
 
+@bp.get("/admin/debug-static-copernicus")
+def debug_static_copernicus():
+    if not _require_owner_user():
+        return jsonify({"ok": False, "error": "Owner access required"}), 403
+
+    static_path = Path(current_app.static_folder).resolve()
+    copernicus_dir = static_path / "copernicus"
+    copernicus_dir.mkdir(parents=True, exist_ok=True)
+
+    files = []
+    for entry in sorted(copernicus_dir.iterdir()):
+        if not entry.is_file():
+            continue
+        stat = entry.stat()
+        files.append(
+            {
+                "name": entry.name,
+                "size": stat.st_size,
+                "mtime": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+            }
+        )
+
+    def _file_meta(path: Path) -> dict:
+        if not path.exists():
+            return {"exists": False}
+        stat = path.stat()
+        return {
+            "exists": True,
+            "size": stat.st_size,
+            "mtime": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
+        }
+
+    return jsonify(
+        {
+            "cwd": os.getcwd(),
+            "static_path": str(static_path),
+            "copernicus_dir": str(copernicus_dir),
+            "files": files,
+            "s1_latest": _file_meta(copernicus_dir / "s1_latest.png"),
+            "s2_latest": _file_meta(copernicus_dir / "s2_latest.png"),
+        }
+    )
+
+
 def _is_csrf_valid(submitted_token: str | None) -> bool:
     """Return True when the provided CSRF token is valid or tests are running."""
     if validate_csrf_token(submitted_token):

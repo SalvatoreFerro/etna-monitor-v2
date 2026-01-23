@@ -57,6 +57,7 @@ from .bootstrap import (
     ensure_user_schema_guard,
 )
 from .assets.social_preview import ensure_social_preview_image
+from .services.copernicus_bootstrap import ensure_copernicus_previews
 from .models import db
 from .models.partner import PartnerCategory
 from .filters import md
@@ -540,6 +541,9 @@ def create_app(config_overrides: dict | None = None):
         app.logger.error("[SEO] Failed to ensure og-image.png: %s", exc, exc_info=True)
         raise
 
+    copernicus_static_dir = Path(app.static_folder) / "copernicus"
+    copernicus_static_dir.mkdir(parents=True, exist_ok=True)
+
     warnings.filterwarnings("ignore", message="Using the in-memory storage")
 
     app_env = (
@@ -556,6 +560,11 @@ def create_app(config_overrides: dict | None = None):
         app.logger.info(
             "[BOOT] ALEMBIC_RUNNING detected – skipping startup side-effects"
         )
+    elif not app.config.get("TESTING"):
+        try:
+            ensure_copernicus_previews(app)
+        except Exception as exc:  # pragma: no cover - defensive guard
+            app.logger.warning("[BOOT] Copernicus bootstrap skipped: %s", exc)
 
     secret_from_env = os.getenv("SECRET_KEY")
     if secret_from_env:
