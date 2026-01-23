@@ -99,6 +99,8 @@ def refresh_swir_image(*, force: bool = False, bypass_owner: bool = False) -> Sw
 
     try:
         params = _build_wms_params(ETNA_BBOX_EPSG4326, DEFAULT_WIDTH, DEFAULT_HEIGHT)
+        request_url = requests.Request("GET", WMS_URL, params=params).prepare().url
+        current_app.logger.info("[SWIR] WMS request URL: %s", request_url)
         session = requests.Session()
         content = _request_with_retry(session, WMS_URL, params)
         temp_path = target_path.with_suffix(".tmp")
