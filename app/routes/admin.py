@@ -208,7 +208,7 @@ def debug_static_copernicus():
     )
 
 
-@bp.get("/admin/refresh-observatory")
+@bp.get("/refresh-observatory")
 def refresh_observatory():
     if not _require_owner_user():
         return jsonify({"ok": False, "error": "Owner access required"}), 403
@@ -216,6 +216,46 @@ def refresh_observatory():
     result = refresh_swir_image(force=True)
     updated_at = (result.updated_at or datetime.now(timezone.utc)).isoformat()
     return jsonify({"ok": result.ok, "updated_at": updated_at})
+
+
+@bp.get("/debug-observatory")
+def debug_observatory():
+    if not _require_owner_user():
+        return jsonify({"ok": False, "error": "Owner access required"}), 403
+
+    routes_found = []
+    for rule in current_app.url_map.iter_rules():
+        if "observatory" in rule.rule.lower():
+            routes_found.append(
+                {
+                    "rule": rule.rule,
+                    "endpoint": rule.endpoint,
+                    "methods": sorted(method for method in rule.methods if method != "HEAD"),
+                }
+            )
+
+    static_folder = current_app.static_folder
+    static_url_path = current_app.static_url_path
+    expected_png_path = Path(static_folder) / "copernicus" / "s2_latest.png"
+    file_exists = expected_png_path.exists()
+    file_size = expected_png_path.stat().st_size if file_exists else None
+    file_mtime = (
+        datetime.fromtimestamp(expected_png_path.stat().st_mtime, tz=timezone.utc).isoformat()
+        if file_exists
+        else None
+    )
+
+    return jsonify(
+        {
+            "routes_found": routes_found,
+            "static_folder": static_folder,
+            "static_url_path": static_url_path,
+            "expected_png_path": str(expected_png_path.resolve()),
+            "file_exists": file_exists,
+            "file_size": file_size,
+            "file_mtime": file_mtime,
+        }
+    )
 
 
 def _is_csrf_valid(submitted_token: str | None) -> bool:
