@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -28,11 +29,17 @@ def _parse_datetime(value: str | None) -> datetime | None:
 
 
 def _status_path() -> Path:
-    return Path(current_app.root_path).parent / "data" / "copernicus_status.json"
+    data_dir = current_app.config.get("DATA_DIR") or Path(current_app.root_path).parent / "data"
+    return Path(data_dir) / "copernicus_status.json"
 
 
 def _log_path() -> Path:
-    return Path(current_app.root_path).parent / "data" / "copernicus_preview.log"
+    log_dir = current_app.config.get("LOG_DIR") or Path(current_app.root_path).parent / "logs"
+    return Path(log_dir) / "copernicus_preview.log"
+
+
+def _copernicus_static_dir() -> Path:
+    return Path(current_app.static_folder) / "copernicus"
 
 
 def load_copernicus_status() -> dict:
@@ -66,7 +73,12 @@ def _resolve_source(status: dict) -> str:
     return "S1"
 
 
-def _preview_url(filename: str) -> str:
+def _preview_url(filename: str, storage_mode: str | None) -> str | None:
+    if storage_mode == "s3":
+        base_url = (os.getenv("S3_PUBLIC_BASE_URL") or "").strip().rstrip("/")
+        if base_url:
+            return f"{base_url}/{filename}"
+        return None
     return url_for("static", filename=filename)
 
 
@@ -85,25 +97,70 @@ def build_copernicus_view_payload() -> dict:
     generated_at = status.get("generated_at")
     generated_dt = _parse_datetime(generated_at)
     generated_epoch = int(generated_dt.timestamp()) if generated_dt else None
-    preview_s2 = _preview_url(S2_IMAGE)
-    preview_s1 = _preview_url(S1_IMAGE)
-    preview_url = preview_s2 if selected_source == "S2" else preview_s1
+    storage_mode = status.get("storage_mode") if isinstance(status, dict) else None
+    last_error = status.get("last_error") if isinstance(status, dict) else None
+    last_ok_at = status.get("last_ok_at") if isinstance(status, dict) else None
+
+    static_dir = _copernicus_static_dir()
+    local_available = any(
+        (static_dir / name).exists() for name in ("s1_latest.png", "s2_latest.png")
+    )
+    s3_available = storage_mode == "s3" and bool(last_ok_at)
+    preview_available = local_available or s3_available
+
+    preview_s2 = (
+        _preview_url(S2_IMAGE, storage_mode if s3_available else None)
+        if preview_available
+        else None
+    )
+    preview_s1 = (
+        _preview_url(S1_IMAGE, storage_mode if s3_available else None)
+        if preview_available
+        else None
+    )
+    if s3_available and not (preview_s1 and preview_s2):
+        preview_available = False
+        preview_s1 = None
+        preview_s2 = None
+    preview_url = None
+    if preview_available:
+        preview_url = preview_s2 if selected_source == "S2" else preview_s1
+
+    if not preview_available:
+        selected_source = None
+
+    badge_label = (
+        "Preview non generata" if not preview_available else _badge_label(selected_source)
+    )
+    badge_class = (
+        "observatory-badge--warning"
+        if not preview_available
+        else _badge_class(selected_source)
+    )
+    fallback_note = None
+    if not preview_available:
+        fallback_note = (
+            f"Preview non generata: {last_error}" if last_error else "Preview non generata."
+        )
+    elif selected_source == "S1":
+        fallback_note = (
+            "Sentinel-2 non disponibile o copertura nuvolosa elevata: "
+            "visualizzazione radar (vede attraverso le nubi)."
+        )
 
     return {
         "selected_source": selected_source,
-        "badge_label": _badge_label(selected_source),
-        "badge_class": _badge_class(selected_source),
-        "fallback_note": (
-            "Sentinel-2 non disponibile o copertura nuvolosa elevata: "
-            "visualizzazione radar (vede attraverso le nubi)."
-            if selected_source == "S1"
-            else None
-        ),
+        "badge_label": badge_label,
+        "badge_class": badge_class,
+        "fallback_note": fallback_note,
         "preview_url": preview_url,
         "preview_url_s2": preview_s2,
         "preview_url_s1": preview_s1,
         "generated_at": generated_at,
         "generated_at_epoch": generated_epoch,
+        "storage_mode": storage_mode,
+        "last_error": last_error,
+        "last_ok_at": last_ok_at,
         "bbox": bbox,
         "s2": {
             "datetime": status.get("s2_datetime"),

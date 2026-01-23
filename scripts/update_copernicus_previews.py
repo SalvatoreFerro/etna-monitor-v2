@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import boto3
 import requests
 
 TOKEN_URL = (
@@ -286,10 +287,54 @@ def _write_status(payload: dict, target_path: Path) -> None:
 def _resolve_paths() -> tuple[Path, Path, Path]:
     base_dir = Path(__file__).resolve().parents[1]
     static_folder = base_dir / "app" / "static" / "copernicus"
-    data_dir = base_dir / "data"
+    data_dir = Path(os.getenv("DATA_DIR", str(base_dir / "data")))
+    log_dir = Path(os.getenv("LOG_DIR", str(base_dir / "logs")))
     status_path = data_dir / "copernicus_status.json"
-    log_path = data_dir / "copernicus_preview.log"
+    log_path = log_dir / "copernicus_preview.log"
     return static_folder, status_path, log_path
+
+
+def _object_storage_enabled() -> bool:
+    flag = (os.getenv("OBJECT_STORAGE") or "").strip().lower()
+    return flag in {"1", "true", "yes", "s3", "r2"}
+
+
+def _load_s3_config(logger: logging.Logger) -> dict | None:
+    bucket = (os.getenv("S3_BUCKET") or "").strip()
+    access_key = (os.getenv("S3_ACCESS_KEY") or "").strip()
+    secret_key = (os.getenv("S3_SECRET_KEY") or "").strip()
+    endpoint = (os.getenv("S3_ENDPOINT") or "").strip()
+    region = (os.getenv("S3_REGION") or "").strip() or None
+
+    if not (bucket and access_key and secret_key):
+        if _object_storage_enabled():
+            logger.warning(
+                "OBJECT_STORAGE enabled but S3 credentials missing (bucket/access/secret)."
+            )
+        return None
+
+    return {
+        "bucket": bucket,
+        "access_key": access_key,
+        "secret_key": secret_key,
+        "endpoint": endpoint or None,
+        "region": region,
+    }
+
+
+def _upload_to_s3(
+    client,
+    bucket: str,
+    key: str,
+    path: Path,
+    logger: logging.Logger,
+) -> None:
+    extra_args = {
+        "ContentType": "image/png",
+        "CacheControl": "public, max-age=3600",
+    }
+    client.upload_file(str(path), bucket, key, ExtraArgs=extra_args)
+    logger.info("Upload S3 completato: %s -> s3://%s/%s", path, bucket, key)
 
 
 def _resolve_time_range(item: StacItem) -> tuple[datetime, datetime]:
@@ -332,13 +377,16 @@ def main() -> int:
     base_logger.setLevel(logging.INFO)
 
     static_folder, status_path, log_path = _resolve_paths()
-    file_handler = logging.FileHandler(log_path, mode="w", encoding="utf-8")
-    stream_handler = logging.StreamHandler()
-    formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
-    file_handler.setFormatter(formatter)
-    stream_handler.setFormatter(formatter)
-    base_logger.addHandler(file_handler)
-    base_logger.addHandler(stream_handler)
+    static_folder.mkdir(parents=True, exist_ok=True)
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    if not base_logger.handlers:
+        file_handler = logging.FileHandler(log_path, mode="a", encoding="utf-8")
+        stream_handler = logging.StreamHandler()
+        formatter = logging.Formatter("%(asctime)s %(levelname)s %(message)s")
+        file_handler.setFormatter(formatter)
+        stream_handler.setFormatter(formatter)
+        base_logger.addHandler(file_handler)
+        base_logger.addHandler(stream_handler)
 
     width = int(os.getenv("COPERNICUS_PREVIEW_WIDTH", str(DEFAULT_WIDTH)))
     height = int(os.getenv("COPERNICUS_PREVIEW_HEIGHT", str(DEFAULT_HEIGHT)))
@@ -464,14 +512,49 @@ def main() -> int:
             base_logger.error(message)
             errors.append(message)
 
-    selected_source = "S1"
+    selected_source = None
     if s2_generated and s2_candidate and s2_candidate.cloud_cover is not None:
         if s2_candidate.cloud_cover <= max_cloud:
             selected_source = "S2"
-    elif s1_generated:
+    if selected_source is None and s1_generated:
         selected_source = "S1"
 
+    storage_mode = "local"
+    s3_config = _load_s3_config(base_logger)
+    if s3_config:
+        s3_client = boto3.client(
+            "s3",
+            endpoint_url=s3_config["endpoint"],
+            region_name=s3_config["region"],
+            aws_access_key_id=s3_config["access_key"],
+            aws_secret_access_key=s3_config["secret_key"],
+        )
+        uploaded = False
+        for filename in ("s2_latest.png", "s1_latest.png"):
+            path = static_folder / filename
+            if not path.exists():
+                continue
+            try:
+                _upload_to_s3(
+                    s3_client,
+                    s3_config["bucket"],
+                    f"copernicus/{filename}",
+                    path,
+                    base_logger,
+                )
+                uploaded = True
+            except Exception as exc:
+                message = f"S3 upload error ({filename}): {exc}"
+                base_logger.error(message)
+                errors.append(message)
+        if uploaded:
+            storage_mode = "s3"
+
     s2_status_item = s2_candidate or s2_item
+    last_ok_at = _isoformat(now) if (s1_generated or s2_generated) else None
+    last_error = errors[-1] if errors else None
+    if not last_ok_at and not last_error:
+        last_error = "Preview non disponibile."
     status_payload = {
         "selected_source": selected_source,
         "s2_datetime": _isoformat(s2_status_item.acquired_at) if s2_status_item else None,
@@ -480,6 +563,9 @@ def main() -> int:
         "s1_datetime": _isoformat(s1_item.acquired_at) if s1_item else None,
         "s1_product_id": s1_item.product_id if s1_item else None,
         "generated_at": _isoformat(now),
+        "last_ok_at": last_ok_at,
+        "last_error": last_error,
+        "storage_mode": storage_mode,
         "bbox": bbox,
         "errors": errors,
     }
