@@ -81,10 +81,11 @@ def _is_stale(path: Path) -> bool:
     return datetime.now(timezone.utc) - mtime > MAX_CACHE_AGE
 
 
-def refresh_swir_image(*, force: bool = False) -> SwirRefreshResult:
+def refresh_swir_image(*, force: bool = False, bypass_owner: bool = False) -> SwirRefreshResult:
     target_path = _swir_image_path()
     target_path.parent.mkdir(parents=True, exist_ok=True)
     cached_exists = target_path.exists()
+    _ = bypass_owner
 
     if not force and cached_exists and not _is_stale(target_path):
         updated_at = datetime.fromtimestamp(target_path.stat().st_mtime, tz=timezone.utc)
@@ -103,9 +104,7 @@ def refresh_swir_image(*, force: bool = False) -> SwirRefreshResult:
         temp_path = target_path.with_suffix(".tmp")
         temp_path.write_bytes(content)
         temp_path.replace(target_path)
-        current_app.logger.info(
-            "[OBSERVATORY] SWIR image written to %s", target_path.resolve()
-        )
+        current_app.logger.info("[SWIR] image written to %s", target_path.resolve())
         updated_at = datetime.fromtimestamp(target_path.stat().st_mtime, tz=timezone.utc)
         return SwirRefreshResult(
             ok=True,
@@ -115,7 +114,6 @@ def refresh_swir_image(*, force: bool = False) -> SwirRefreshResult:
             updated_at=updated_at,
         )
     except Exception as exc:  # noqa: BLE001 - return status to frontend
-        current_app.logger.exception("[OBSERVATORY] SWIR download failed")
         updated_at = None
         if cached_exists:
             updated_at = datetime.fromtimestamp(target_path.stat().st_mtime, tz=timezone.utc)
