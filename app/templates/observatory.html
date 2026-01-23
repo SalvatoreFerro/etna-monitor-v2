@@ -268,6 +268,49 @@
             </div>
           </div>
         </article>
+
+        <article class="observatory-card observatory-card--swir">
+          <header class="observatory-card__header">
+            <div>
+              <h2>Osservatorio Satellitare (SWIR)</h2>
+              <p>Vista multispettrale SWIR (Short-Wave Infrared) utile per evidenziare anomalie e contrasti del terreno.</p>
+            </div>
+            <div class="observatory-card__meta">
+              <span>Ultimo aggiornamento</span>
+              <strong>{{ swir_last_updated_display or '—' }}</strong>
+            </div>
+          </header>
+          <div class="observatory-card__body">
+            <div class="observatory-swir-meta">
+              <span class="observatory-badge {{ swir_status_class }}">{{ swir_status_label }}</span>
+              <div class="observatory-copernicus-badges">
+                <span class="observatory-badge observatory-badge--info">Copernicus Sentinel-2</span>
+                <span class="observatory-badge observatory-badge--fallback">Layer: SWIR</span>
+              </div>
+            </div>
+            <p class="observatory-note">{{ swir_status_message }}</p>
+            <div class="observatory-image observatory-image--swir">
+              {% if swir_image_available and swir_image_url %}
+                <div class="observatory-image__frame">
+                  <img
+                    src="{{ swir_image_url ~ ('?v=' ~ swir_cache_bust if swir_cache_bust else '') }}"
+                    alt="Immagine Sentinel-2 SWIR dell'Etna"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                </div>
+              {% else %}
+                <div class="observatory-image__fallback">
+                  <div class="observatory-image__status">Immagine SWIR non disponibile</div>
+                  <div class="observatory-image__detail">L’anteprima verrà aggiornata automaticamente appena disponibile.</div>
+                </div>
+              {% endif %}
+            </div>
+            <p class="observatory-attribution">
+              Contains modified Copernicus Sentinel data (Sentinel-2), processed via Sentinel Hub.
+            </p>
+          </div>
+        </article>
       </div>
     </div>
   </section>
