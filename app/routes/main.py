@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 from math import isfinite
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 import requests
@@ -41,6 +42,7 @@ from backend.services.hotspots.storage import read_cache, unavailable_payload
 from config import DEFAULT_GA_MEASUREMENT_ID, Config
 from app.models.hotspots_record import HotspotsRecord
 from app.services.copernicus_smart_view import build_copernicus_view_payload
+from app.services.copernicus_swir import refresh_swir_image
 from app.services.tremor_summary import build_tremor_summary
 from app.utils.meteo import (
     DEFAULT_POI_ID,
@@ -87,6 +89,14 @@ def _format_display_datetime(value: datetime | None) -> str | None:
         return None
     dt = value.astimezone(timezone.utc) if value.tzinfo else value.replace(tzinfo=timezone.utc)
     return dt.strftime("%d/%m/%Y %H:%M UTC")
+
+
+def _format_italy_datetime(value: datetime | None) -> str | None:
+    if value is None:
+        return None
+    italy_tz = ZoneInfo("Europe/Rome")
+    dt = value.astimezone(italy_tz) if value.tzinfo else value.replace(tzinfo=italy_tz)
+    return dt.strftime("%d/%m/%Y %H:%M")
 
 
 def _parse_iso_datetime(value: str | None) -> datetime | None:
@@ -1088,6 +1098,30 @@ def observatory():
         s2_meta.get("product_id"),
     )
 
+    swir_refresh = refresh_swir_image()
+    swir_image_path = Path(current_app.static_folder) / "copernicus" / "s2_latest.png"
+    swir_image_available = swir_image_path.exists()
+    swir_cache_bust = (
+        int(swir_refresh.updated_at.timestamp()) if swir_refresh.updated_at else None
+    )
+    swir_last_updated_display = _format_italy_datetime(swir_refresh.updated_at)
+    if swir_refresh.ok and swir_refresh.updated:
+        swir_status_label = "Aggiornata ora"
+        swir_status_class = "observatory-badge--success"
+        swir_status_message = "Download completato da Sentinel Hub."
+    elif swir_refresh.ok and swir_refresh.used_cache:
+        swir_status_label = "Cache attiva"
+        swir_status_class = "observatory-badge--info"
+        swir_status_message = "Immagine in cache aggiornata di recente."
+    elif swir_refresh.used_cache:
+        swir_status_label = "Cache disponibile"
+        swir_status_class = "observatory-badge--warning"
+        swir_status_message = "Download non riuscito: uso immagine cache esistente."
+    else:
+        swir_status_label = "Non disponibile"
+        swir_status_class = "observatory-badge--danger"
+        swir_status_message = "Download non riuscito: immagine non disponibile."
+
     return render_template(
         "observatory.html",
         page_title="Osservatorio Etna – Tremore, Hotspot NASA e Copernicus",
@@ -1122,6 +1156,15 @@ def observatory():
         copernicus_s1_product_id=s1_meta.get("product_id"),
         copernicus_updated_display=copernicus_updated_display,
         copernicus_bbox=copernicus_bbox,
+        swir_image_available=swir_image_available,
+        swir_image_url=url_for("static", filename="copernicus/s2_latest.png")
+        if swir_image_available
+        else None,
+        swir_cache_bust=swir_cache_bust,
+        swir_last_updated_display=swir_last_updated_display,
+        swir_status_label=swir_status_label,
+        swir_status_class=swir_status_class,
+        swir_status_message=swir_status_message,
     )
 
 

@@ -6306,6 +6306,11 @@
   background: rgba(15, 23, 42, 0.6);
 }
 
+.observatory-image--swir {
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.2), 0 0 24px rgba(56, 189, 248, 0.2);
+}
+
 .observatory-image__frame {
   position: relative;
   width: 100%;
@@ -6485,6 +6490,14 @@
   gap: 0.5rem;
 }
 
+.observatory-swir-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  align-items: center;
+  justify-content: space-between;
+}
+
 .observatory-badge {
   display: inline-flex;
   align-items: center;
@@ -6569,6 +6582,12 @@
 .observatory-note {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+}
+
+.observatory-attribution {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin: 0;
 }
 
 .observatory-modal {

@@ -67,6 +67,7 @@ from ..services.copernicus_smart_view import (
     load_copernicus_log,
     load_copernicus_status,
 )
+from ..services.copernicus_swir import refresh_swir_image
 from ..services.partner_categories import (
     CATEGORY_FORM_FIELDS,
     ensure_partner_categories,
@@ -205,6 +206,16 @@ def debug_static_copernicus():
             "s2_latest": _file_meta(copernicus_dir / "s2_latest.png"),
         }
     )
+
+
+@bp.get("/admin/refresh-observatory")
+def refresh_observatory():
+    if not _require_owner_user():
+        return jsonify({"ok": False, "error": "Owner access required"}), 403
+
+    result = refresh_swir_image(force=True)
+    updated_at = (result.updated_at or datetime.now(timezone.utc)).isoformat()
+    return jsonify({"ok": result.ok, "updated_at": updated_at})
 
 
 def _is_csrf_valid(submitted_token: str | None) -> bool:
