@@ -17,6 +17,7 @@ from flask import (
     render_template,
     render_template_string,
     request,
+    send_file,
     send_from_directory,
     session,
     url_for,
@@ -1166,6 +1167,22 @@ def observatory():
         swir_status_class=swir_status_class,
         swir_status_message=swir_status_message,
     )
+
+
+@bp.get("/observatory/swir.png")
+def observatory_swir_image():
+    png = Path(current_app.static_folder) / "copernicus" / "s2_latest.png"
+    png.parent.mkdir(parents=True, exist_ok=True)
+
+    if not png.exists():
+        current_app.logger.info("[SWIR] PNG missing, generating")
+        refresh_swir_image(force=True)
+        if not png.exists():
+            return ("SWIR image unavailable", 503)
+
+    file_size = png.stat().st_size
+    current_app.logger.info("[SWIR] PNG served %s size=%s", png, file_size)
+    return send_file(png, mimetype="image/png")
 
 
 @bp.route("/tecnologia")

@@ -292,12 +292,7 @@
             <div class="observatory-image observatory-image--swir">
               {% if swir_image_available and swir_image_url %}
                 <div class="observatory-image__frame">
-                  <img
-                    src="{{ swir_image_url ~ ('?v=' ~ swir_cache_bust if swir_cache_bust else '') }}"
-                    alt="Immagine Sentinel-2 SWIR dell'Etna"
-                    loading="lazy"
-                    decoding="async"
-                  />
+                  <img src="/observatory/swir.png" alt="Copernicus SWIR">
                 </div>
               {% else %}
                 <div class="observatory-image__fallback">
