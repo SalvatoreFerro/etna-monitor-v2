@@ -543,6 +543,11 @@ def create_app(config_overrides: dict | None = None):
 
     copernicus_static_dir = Path(app.static_folder) / "copernicus"
     copernicus_static_dir.mkdir(parents=True, exist_ok=True)
+    app.logger.info(
+        "[BOOT] Static folder=%s static_url_path=%s",
+        app.static_folder,
+        app.static_url_path,
+    )
 
     warnings.filterwarnings("ignore", message="Using the in-memory storage")
 
@@ -1104,6 +1109,21 @@ def create_app(config_overrides: dict | None = None):
     app.register_blueprint(api_v1_bp)
     app.register_blueprint(status_bp)
     app.register_blueprint(internal_bp)
+
+    observatory_routes = []
+    for rule in app.url_map.iter_rules():
+        if "observatory" in rule.rule.lower():
+            observatory_routes.append(
+                {
+                    "rule": rule.rule,
+                    "endpoint": rule.endpoint,
+                    "methods": sorted(method for method in rule.methods if method != "HEAD"),
+                }
+            )
+    if observatory_routes:
+        app.logger.info("[BOOT] Observatory routes: %s", observatory_routes)
+    else:
+        app.logger.warning("[BOOT] No observatory routes found")
 
     if seo_blueprint is not None:
         app.register_blueprint(seo_blueprint)

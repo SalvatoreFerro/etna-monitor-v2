@@ -103,6 +103,9 @@ def refresh_swir_image(*, force: bool = False) -> SwirRefreshResult:
         temp_path = target_path.with_suffix(".tmp")
         temp_path.write_bytes(content)
         temp_path.replace(target_path)
+        current_app.logger.info(
+            "[OBSERVATORY] SWIR image written to %s", target_path.resolve()
+        )
         updated_at = datetime.fromtimestamp(target_path.stat().st_mtime, tz=timezone.utc)
         return SwirRefreshResult(
             ok=True,
