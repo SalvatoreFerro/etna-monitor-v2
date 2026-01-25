@@ -28,10 +28,22 @@
     fallback.hidden = true;
   }
 
+  const layout = { ...(figPayload.layout || {}) };
+  const isMobile = window.innerWidth <= 480;
+  if (isMobile && layout.meta && layout.meta.mobileOverrides) {
+    const mobileOverrides = layout.meta.mobileOverrides;
+    if (mobileOverrides.margin) {
+      layout.margin = { ...(layout.margin || {}), ...mobileOverrides.margin };
+    }
+    if (mobileOverrides.yaxis && mobileOverrides.yaxis.range) {
+      layout.yaxis = { ...(layout.yaxis || {}), range: mobileOverrides.yaxis.range };
+    }
+  }
+
   window.Plotly.react(
     plotContainer,
     figPayload.data || [],
-    figPayload.layout || {},
+    layout,
     { responsive: true, displayModeBar: false }
   );
 })();

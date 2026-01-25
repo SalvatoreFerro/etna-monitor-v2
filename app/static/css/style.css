@@ -1463,6 +1463,14 @@
     }
   }
 
+  @media (max-width: 480px) {
+    #home-preview-plot {
+      height: 70vh;
+      min-height: 65vh;
+      max-height: 520px;
+    }
+  }
+
   @media (min-width: 768px) {
     .hero__quick-info {
       grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
