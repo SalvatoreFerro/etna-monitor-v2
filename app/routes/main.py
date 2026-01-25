@@ -379,6 +379,8 @@ def index():
                         "hovertemplate": "<b>%{y:.2f} mV</b><br>%{x|%d/%m %H:%M}<extra></extra>",
                         "showlegend": False,
                     },
+                    add_background_bands=True,
+                    mobile_tuning=True,
                 )
                 if fig is not None:
                     fig_json = json.loads(plotly_io.to_json(fig))
