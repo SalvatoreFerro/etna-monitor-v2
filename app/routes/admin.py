@@ -4,6 +4,7 @@ import io
 import json
 import os
 from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from dataclasses import asdict
 from decimal import Decimal
 from math import isfinite
@@ -280,10 +281,12 @@ def _parse_datetime_local(value: str | None) -> datetime | None:
     if not value:
         return None
     try:
-        # Admin inputs are stored as naive UTC timestamps for simplicity.
-        return datetime.fromisoformat(value)
+        parsed = datetime.fromisoformat(value)
     except ValueError:
         return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=ZoneInfo("Europe/Rome"))
+    return parsed.astimezone(timezone.utc).replace(tzinfo=None)
 
 
 def _parse_sources(value: str | None) -> list[str] | None:

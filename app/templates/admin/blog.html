@@ -79,7 +79,7 @@
         </label>
       </div>
       <label>
-        <span>Programmazione pubblicazione (UTC)</span>
+        <span>Programmazione pubblicazione (Europe/Rome)</span>
         <input type="datetime-local" name="published_at" />
       </label>
       <button type="submit" class="btn btn-premium"><i class="fas fa-rocket"></i> Pubblica articolo</button>
@@ -123,12 +123,12 @@
                   {% endif %}
                 </td>
         <td data-label="Pubblicazione">
-          {{ post.published_at.strftime('%d/%m/%Y %H:%M') if post.published_at else '—' }}
+          {{ post.published_at | format_datetime_rome if post.published_at else '—' }}
           {% if not post.published_at %}
             <span class="badge warning">TODO: aggiungi orario</span>
           {% endif %}
         </td>
-                <td data-label="Aggiornato">{{ post.updated_at.strftime('%d/%m/%Y %H:%M') if post.updated_at else '—' }}</td>
+                <td data-label="Aggiornato">{{ post.updated_at | format_datetime_rome if post.updated_at else '—' }}</td>
                 <td data-label="Azioni">
                   <details class="admin-inline-editor">
                     <summary class="btn btn-secondary glass btn-sm"><i class="fas fa-pen"></i> Modifica</summary>
@@ -175,8 +175,8 @@
                         <textarea name="sources" rows="3">{{ post.sources | join('\n') if post.sources else '' }}</textarea>
                       </label>
                       <label>
-                        <span>Programmazione pubblicazione (UTC)</span>
-                        <input type="datetime-local" name="published_at" value="{{ post.published_at.strftime('%Y-%m-%dT%H:%M') if post.published_at else '' }}" />
+                        <span>Programmazione pubblicazione (Europe/Rome)</span>
+                        <input type="datetime-local" name="published_at" value="{{ post.published_at | format_datetime_input_rome }}" />
                         {% if not post.published_at %}
                           <small class="admin-form__hint">TODO: aggiungi un orario di pubblicazione esplicito.</small>
                         {% endif %}
