@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime, timezone
 from typing import Iterable
 
 import bleach
 import markdown2
 from markupsafe import Markup
+from zoneinfo import ZoneInfo
 
 _BR_TAG_PATTERN = re.compile(r"<br\s*/?>", re.IGNORECASE)
 _IMG_LOADING_PATTERN = re.compile(r"<img(?![^>]*\bloading=)([^>]*)>", re.IGNORECASE)
@@ -91,5 +93,33 @@ def md(text: str | None) -> Markup:
     return Markup(render_markdown(text))
 
 
-__all__ = ["md", "render_markdown", "strip_literal_breaks"]
+def _to_rome(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(ZoneInfo("Europe/Rome"))
 
+
+def format_datetime_rome(value: datetime | None, fmt: str = "%d/%m/%Y %H:%M") -> str:
+    """Format a datetime value in Europe/Rome timezone for admin templates."""
+
+    localized = _to_rome(value)
+    if localized is None:
+        return "—"
+    return localized.strftime(fmt)
+
+
+def format_datetime_input_rome(value: datetime | None) -> str:
+    """Format a datetime value for datetime-local inputs in Europe/Rome."""
+
+    return format_datetime_rome(value, fmt="%Y-%m-%dT%H:%M") if value else ""
+
+
+__all__ = [
+    "md",
+    "render_markdown",
+    "strip_literal_breaks",
+    "format_datetime_rome",
+    "format_datetime_input_rome",
+]

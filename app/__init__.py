@@ -60,7 +60,7 @@ from .assets.social_preview import ensure_social_preview_image
 from .services.copernicus_bootstrap import ensure_copernicus_previews
 from .models import db
 from .models.partner import PartnerCategory
-from .filters import md
+from .filters import format_datetime_input_rome, format_datetime_rome, md
 from .utils.csrf import generate_csrf_token
 from .utils.user_columns import get_login_safe_user_columns
 from .utils.logger import configure_logging
@@ -520,6 +520,8 @@ def create_app(config_overrides: dict | None = None):
         "WORKER_HEARTBEAT_INTERVAL", int(os.getenv("WORKER_HEARTBEAT_INTERVAL", "30"))
     )
     app.jinja_env.filters["md"] = md
+    app.jinja_env.filters["format_datetime_rome"] = format_datetime_rome
+    app.jinja_env.filters["format_datetime_input_rome"] = format_datetime_input_rome
     app.jinja_env.globals["csrf_token"] = generate_csrf_token
     app.jinja_env.globals["static_asset_version"] = app.config["STATIC_ASSET_VERSION"]
     app.jinja_env.globals["STATIC_ASSET_VERSION"] = app.config["STATIC_ASSET_VERSION"]

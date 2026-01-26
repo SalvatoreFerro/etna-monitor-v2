@@ -85,14 +85,44 @@ def community_landing():
 @bp.route("/blog/")
 def blog_index():
     now = datetime.utcnow()
-    posts = (
-        BlogPost.query.filter(
-            BlogPost.published.is_(True),
-            or_(BlogPost.published_at.is_(None), BlogPost.published_at <= now),
-        )
-        .order_by(func.coalesce(BlogPost.published_at, BlogPost.created_at).desc())
-        .all()
+    total_count = BlogPost.query.count()
+    published_count = BlogPost.query.filter(BlogPost.published.is_(True)).count()
+    scheduled_count = BlogPost.query.filter(
+        BlogPost.published.is_(True),
+        BlogPost.published_at.is_not(None),
+        BlogPost.published_at > now,
+    ).count()
+    posts_query = BlogPost.query.filter(
+        BlogPost.published.is_(True),
+        or_(BlogPost.published_at.is_(None), BlogPost.published_at <= now),
+    ).order_by(func.coalesce(BlogPost.published_at, BlogPost.created_at).desc())
+    posts = posts_query.all()
+    current_app.logger.info(
+        "[BLOG] Index counts total=%s published=%s visible=%s scheduled=%s draft=%s",
+        total_count,
+        published_count,
+        len(posts),
+        scheduled_count,
+        total_count - published_count,
     )
+    debug_slug = (request.args.get("debug_slug") or "").strip()
+    if debug_slug:
+        candidate = BlogPost.query.filter_by(slug=debug_slug).first()
+        if candidate:
+            is_visible = candidate.published and (
+                candidate.published_at is None or candidate.published_at <= now
+            )
+            current_app.logger.info(
+                "[BLOG] Index debug slug=%s published=%s published_at=%s visible=%s",
+                debug_slug,
+                candidate.published,
+                candidate.published_at,
+                is_visible,
+            )
+        else:
+            current_app.logger.warning(
+                "[BLOG] Index debug slug=%s not found in database", debug_slug
+            )
     post_cards = []
     for post in posts:
         published_ts = _ensure_utc(post.published_at or post.created_at)
@@ -116,7 +146,17 @@ def blog_index():
 
 @bp.route("/blog/<slug>/")
 def blog_detail(slug: str):
-    post = BlogPost.query.filter_by(slug=slug).first_or_404()
+    current_app.logger.info("[BLOG] Detail requested slug=%s", slug)
+    try:
+        post = BlogPost.query.filter_by(slug=slug).first()
+    except Exception:
+        current_app.logger.exception(
+            "[BLOG] Detail query failed for slug=%s", slug
+        )
+        abort(500)
+    if post is None:
+        current_app.logger.warning("[BLOG] Detail slug not found=%s", slug)
+        abort(404)
     now = datetime.utcnow()
     is_visible = post.published and (
         post.published_at is None or post.published_at <= now
@@ -124,8 +164,14 @@ def blog_detail(slug: str):
     if not is_visible and not (
         current_user.is_authenticated and current_user.is_admin
     ):
-        flash("L'articolo richiesto non è disponibile.", "error")
-        return redirect(url_for("community.blog_index"))
+        current_app.logger.warning(
+            "[BLOG] Detail slug=%s not visible published=%s published_at=%s now=%s",
+            slug,
+            post.published,
+            post.published_at,
+            now,
+        )
+        abort(404)
 
     GamificationService().award("blog:read")
     db.session.commit()
