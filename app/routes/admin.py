@@ -385,7 +385,7 @@ def _load_latest_colored_debug() -> dict:
         "mask": debug_dir / "mask_polyline.png",
         "mask_raw": debug_dir / "mask_raw.png",
         "mask_ink": debug_dir / "mask_ink.png",
-        "mask_clean": debug_dir / "mask_clean.png",
+        "mask_pretty": debug_dir / "mask_pretty.png",
         "crop": debug_dir / "crop_plot_area.png",
         "overlay_markers": debug_dir / "overlay_markers.png",
         "debug_json": debug_json_path if debug_json_path.exists() else None,
@@ -3197,7 +3197,7 @@ def test_colored_extraction():
                 mask_image=_encode_image_base64(debug_assets.get("mask")),
                 mask_raw_image=_encode_image_base64(debug_assets.get("mask_raw")),
                 mask_ink_image=_encode_image_base64(debug_assets.get("mask_ink")),
-                mask_clean_image=_encode_image_base64(debug_assets.get("mask_clean")),
+                mask_pretty_image=_encode_image_base64(debug_assets.get("mask_pretty")),
                 crop_image=_encode_image_base64(debug_assets.get("crop")),
                 overlay_markers_image=_encode_image_base64(
                     debug_assets.get("overlay_markers")
@@ -3296,7 +3296,7 @@ def test_colored_extraction():
         overlay_image = _encode_image_base64(debug_paths.get("overlay"))
         mask_image = _encode_image_base64(debug_paths.get("mask"))
         mask_raw_image = _encode_image_base64(debug_paths.get("mask_raw"))
-        mask_clean_image = _encode_image_base64(debug_paths.get("mask_clean"))
+        mask_pretty_image = _encode_image_base64(debug_paths.get("mask_pretty"))
         crop_image = _encode_image_base64(debug_paths.get("crop"))
         overlay_markers_image = _encode_image_base64(debug_paths.get("overlay_markers"))
         debug_json_data = None
@@ -3319,7 +3319,7 @@ def test_colored_extraction():
                 mask_image=mask_image,
                 mask_raw_image=mask_raw_image,
                 mask_ink_image=_encode_image_base64(debug_paths.get("mask_ink")),
-                mask_clean_image=mask_clean_image,
+                mask_pretty_image=mask_pretty_image,
                 crop_image=crop_image,
                 overlay_markers_image=overlay_markers_image,
                 error_message=plot_error_message,
@@ -3360,7 +3360,7 @@ def test_colored_extraction():
                 mask_image=_encode_image_base64(debug_assets.get("mask")),
                 mask_raw_image=_encode_image_base64(debug_assets.get("mask_raw")),
                 mask_ink_image=_encode_image_base64(debug_assets.get("mask_ink")),
-                mask_clean_image=_encode_image_base64(debug_assets.get("mask_clean")),
+                mask_pretty_image=_encode_image_base64(debug_assets.get("mask_pretty")),
                 crop_image=_encode_image_base64(debug_assets.get("crop")),
                 overlay_markers_image=_encode_image_base64(
                     debug_assets.get("overlay_markers")
