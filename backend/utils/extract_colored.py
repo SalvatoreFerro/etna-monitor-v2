@@ -474,7 +474,8 @@ def _write_debug_artifacts(
     discarded: list[tuple[int, int]] | None = None,
     spikes: list[tuple[int, int]] | None = None,
 ) -> dict:
-    debug_dir = Path("/data/debug")
+    data_dir = Path(os.getenv("DATA_DIR", "data"))
+    debug_dir = Path(os.getenv("INGV_COLORED_DEBUG_DIR", data_dir / "debug"))
     debug_dir.mkdir(parents=True, exist_ok=True)
 
     overlay = cropped.copy()
