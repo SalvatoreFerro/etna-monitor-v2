@@ -13,7 +13,6 @@ from backend.utils.time import to_iso_utc
 
 EXTRACTION_DURATION = timedelta(days=7)
 
-EDGE_MARGIN_PX = 6
 BBOX_PADDING_PX = 6
 BBOX_DARK_RATIO = 0.35
 BBOX_FALLBACK_PCT = {
@@ -30,12 +29,9 @@ HAMPEL_SIGMA = 3.0
 NEIGHBORHOOD_RANGE = 2
 NEIGHBORHOOD_EXTENDED_RANGE = 3
 
-VERTICAL_OPEN_KERNEL = (1, 5)
-NOISE_OPEN_KERNEL = (3, 3)
-NOISE_CLOSE_KERNEL = (3, 3)
 MIN_COMPONENT_AREA = 3
-MIN_VALID_COLUMN_PCT = 20.0
-VERTICAL_LINE_PIXEL_RATIO = 0.02
+TRUE_MASK_MIN_COLUMN_PCT = 90.0
+FRAME_LINE_THICKNESS = 3
 
 
 logger = logging.getLogger(__name__)
@@ -96,9 +92,11 @@ def extract_series_from_colored(path_png: str | Path):
         raise ValueError(f"Impossibile leggere PNG colorato: {image_path}")
 
     cropped, offsets, bbox = _crop_plot_area(image)
-    ys_px, mask_raw, mask_clean, reasons, border_components = _extract_curve_points(cropped)
+    ys_px, mask_candidate, mask_connected, mask_skeleton, reasons, border_components = _extract_curve_points(
+        cropped
+    )
 
-    xs_px = list(range(mask_clean.shape[1]))
+    xs_px = list(range(mask_skeleton.shape[1]))
     ys_px = _apply_hampel_filter(ys_px, window=HAMPEL_WINDOW, sigma=HAMPEL_SIGMA)
 
     valid_columns = sum(1 for y in ys_px if y is not None)
@@ -109,7 +107,7 @@ def extract_series_from_colored(path_png: str | Path):
     end_time = datetime.now(timezone.utc)
     start_time = end_time - EXTRACTION_DURATION
     duration_seconds = EXTRACTION_DURATION.total_seconds()
-    steps = max(mask_clean.shape[1] - 1, 1)
+    steps = max(mask_skeleton.shape[1] - 1, 1)
     seconds_per_pixel = duration_seconds / steps
 
     timestamps = []
@@ -119,12 +117,13 @@ def extract_series_from_colored(path_png: str | Path):
             continue
         timestamp = start_time + timedelta(seconds=seconds_per_pixel * x)
         timestamps.append(timestamp)
-        values.append(_pixel_to_mv(y, mask_clean.shape[0]))
+        values.append(_pixel_to_mv(y, mask_skeleton.shape[0]))
 
     debug_paths = _write_debug_artifacts(
         cropped,
-        mask_raw,
-        mask_clean,
+        mask_candidate,
+        mask_connected,
+        mask_skeleton,
         xs_px,
         ys_px,
     )
@@ -226,52 +225,51 @@ def _extract_curve_points(
     list[int | None],
     np.ndarray,
     np.ndarray,
+    np.ndarray,
     list[str],
     int,
 ]:
     gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
     height, width = gray.shape
-    mask_raw = _build_raw_mask(gray)
-    mask_clean, border_components = _clean_mask(mask_raw)
-    raw_white = int(np.count_nonzero(mask_raw))
-    clean_white = int(np.count_nonzero(mask_clean))
-    clean_col_pct = _column_coverage_pct(mask_clean)
+    initial_candidate = _build_candidate_mask(gray)
+    (
+        mask_candidate,
+        mask_connected,
+        mask_skeleton,
+        border_components,
+        mask_meta,
+    ) = _build_true_curve_mask(
+        gray,
+        cropped,
+        initial_candidate,
+    )
+    raw_white = int(np.count_nonzero(mask_candidate))
+    connected_white = int(np.count_nonzero(mask_connected))
+    skeleton_white = int(np.count_nonzero(mask_skeleton))
+    skeleton_col_pct = _column_coverage_pct(mask_skeleton)
     logger.info(
         (
-            "[INGV COLORED][mask] raw_white=%s clean_white=%s clean_columns=%.1f%%"
+            "[INGV COLORED][mask] candidate_white=%s connected_white=%s skeleton_white=%s "
+            "skeleton_columns=%.1f%% attempts=%s"
         ),
         raw_white,
-        clean_white,
-        clean_col_pct,
+        connected_white,
+        skeleton_white,
+        skeleton_col_pct,
+        mask_meta["attempts"],
     )
-
-    if clean_col_pct < MIN_VALID_COLUMN_PCT:
-        fallback_mask = _fallback_black_curve_mask(cropped)
-        fallback_col_pct = _column_coverage_pct(fallback_mask)
-        fallback_white = int(np.count_nonzero(fallback_mask))
+    if skeleton_col_pct < TRUE_MASK_MIN_COLUMN_PCT:
         logger.warning(
-            (
-                "[INGV COLORED][mask] cleaning too aggressive (columns=%.1f%%). "
-                "Fallback black detector: white=%s columns=%.1f%%"
-            ),
-            clean_col_pct,
-            fallback_white,
-            fallback_col_pct,
+            "[INGV COLORED][mask] skeleton coverage low (%.1f%%). Using best attempt anyway.",
+            skeleton_col_pct,
         )
-        if fallback_col_pct >= clean_col_pct:
-            mask_clean = fallback_mask
-            clean_white = fallback_white
-            clean_col_pct = fallback_col_pct
-            logger.info(
-                "[INGV COLORED][mask] using fallback black detector mask",
-            )
 
     points: list[int | None] = []
     reasons: list[str] = []
     previous_y = None
 
     for x in range(width):
-        column = np.where(mask_clean[:, x] == 255)[0]
+        column = np.where(mask_skeleton[:, x] == 255)[0]
         if column.size > 0:
             candidate_y = int(np.median(column))
             if candidate_y <= 0 or candidate_y >= height - 1:
@@ -283,7 +281,7 @@ def _extract_curve_points(
             previous_y = candidate_y
             continue
 
-        candidate_y = _fallback_from_neighbors(mask_clean, x)
+        candidate_y = _fallback_from_neighbors(mask_skeleton, x)
         if candidate_y is None:
             points.append(None)
             reasons.append("empty_column")
@@ -300,10 +298,10 @@ def _extract_curve_points(
         reasons.append("neighbor")
         previous_y = candidate_y
 
-    return points, mask_raw, mask_clean, reasons, border_components
+    return points, mask_candidate, mask_connected, mask_skeleton, reasons, border_components
 
 
-def _build_raw_mask(gray: np.ndarray) -> np.ndarray:
+def _build_candidate_mask(gray: np.ndarray) -> np.ndarray:
     blurred = cv2.GaussianBlur(gray, (3, 3), 0)
     _, mask_raw = cv2.threshold(
         blurred,
@@ -316,51 +314,160 @@ def _build_raw_mask(gray: np.ndarray) -> np.ndarray:
     return mask_raw
 
 
-def _clean_mask(mask_raw: np.ndarray) -> tuple[np.ndarray, int]:
-    mask_clean = mask_raw.copy()
-    vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, VERTICAL_OPEN_KERNEL)
-    vertical_lines = cv2.morphologyEx(mask_clean, cv2.MORPH_OPEN, vertical_kernel)
-    vertical_ratio = np.count_nonzero(vertical_lines) / max(mask_clean.size, 1)
-    if vertical_ratio > VERTICAL_LINE_PIXEL_RATIO:
-        mask_clean = cv2.subtract(mask_clean, vertical_lines)
-        logger.info(
-            "[INGV COLORED][mask] removed vertical lines ratio=%.3f",
-            vertical_ratio,
+def _build_adaptive_candidate_mask(gray: np.ndarray) -> np.ndarray:
+    blurred = cv2.GaussianBlur(gray, (3, 3), 0)
+    mask_raw = cv2.adaptiveThreshold(
+        blurred,
+        255,
+        cv2.ADAPTIVE_THRESH_MEAN_C,
+        cv2.THRESH_BINARY_INV,
+        21,
+        10,
+    )
+    dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    mask_raw = cv2.dilate(mask_raw, dilate_kernel, iterations=1)
+    return mask_raw
+
+
+def _build_true_curve_mask(
+    gray: np.ndarray,
+    cropped: np.ndarray,
+    initial_candidate: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, int, dict]:
+    attempts = []
+    best = None
+    border_components = 0
+
+    attempt_configs = [
+        {
+            "name": "otsu_close",
+            "candidate": initial_candidate,
+            "close_kernels": [(3, 3), (5, 3)],
+            "dilate": 1,
+        },
+        {
+            "name": "adaptive_close",
+            "candidate": _build_adaptive_candidate_mask(gray),
+            "close_kernels": [(3, 3), (5, 3)],
+            "dilate": 1,
+        },
+        {
+            "name": "black_fallback",
+            "candidate": _fallback_black_curve_mask(cropped),
+            "close_kernels": [(3, 3)],
+            "dilate": 1,
+        },
+        {
+            "name": "otsu_light",
+            "candidate": initial_candidate,
+            "close_kernels": [(3, 3)],
+            "dilate": 0,
+        },
+    ]
+
+    for config in attempt_configs:
+        candidate = config["candidate"].copy()
+        connected, removed = _connect_curve_mask(
+            candidate,
+            close_kernels=config["close_kernels"],
+            dilate_iterations=config["dilate"],
         )
-    else:
-        logger.info(
-            "[INGV COLORED][mask] skipped vertical line removal ratio=%.3f",
-            vertical_ratio,
+        skeleton = _skeletonize_mask(connected)
+        coverage = _column_coverage_pct(skeleton)
+        attempts.append(
+            {
+                "name": config["name"],
+                "coverage": coverage,
+                "removed": removed,
+            }
         )
+        if best is None or coverage > best["coverage"]:
+            best = {
+                "candidate": candidate,
+                "connected": connected,
+                "skeleton": skeleton,
+                "coverage": coverage,
+                "removed": removed,
+            }
+        if coverage >= TRUE_MASK_MIN_COLUMN_PCT:
+            border_components = removed
+            return candidate, connected, skeleton, border_components, {"attempts": attempts}
 
-    noise_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, NOISE_OPEN_KERNEL)
-    mask_clean = cv2.morphologyEx(mask_clean, cv2.MORPH_OPEN, noise_kernel)
-    close_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, NOISE_CLOSE_KERNEL)
-    mask_clean = cv2.morphologyEx(mask_clean, cv2.MORPH_CLOSE, close_kernel)
+    if best is None:
+        return initial_candidate, initial_candidate, initial_candidate, 0, {"attempts": attempts}
 
-    mask_clean[:EDGE_MARGIN_PX, :] = 0
-    mask_clean[-EDGE_MARGIN_PX:, :] = 0
-    mask_clean[:, -EDGE_MARGIN_PX:] = 0
+    border_components = best["removed"]
+    return (
+        best["candidate"],
+        best["connected"],
+        best["skeleton"],
+        border_components,
+        {"attempts": attempts},
+    )
 
-    num_removed = _remove_border_components(mask_clean)
-    return mask_clean, num_removed
+
+def _connect_curve_mask(
+    mask_candidate: np.ndarray,
+    close_kernels: list[tuple[int, int]],
+    dilate_iterations: int,
+) -> tuple[np.ndarray, int]:
+    mask = mask_candidate.copy()
+    for kernel_size in close_kernels:
+        close_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, kernel_size)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, close_kernel)
+    if dilate_iterations:
+        dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+        mask = cv2.dilate(mask, dilate_kernel, iterations=dilate_iterations)
+
+    mask = _remove_noise_components(mask)
+    removed = _remove_frame_components(mask)
+    return mask, removed
 
 
-def _remove_border_components(mask: np.ndarray) -> int:
+def _remove_noise_components(mask: np.ndarray) -> np.ndarray:
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    for label in range(1, num_labels):
+        area = stats[label][cv2.CC_STAT_AREA]
+        if area < MIN_COMPONENT_AREA:
+            mask[labels == label] = 0
+    return mask
+
+
+def _remove_frame_components(mask: np.ndarray) -> int:
     num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
     height, width = mask.shape
     removed = 0
     for label in range(1, num_labels):
         x, y, w, h, area = stats[label]
-        if area < MIN_COMPONENT_AREA:
-            mask[labels == label] = 0
-            removed += 1
-            continue
-        touches_border = y <= 0 or (x + w) >= width or (y + h) >= height
-        if touches_border:
+        if _is_frame_component(x, y, w, h, area, height, width):
             mask[labels == label] = 0
             removed += 1
     return removed
+
+
+def _is_frame_component(
+    x: int,
+    y: int,
+    w: int,
+    h: int,
+    area: int,
+    height: int,
+    width: int,
+) -> bool:
+    if w == 0 or h == 0:
+        return False
+    touches_border = x <= 0 or y <= 0 or (x + w) >= width or (y + h) >= height
+    if not touches_border:
+        return False
+    fill_ratio = area / max(w * h, 1)
+
+    if h <= FRAME_LINE_THICKNESS and w >= width * 0.6:
+        return True
+    if w <= FRAME_LINE_THICKNESS and h >= height * 0.6:
+        return True
+    if (w >= width * 0.8 or h >= height * 0.8) and fill_ratio >= 0.6:
+        return True
+    return False
 
 
 def _column_coverage_pct(mask: np.ndarray) -> float:
@@ -368,6 +475,58 @@ def _column_coverage_pct(mask: np.ndarray) -> float:
         return 0.0
     column_has_data = np.any(mask == 255, axis=0)
     return float(column_has_data.mean() * 100)
+
+
+def _skeletonize_mask(mask: np.ndarray) -> np.ndarray:
+    if hasattr(cv2, "ximgproc") and hasattr(cv2.ximgproc, "thinning"):
+        return cv2.ximgproc.thinning(mask, thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
+    return _zhang_suen_thinning(mask)
+
+
+def _zhang_suen_thinning(mask: np.ndarray) -> np.ndarray:
+    skeleton = (mask > 0).astype(np.uint8)
+    changed = True
+    height, width = skeleton.shape
+    while changed:
+        changed = False
+        for step in range(2):
+            to_remove = []
+            for y in range(1, height - 1):
+                for x in range(1, width - 1):
+                    if skeleton[y, x] == 0:
+                        continue
+                    p2 = skeleton[y - 1, x]
+                    p3 = skeleton[y - 1, x + 1]
+                    p4 = skeleton[y, x + 1]
+                    p5 = skeleton[y + 1, x + 1]
+                    p6 = skeleton[y + 1, x]
+                    p7 = skeleton[y + 1, x - 1]
+                    p8 = skeleton[y, x - 1]
+                    p9 = skeleton[y - 1, x - 1]
+                    neighbors = [p2, p3, p4, p5, p6, p7, p8, p9]
+                    transitions = sum(
+                        (neighbors[i] == 0 and neighbors[(i + 1) % 8] == 1)
+                        for i in range(8)
+                    )
+                    neighbor_sum = sum(neighbors)
+                    if transitions != 1 or neighbor_sum < 2 or neighbor_sum > 6:
+                        continue
+                    if step == 0:
+                        if p2 * p4 * p6 != 0:
+                            continue
+                        if p4 * p6 * p8 != 0:
+                            continue
+                    else:
+                        if p2 * p4 * p8 != 0:
+                            continue
+                        if p2 * p6 * p8 != 0:
+                            continue
+                    to_remove.append((y, x))
+            if to_remove:
+                for y, x in to_remove:
+                    skeleton[y, x] = 0
+                changed = True
+    return (skeleton * 255).astype(np.uint8)
 
 
 def _fallback_black_curve_mask(cropped: np.ndarray) -> np.ndarray:
@@ -379,10 +538,8 @@ def _fallback_black_curve_mask(cropped: np.ndarray) -> np.ndarray:
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
     mask = cv2.dilate(mask, kernel, iterations=1)
-    mask[:EDGE_MARGIN_PX, :] = 0
-    mask[-EDGE_MARGIN_PX:, :] = 0
-    mask[:, -EDGE_MARGIN_PX:] = 0
-    _remove_border_components(mask)
+    _remove_noise_components(mask)
+    _remove_frame_components(mask)
     return mask
 
 
@@ -459,8 +616,9 @@ def _pixel_to_mv(y_pixel: int, height: int) -> float:
 
 def _write_debug_artifacts(
     cropped: np.ndarray,
-    mask_raw: np.ndarray,
-    mask_clean: np.ndarray,
+    mask_candidate: np.ndarray,
+    mask_connected: np.ndarray,
+    mask_skeleton: np.ndarray,
     xs: list[int],
     ys: list[int | None],
 ) -> dict:
@@ -483,19 +641,22 @@ def _write_debug_artifacts(
         cv2.polylines(overlay, [pts], False, (0, 0, 255), 1, cv2.LINE_AA)
 
     crop_path = debug_dir / "crop_plot_area.png"
-    mask_raw_path = debug_dir / "mask_raw.png"
-    mask_clean_path = debug_dir / "mask_clean.png"
+    mask_candidate_path = debug_dir / "mask_candidate.png"
+    mask_connected_path = debug_dir / "mask_connected.png"
+    mask_skeleton_path = debug_dir / "mask_skeleton.png"
     overlay_path = debug_dir / "overlay.png"
 
     cv2.imwrite(str(crop_path), cropped)
-    cv2.imwrite(str(mask_raw_path), mask_raw)
-    cv2.imwrite(str(mask_clean_path), mask_clean)
+    cv2.imwrite(str(mask_candidate_path), mask_candidate)
+    cv2.imwrite(str(mask_connected_path), mask_connected)
+    cv2.imwrite(str(mask_skeleton_path), mask_skeleton)
     cv2.imwrite(str(overlay_path), overlay)
 
     return {
         "crop": str(crop_path),
-        "mask_raw": str(mask_raw_path),
-        "mask_clean": str(mask_clean_path),
-        "mask": str(mask_clean_path),
+        "mask_candidate": str(mask_candidate_path),
+        "mask_connected": str(mask_connected_path),
+        "mask_skeleton": str(mask_skeleton_path),
+        "mask": str(mask_skeleton_path),
         "overlay": str(overlay_path),
     }
