@@ -35,8 +35,19 @@
     if (mobileOverrides.margin) {
       layout.margin = { ...(layout.margin || {}), ...mobileOverrides.margin };
     }
+    if (mobileOverrides.height) {
+      layout.height = mobileOverrides.height;
+    }
+    if (mobileOverrides.xaxis) {
+      layout.xaxis = { ...(layout.xaxis || {}), ...mobileOverrides.xaxis };
+    }
     if (mobileOverrides.yaxis && mobileOverrides.yaxis.range) {
       layout.yaxis = { ...(layout.yaxis || {}), range: mobileOverrides.yaxis.range };
+      if (mobileOverrides.yaxis.tickfont) {
+        layout.yaxis.tickfont = mobileOverrides.yaxis.tickfont;
+      }
+    } else if (mobileOverrides.yaxis) {
+      layout.yaxis = { ...(layout.yaxis || {}), ...mobileOverrides.yaxis };
     }
   }
 
