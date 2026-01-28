@@ -100,7 +100,7 @@ def extract_series_from_colored(path_png: str | Path):
         reasons,
         border_components,
         mask_meta,
-    ) = _extract_curve_points(cropped)
+    ) = _extract_curve_points(cropped, bbox)
 
     xs_px = list(range(mask_candidate.shape[1]))
     y_offset = offsets["top"]
@@ -127,6 +127,7 @@ def extract_series_from_colored(path_png: str | Path):
 
     debug_paths = _write_debug_artifacts(
         cropped,
+        mask_meta["mask_raw"],
         mask_candidate,
         mask_polyline,
         xs_px,
@@ -172,7 +173,7 @@ def extract_series_from_colored(path_png: str | Path):
     logger.info(
         (
             "[INGV COLORED][debug picks] y_offset=%s y_pick_mode=%s "
-            "thin_cols=%s thick_cols=%s thickness_median=%.2f p%02d "
+            "thin_cols=%s thick_cols=%s thickness_median=%.2f p%02d max_delta_y=%s "
             "continuity_adjusted=%.1f%% mean_span=%.2f mean_offset_from_min=%.2f"
         ),
         y_offset,
@@ -181,24 +182,31 @@ def extract_series_from_colored(path_png: str | Path):
         thick_count,
         thickness_median,
         Y_PICK_PERCENTILE_THICK,
+        mask_meta.get("max_delta_y", MAX_DELTA_Y),
         continuity_pct,
         error_stats["mean_span"],
         error_stats["mean_offset_from_min"],
     )
     if bias_meta["applied"]:
         logger.info(
-            "[INGV COLORED][bias] shift_y=%s bias_median=%.2f iqr=%.2f samples=%s",
+            "[INGV COLORED][bias] shift_y=%s bias_median=%.2f iqr=%.2f threshold=%.2f samples=%s",
             bias_meta["shift"],
             bias_meta["median"],
             bias_meta["iqr"],
+            bias_meta["threshold"],
             bias_meta["samples"],
         )
     else:
         logger.info(
-            "[INGV COLORED][bias] skipped bias_median=%.2f iqr=%.2f samples=%s",
+            (
+                "[INGV COLORED][bias] skipped bias_median=%.2f iqr=%.2f threshold=%.2f "
+                "samples=%s reason=%s"
+            ),
             bias_meta["median"],
             bias_meta["iqr"],
+            bias_meta["threshold"],
             bias_meta["samples"],
+            bias_meta.get("disabled_reason"),
         )
 
     return timestamps, values, debug_paths
@@ -271,6 +279,7 @@ def _fallback_bbox_from_pct(height: int, width: int) -> tuple[int, int, int, int
 
 def _extract_curve_points(
     cropped: np.ndarray,
+    bbox: tuple[int, int, int, int],
 ) -> tuple[
     list[int | None],
     list[int | None],
@@ -283,6 +292,8 @@ def _extract_curve_points(
     gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
     height, width = gray.shape
     mask_candidate, border_components, mask_meta = _select_candidate_mask(gray, cropped)
+    mask_meta["bbox"] = bbox
+    mask_raw = mask_meta["mask_raw"]
     raw_white = int(np.count_nonzero(mask_candidate))
     candidate_col_pct = _column_coverage_pct(mask_candidate)
     logger.info(
@@ -304,6 +315,7 @@ def _extract_curve_points(
     pick_modes: list[str | None] = []
     pick_thicknesses: list[int] = []
     continuity_adjusted = 0
+    invalid_raw = 0
     previous_pick = None
     for x in range(width):
         column = np.where(mask_candidate[:, x] == 255)[0]
@@ -320,6 +332,8 @@ def _extract_curve_points(
             column_ranges.append((None, None))
             pick_modes.append(None)
             previous_pick = None
+            if candidate_y is not None:
+                invalid_raw += 1
         else:
             raw_points.append(candidate_y)
             column_ranges.append((y_min, y_max))
@@ -330,40 +344,28 @@ def _extract_curve_points(
         if adjusted:
             continuity_adjusted += 1
 
-    filtered_points: list[int | None] = []
-    reasons: list[str] = []
-    previous_y = None
+    thickness_median = float(np.median(pick_thicknesses)) if pick_thicknesses else 0.0
+    max_delta_y = MAX_DELTA_Y
 
-    for x, candidate_y in enumerate(raw_points):
-        if candidate_y is None:
-            fallback = _interpolate_if_coherent(raw_points, x)
-            if fallback is None:
-                filtered_points.append(None)
-                reasons.append("empty_column")
-                continue
-            if previous_y is not None and abs(fallback - previous_y) > MAX_DELTA_Y:
-                filtered_points.append(None)
-                reasons.append("continuity_reject")
-                continue
-            filtered_points.append(fallback)
-            reasons.append("interpolate")
-            previous_y = fallback
-            continue
-
-        if previous_y is not None and abs(candidate_y - previous_y) > MAX_DELTA_Y:
-            fallback = _interpolate_if_coherent(raw_points, x)
-            if fallback is None or abs(fallback - previous_y) > MAX_DELTA_Y:
-                filtered_points.append(None)
-                reasons.append("continuity_reject")
-                continue
-            filtered_points.append(fallback)
-            reasons.append("interpolate")
-            previous_y = fallback
-            continue
-
-        filtered_points.append(candidate_y)
-        reasons.append("direct")
-        previous_y = candidate_y
+    filtered_points, reasons, continuity_rejected = _apply_continuity(
+        raw_points,
+        max_delta_y,
+    )
+    if raw_points:
+        rejection_ratio = continuity_rejected / len(raw_points)
+    else:
+        rejection_ratio = 0.0
+    if rejection_ratio > 0.7:
+        max_delta_y = max(MAX_DELTA_Y, int(round(thickness_median * 4 + 6)))
+        logger.warning(
+            "[INGV COLORED][continuity] high rejection %.1f%%, expanding MAX_DELTA_Y to %s",
+            rejection_ratio * 100,
+            max_delta_y,
+        )
+        filtered_points, reasons, continuity_rejected = _apply_continuity(
+            raw_points,
+            max_delta_y,
+        )
 
     corrected_points, bias_meta = _apply_bias_correction(
         filtered_points,
@@ -372,6 +374,53 @@ def _extract_curve_points(
     )
 
     mask_polyline = _build_polyline_mask(height, width, corrected_points)
+    empty_columns = sum(1 for y in raw_points if y is None)
+    continuity_reject_count = sum(1 for reason in reasons if reason == "continuity_reject")
+    clamped_invalid = sum(
+        1
+        for y in corrected_points
+        if y is None or y <= 0 or y >= height - 1
+    )
+    valid_y = np.array([y for y in corrected_points if y is not None], dtype=float)
+    y_stddev = float(np.std(valid_y)) if valid_y.size else 0.0
+    y_min = float(np.min(valid_y)) if valid_y.size else 0.0
+    y_max = float(np.max(valid_y)) if valid_y.size else 0.0
+    logger.info(
+        (
+            "[INGV COLORED][extract stats] plot_bbox=%s coverage_pct=%.1f%% "
+            "empty_columns=%s continuity_rejected=%s clamped_invalid=%s "
+            "y_stddev=%.2f y_min=%.1f y_max=%.1f max_delta_y=%s"
+        ),
+        mask_meta["bbox"],
+        candidate_col_pct,
+        empty_columns,
+        continuity_reject_count,
+        clamped_invalid,
+        y_stddev,
+        y_min,
+        y_max,
+        max_delta_y,
+    )
+    if y_stddev < 0.3 or candidate_col_pct < 20.0:
+        logger.error(
+            "[INGV COLORED][extract stats] FATAL low signal stddev=%.2f coverage=%.1f%%",
+            y_stddev,
+            candidate_col_pct,
+        )
+        _write_debug_artifacts(
+            cropped,
+            mask_raw,
+            mask_candidate,
+            mask_polyline,
+            list(range(width)),
+            raw_points,
+            corrected_points,
+            column_ranges,
+            0,
+        )
+        raise ValueError(
+            "Colored PNG extraction failed: curve is flat or missing (stddev/coverage guard)."
+        )
 
     return (
         raw_points,
@@ -387,6 +436,12 @@ def _extract_curve_points(
             "pick_thicknesses": pick_thicknesses,
             "continuity_adjusted": continuity_adjusted,
             "bias_meta": bias_meta,
+            "max_delta_y": max_delta_y,
+            "invalid_raw": invalid_raw,
+            "y_stddev": y_stddev,
+            "y_min": y_min,
+            "y_max": y_max,
+            "coverage_pct": candidate_col_pct,
         },
     )
 
@@ -425,6 +480,7 @@ def _select_candidate_mask(
 ) -> tuple[np.ndarray, int, dict]:
     attempts = []
     best_mask = None
+    best_raw = None
     best_coverage = -1.0
     border_components = 0
 
@@ -444,7 +500,8 @@ def _select_candidate_mask(
     ]
 
     for config in attempt_configs:
-        candidate = config["candidate"].copy()
+        candidate_raw = config["candidate"].copy()
+        candidate = candidate_raw.copy()
         removed = _remove_frame_components(candidate)
         coverage = _column_coverage_pct(candidate)
         attempts.append(
@@ -456,15 +513,62 @@ def _select_candidate_mask(
         )
         if coverage > best_coverage:
             best_mask = candidate
+            best_raw = candidate_raw
             best_coverage = coverage
             border_components = removed
         if coverage >= TRUE_MASK_MIN_COLUMN_PCT:
-            return candidate, removed, {"attempts": attempts}
+            return candidate, removed, {"attempts": attempts, "mask_raw": candidate_raw, "bbox": None}
 
     if best_mask is None:
         best_mask = _build_candidate_mask(gray)
+        best_raw = best_mask.copy()
 
-    return best_mask, border_components, {"attempts": attempts}
+    return best_mask, border_components, {"attempts": attempts, "mask_raw": best_raw, "bbox": None}
+
+
+def _apply_continuity(
+    raw_points: list[int | None],
+    max_delta_y: int,
+) -> tuple[list[int | None], list[str], int]:
+    filtered_points: list[int | None] = []
+    reasons: list[str] = []
+    continuity_rejected = 0
+    previous_y = None
+
+    for x, candidate_y in enumerate(raw_points):
+        if candidate_y is None:
+            fallback = _interpolate_if_coherent(raw_points, x)
+            if fallback is None:
+                filtered_points.append(None)
+                reasons.append("empty_column")
+                continue
+            if previous_y is not None and abs(fallback - previous_y) > max_delta_y:
+                filtered_points.append(None)
+                reasons.append("continuity_reject")
+                continuity_rejected += 1
+                continue
+            filtered_points.append(fallback)
+            reasons.append("interpolate")
+            previous_y = fallback
+            continue
+
+        if previous_y is not None and abs(candidate_y - previous_y) > max_delta_y:
+            fallback = _interpolate_if_coherent(raw_points, x)
+            if fallback is None or abs(fallback - previous_y) > max_delta_y:
+                filtered_points.append(None)
+                reasons.append("continuity_reject")
+                continuity_rejected += 1
+                continue
+            filtered_points.append(fallback)
+            reasons.append("interpolate")
+            previous_y = fallback
+            continue
+
+        filtered_points.append(candidate_y)
+        reasons.append("direct")
+        previous_y = candidate_y
+
+    return filtered_points, reasons, continuity_rejected
 
 
 def _remove_frame_components(mask: np.ndarray) -> int:
@@ -605,7 +709,15 @@ def _apply_bias_correction(
 ) -> tuple[list[int | None], dict]:
     available_indices = [idx for idx, y in enumerate(points) if y is not None]
     if not available_indices:
-        return points, {"applied": False, "shift": 0, "median": 0.0, "iqr": 0.0, "samples": 0}
+        return points, {
+            "applied": False,
+            "shift": 0,
+            "median": 0.0,
+            "iqr": 0.0,
+            "samples": 0,
+            "threshold": BIAS_IQR_THRESHOLD,
+            "disabled_reason": "no_points",
+        }
 
     sample_size = min(BIAS_SAMPLE_COLUMNS, len(available_indices))
     rng = np.random.default_rng(42)
@@ -625,7 +737,15 @@ def _apply_bias_correction(
         diffs.append(float(y_pick - y_black))
 
     if len(diffs) < 10:
-        return points, {"applied": False, "shift": 0, "median": 0.0, "iqr": 0.0, "samples": len(diffs)}
+        return points, {
+            "applied": False,
+            "shift": 0,
+            "median": 0.0,
+            "iqr": 0.0,
+            "samples": len(diffs),
+            "threshold": BIAS_IQR_THRESHOLD,
+            "disabled_reason": "insufficient_samples",
+        }
 
     median_bias = float(np.median(diffs))
     iqr = float(np.percentile(diffs, 75) - np.percentile(diffs, 25))
@@ -636,6 +756,8 @@ def _apply_bias_correction(
             "median": median_bias,
             "iqr": iqr,
             "samples": len(diffs),
+            "threshold": BIAS_IQR_THRESHOLD,
+            "disabled_reason": "high_iqr",
         }
 
     shift = int(round(median_bias))
@@ -646,6 +768,24 @@ def _apply_bias_correction(
             "median": median_bias,
             "iqr": iqr,
             "samples": len(diffs),
+            "threshold": BIAS_IQR_THRESHOLD,
+            "disabled_reason": "zero_shift",
+        }
+    if abs(shift) > 5:
+        logger.warning(
+            "[INGV COLORED][bias] shift %s exceeds guard; disabling shift (iqr=%.2f threshold=%.2f)",
+            shift,
+            iqr,
+            BIAS_IQR_THRESHOLD,
+        )
+        return points, {
+            "applied": False,
+            "shift": 0,
+            "median": median_bias,
+            "iqr": iqr,
+            "samples": len(diffs),
+            "threshold": BIAS_IQR_THRESHOLD,
+            "disabled_reason": "shift_guard",
         }
 
     corrected = []
@@ -662,6 +802,8 @@ def _apply_bias_correction(
         "median": median_bias,
         "iqr": iqr,
         "samples": len(diffs),
+        "threshold": BIAS_IQR_THRESHOLD,
+        "disabled_reason": None,
     }
 
 
@@ -673,6 +815,7 @@ def _pixel_to_mv(y_pixel: int, height: int) -> float:
 
 def _write_debug_artifacts(
     cropped: np.ndarray,
+    mask_raw: np.ndarray,
     mask_candidate: np.ndarray,
     mask_polyline: np.ndarray,
     xs: list[int],
@@ -701,6 +844,8 @@ def _write_debug_artifacts(
 
     crop_path = debug_dir / "crop_plot_area.png"
     mask_candidate_path = debug_dir / "mask_candidate.png"
+    mask_raw_path = debug_dir / "mask_raw.png"
+    mask_clean_path = debug_dir / "mask_clean.png"
     mask_polyline_path = debug_dir / "mask_polyline.png"
     overlay_path = debug_dir / "overlay.png"
     overlay_marker_path = debug_dir / "overlay_markers.png"
@@ -710,10 +855,23 @@ def _write_debug_artifacts(
 
     cv2.imwrite(str(crop_path), cropped)
     cv2.imwrite(str(mask_candidate_path), mask_candidate)
+    cv2.imwrite(str(mask_raw_path), mask_raw)
+    cv2.imwrite(str(mask_clean_path), mask_candidate)
     cv2.imwrite(str(mask_polyline_path), mask_polyline)
     cv2.imwrite(str(overlay_path), overlay)
     marker_overlay = overlay.copy()
     _draw_column_markers(marker_overlay, xs, filtered_points, column_ranges)
+    if all(y is None for y in filtered_points):
+        cv2.putText(
+            marker_overlay,
+            "NO DATA EXTRACTED",
+            (10, max(20, marker_overlay.shape[0] // 2)),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.6,
+            (0, 0, 255),
+            2,
+            cv2.LINE_AA,
+        )
     cv2.imwrite(str(overlay_marker_path), marker_overlay)
     _write_curve_points(raw_csv_path, xs, raw_points)
     _write_curve_points(filtered_csv_path, xs, filtered_points)
@@ -724,6 +882,8 @@ def _write_debug_artifacts(
 
     return {
         "crop": str(crop_path),
+        "mask_raw": str(mask_raw_path),
+        "mask_clean": str(mask_clean_path),
         "mask_candidate": str(mask_candidate_path),
         "mask_polyline": str(mask_polyline_path),
         "mask": str(mask_polyline_path),
