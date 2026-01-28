@@ -3156,7 +3156,7 @@ def test_colored_extraction():
         )
         fallback_fig = build_tremor_figure(
             clean_pairs,
-            mode="admin",
+            mode="desktop",
             min_points=10,
             eps=1e-2,
         )
@@ -3274,7 +3274,7 @@ def test_colored_extraction():
         )
         fig = build_tremor_figure(
             clean_pairs,
-            mode="admin",
+            mode="desktop",
             min_points=10,
             eps=eps,
         )

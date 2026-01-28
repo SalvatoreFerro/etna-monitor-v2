@@ -2,14 +2,9 @@
 (function () {
   const desktopPlot = document.getElementById('tremor-plot');
   const desktopFallback = document.getElementById('tremorPlotFallback');
-  const modal = document.getElementById('tremorPlotModal');
-  const modalPlot = document.getElementById('tremor-plot-modal');
-  const modalFallback = document.getElementById('tremorModalFallback');
-  const modalTrigger = document.getElementById('tremor-open-modal');
-  const imageModalTrigger = document.querySelector('[data-image-modal-target]');
-  const imageModal = document.getElementById('tremorImageModal');
-  const imageModalImg = document.getElementById('tremorImageModalImg');
-  const imageModalLink = document.getElementById('tremorImageModalLink');
+  const MOBILE_BREAKPOINT = 768;
+  const MOBILE_TICK_FONT_SIZE = 12;
+  const MOBILE_MARGIN = { l: 55, r: 15, t: 10, b: 45 };
 
   const parseFigPayload = (container) => {
     if (!container) {
@@ -23,21 +18,43 @@
     }
   };
 
-  const computeModalHeight = () => {
-    const height = window.innerHeight * 0.85;
-    return Math.round(Math.min(900, Math.max(420, height)));
+  const computePlotHeight = () => {
+    const height = window.innerHeight * 0.72;
+    return Math.round(Math.min(820, Math.max(520, height)));
   };
 
-  const renderPlot = (container, figPayload, heightOverride) => {
+  const isMobileViewport = () => window.innerWidth <= MOBILE_BREAKPOINT;
+
+  const buildMobileOverrides = () => ({
+    height: computePlotHeight(),
+    margin: MOBILE_MARGIN,
+    'xaxis.tickfont.size': MOBILE_TICK_FONT_SIZE,
+    'yaxis.tickfont.size': MOBILE_TICK_FONT_SIZE,
+  });
+
+  const buildDesktopOverrides = () => ({
+    height: null,
+  });
+
+  const applyResponsiveLayout = (container) => {
+    if (!container || !window.Plotly) {
+      return;
+    }
+    const layoutUpdates = isMobileViewport() ? buildMobileOverrides() : buildDesktopOverrides();
+    window.Plotly.relayout(container, layoutUpdates);
+    window.requestAnimationFrame(() => {
+      window.Plotly?.Plots?.resize(container);
+    });
+  };
+
+  const renderPlot = (container, figPayload) => {
     if (!container || !figPayload || !window.Plotly) {
       return false;
     }
     const layout = { ...(figPayload.layout || {}) };
-    if (heightOverride) {
-      layout.height = heightOverride;
-    }
     const data = figPayload.data || [];
     window.Plotly.react(container, data, layout, { responsive: true, displayModeBar: false });
+    applyResponsiveLayout(container);
     return true;
   };
 
@@ -48,105 +65,21 @@
     fallback.hidden = !visible;
   };
 
-  const isMobileViewport = () => window.innerWidth <= 768;
-
-  if (desktopPlot && !isMobileViewport()) {
+  if (desktopPlot) {
     const figPayload = parseFigPayload(desktopPlot);
     if (!renderPlot(desktopPlot, figPayload)) {
       setFallbackVisible(desktopFallback, true);
     } else {
       setFallbackVisible(desktopFallback, false);
-      window.addEventListener('resize', () => window.Plotly?.Plots?.resize(desktopPlot));
+      const handleResize = () => applyResponsiveLayout(desktopPlot);
+      window.addEventListener('resize', handleResize);
+      window.addEventListener('orientationchange', handleResize);
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+          handleResize();
+        }
+      });
+      window.requestAnimationFrame(handleResize);
     }
   }
-
-  let modalRendered = false;
-  const openModal = () => {
-    if (!modal || !modalPlot) {
-      return;
-    }
-    modal.hidden = false;
-    modal.setAttribute('aria-hidden', 'false');
-    document.body.classList.add('tremor-modal-open');
-    const figPayload = parseFigPayload(modalPlot);
-    if (!modalRendered) {
-      const rendered = renderPlot(modalPlot, figPayload, computeModalHeight());
-      modalRendered = rendered;
-      setFallbackVisible(modalFallback, !rendered);
-    } else if (window.Plotly?.Plots?.resize) {
-      window.Plotly.relayout(modalPlot, { height: computeModalHeight() });
-      window.Plotly.Plots.resize(modalPlot);
-    }
-    window.setTimeout(() => {
-      if (window.Plotly?.Plots?.resize) {
-        window.Plotly.relayout(modalPlot, { height: computeModalHeight() });
-        window.Plotly.Plots.resize(modalPlot);
-      }
-    }, 150);
-  };
-
-  const closeModal = () => {
-    if (!modal) {
-      return;
-    }
-    modal.hidden = true;
-    modal.setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('tremor-modal-open');
-  };
-
-  const closeImageModal = () => {
-    if (!imageModal) {
-      return;
-    }
-    imageModal.hidden = true;
-    imageModal.setAttribute('aria-hidden', 'true');
-    document.body.classList.remove('tremor-modal-open');
-  };
-
-  if (modalTrigger) {
-    modalTrigger.addEventListener('click', openModal);
-  }
-
-  if (modal) {
-    modal.addEventListener('click', (event) => {
-      if (event.target.closest('[data-modal-close]')) {
-        closeModal();
-      }
-    });
-  }
-
-  if (imageModalTrigger && imageModal) {
-    imageModalTrigger.addEventListener('click', () => {
-      const src = imageModalTrigger.dataset.imageSrc;
-      if (imageModalImg && src) {
-        imageModalImg.src = src;
-      }
-      if (imageModalLink && src) {
-        imageModalLink.href = src;
-      }
-      imageModal.hidden = false;
-      imageModal.setAttribute('aria-hidden', 'false');
-      document.body.classList.add('tremor-modal-open');
-    });
-    imageModal.addEventListener('click', (event) => {
-      if (event.target.closest('[data-modal-close]')) {
-        closeImageModal();
-      }
-    });
-  }
-
-  window.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      closeModal();
-      closeImageModal();
-    }
-  });
-
-  window.addEventListener('resize', () => {
-    if (!modal || modal.hidden || !modalPlot || !window.Plotly?.Plots?.resize) {
-      return;
-    }
-    window.Plotly.relayout(modalPlot, { height: computeModalHeight() });
-    window.Plotly.Plots.resize(modalPlot);
-  });
 })();
