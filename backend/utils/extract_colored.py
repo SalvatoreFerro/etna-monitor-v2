@@ -30,10 +30,12 @@ HAMPEL_SIGMA = 3.0
 NEIGHBORHOOD_RANGE = 2
 NEIGHBORHOOD_EXTENDED_RANGE = 3
 
-VERTICAL_OPEN_KERNEL = (1, 9)
+VERTICAL_OPEN_KERNEL = (1, 5)
 NOISE_OPEN_KERNEL = (3, 3)
 NOISE_CLOSE_KERNEL = (3, 3)
-MIN_COMPONENT_AREA = 6
+MIN_COMPONENT_AREA = 3
+MIN_VALID_COLUMN_PCT = 20.0
+VERTICAL_LINE_PIXEL_RATIO = 0.02
 
 
 logger = logging.getLogger(__name__)
@@ -231,6 +233,38 @@ def _extract_curve_points(
     height, width = gray.shape
     mask_raw = _build_raw_mask(gray)
     mask_clean, border_components = _clean_mask(mask_raw)
+    raw_white = int(np.count_nonzero(mask_raw))
+    clean_white = int(np.count_nonzero(mask_clean))
+    clean_col_pct = _column_coverage_pct(mask_clean)
+    logger.info(
+        (
+            "[INGV COLORED][mask] raw_white=%s clean_white=%s clean_columns=%.1f%%"
+        ),
+        raw_white,
+        clean_white,
+        clean_col_pct,
+    )
+
+    if clean_col_pct < MIN_VALID_COLUMN_PCT:
+        fallback_mask = _fallback_black_curve_mask(cropped)
+        fallback_col_pct = _column_coverage_pct(fallback_mask)
+        fallback_white = int(np.count_nonzero(fallback_mask))
+        logger.warning(
+            (
+                "[INGV COLORED][mask] cleaning too aggressive (columns=%.1f%%). "
+                "Fallback black detector: white=%s columns=%.1f%%"
+            ),
+            clean_col_pct,
+            fallback_white,
+            fallback_col_pct,
+        )
+        if fallback_col_pct >= clean_col_pct:
+            mask_clean = fallback_mask
+            clean_white = fallback_white
+            clean_col_pct = fallback_col_pct
+            logger.info(
+                "[INGV COLORED][mask] using fallback black detector mask",
+            )
 
     points: list[int | None] = []
     reasons: list[str] = []
@@ -277,6 +311,8 @@ def _build_raw_mask(gray: np.ndarray) -> np.ndarray:
         255,
         cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU,
     )
+    dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    mask_raw = cv2.dilate(mask_raw, dilate_kernel, iterations=1)
     return mask_raw
 
 
@@ -284,7 +320,18 @@ def _clean_mask(mask_raw: np.ndarray) -> tuple[np.ndarray, int]:
     mask_clean = mask_raw.copy()
     vertical_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, VERTICAL_OPEN_KERNEL)
     vertical_lines = cv2.morphologyEx(mask_clean, cv2.MORPH_OPEN, vertical_kernel)
-    mask_clean = cv2.subtract(mask_clean, vertical_lines)
+    vertical_ratio = np.count_nonzero(vertical_lines) / max(mask_clean.size, 1)
+    if vertical_ratio > VERTICAL_LINE_PIXEL_RATIO:
+        mask_clean = cv2.subtract(mask_clean, vertical_lines)
+        logger.info(
+            "[INGV COLORED][mask] removed vertical lines ratio=%.3f",
+            vertical_ratio,
+        )
+    else:
+        logger.info(
+            "[INGV COLORED][mask] skipped vertical line removal ratio=%.3f",
+            vertical_ratio,
+        )
 
     noise_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, NOISE_OPEN_KERNEL)
     mask_clean = cv2.morphologyEx(mask_clean, cv2.MORPH_OPEN, noise_kernel)
@@ -293,7 +340,6 @@ def _clean_mask(mask_raw: np.ndarray) -> tuple[np.ndarray, int]:
 
     mask_clean[:EDGE_MARGIN_PX, :] = 0
     mask_clean[-EDGE_MARGIN_PX:, :] = 0
-    mask_clean[:, :EDGE_MARGIN_PX] = 0
     mask_clean[:, -EDGE_MARGIN_PX:] = 0
 
     num_removed = _remove_border_components(mask_clean)
@@ -310,11 +356,34 @@ def _remove_border_components(mask: np.ndarray) -> int:
             mask[labels == label] = 0
             removed += 1
             continue
-        touches_border = x <= 0 or y <= 0 or (x + w) >= width or (y + h) >= height
+        touches_border = y <= 0 or (x + w) >= width or (y + h) >= height
         if touches_border:
             mask[labels == label] = 0
             removed += 1
     return removed
+
+
+def _column_coverage_pct(mask: np.ndarray) -> float:
+    if mask.size == 0:
+        return 0.0
+    column_has_data = np.any(mask == 255, axis=0)
+    return float(column_has_data.mean() * 100)
+
+
+def _fallback_black_curve_mask(cropped: np.ndarray) -> np.ndarray:
+    hsv = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)
+    gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
+    _, s, v = cv2.split(hsv)
+    dark_pixels = (v < 90) & (gray < 85) & (s < 90)
+    mask = np.where(dark_pixels, 255, 0).astype(np.uint8)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+    mask = cv2.dilate(mask, kernel, iterations=1)
+    mask[:EDGE_MARGIN_PX, :] = 0
+    mask[-EDGE_MARGIN_PX:, :] = 0
+    mask[:, -EDGE_MARGIN_PX:] = 0
+    _remove_border_components(mask)
+    return mask
 
 
 def _count_missing_tail_columns(values: list[int | None], tail_columns: int) -> int:
