@@ -22,6 +22,8 @@ CROP_RIGHT_PCT = 0.05
 
 EDGE_MARGIN_PCT = 0.02
 EDGE_MARGIN_PX = 12
+RIGHT_EDGE_EXCLUDE_PX = 3
+RIGHT_EDGE_BORDER_RATIO = 0.6
 
 PLOT_ROI_TOP_PCT = 0.04
 PLOT_ROI_BOTTOM_PCT = 0.1
@@ -37,6 +39,7 @@ SPIKE_MEDIAN_WINDOW = 7
 MAX_GAP_COLUMNS = 14
 SMOOTHING_WINDOW = 5
 NEIGHBORHOOD_RANGE = 1
+NEIGHBORHOOD_EXTENDED_RANGE = 2
 DILATION_ITERATIONS = 1
 
 
@@ -106,9 +109,9 @@ def extract_series_from_colored(path_png: str | Path):
 
     spike_mask, spike_points, max_jump_px = _detect_spikes(ys_px, intensities)
 
-    missing_tail = _count_missing_tail_columns(ys_px, tail_columns=50)
-    ys_px = _interpolate_gaps(ys_px, max_gap=MAX_GAP_COLUMNS)
+    missing_tail_before = _count_missing_tail_columns(ys_px, tail_columns=50)
     ys_px = _smooth_series(ys_px, window=SMOOTHING_WINDOW, spike_mask=spike_mask)
+    missing_tail_after = _count_missing_tail_columns(ys_px, tail_columns=50)
 
     end_time = datetime.now(timezone.utc)
     start_time = end_time - EXTRACTION_DURATION
@@ -137,7 +140,7 @@ def extract_series_from_colored(path_png: str | Path):
     logger.info(
         (
             "[INGV COLORED] valid_columns=%.1f%% (%s/%s) series_len=%s num_spikes=%s "
-            "max_jump_px=%s missing_tail=%s start_ref=%s end_ref=%s crop=%s"
+            "max_jump_px=%s missing_tail_before=%s missing_tail_after=%s start_ref=%s end_ref=%s crop=%s"
         ),
         valid_ratio,
         valid_columns,
@@ -145,7 +148,8 @@ def extract_series_from_colored(path_png: str | Path):
         len(values),
         len(spike_points),
         max_jump_px,
-        missing_tail,
+        missing_tail_before,
+        missing_tail_after,
         start_time.isoformat(),
         end_time.isoformat(),
         offsets,
@@ -201,7 +205,9 @@ def _extract_curve_points(
     mask_raw = cv2.inRange(gray, 0, MASK_INTENSITY_THRESHOLD)
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     mask_dilated = cv2.dilate(mask_raw, kernel, iterations=DILATION_ITERATIONS)
+    mask_dilated = cv2.erode(mask_dilated, kernel, iterations=1)
     _apply_edge_margin(mask_dilated)
+    _suppress_right_edge_border(mask_dilated)
     points: list[int | None] = []
     intensities: list[int | None] = []
     discarded: list[tuple[int, int]] = []
@@ -314,31 +320,33 @@ def _fallback_candidate_from_neighbors(
     roi_bottom: int,
     previous_y: int | None,
 ) -> tuple[int | None, int | None, int | None]:
-    best_candidate = (None, None, None)
-    best_score = None
-    for offset in range(-NEIGHBORHOOD_RANGE, NEIGHBORHOOD_RANGE + 1):
-        if offset == 0:
+    for search_range in (NEIGHBORHOOD_RANGE, NEIGHBORHOOD_EXTENDED_RANGE):
+        candidates: list[tuple[int, int, int]] = []
+        offsets = [offset for offset in range(-search_range, search_range + 1) if offset != 0]
+        for offset in offsets:
+            neighbor_x = x + offset
+            if neighbor_x < 0 or neighbor_x >= mask.shape[1]:
+                continue
+            candidate_y, candidate_intensity, source_x = _pick_candidate_from_mask(
+                gray,
+                mask,
+                neighbor_x,
+                roi_top,
+                roi_bottom,
+                previous_y,
+            )
+            if candidate_y is None or candidate_intensity is None:
+                continue
+            candidates.append((candidate_y, candidate_intensity, source_x or neighbor_x))
+            if previous_y is None:
+                return candidate_y, candidate_intensity, source_x
+        if not candidates:
             continue
-        neighbor_x = x + offset
-        if neighbor_x < 0 or neighbor_x >= mask.shape[1]:
-            continue
-        candidate_y, candidate_intensity, source_x = _pick_candidate_from_mask(
-            gray,
-            mask,
-            neighbor_x,
-            roi_top,
-            roi_bottom,
-            previous_y,
-        )
-        if candidate_y is None or candidate_intensity is None:
-            continue
-        score = candidate_intensity
-        if previous_y is not None:
-            score += abs(candidate_y - previous_y)
-        if best_score is None or score < best_score:
-            best_score = score
-            best_candidate = (candidate_y, candidate_intensity, source_x)
-    return best_candidate
+        if previous_y is None:
+            return candidates[0]
+        candidates.sort(key=lambda item: (abs(item[0] - previous_y), item[1]))
+        return candidates[0]
+    return None, None, None
 
 
 def _local_min_nearby(
@@ -366,6 +374,20 @@ def _apply_edge_margin(mask: np.ndarray) -> None:
     mask[-margin_y:, :] = 0
     mask[:, :margin_x] = 0
     mask[:, -min(margin_x, 2):] = 0
+    mask[:, -RIGHT_EDGE_EXCLUDE_PX:] = 0
+
+
+def _suppress_right_edge_border(mask: np.ndarray) -> None:
+    if mask.size == 0:
+        return
+    height, width = mask.shape
+    tail_width = min(width, RIGHT_EDGE_EXCLUDE_PX)
+    if tail_width <= 0:
+        return
+    tail = mask[:, -tail_width:]
+    ratio = float(np.count_nonzero(tail)) / float(height * tail_width)
+    if ratio >= RIGHT_EDGE_BORDER_RATIO:
+        mask[:, -tail_width:] = 0
 
 
 def _count_missing_tail_columns(values: list[int | None], tail_columns: int) -> int:
