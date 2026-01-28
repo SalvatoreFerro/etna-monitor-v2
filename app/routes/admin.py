@@ -34,7 +34,8 @@ from backend.utils.extract_colored import download_png as download_colored_png
 from backend.utils.extract_colored import extract_series_from_colored
 from ..utils.metrics import get_csv_metrics
 from ..utils.ingv_bands import load_cached_thresholds
-from ..utils.plotly_helpers import build_plotly_html_from_pairs
+from ..utils.plotly_helpers import build_tremor_figure
+from plotly import offline as plotly_offline
 from backend.utils.time import to_iso_utc
 from ..models import (
     db,
@@ -3153,18 +3154,18 @@ def test_colored_extraction():
             if getattr(last_ts, "tz", None) is not None
             else last_ts.tz_localize("UTC").strftime("%d/%m/%Y %H:%M")
         )
-        fallback_plot = build_plotly_html_from_pairs(
+        fallback_fig = build_tremor_figure(
             clean_pairs,
-            include_plotlyjs="inline",
-            line={"color": "#111", "width": 2},
-            layout={
-                "margin": {"t": 20, "r": 20, "b": 40, "l": 60},
-                "yaxis": {"type": "log", "title": "mV"},
-                "xaxis": {"title": "Timestamp", "type": "date"},
-            },
-            name="RMS (fallback)",
+            mode="admin",
             min_points=10,
             eps=1e-2,
+        )
+        fallback_plot = (
+            plotly_offline.plot(
+                fallback_fig, include_plotlyjs="inline", output_type="div"
+            )
+            if fallback_fig is not None
+            else None
         )
         return fallback_plot, last_ts_display, str(csv_path)
     def _cache_response(response):
@@ -3271,18 +3272,16 @@ def test_colored_extraction():
         app.logger.info(
             f"Plotly log clamp: {clamped_count}/{len(clean_pairs)} values < {eps}"
         )
-        plot_html = build_plotly_html_from_pairs(
+        fig = build_tremor_figure(
             clean_pairs,
-            include_plotlyjs="inline",
-            line={"color": "#111", "width": 2},
-            layout={
-                "margin": {"t": 20, "r": 20, "b": 40, "l": 60},
-                "yaxis": {"type": "log", "title": "mV"},
-                "xaxis": {"title": "Timestamp", "type": "date"},
-            },
-            name="RMS",
+            mode="admin",
             min_points=10,
             eps=eps,
+        )
+        plot_html = (
+            plotly_offline.plot(fig, include_plotlyjs="inline", output_type="div")
+            if fig is not None
+            else None
         )
         if plot_html is None:
             plot_error_message = (

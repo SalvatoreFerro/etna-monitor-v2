@@ -35,7 +35,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from ..extensions import cache
 from ..utils.metrics import get_csv_metrics, record_csv_error, record_csv_read
-from ..utils.plotly_helpers import build_plotly_figure_from_pairs
+from ..utils.plotly_helpers import build_tremor_figure
 from app.security import BASE_CSP, apply_csp_headers, serialize_csp, talisman
 from backend.utils.time import to_iso_utc
 from backend.services.hotspots.config import HotspotsConfig
@@ -327,67 +327,14 @@ def index():
                                 "line": {"color": "#ef4444", "width": 2, "dash": "dash"},
                             }
                         )
-                    layout = {
-                        "margin": {"l": 64, "r": 32, "t": 24, "b": 56},
-                        "hovermode": "x unified",
-                        "plot_bgcolor": "rgba(0,0,0,0)",
-                        "paper_bgcolor": "rgba(0,0,0,0)",
-                        "font": {"color": "#e2e8f0"},
-                        "xaxis": {
-                            "type": "date",
-                            "title": "",
-                            "showgrid": True,
-                            "gridcolor": "#1f2937",
-                            "linewidth": 1,
-                            "linecolor": "#334155",
-                            "hoverformat": "%d/%m %H:%M",
-                            "tickfont": {"size": 12},
-                            "ticks": "outside",
-                            "tickcolor": "#334155",
-                        },
-                        "yaxis": {
-                            "title": "Ampiezza (mV)",
-                            "type": "log",
-                            "showgrid": True,
-                            "gridcolor": "#1f2937",
-                            "linewidth": 1,
-                            "linecolor": "#334155",
-                            "tickfont": {"size": 12},
-                            "tickvals": [0.1, 0.2, 0.5, 1, 2, 5, 10],
-                            "ticktext": ["10⁻¹", "0.2", "0.5", "1", "2", "5", "10¹"],
-                            "ticksuffix": " mV",
-                            "exponentformat": "power",
-                            "minor": {"ticklen": 4, "showgrid": False},
-                            "zeroline": False,
-                        },
-                        "shapes": shapes,
-                        "hoverlabel": {
-                            "bgcolor": "rgba(15, 23, 42, 0.92)",
-                            "bordercolor": "#ef4444",
-                            "font": {"color": "#f8fafc"},
-                        },
-                    }
                     try:
-                        fig = build_plotly_figure_from_pairs(
+                        fig = build_tremor_figure(
                             clean_pairs,
-                            line={
-                                "color": "#4ade80",
-                                "width": 2.4,
-                                "shape": "spline",
-                                "smoothing": 1.15,
-                            },
-                            layout=layout,
-                            name="Tremore",
+                            mode="home",
                             min_points=1,
                             eps=0.1,
-                            trace_kwargs={
-                                "fill": "tozeroy",
-                                "fillcolor": "rgba(74, 222, 128, 0.08)",
-                                "hovertemplate": "<b>%{y:.2f} mV</b><br>%{x|%d/%m %H:%M}<extra></extra>",
-                                "showlegend": False,
-                            },
+                            shapes=shapes,
                             add_background_bands=True,
-                            mobile_tuning=True,
                         )
                         if fig is not None:
                             fig_json = json.loads(plotly_io.to_json(fig))
