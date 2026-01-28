@@ -1,4 +1,5 @@
 import os
+from uuid import uuid4
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -101,7 +102,16 @@ def get_curva():
     """Return curva.csv data as JSON with no-cache headers"""
     csv_path = get_curva_csv_path()
     include_csv_path = is_owner_or_admin(get_current_user())
+    request_id = request.headers.get("X-Request-Id") or uuid4().hex[:8]
+    csv_mtime_utc = None
+    if csv_path.exists():
+        try:
+            stat = csv_path.stat()
+            csv_mtime_utc = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
+        except OSError:
+            csv_mtime_utc = None
 
+    extraction_error = None
     if not csv_path.exists() or csv_path.stat().st_size <= 20:
         try:
             colored_url = os.getenv("INGV_COLORED_URL", "")
@@ -110,16 +120,14 @@ def get_curva():
                 "[API] Auto-generated curva.csv with %s rows", result["rows"]
             )
         except Exception as e:
-            current_app.logger.exception("[API] Failed to auto-generate curva.csv")
+            extraction_error = str(e)
+            current_app.logger.error(
+                "[API] Failed to auto-generate curva.csv request_id=%s reason=%s",
+                request_id,
+                e,
+                exc_info=True,
+            )
             record_csv_error(str(e))
-            payload = {
-                "ok": False,
-                "error": "Dati INGV non disponibili al momento",
-                "placeholder_reason": "bootstrap_failed",
-            }
-            if include_csv_path:
-                payload["csv_path_used"] = str(csv_path)
-            return jsonify(payload), 503
 
     try:
         raw_df = pd.read_csv(csv_path)
@@ -177,7 +185,13 @@ def get_curva():
             "data": data,
             "last_ts": to_iso_utc(last_ts),
             "rows": len(data),
+            "csv_mtime_utc": csv_mtime_utc,
+            "source": "file",
         }
+        if extraction_error:
+            payload["source"] = "fallback"
+            payload["warning"] = extraction_error
+            payload["request_id"] = request_id
         if include_csv_path:
             payload["csv_path_used"] = str(csv_path)
 
@@ -521,6 +535,7 @@ def sentieri_stats():
 @api_bp.route("/api/force_update", methods=["GET", "POST"])
 def force_update():
     """Force update of tremor data from INGV source"""
+    request_id = request.headers.get("X-Request-Id") or uuid4().hex[:8]
     try:
         ingv_url = os.getenv("INGV_COLORED_URL", "")
         csv_path = get_curva_csv_path()
@@ -535,18 +550,54 @@ def force_update():
         record_csv_update(int(result.get("rows", 0)), last_ts_value, error_message=None)
         current_app.logger.info("[API] Force update generated %s rows", result.get("rows"))
 
-        return jsonify({
-            "ok": True,
-            "rows": result["rows"],
-            "last_ts": to_iso_utc(result.get("last_ts")),
-            "output_path": result["output_path"]
-        }), 200
+        return jsonify(
+            {
+                "ok": True,
+                "rows": result["rows"],
+                "last_ts": to_iso_utc(result.get("last_ts")),
+                "output_path": result["output_path"],
+                "request_id": request_id,
+                "source": "ingv",
+            }
+        ), 200
 
     except Exception as e:
-        current_app.logger.exception("[API] Force update failed")
+        current_app.logger.error(
+            "[API] Force update failed request_id=%s reason=%s",
+            request_id,
+            e,
+            exc_info=True,
+        )
         record_csv_error(str(e))
         record_csv_update(None, None, error_message=str(e))
-        return jsonify({
-            "ok": False,
-            "error": str(e)
-        }), 500
+        csv_path = get_curva_csv_path()
+        fallback_rows = 0
+        fallback_last_ts = None
+        fallback_mtime = None
+        if csv_path.exists():
+            try:
+                stat = csv_path.stat()
+                fallback_mtime = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
+                df = pd.read_csv(csv_path)
+                if "timestamp" in df.columns:
+                    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+                    df = df.dropna(subset=["timestamp"])
+                fallback_rows = len(df)
+                if fallback_rows:
+                    fallback_last_ts = to_iso_utc(df["timestamp"].iloc[-1])
+            except Exception:
+                current_app.logger.exception(
+                    "[API] Force update fallback read failed request_id=%s",
+                    request_id,
+                )
+        return jsonify(
+            {
+                "ok": True,
+                "source": "fallback",
+                "error": str(e),
+                "rows": fallback_rows,
+                "last_ts": fallback_last_ts,
+                "fallback_mtime_utc": fallback_mtime,
+                "request_id": request_id,
+            }
+        ), 200

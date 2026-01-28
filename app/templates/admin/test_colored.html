@@ -18,6 +18,12 @@
       <strong>Errore:</strong> {{ error_message }}
     </div>
   {% endif %}
+  {% if fallback_notice %}
+    <div class="admin-card admin-flash admin-flash--warning">
+      <strong>Aggiornamento in corso.</strong>
+      Ultimo dato disponibile: {{ fallback_timestamp or "N/A" }}{% if fallback_csv_path %} ({{ fallback_csv_path }}){% endif %}.
+    </div>
+  {% endif %}
 
   <section class="admin-card">
     <h2>Tremor Summary Debug</h2>
@@ -91,6 +97,44 @@
   </section>
 
   <section class="admin-card">
+    <h2>Debug artifacts</h2>
+    <div style="display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+      <div>
+        <h3>Crop plot area</h3>
+        {% if crop_image %}
+          <img src="{{ crop_image }}" alt="Crop plot area" style="max-width: 100%; height: auto;" />
+        {% else %}
+          <p class="muted">Crop non disponibile.</p>
+        {% endif %}
+      </div>
+      <div>
+        <h3>Mask raw</h3>
+        {% if mask_raw_image %}
+          <img src="{{ mask_raw_image }}" alt="Mask raw" style="max-width: 100%; height: auto;" />
+        {% else %}
+          <p class="muted">Mask raw non disponibile.</p>
+        {% endif %}
+      </div>
+      <div>
+        <h3>Mask clean</h3>
+        {% if mask_clean_image %}
+          <img src="{{ mask_clean_image }}" alt="Mask clean" style="max-width: 100%; height: auto;" />
+        {% else %}
+          <p class="muted">Mask clean non disponibile.</p>
+        {% endif %}
+      </div>
+      <div>
+        <h3>Overlay markers</h3>
+        {% if overlay_markers_image %}
+          <img src="{{ overlay_markers_image }}" alt="Overlay markers" style="max-width: 100%; height: auto;" />
+        {% else %}
+          <p class="muted">Overlay markers non disponibile.</p>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+
+  <section class="admin-card">
     <h2>Grafico Plotly (asse Y log, mV)</h2>
     {% if plot_html %}
       {{ plot_html | safe }}
@@ -105,6 +149,15 @@
           {% endif %}
         </span>
       </div>
+    {% endif %}
+  </section>
+
+  <section class="admin-card">
+    <h2>Debug JSON</h2>
+    {% if debug_json %}
+      <pre style="white-space: pre-wrap; word-break: break-word;">{{ debug_json | tojson(indent=2) }}</pre>
+    {% else %}
+      <p class="muted">debug.json non disponibile.</p>
     {% endif %}
   </section>
 

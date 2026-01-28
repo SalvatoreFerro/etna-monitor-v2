@@ -171,6 +171,9 @@
             Modalità analisi attiva
           </span>
         </div>
+        <div id="chart-fallback-banner" class="chart-fallback-banner" role="status" aria-live="polite" hidden>
+          Aggiornamento in corso / ultimo dato disponibile: <span id="chart-fallback-timestamp">--</span>
+        </div>
         {% if csv_snapshot.rows > 0 %}
           <div class="chart-quick-summary" role="status" aria-live="polite">
             <p class="muted">Dato immediato (renderizzato server-side):</p>
