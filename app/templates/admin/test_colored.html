@@ -116,6 +116,14 @@
         {% endif %}
       </div>
       <div>
+        <h3>Mask ink</h3>
+        {% if mask_ink_image %}
+          <img src="{{ mask_ink_image }}" alt="Mask ink" style="max-width: 100%; height: auto;" />
+        {% else %}
+          <p class="muted">Mask ink non disponibile.</p>
+        {% endif %}
+      </div>
+      <div>
         <h3>Mask clean</h3>
         {% if mask_clean_image %}
           <img src="{{ mask_clean_image }}" alt="Mask clean" style="max-width: 100%; height: auto;" />

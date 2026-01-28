@@ -115,8 +115,11 @@ from ..services.sentieri_geojson import (
     read_geojson_file,
     validate_feature_collection,
 )
+from ..extensions import cache
 
 bp = Blueprint("admin", __name__)
+
+TEST_COLORED_CACHE_TTL = int(os.getenv("INGV_COLORED_TEST_CACHE_TTL", "300"))
 
 
 def _require_owner_user() -> bool:
@@ -352,6 +355,14 @@ def _encode_image_base64(path: str | Path | None) -> str | None:
     return f"data:image/png;base64,{encoded}"
 
 
+def _test_colored_cache_key() -> str:
+    user = get_current_user()
+    user_id = str(getattr(user, "id", None) or "owner")
+    full_path = request.full_path or request.path or "/admin/test-colored"
+    full_path = full_path.rstrip("?")
+    return f"admin::test-colored::{user_id}::{full_path}"
+
+
 def _load_latest_colored_debug() -> dict:
     data_dir = Path(os.getenv("DATA_DIR", "data"))
     debug_dir = Path(os.getenv("INGV_COLORED_DEBUG_DIR", data_dir / "debug"))
@@ -372,6 +383,7 @@ def _load_latest_colored_debug() -> dict:
         "overlay": debug_dir / "overlay.png",
         "mask": debug_dir / "mask_polyline.png",
         "mask_raw": debug_dir / "mask_raw.png",
+        "mask_ink": debug_dir / "mask_ink.png",
         "mask_clean": debug_dir / "mask_clean.png",
         "crop": debug_dir / "crop_plot_area.png",
         "overlay_markers": debug_dir / "overlay_markers.png",
@@ -3070,6 +3082,17 @@ def test_colored_extraction():
 
     app = current_app
     request_id = request.headers.get("X-Request-Id") or uuid4().hex[:8]
+    cache_key = _test_colored_cache_key()
+    force_refresh = request.args.get("refresh") == "1"
+    if not force_refresh:
+        cached_response = cache.get(cache_key)
+        if cached_response is not None:
+            current_app.logger.info(
+                "[ADMIN] test-colored cache hit request_id=%s key=%s",
+                request_id,
+                cache_key,
+            )
+            return cached_response
     tremor_summary = build_tremor_summary()
     bands_cache = load_cached_thresholds()
     bands_debug = None
@@ -3144,6 +3167,11 @@ def test_colored_extraction():
             eps=1e-2,
         )
         return fallback_plot, last_ts_display, str(csv_path)
+    def _cache_response(response):
+        if not force_refresh and TEST_COLORED_CACHE_TTL > 0:
+            cache.set(cache_key, response, timeout=TEST_COLORED_CACHE_TTL)
+        return response
+
     if not colored_url:
         fallback_plot_html, fallback_ts_display, fallback_csv_path = _build_fallback_plot()
         debug_assets = _load_latest_colored_debug()
@@ -3155,25 +3183,31 @@ def test_colored_extraction():
                 )
             except (OSError, json.JSONDecodeError):
                 debug_json_data = None
-        return render_template(
-            "admin/test_colored.html",
-            error_message="INGV_COLORED_URL non configurato.",
-            plot_html=fallback_plot_html,
-            fallback_notice=bool(fallback_plot_html),
-            fallback_timestamp=fallback_ts_display,
-            fallback_csv_path=fallback_csv_path,
-            raw_image=_encode_image_base64(debug_assets.get("raw_png")),
-            overlay_image=_encode_image_base64(debug_assets.get("overlay")),
-            mask_image=_encode_image_base64(debug_assets.get("mask")),
-            mask_raw_image=_encode_image_base64(debug_assets.get("mask_raw")),
-            mask_clean_image=_encode_image_base64(debug_assets.get("mask_clean")),
-            crop_image=_encode_image_base64(debug_assets.get("crop")),
-            overlay_markers_image=_encode_image_base64(debug_assets.get("overlay_markers")),
-            debug_json=debug_json_data,
-            debug_data=None,
-            tremor_summary=tremor_summary,
-            bands_debug=bands_debug,
+        response = make_response(
+            render_template(
+                "admin/test_colored.html",
+                error_message="INGV_COLORED_URL non configurato.",
+                plot_html=fallback_plot_html,
+                fallback_notice=bool(fallback_plot_html),
+                fallback_timestamp=fallback_ts_display,
+                fallback_csv_path=fallback_csv_path,
+                raw_image=_encode_image_base64(debug_assets.get("raw_png")),
+                overlay_image=_encode_image_base64(debug_assets.get("overlay")),
+                mask_image=_encode_image_base64(debug_assets.get("mask")),
+                mask_raw_image=_encode_image_base64(debug_assets.get("mask_raw")),
+                mask_ink_image=_encode_image_base64(debug_assets.get("mask_ink")),
+                mask_clean_image=_encode_image_base64(debug_assets.get("mask_clean")),
+                crop_image=_encode_image_base64(debug_assets.get("crop")),
+                overlay_markers_image=_encode_image_base64(
+                    debug_assets.get("overlay_markers")
+                ),
+                debug_json=debug_json_data,
+                debug_data=None,
+                tremor_summary=tremor_summary,
+                bands_debug=bands_debug,
+            )
         )
+        return _cache_response(response)
 
     try:
         png_path = download_colored_png(colored_url)
@@ -3274,25 +3308,29 @@ def test_colored_extraction():
                 )
             except (OSError, json.JSONDecodeError):
                 debug_json_data = None
-        return render_template(
-            "admin/test_colored.html",
-            plot_html=plot_html or fallback_plot_html,
-            fallback_notice=plot_html is None and bool(fallback_plot_html),
-            fallback_timestamp=fallback_ts_display,
-            fallback_csv_path=fallback_csv_path,
-            raw_image=raw_image,
-            overlay_image=overlay_image,
-            mask_image=mask_image,
-            mask_raw_image=mask_raw_image,
-            mask_clean_image=mask_clean_image,
-            crop_image=crop_image,
-            overlay_markers_image=overlay_markers_image,
-            error_message=plot_error_message,
-            debug_data=debug_data,
-            debug_json=debug_json_data,
-            tremor_summary=tremor_summary,
-            bands_debug=bands_debug,
+        response = make_response(
+            render_template(
+                "admin/test_colored.html",
+                plot_html=plot_html or fallback_plot_html,
+                fallback_notice=plot_html is None and bool(fallback_plot_html),
+                fallback_timestamp=fallback_ts_display,
+                fallback_csv_path=fallback_csv_path,
+                raw_image=raw_image,
+                overlay_image=overlay_image,
+                mask_image=mask_image,
+                mask_raw_image=mask_raw_image,
+                mask_ink_image=_encode_image_base64(debug_paths.get("mask_ink")),
+                mask_clean_image=mask_clean_image,
+                crop_image=crop_image,
+                overlay_markers_image=overlay_markers_image,
+                error_message=plot_error_message,
+                debug_data=debug_data,
+                debug_json=debug_json_data,
+                tremor_summary=tremor_summary,
+                bands_debug=bands_debug,
+            )
         )
+        return _cache_response(response)
     except Exception as exc:  # pragma: no cover - debug view safety net
         current_app.logger.error(
             "[ADMIN] Colored extraction failed request_id=%s reason=%s",
@@ -3310,25 +3348,31 @@ def test_colored_extraction():
                 )
             except (OSError, json.JSONDecodeError):
                 debug_json_data = None
-        return render_template(
-            "admin/test_colored.html",
-            error_message=str(exc),
-            plot_html=fallback_plot_html,
-            fallback_notice=bool(fallback_plot_html),
-            fallback_timestamp=fallback_ts_display,
-            fallback_csv_path=fallback_csv_path,
-            raw_image=_encode_image_base64(debug_assets.get("raw_png")),
-            overlay_image=_encode_image_base64(debug_assets.get("overlay")),
-            mask_image=_encode_image_base64(debug_assets.get("mask")),
-            mask_raw_image=_encode_image_base64(debug_assets.get("mask_raw")),
-            mask_clean_image=_encode_image_base64(debug_assets.get("mask_clean")),
-            crop_image=_encode_image_base64(debug_assets.get("crop")),
-            overlay_markers_image=_encode_image_base64(debug_assets.get("overlay_markers")),
-            debug_data=None,
-            debug_json=debug_json_data,
-            tremor_summary=tremor_summary,
-            bands_debug=bands_debug,
+        response = make_response(
+            render_template(
+                "admin/test_colored.html",
+                error_message=str(exc),
+                plot_html=fallback_plot_html,
+                fallback_notice=bool(fallback_plot_html),
+                fallback_timestamp=fallback_ts_display,
+                fallback_csv_path=fallback_csv_path,
+                raw_image=_encode_image_base64(debug_assets.get("raw_png")),
+                overlay_image=_encode_image_base64(debug_assets.get("overlay")),
+                mask_image=_encode_image_base64(debug_assets.get("mask")),
+                mask_raw_image=_encode_image_base64(debug_assets.get("mask_raw")),
+                mask_ink_image=_encode_image_base64(debug_assets.get("mask_ink")),
+                mask_clean_image=_encode_image_base64(debug_assets.get("mask_clean")),
+                crop_image=_encode_image_base64(debug_assets.get("crop")),
+                overlay_markers_image=_encode_image_base64(
+                    debug_assets.get("overlay_markers")
+                ),
+                debug_data=None,
+                debug_json=debug_json_data,
+                tremor_summary=tremor_summary,
+                bands_debug=bands_debug,
+            )
         )
+        return _cache_response(response)
 
 
 @bp.route("/cron/summary")
