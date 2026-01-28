@@ -1464,6 +1464,149 @@
     height: 100%;
   }
 
+  .tremor-mobile-preview {
+    display: none;
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+  }
+
+  .tremor-preview-card {
+    display: grid;
+    gap: var(--space-3);
+    padding: var(--space-3);
+    border-radius: var(--radius-xl);
+    background: rgba(15, 23, 42, 0.7);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    box-shadow: 0 18px 45px rgba(5, 12, 28, 0.45);
+  }
+
+  .tremor-preview-card--empty {
+    justify-items: center;
+    text-align: center;
+  }
+
+  .tremor-preview-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  .tremor-preview-card__media {
+    border: 0;
+    padding: 0;
+    background: rgba(15, 23, 42, 0.65);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    aspect-ratio: 16 / 9;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: zoom-in;
+  }
+
+  .tremor-preview-card__media img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+
+  .tremor-preview-card__actions {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .tremor-preview-card__cta {
+    width: 100%;
+  }
+
+  .tremor-desktop-only {
+    display: block;
+  }
+
+  .tremor-modal-open {
+    overflow: hidden;
+  }
+
+  .tremor-modal {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: var(--z-modal, 1600);
+  }
+
+  .tremor-modal[hidden] {
+    display: none;
+  }
+
+  .tremor-modal__backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(6, 10, 24, 0.82);
+  }
+
+  .tremor-modal__content {
+    position: relative;
+    width: min(96vw, 1100px);
+    max-height: 90vh;
+    padding: var(--space-4);
+    border-radius: var(--radius-xl);
+    background: rgba(11, 18, 32, 0.98);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    box-shadow: 0 24px 65px rgba(3, 7, 18, 0.65);
+    z-index: 1;
+    display: grid;
+    gap: var(--space-3);
+  }
+
+  .tremor-modal__content--plot {
+    grid-template-rows: auto 1fr auto;
+  }
+
+  .tremor-modal__content--image {
+    max-width: min(94vw, 900px);
+  }
+
+  .tremor-modal__header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+  }
+
+  .tremor-modal__plot {
+    width: 100%;
+    min-height: 420px;
+  }
+
+  .tremor-modal__content--image img {
+    width: 100%;
+    height: auto;
+    max-height: 70vh;
+    object-fit: contain;
+    border-radius: var(--radius-lg);
+  }
+
+  .tremor-modal__close {
+    position: absolute;
+    top: var(--space-3);
+    right: var(--space-3);
+    border: 0;
+    background: rgba(15, 23, 42, 0.85);
+    color: var(--color-text);
+    font-size: 1.5rem;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    cursor: pointer;
+  }
+
+  .tremor-modal__link {
+    justify-self: center;
+  }
+
   #grafico-etna {
     scroll-margin-top: clamp(88px, 12vh, 140px);
   }
@@ -1478,15 +1621,35 @@
     }
   }
 
+  @media (max-width: 768px) {
+    .tremor-mobile-preview {
+      display: grid;
+    }
+
+    .tremor-desktop-only {
+      display: none !important;
+    }
+
+    .tremor-modal__content {
+      width: 100vw;
+      height: 100vh;
+      max-height: none;
+      border-radius: 0;
+      padding: var(--space-5) var(--space-3) var(--space-4);
+    }
+
+    .tremor-modal__content--image {
+      width: 100vw;
+      height: 100vh;
+    }
+  }
+
   @media (max-width: 480px) {
     .chart-card {
       padding: 10px;
     }
 
     .tremor-plot-wrap {
-      height: 75vh;
-      min-height: 560px;
-      max-height: 820px;
       padding: 8px 8px 0 8px;
     }
   }
