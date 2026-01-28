@@ -23,13 +23,8 @@ BBOX_FALLBACK_PCT = {
 }
 
 MAX_DELTA_Y = 18
-HAMPEL_WINDOW = 7
-HAMPEL_SIGMA = 3.0
-
-NEIGHBORHOOD_RANGE = 2
 NEIGHBORHOOD_EXTENDED_RANGE = 3
 
-MIN_COMPONENT_AREA = 3
 TRUE_MASK_MIN_COLUMN_PCT = 90.0
 FRAME_LINE_THICKNESS = 3
 
@@ -92,40 +87,45 @@ def extract_series_from_colored(path_png: str | Path):
         raise ValueError(f"Impossibile leggere PNG colorato: {image_path}")
 
     cropped, offsets, bbox = _crop_plot_area(image)
-    ys_px, mask_candidate, mask_connected, mask_skeleton, reasons, border_components = _extract_curve_points(
-        cropped
-    )
+    (
+        raw_points,
+        filtered_points,
+        mask_candidate,
+        mask_polyline,
+        reasons,
+        border_components,
+        mask_meta,
+    ) = _extract_curve_points(cropped)
 
-    xs_px = list(range(mask_skeleton.shape[1]))
-    ys_px = _apply_hampel_filter(ys_px, window=HAMPEL_WINDOW, sigma=HAMPEL_SIGMA)
+    xs_px = list(range(mask_candidate.shape[1]))
 
-    valid_columns = sum(1 for y in ys_px if y is not None)
-    valid_ratio = (valid_columns / len(ys_px) * 100) if ys_px else 0.0
-    missing_tail = _count_missing_tail_columns(ys_px, tail_columns=50)
+    valid_columns = sum(1 for y in filtered_points if y is not None)
+    valid_ratio = (valid_columns / len(filtered_points) * 100) if filtered_points else 0.0
+    missing_tail = _count_missing_tail_columns(filtered_points, tail_columns=50)
     tail_reasons = _count_tail_reasons(reasons, tail_columns=50)
 
     end_time = datetime.now(timezone.utc)
     start_time = end_time - EXTRACTION_DURATION
     duration_seconds = EXTRACTION_DURATION.total_seconds()
-    steps = max(mask_skeleton.shape[1] - 1, 1)
+    steps = max(mask_candidate.shape[1] - 1, 1)
     seconds_per_pixel = duration_seconds / steps
 
     timestamps = []
     values = []
-    for x, y in zip(xs_px, ys_px):
+    for x, y in zip(xs_px, filtered_points):
         if y is None:
             continue
         timestamp = start_time + timedelta(seconds=seconds_per_pixel * x)
         timestamps.append(timestamp)
-        values.append(_pixel_to_mv(y, mask_skeleton.shape[0]))
+        values.append(_pixel_to_mv(y, mask_candidate.shape[0]))
 
     debug_paths = _write_debug_artifacts(
         cropped,
         mask_candidate,
-        mask_connected,
-        mask_skeleton,
+        mask_polyline,
         xs_px,
-        ys_px,
+        raw_points,
+        filtered_points,
     )
     logger.info(
         (
@@ -133,7 +133,7 @@ def extract_series_from_colored(path_png: str | Path):
         ),
         valid_ratio,
         valid_columns,
-        len(ys_px),
+        len(filtered_points),
         len(values),
         start_time.isoformat(),
         end_time.isoformat(),
@@ -142,13 +142,14 @@ def extract_series_from_colored(path_png: str | Path):
     logger.info(
         (
             "[INGV COLORED][debug summary] bbox=%s columns_with_points=%.1f%% "
-            "tail_empty=%s tail_empty_reasons=%s border_components_removed=%s"
+            "tail_empty=%s tail_empty_reasons=%s border_components_removed=%s candidate_attempts=%s"
         ),
         bbox,
         valid_ratio,
         missing_tail,
         tail_reasons,
         border_components,
+        mask_meta["attempts"],
     )
 
     return timestamps, values, debug_paths
@@ -223,82 +224,87 @@ def _extract_curve_points(
     cropped: np.ndarray,
 ) -> tuple[
     list[int | None],
-    np.ndarray,
+    list[int | None],
     np.ndarray,
     np.ndarray,
     list[str],
     int,
+    dict,
 ]:
     gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
     height, width = gray.shape
-    initial_candidate = _build_candidate_mask(gray)
-    (
-        mask_candidate,
-        mask_connected,
-        mask_skeleton,
-        border_components,
-        mask_meta,
-    ) = _build_true_curve_mask(
-        gray,
-        cropped,
-        initial_candidate,
-    )
+    mask_candidate, border_components, mask_meta = _select_candidate_mask(gray, cropped)
     raw_white = int(np.count_nonzero(mask_candidate))
-    connected_white = int(np.count_nonzero(mask_connected))
-    skeleton_white = int(np.count_nonzero(mask_skeleton))
-    skeleton_col_pct = _column_coverage_pct(mask_skeleton)
+    candidate_col_pct = _column_coverage_pct(mask_candidate)
     logger.info(
         (
-            "[INGV COLORED][mask] candidate_white=%s connected_white=%s skeleton_white=%s "
-            "skeleton_columns=%.1f%% attempts=%s"
+            "[INGV COLORED][mask] candidate_white=%s candidate_columns=%.1f%% attempts=%s"
         ),
         raw_white,
-        connected_white,
-        skeleton_white,
-        skeleton_col_pct,
+        candidate_col_pct,
         mask_meta["attempts"],
     )
-    if skeleton_col_pct < TRUE_MASK_MIN_COLUMN_PCT:
+    if candidate_col_pct < TRUE_MASK_MIN_COLUMN_PCT:
         logger.warning(
-            "[INGV COLORED][mask] skeleton coverage low (%.1f%%). Using best attempt anyway.",
-            skeleton_col_pct,
+            "[INGV COLORED][mask] candidate coverage low (%.1f%%). Using best attempt anyway.",
+            candidate_col_pct,
         )
 
-    points: list[int | None] = []
+    raw_points: list[int | None] = []
+    for x in range(width):
+        column = np.where(mask_candidate[:, x] == 255)[0]
+        candidate_y = _robust_column_center(column)
+        if candidate_y is None or candidate_y <= 0 or candidate_y >= height - 1:
+            raw_points.append(None)
+        else:
+            raw_points.append(candidate_y)
+
+    filtered_points: list[int | None] = []
     reasons: list[str] = []
     previous_y = None
 
-    for x in range(width):
-        column = np.where(mask_skeleton[:, x] == 255)[0]
-        if column.size > 0:
-            candidate_y = int(np.median(column))
-            if candidate_y <= 0 or candidate_y >= height - 1:
-                points.append(None)
-                reasons.append("edge_reject")
+    for x, candidate_y in enumerate(raw_points):
+        if candidate_y is None:
+            fallback = _interpolate_if_coherent(raw_points, x)
+            if fallback is None:
+                filtered_points.append(None)
+                reasons.append("empty_column")
                 continue
-            points.append(candidate_y)
-            reasons.append("direct")
-            previous_y = candidate_y
+            if previous_y is not None and abs(fallback - previous_y) > MAX_DELTA_Y:
+                filtered_points.append(None)
+                reasons.append("continuity_reject")
+                continue
+            filtered_points.append(fallback)
+            reasons.append("interpolate")
+            previous_y = fallback
             continue
 
-        candidate_y = _fallback_from_neighbors(mask_skeleton, x)
-        if candidate_y is None:
-            points.append(None)
-            reasons.append("empty_column")
+        if previous_y is not None and abs(candidate_y - previous_y) > MAX_DELTA_Y:
+            fallback = _interpolate_if_coherent(raw_points, x)
+            if fallback is None or abs(fallback - previous_y) > MAX_DELTA_Y:
+                filtered_points.append(None)
+                reasons.append("continuity_reject")
+                continue
+            filtered_points.append(fallback)
+            reasons.append("interpolate")
+            previous_y = fallback
             continue
-        if previous_y is None or abs(candidate_y - previous_y) > MAX_DELTA_Y:
-            points.append(None)
-            reasons.append("continuity_reject")
-            continue
-        if candidate_y <= 0 or candidate_y >= height - 1:
-            points.append(None)
-            reasons.append("edge_reject")
-            continue
-        points.append(candidate_y)
-        reasons.append("neighbor")
+
+        filtered_points.append(candidate_y)
+        reasons.append("direct")
         previous_y = candidate_y
 
-    return points, mask_candidate, mask_connected, mask_skeleton, reasons, border_components
+    mask_polyline = _build_polyline_mask(height, width, filtered_points)
+
+    return (
+        raw_points,
+        filtered_points,
+        mask_candidate,
+        mask_polyline,
+        reasons,
+        border_components,
+        mask_meta,
+    )
 
 
 def _build_candidate_mask(gray: np.ndarray) -> np.ndarray:
@@ -329,51 +335,34 @@ def _build_adaptive_candidate_mask(gray: np.ndarray) -> np.ndarray:
     return mask_raw
 
 
-def _build_true_curve_mask(
+def _select_candidate_mask(
     gray: np.ndarray,
     cropped: np.ndarray,
-    initial_candidate: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, int, dict]:
+) -> tuple[np.ndarray, int, dict]:
     attempts = []
-    best = None
+    best_mask = None
+    best_coverage = -1.0
     border_components = 0
 
     attempt_configs = [
         {
             "name": "otsu_close",
-            "candidate": initial_candidate,
-            "close_kernels": [(3, 3), (5, 3)],
-            "dilate": 1,
+            "candidate": _build_candidate_mask(gray),
         },
         {
             "name": "adaptive_close",
             "candidate": _build_adaptive_candidate_mask(gray),
-            "close_kernels": [(3, 3), (5, 3)],
-            "dilate": 1,
         },
         {
             "name": "black_fallback",
             "candidate": _fallback_black_curve_mask(cropped),
-            "close_kernels": [(3, 3)],
-            "dilate": 1,
-        },
-        {
-            "name": "otsu_light",
-            "candidate": initial_candidate,
-            "close_kernels": [(3, 3)],
-            "dilate": 0,
         },
     ]
 
     for config in attempt_configs:
         candidate = config["candidate"].copy()
-        connected, removed = _connect_curve_mask(
-            candidate,
-            close_kernels=config["close_kernels"],
-            dilate_iterations=config["dilate"],
-        )
-        skeleton = _skeletonize_mask(connected)
-        coverage = _column_coverage_pct(skeleton)
+        removed = _remove_frame_components(candidate)
+        coverage = _column_coverage_pct(candidate)
         attempts.append(
             {
                 "name": config["name"],
@@ -381,56 +370,17 @@ def _build_true_curve_mask(
                 "removed": removed,
             }
         )
-        if best is None or coverage > best["coverage"]:
-            best = {
-                "candidate": candidate,
-                "connected": connected,
-                "skeleton": skeleton,
-                "coverage": coverage,
-                "removed": removed,
-            }
-        if coverage >= TRUE_MASK_MIN_COLUMN_PCT:
+        if coverage > best_coverage:
+            best_mask = candidate
+            best_coverage = coverage
             border_components = removed
-            return candidate, connected, skeleton, border_components, {"attempts": attempts}
+        if coverage >= TRUE_MASK_MIN_COLUMN_PCT:
+            return candidate, removed, {"attempts": attempts}
 
-    if best is None:
-        return initial_candidate, initial_candidate, initial_candidate, 0, {"attempts": attempts}
+    if best_mask is None:
+        best_mask = _build_candidate_mask(gray)
 
-    border_components = best["removed"]
-    return (
-        best["candidate"],
-        best["connected"],
-        best["skeleton"],
-        border_components,
-        {"attempts": attempts},
-    )
-
-
-def _connect_curve_mask(
-    mask_candidate: np.ndarray,
-    close_kernels: list[tuple[int, int]],
-    dilate_iterations: int,
-) -> tuple[np.ndarray, int]:
-    mask = mask_candidate.copy()
-    for kernel_size in close_kernels:
-        close_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, kernel_size)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, close_kernel)
-    if dilate_iterations:
-        dilate_kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-        mask = cv2.dilate(mask, dilate_kernel, iterations=dilate_iterations)
-
-    mask = _remove_noise_components(mask)
-    removed = _remove_frame_components(mask)
-    return mask, removed
-
-
-def _remove_noise_components(mask: np.ndarray) -> np.ndarray:
-    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
-    for label in range(1, num_labels):
-        area = stats[label][cv2.CC_STAT_AREA]
-        if area < MIN_COMPONENT_AREA:
-            mask[labels == label] = 0
-    return mask
+    return best_mask, border_components, {"attempts": attempts}
 
 
 def _remove_frame_components(mask: np.ndarray) -> int:
@@ -477,58 +427,6 @@ def _column_coverage_pct(mask: np.ndarray) -> float:
     return float(column_has_data.mean() * 100)
 
 
-def _skeletonize_mask(mask: np.ndarray) -> np.ndarray:
-    if hasattr(cv2, "ximgproc") and hasattr(cv2.ximgproc, "thinning"):
-        return cv2.ximgproc.thinning(mask, thinningType=cv2.ximgproc.THINNING_ZHANGSUEN)
-    return _zhang_suen_thinning(mask)
-
-
-def _zhang_suen_thinning(mask: np.ndarray) -> np.ndarray:
-    skeleton = (mask > 0).astype(np.uint8)
-    changed = True
-    height, width = skeleton.shape
-    while changed:
-        changed = False
-        for step in range(2):
-            to_remove = []
-            for y in range(1, height - 1):
-                for x in range(1, width - 1):
-                    if skeleton[y, x] == 0:
-                        continue
-                    p2 = skeleton[y - 1, x]
-                    p3 = skeleton[y - 1, x + 1]
-                    p4 = skeleton[y, x + 1]
-                    p5 = skeleton[y + 1, x + 1]
-                    p6 = skeleton[y + 1, x]
-                    p7 = skeleton[y + 1, x - 1]
-                    p8 = skeleton[y, x - 1]
-                    p9 = skeleton[y - 1, x - 1]
-                    neighbors = [p2, p3, p4, p5, p6, p7, p8, p9]
-                    transitions = sum(
-                        (neighbors[i] == 0 and neighbors[(i + 1) % 8] == 1)
-                        for i in range(8)
-                    )
-                    neighbor_sum = sum(neighbors)
-                    if transitions != 1 or neighbor_sum < 2 or neighbor_sum > 6:
-                        continue
-                    if step == 0:
-                        if p2 * p4 * p6 != 0:
-                            continue
-                        if p4 * p6 * p8 != 0:
-                            continue
-                    else:
-                        if p2 * p4 * p8 != 0:
-                            continue
-                        if p2 * p6 * p8 != 0:
-                            continue
-                    to_remove.append((y, x))
-            if to_remove:
-                for y, x in to_remove:
-                    skeleton[y, x] = 0
-                changed = True
-    return (skeleton * 255).astype(np.uint8)
-
-
 def _fallback_black_curve_mask(cropped: np.ndarray) -> np.ndarray:
     hsv = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)
     gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
@@ -538,7 +436,6 @@ def _fallback_black_curve_mask(cropped: np.ndarray) -> np.ndarray:
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
     mask = cv2.dilate(mask, kernel, iterations=1)
-    _remove_noise_components(mask)
     _remove_frame_components(mask)
     return mask
 
@@ -562,50 +459,43 @@ def _count_tail_reasons(reasons: list[str], tail_columns: int) -> dict[str, int]
     return summary
 
 
-def _fallback_from_neighbors(mask: np.ndarray, x: int) -> int | None:
-    width = mask.shape[1]
-    for search_range in (NEIGHBORHOOD_RANGE, NEIGHBORHOOD_EXTENDED_RANGE):
-        y_values: list[int] = []
-        for offset in range(-search_range, search_range + 1):
-            if offset == 0:
-                continue
-            neighbor_x = x + offset
-            if neighbor_x < 0 or neighbor_x >= width:
-                continue
-            ys = np.where(mask[:, neighbor_x] == 255)[0]
-            if ys.size > 0:
-                y_values.extend(ys.tolist())
-        if y_values:
-            return int(np.median(y_values))
-    return None
+def _robust_column_center(ys: np.ndarray) -> int | None:
+    if ys.size == 0:
+        return None
+    if ys.size == 1:
+        return int(ys[0])
+    p40 = np.percentile(ys, 40)
+    p60 = np.percentile(ys, 60)
+    subset = ys[(ys >= p40) & (ys <= p60)]
+    if subset.size == 0:
+        subset = ys
+    return int(np.median(subset))
 
 
-def _apply_hampel_filter(values: list[int | None], window: int, sigma: float) -> list[int | None]:
-    if window <= 1:
-        return values
-    half = window // 2
-    filtered: list[int | None] = []
-    for idx, value in enumerate(values):
-        if value is None:
-            filtered.append(None)
-            continue
-        start = max(0, idx - half)
-        end = min(len(values), idx + half + 1)
-        window_vals = [v for v in values[start:end] if v is not None]
-        if len(window_vals) < 3:
-            filtered.append(value)
-            continue
-        median = float(np.median(window_vals))
-        mad = float(np.median([abs(v - median) for v in window_vals]))
-        if mad == 0:
-            filtered.append(value)
-            continue
-        threshold = sigma * 1.4826 * mad
-        if abs(value - median) > threshold:
-            filtered.append(int(round(median)))
-        else:
-            filtered.append(value)
-    return filtered
+def _interpolate_if_coherent(values: list[int | None], idx: int) -> int | None:
+    prev_idx = None
+    next_idx = None
+    for offset in range(1, NEIGHBORHOOD_EXTENDED_RANGE + 1):
+        if prev_idx is None and idx - offset >= 0 and values[idx - offset] is not None:
+            prev_idx = idx - offset
+        if next_idx is None and idx + offset < len(values) and values[idx + offset] is not None:
+            next_idx = idx + offset
+        if prev_idx is not None and next_idx is not None:
+            break
+
+    if prev_idx is None or next_idx is None:
+        return None
+    prev_val = values[prev_idx]
+    next_val = values[next_idx]
+    if prev_val is None or next_val is None:
+        return None
+    if abs(prev_val - next_val) > MAX_DELTA_Y * 2:
+        return None
+    span = next_idx - prev_idx
+    if span <= 0:
+        return None
+    ratio = (idx - prev_idx) / span
+    return int(round(prev_val + (next_val - prev_val) * ratio))
 
 
 def _pixel_to_mv(y_pixel: int, height: int) -> float:
@@ -617,10 +507,10 @@ def _pixel_to_mv(y_pixel: int, height: int) -> float:
 def _write_debug_artifacts(
     cropped: np.ndarray,
     mask_candidate: np.ndarray,
-    mask_connected: np.ndarray,
-    mask_skeleton: np.ndarray,
+    mask_polyline: np.ndarray,
     xs: list[int],
-    ys: list[int | None],
+    raw_points: list[int | None],
+    filtered_points: list[int | None],
 ) -> dict:
     data_dir = Path(os.getenv("DATA_DIR", "data"))
     debug_dir = Path(os.getenv("INGV_COLORED_DEBUG_DIR", data_dir / "debug"))
@@ -628,7 +518,7 @@ def _write_debug_artifacts(
 
     overlay = cropped.copy()
     segment: list[tuple[int, int]] = []
-    for x, y in zip(xs, ys):
+    for x, y in zip(xs, filtered_points):
         if y is None:
             if len(segment) >= 2:
                 pts = np.array(segment, dtype=np.int32).reshape((-1, 1, 2))
@@ -642,21 +532,49 @@ def _write_debug_artifacts(
 
     crop_path = debug_dir / "crop_plot_area.png"
     mask_candidate_path = debug_dir / "mask_candidate.png"
-    mask_connected_path = debug_dir / "mask_connected.png"
-    mask_skeleton_path = debug_dir / "mask_skeleton.png"
+    mask_polyline_path = debug_dir / "mask_polyline.png"
     overlay_path = debug_dir / "overlay.png"
+    raw_csv_path = debug_dir / "curve_points.csv"
+    filtered_csv_path = debug_dir / "curve_points_filtered.csv"
 
     cv2.imwrite(str(crop_path), cropped)
     cv2.imwrite(str(mask_candidate_path), mask_candidate)
-    cv2.imwrite(str(mask_connected_path), mask_connected)
-    cv2.imwrite(str(mask_skeleton_path), mask_skeleton)
+    cv2.imwrite(str(mask_polyline_path), mask_polyline)
     cv2.imwrite(str(overlay_path), overlay)
+    _write_curve_points(raw_csv_path, xs, raw_points)
+    _write_curve_points(filtered_csv_path, xs, filtered_points)
 
     return {
         "crop": str(crop_path),
         "mask_candidate": str(mask_candidate_path),
-        "mask_connected": str(mask_connected_path),
-        "mask_skeleton": str(mask_skeleton_path),
-        "mask": str(mask_skeleton_path),
+        "mask_polyline": str(mask_polyline_path),
+        "mask": str(mask_polyline_path),
         "overlay": str(overlay_path),
+        "curve_points": str(raw_csv_path),
+        "curve_points_filtered": str(filtered_csv_path),
     }
+
+
+def _build_polyline_mask(height: int, width: int, points: list[int | None]) -> np.ndarray:
+    mask = np.zeros((height, width), dtype=np.uint8)
+    segment: list[tuple[int, int]] = []
+    for x, y in enumerate(points):
+        if y is None:
+            if len(segment) >= 2:
+                pts = np.array(segment, dtype=np.int32).reshape((-1, 1, 2))
+                cv2.polylines(mask, [pts], False, 255, 1, cv2.LINE_AA)
+            segment = []
+            continue
+        segment.append((x, y))
+    if len(segment) >= 2:
+        pts = np.array(segment, dtype=np.int32).reshape((-1, 1, 2))
+        cv2.polylines(mask, [pts], False, 255, 1, cv2.LINE_AA)
+    return mask
+
+
+def _write_curve_points(path: Path, xs: list[int], ys: list[int | None]) -> None:
+    with path.open("w", encoding="utf-8", newline="") as handle:
+        handle.write("x,y\n")
+        for x, y in zip(xs, ys):
+            y_value = "" if y is None else str(y)
+            handle.write(f"{x},{y_value}\n")
