@@ -74,6 +74,18 @@ def detect_band_boundaries_px(img_crop: np.ndarray) -> dict[str, Any]:
     }
 
 
+def _safe_crop_plot_area(
+    image: np.ndarray,
+) -> tuple[np.ndarray, dict[str, int], tuple[int, int, int, int] | None]:
+    crop_result = _crop_plot_area(image)
+    if isinstance(crop_result, tuple) and len(crop_result) == 3:
+        cropped, offsets, bbox = crop_result
+    else:
+        cropped, offsets = crop_result  # type: ignore[misc]
+        bbox = None
+    return cropped, offsets, bbox
+
+
 def pixel_y_to_mv(y_px: int, height: int, log_min: float, log_max: float) -> float:
     safe_height = max(height - 1, 1)
     y_px = max(0, min(int(y_px), safe_height))
@@ -188,7 +200,7 @@ def _detect_thresholds(logger: logging.Logger) -> dict[str, Any] | None:
         logger.warning("[INGV_BANDS] Failed to read PNG %s", png_path)
         return None
 
-    cropped, offsets = _crop_plot_area(image)
+    cropped, offsets, _ = _safe_crop_plot_area(image)
     bands_px = detect_band_boundaries_px(cropped)
     thresholds = _build_thresholds_from_bands(bands_px, cropped.shape[0])
     if not thresholds:
@@ -241,7 +253,7 @@ def _maybe_verify_cached(cached: dict[str, Any], logger: logging.Logger, now: da
         logger.warning("[INGV_BANDS] verification image missing")
         return cached
 
-    cropped, _ = _crop_plot_area(image)
+    cropped, _, _ = _safe_crop_plot_area(image)
     bands_px = cached.get("bands_px") or {}
     verification = verify_cached_bands(cropped, bands_px)
 
