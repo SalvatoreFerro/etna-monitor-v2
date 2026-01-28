@@ -15,7 +15,7 @@
 
 /* Focus indicators */
 *:focus {
-    outline: 2px solid var(--color-accent-primary);
+    outline: 2px solid var(--color-focus-ring);
     outline-offset: 2px;
 }
 
@@ -73,7 +73,7 @@
 input:focus,
 select:focus,
 textarea:focus {
-    outline: 2px solid var(--color-accent-primary);
+    outline: 2px solid var(--color-focus-ring);
     outline-offset: 2px;
 }
 

@@ -42,21 +42,21 @@
   width: 280px;
   height: 280px;
   border-radius: 50%;
-  filter: blur(90px);
-  opacity: 0.45;
+  filter: blur(70px);
+  opacity: 0.28;
   transform: translate3d(0, 0, 0);
 }
 
 .dashboard-orb.orb-one {
   top: -120px;
   left: -80px;
-  background: rgba(0, 210, 255, 0.55);
+  background: rgba(0, 210, 255, 0.38);
 }
 
 .dashboard-orb.orb-two {
   bottom: -160px;
   right: -60px;
-  background: rgba(99, 102, 241, 0.55);
+  background: rgba(99, 102, 241, 0.38);
 }
 
 .dashboard-grid {
@@ -65,7 +65,7 @@
   background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
   background-size: 80px 80px;
-  opacity: 0.25;
+  opacity: 0.14;
 }
 
 .dashboard-hero-inner {
@@ -142,7 +142,7 @@
   font-weight: var(--font-weight-semibold);
   background: rgba(0, 210, 255, 0.16);
   color: var(--color-accent-primary);
-  box-shadow: 0 8px 24px rgba(0, 210, 255, 0.2);
+  box-shadow: 0 6px 16px rgba(0, 210, 255, 0.16);
 }
 
 .dashboard-plan .badge.free {
