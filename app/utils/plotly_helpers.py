@@ -9,9 +9,11 @@ from plotly import offline as plotly_offline
 from .plot_thresholds import get_plot_band_thresholds
 
 Y_AXIS_MIN_MV = 0.1
-MOBILE_PLOT_MARGIN = {"l": 50, "r": 10, "t": 10, "b": 45}
-MOBILE_PLOT_HEIGHT = 580
-MOBILE_TICK_FONT_SIZE = 11
+MOBILE_PLOT_MARGIN = {"l": 50, "r": 18, "t": 18, "b": 44}
+MOBILE_TICK_FONT_SIZE = 10
+MOBILE_Y_NTICKS = 6
+MOBILE_X_NTICKS = 5
+MOBILE_LINE_WIDTH = 3.5
 DEFAULT_Y_TICKVALS = [0.1, 0.2, 0.5, 1, 2, 5, 10]
 DEFAULT_Y_TICKTEXT = ["10⁻¹", "0.2", "0.5", "1", "2", "5", "10¹"]
 
@@ -159,12 +161,15 @@ def _apply_plot_tuning(
             **(mobile_overrides.get("yaxis") or {}),
             "range": log_range,
             "tickfont": {"size": MOBILE_TICK_FONT_SIZE},
+            "nticks": MOBILE_Y_NTICKS,
+            "automargin": True,
         }
         mobile_overrides["xaxis"] = {
             **(mobile_overrides.get("xaxis") or {}),
             "tickfont": {"size": MOBILE_TICK_FONT_SIZE},
+            "nticks": MOBILE_X_NTICKS,
         }
-        mobile_overrides["height"] = MOBILE_PLOT_HEIGHT
+        mobile_overrides["lineWidth"] = MOBILE_LINE_WIDTH
         meta["mobileOverrides"] = mobile_overrides
         layout["meta"] = meta
 
