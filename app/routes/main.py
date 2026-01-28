@@ -58,6 +58,29 @@ from plotly import io as plotly_io
 bp = Blueprint("main", __name__)
 
 
+def _get_latest_colored_png() -> Path | None:
+    data_dir = Path(os.getenv("DATA_DIR", "data"))
+    colored_dir = Path(os.getenv("INGV_COLORED_DIR", data_dir / "ingv_colored"))
+    if not colored_dir.exists():
+        return None
+    png_candidates = sorted(
+        colored_dir.glob("colored_*.png"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    return png_candidates[0] if png_candidates else None
+
+
+@bp.get("/tremor/colored-latest.png")
+def tremor_colored_latest_png():
+    png_path = _get_latest_colored_png()
+    if not png_path or not png_path.exists():
+        abort(404)
+    response = send_file(png_path, mimetype="image/png", conditional=True)
+    response.headers["Cache-Control"] = "public, max-age=300"
+    return response
+
+
 @bp.route("/author/<slug>")
 def author_detail(slug: str):
     author_slug = BlogPost.DEFAULT_AUTHOR_SLUG
@@ -240,6 +263,7 @@ def index():
     csv_debug: dict[str, str | int | None] | None = None
     df = None
     fig_json: dict | None = None
+    fig_json_modal: dict | None = None
 
     try:
         if csv_path.exists():
@@ -330,7 +354,7 @@ def index():
                     try:
                         fig = build_tremor_figure(
                             clean_pairs,
-                            mode="home",
+                            mode="desktop",
                             min_points=1,
                             eps=0.1,
                             shapes=shapes,
@@ -338,9 +362,20 @@ def index():
                         )
                         if fig is not None:
                             fig_json = json.loads(plotly_io.to_json(fig))
+                        modal_fig = build_tremor_figure(
+                            clean_pairs,
+                            mode="home_mobile_modal",
+                            min_points=1,
+                            eps=0.1,
+                            shapes=shapes,
+                            add_background_bands=True,
+                        )
+                        if modal_fig is not None:
+                            fig_json_modal = json.loads(plotly_io.to_json(modal_fig))
                     except Exception:
                         current_app.logger.exception("[HOME] Failed to build Plotly figure")
                         fig_json = None
+                        fig_json_modal = None
                         placeholder_reason = placeholder_reason or "error"
         else:
             placeholder_reason = "missing"
@@ -529,6 +564,16 @@ def index():
             csv_debug["last_ts"],
         )
 
+    colored_png_path = None
+    try:
+        colored_png_path = _get_latest_colored_png()
+    except OSError:
+        current_app.logger.exception("[HOME] Failed to locate latest colored PNG")
+        colored_png_path = None
+    colored_png_url = (
+        url_for("main.tremor_colored_latest_png") if colored_png_path else None
+    )
+
     return render_template(
         "index.html",
         labels=timestamps,
@@ -549,6 +594,8 @@ def index():
         show_csv_debug=show_csv_debug,
         csv_debug=csv_debug,
         fig_json=fig_json,
+        fig_json_modal=fig_json_modal,
+        colored_png_url=colored_png_url,
     )
 
 

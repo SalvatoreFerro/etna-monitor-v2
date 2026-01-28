@@ -143,74 +143,115 @@
         </nav>
         <h2 id="grafico-title">Curva del tremore vulcanico</h2>
         <p class="muted">Usa il grafico per verificare rapidamente gli ultimi 7 giorni e capire se il trend è in crescita.</p>
-        <div class="chart-range-selector" role="group" aria-label="Intervallo temporale">
-          <button type="button" class="chart-range-btn" data-limit="288">24h</button>
-          <button type="button" class="chart-range-btn" data-limit="864">3 giorni</button>
-          <button type="button" class="chart-range-btn is-active" data-limit="2016">7 giorni</button>
+        <div class="tremor-mobile-preview" aria-label="Anteprima grafico tremore">
+          {% if colored_png_url %}
+            <div class="tremor-preview-card">
+              <div class="tremor-preview-card__header">
+                <span class="pill">Preview INGV</span>
+                <span class="muted">Tap per zoom</span>
+              </div>
+              <button
+                type="button"
+                class="tremor-preview-card__media"
+                data-image-modal-target="#tremorImageModal"
+                data-image-src="{{ colored_png_url }}"
+                aria-label="Apri immagine PNG del tremore"
+              >
+                <img src="{{ colored_png_url }}" alt="Anteprima PNG del tremore INGV" loading="lazy">
+              </button>
+            </div>
+          {% else %}
+            <div class="tremor-preview-card tremor-preview-card--empty">
+              <p class="muted">Preview INGV non disponibile al momento.</p>
+            </div>
+          {% endif %}
+          <div class="tremor-preview-card__actions">
+            {% if fig_json_modal %}
+              <button
+                type="button"
+                id="tremor-open-modal"
+                class="btn btn-primary tremor-preview-card__cta"
+                data-modal-target="#tremorPlotModal"
+              >
+                Apri grafico interattivo
+              </button>
+            {% else %}
+              <p class="muted">Grafico interattivo non disponibile.</p>
+            {% endif %}
+          </div>
         </div>
-        <div class="chart-interaction-controls" role="group" aria-label="Controlli analisi grafico">
-          <button
-            type="button"
-            id="chart-analyze-toggle"
-            class="btn btn-secondary btn-sm chart-interaction-toggle"
-            aria-pressed="false"
-          >
-            Analizza
-          </button>
-          <button
-            type="button"
-            id="chart-reset-view"
-            class="btn btn-ghost btn-sm chart-interaction-reset"
-          >
-            Reset vista
-          </button>
-          <span id="chart-analyze-hint" class="chart-interaction-hint" role="status" aria-live="polite">
-            Suggerimento: premi Analizza e trascina sul grafico per selezionare un intervallo.
-          </span>
-          <span id="chart-analyze-status" class="chart-mode-indicator" aria-live="polite" aria-hidden="true">
-            Modalità analisi attiva
-          </span>
-        </div>
-        <div id="chart-fallback-banner" class="chart-fallback-banner" role="status" aria-live="polite" hidden>
-          Aggiornamento in corso / ultimo dato disponibile: <span id="chart-fallback-timestamp">--</span>
+        <div class="tremor-desktop-only">
+          <div class="chart-range-selector" role="group" aria-label="Intervallo temporale">
+            <button type="button" class="chart-range-btn" data-limit="288">24h</button>
+            <button type="button" class="chart-range-btn" data-limit="864">3 giorni</button>
+            <button type="button" class="chart-range-btn is-active" data-limit="2016">7 giorni</button>
+          </div>
+          <div class="chart-interaction-controls" role="group" aria-label="Controlli analisi grafico">
+            <button
+              type="button"
+              id="chart-analyze-toggle"
+              class="btn btn-secondary btn-sm chart-interaction-toggle"
+              aria-pressed="false"
+            >
+              Analizza
+            </button>
+            <button
+              type="button"
+              id="chart-reset-view"
+              class="btn btn-ghost btn-sm chart-interaction-reset"
+            >
+              Reset vista
+            </button>
+            <span id="chart-analyze-hint" class="chart-interaction-hint" role="status" aria-live="polite">
+              Suggerimento: premi Analizza e trascina sul grafico per selezionare un intervallo.
+            </span>
+            <span id="chart-analyze-status" class="chart-mode-indicator" aria-live="polite" aria-hidden="true">
+              Modalità analisi attiva
+            </span>
+          </div>
+          <div id="chart-fallback-banner" class="chart-fallback-banner" role="status" aria-live="polite" hidden>
+            Aggiornamento in corso / ultimo dato disponibile: <span id="chart-fallback-timestamp">--</span>
+          </div>
         </div>
         {% if csv_snapshot.rows > 0 %}
-          <div class="chart-quick-summary" role="status" aria-live="polite">
-            <p class="muted">Dato immediato (renderizzato server-side):</p>
-            <dl class="metric-list">
-              <div class="metric">
-                <dt>Ultimo valore</dt>
-                <dd>
-                  {% if latest_value is not none %}
-                    {{ "%.2f"|format(latest_value) }} mV
-                  {% else %}
-                    --
-                  {% endif %}
-                </dd>
-              </div>
-              <div class="metric">
-                <dt>Aggiornato</dt>
-                <dd>
-                  {% if latest_timestamp_display %}
-                    {{ latest_timestamp_display }} UTC
-                  {% else %}
-                    --
-                  {% endif %}
-                </dd>
-              </div>
-            </dl>
-            <p class="muted">Il grafico interattivo si carica in background per offrire la vista completa.</p>
-          </div>
-          <div id="home-preview-plot" class="chart-plot tremor-plot-wrap">
-            <div
-              id="tremor-plot"
-              class="chart-plot__canvas"
-              data-fig='{{ fig_json | tojson }}'
-              aria-label="Grafico tremore Etna"
-            ></div>
-            <p class="muted chart-plot__fallback" id="tremorPlotFallback" hidden>
-              Grafico non disponibile al momento, riprova più tardi.
-            </p>
+          <div class="tremor-desktop-only">
+            <div class="chart-quick-summary" role="status" aria-live="polite">
+              <p class="muted">Dato immediato (renderizzato server-side):</p>
+              <dl class="metric-list">
+                <div class="metric">
+                  <dt>Ultimo valore</dt>
+                  <dd>
+                    {% if latest_value is not none %}
+                      {{ "%.2f"|format(latest_value) }} mV
+                    {% else %}
+                      --
+                    {% endif %}
+                  </dd>
+                </div>
+                <div class="metric">
+                  <dt>Aggiornato</dt>
+                  <dd>
+                    {% if latest_timestamp_display %}
+                      {{ latest_timestamp_display }} UTC
+                    {% else %}
+                      --
+                    {% endif %}
+                  </dd>
+                </div>
+              </dl>
+              <p class="muted">Il grafico interattivo si carica in background per offrire la vista completa.</p>
+            </div>
+            <div id="home-preview-plot" class="chart-plot tremor-plot-wrap tremor-desktop-plot">
+              <div
+                id="tremor-plot"
+                class="chart-plot__canvas"
+                data-fig='{{ fig_json | tojson }}'
+                aria-label="Grafico tremore Etna"
+              ></div>
+              <p class="muted chart-plot__fallback" id="tremorPlotFallback" hidden>
+                Grafico non disponibile al momento, riprova più tardi.
+              </p>
+            </div>
           </div>
         {% else %}
           <div class="chart-loading" aria-live="polite">
@@ -307,6 +348,35 @@
           <p>Quando vuoi, ritorna qui per verificare le soglie e confrontare le ultime variazioni.</p>
         </div>
       </div>
+    </div>
+  </div>
+  <div class="tremor-modal" id="tremorImageModal" hidden aria-hidden="true" role="dialog" aria-label="Preview tremore">
+    <div class="tremor-modal__backdrop" data-modal-close></div>
+    <div class="tremor-modal__content tremor-modal__content--image" role="document">
+      <button class="tremor-modal__close" type="button" aria-label="Chiudi" data-modal-close>×</button>
+      <img id="tremorImageModalImg" alt="Immagine PNG del tremore">
+      <a id="tremorImageModalLink" class="btn btn-secondary tremor-modal__link" target="_blank" rel="noopener">
+        Apri PNG a schermo intero
+      </a>
+    </div>
+  </div>
+  <div class="tremor-modal" id="tremorPlotModal" hidden aria-hidden="true" role="dialog" aria-label="Grafico tremore">
+    <div class="tremor-modal__backdrop" data-modal-close></div>
+    <div class="tremor-modal__content tremor-modal__content--plot" role="document">
+      <button class="tremor-modal__close" type="button" aria-label="Chiudi" data-modal-close>×</button>
+      <div class="tremor-modal__header">
+        <h3>Grafico tremore interattivo</h3>
+        <p class="muted">Pinch per zoomare o ruota lo schermo per più spazio.</p>
+      </div>
+      <div
+        id="tremor-plot-modal"
+        class="tremor-modal__plot"
+        data-fig='{{ fig_json_modal | tojson }}'
+        aria-label="Grafico tremore Etna"
+      ></div>
+      <p class="muted tremor-modal__fallback" id="tremorModalFallback" hidden>
+        Grafico non disponibile al momento, riprova più tardi.
+      </p>
     </div>
   </div>
 </section>

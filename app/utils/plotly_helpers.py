@@ -14,6 +14,9 @@ MOBILE_TICK_FONT_SIZE = 10
 MOBILE_Y_NTICKS = 6
 MOBILE_X_NTICKS = 5
 MOBILE_LINE_WIDTH = 3.5
+MOBILE_MODAL_MARGIN = {"l": 45, "r": 10, "t": 20, "b": 45}
+MOBILE_MODAL_TICK_FONT_SIZE = 13
+MOBILE_MODAL_LINE_WIDTH = 3.2
 DEFAULT_Y_TICKVALS = [0.1, 0.2, 0.5, 1, 2, 5, 10]
 DEFAULT_Y_TICKTEXT = ["10⁻¹", "0.2", "0.5", "1", "2", "5", "10¹"]
 
@@ -106,6 +109,20 @@ def _build_tremor_layout(
     if shapes:
         base_layout["shapes"] = list(shapes)
 
+    if mode == "home_mobile_modal":
+        base_layout["margin"] = MOBILE_MODAL_MARGIN
+        base_layout["xaxis"] = {
+            **base_layout["xaxis"],
+            "tickfont": {"size": MOBILE_MODAL_TICK_FONT_SIZE},
+        }
+        base_layout["yaxis"] = {
+            **base_layout["yaxis"],
+            "title": "mV",
+            "tickfont": {"size": MOBILE_MODAL_TICK_FONT_SIZE},
+            "ticksuffix": "",
+            "automargin": True,
+        }
+
     if mode == "admin":
         base_layout.update(
             {
@@ -186,15 +203,20 @@ def build_tremor_figure(
     add_background_bands: bool = False,
 ) -> go.Figure | None:
     layout = _build_tremor_layout(mode=mode, shapes=shapes)
+    is_home_variant = mode in {"home", "desktop", "home_mobile_modal"}
+    if is_home_variant:
+        line_width = MOBILE_MODAL_LINE_WIDTH if mode == "home_mobile_modal" else 2.4
+    else:
+        line_width = 2
     line = {
-        "color": "#4ade80" if mode == "home" else "#111",
-        "width": 2.4 if mode == "home" else 2,
-        "shape": "spline" if mode == "home" else "linear",
-        "smoothing": 1.15 if mode == "home" else 0,
+        "color": "#4ade80" if is_home_variant else "#111",
+        "width": line_width,
+        "shape": "spline" if is_home_variant else "linear",
+        "smoothing": 1.15 if is_home_variant else 0,
     }
     trace_kwargs = None
-    name = "Tremore" if mode == "home" else "RMS"
-    if mode == "home":
+    name = "Tremore" if is_home_variant else "RMS"
+    if is_home_variant:
         trace_kwargs = {
             "fill": "tozeroy",
             "fillcolor": "rgba(74, 222, 128, 0.08)",
