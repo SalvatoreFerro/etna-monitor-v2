@@ -352,7 +352,23 @@ def build_tremor_summary(window_minutes: int = 60) -> dict[str, Any]:
     df, reason = load_tremor_dataframe()
     trend = calculate_trend(df, window_minutes=window_minutes) if df is not None and not reason else None
 
-    ingv_bands = get_ingv_band_thresholds(_get_logger())
+    try:
+        ingv_bands = get_ingv_band_thresholds(_get_logger())
+    except Exception:
+        logger = _get_logger()
+        logger.exception("[TREMOR_SUMMARY] Failed to load INGV band thresholds")
+        fallback_t2 = float(Config.ALERT_THRESHOLD_DEFAULT)
+        fallback_t1 = max(fallback_t2 / 2, 1e-3)
+        fallback_t3 = max(fallback_t2 * 2, fallback_t2)
+        ingv_bands = {
+            "thresholds_mv": {"t1": fallback_t1, "t2": fallback_t2, "t3": fallback_t3},
+            "bands_px": {},
+            "detected_classes": [],
+            "plot_area": {},
+            "updated_at": None,
+            "verification": {"status": "failed", "checked_at": None, "notes": "exception"},
+            "source": "fallback_exception",
+        }
     thresholds = ingv_bands.get("thresholds_mv") or {}
     verification = ingv_bands.get("verification") or {}
 

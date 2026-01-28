@@ -241,157 +241,172 @@ def index():
     df = None
     fig_json: dict | None = None
 
-    if csv_path.exists():
-        try:
-            stat = csv_path.stat()
-            csv_mtime_utc = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
-        except OSError:
-            csv_mtime_utc = None
-        df, load_reason = load_curva_dataframe(csv_path)
-        if load_reason:
-            placeholder_reason = load_reason
-            if load_reason == "csv_missing":
-                placeholder_reason = "missing"
-            elif load_reason in {"missing_timestamp", "missing_value"}:
-                placeholder_reason = "missing_timestamp"
-            elif load_reason == "empty":
-                placeholder_reason = "empty"
-            else:
-                placeholder_reason = "error"
-            if load_reason.startswith("read_error"):
-                current_app.logger.exception("[HOME] Failed to read tremor CSV: %s", load_reason)
-            else:
-                current_app.logger.warning("[HOME] CSV validation failed: %s", load_reason)
-            record_csv_error(str(load_reason))
-        elif df is not None:
-            df = df.sort_values("timestamp")
-            timestamps = df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S").tolist()
-            values = df["value"].tolist()
-            data_points = len(df)
+    try:
+        if csv_path.exists():
+            try:
+                stat = csv_path.stat()
+                csv_mtime_utc = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
+            except OSError:
+                csv_mtime_utc = None
+            try:
+                df, load_reason = load_curva_dataframe(csv_path)
+            except Exception as exc:
+                current_app.logger.exception("[HOME] Failed to load tremor CSV")
+                df = None
+                load_reason = f"read_error::{exc}"
+            if load_reason:
+                placeholder_reason = load_reason
+                if load_reason == "csv_missing":
+                    placeholder_reason = "missing"
+                elif load_reason in {"missing_timestamp", "missing_value"}:
+                    placeholder_reason = "missing_timestamp"
+                elif load_reason == "empty":
+                    placeholder_reason = "empty"
+                else:
+                    placeholder_reason = "error"
+                if load_reason.startswith("read_error"):
+                    current_app.logger.exception("[HOME] Failed to read tremor CSV: %s", load_reason)
+                else:
+                    current_app.logger.warning("[HOME] CSV validation failed: %s", load_reason)
+                record_csv_error(str(load_reason))
+            elif df is not None:
+                df = df.sort_values("timestamp")
+                timestamps = df["timestamp"].dt.strftime("%Y-%m-%d %H:%M:%S").tolist()
+                values = df["value"].tolist()
+                data_points = len(df)
 
-            temporal_start = df["timestamp"].iloc[0]
-            temporal_end = df["timestamp"].iloc[-1]
-            warn_if_stale_timestamp(temporal_end, current_app.logger, "homepage")
-            temporal_start_iso = to_iso_utc(temporal_start)
-            temporal_end_iso = to_iso_utc(temporal_end)
-            temporal_coverage = (
-                f"{temporal_start_iso}/{temporal_end_iso}"
-                if temporal_start_iso and temporal_end_iso
-                else None
-            )
-            latest_value = float(df["value"].iloc[-1])
-            latest_timestamp_iso = temporal_end_iso
-            temporal_end_display = (
-                temporal_end.tz_convert("UTC")
-                if getattr(temporal_end, "tz", None) is not None
-                else temporal_end.tz_localize("UTC")
-            )
-            latest_timestamp_display = temporal_end_display.strftime("%d/%m/%Y %H:%M")
-            record_csv_read(len(df), temporal_end.to_pydatetime())
-
-            plot_df = df[df["value"].notna()].copy()
-            clean_pairs = []
-            if not plot_df.empty:
-                for ts, value in zip(
-                    plot_df["timestamp"].tolist(), plot_df["value"].tolist()
-                ):
-                    if value is None or not isfinite(value) or value <= 0:
-                        continue
-                    ts_iso = to_iso_utc(ts)
-                    if ts_iso is None:
-                        continue
-                    clean_pairs.append((ts_iso, float(value)))
-            if clean_pairs:
-                threshold_level = Config.ALERT_THRESHOLD_DEFAULT
-                user = get_current_user()
-                if user and getattr(user, "has_premium_access", False):
-                    if getattr(user, "threshold", None):
-                        threshold_level = user.threshold
-                    else:
-                        threshold_level = Config.PREMIUM_DEFAULT_THRESHOLD
-                shapes = []
-                if threshold_level:
-                    shapes.append(
-                        {
-                            "type": "line",
-                            "x0": clean_pairs[0][0],
-                            "x1": clean_pairs[-1][0],
-                            "y0": threshold_level,
-                            "y1": threshold_level,
-                            "line": {"color": "#ef4444", "width": 2, "dash": "dash"},
-                        }
-                    )
-                layout = {
-                    "margin": {"l": 64, "r": 32, "t": 24, "b": 56},
-                    "hovermode": "x unified",
-                    "plot_bgcolor": "rgba(0,0,0,0)",
-                    "paper_bgcolor": "rgba(0,0,0,0)",
-                    "font": {"color": "#e2e8f0"},
-                    "xaxis": {
-                        "type": "date",
-                        "title": "",
-                        "showgrid": True,
-                        "gridcolor": "#1f2937",
-                        "linewidth": 1,
-                        "linecolor": "#334155",
-                        "hoverformat": "%d/%m %H:%M",
-                        "tickfont": {"size": 12},
-                        "ticks": "outside",
-                        "tickcolor": "#334155",
-                    },
-                    "yaxis": {
-                        "title": "Ampiezza (mV)",
-                        "type": "log",
-                        "showgrid": True,
-                        "gridcolor": "#1f2937",
-                        "linewidth": 1,
-                        "linecolor": "#334155",
-                        "tickfont": {"size": 12},
-                        "tickvals": [0.1, 0.2, 0.5, 1, 2, 5, 10],
-                        "ticktext": ["10⁻¹", "0.2", "0.5", "1", "2", "5", "10¹"],
-                        "ticksuffix": " mV",
-                        "exponentformat": "power",
-                        "minor": {"ticklen": 4, "showgrid": False},
-                        "zeroline": False,
-                    },
-                    "shapes": shapes,
-                    "hoverlabel": {
-                        "bgcolor": "rgba(15, 23, 42, 0.92)",
-                        "bordercolor": "#ef4444",
-                        "font": {"color": "#f8fafc"},
-                    },
-                }
-                fig = build_plotly_figure_from_pairs(
-                    clean_pairs,
-                    line={
-                        "color": "#4ade80",
-                        "width": 2.4,
-                        "shape": "spline",
-                        "smoothing": 1.15,
-                    },
-                    layout=layout,
-                    name="Tremore",
-                    min_points=1,
-                    eps=0.1,
-                    trace_kwargs={
-                        "fill": "tozeroy",
-                        "fillcolor": "rgba(74, 222, 128, 0.08)",
-                        "hovertemplate": "<b>%{y:.2f} mV</b><br>%{x|%d/%m %H:%M}<extra></extra>",
-                        "showlegend": False,
-                    },
-                    add_background_bands=True,
-                    mobile_tuning=True,
+                temporal_start = df["timestamp"].iloc[0]
+                temporal_end = df["timestamp"].iloc[-1]
+                warn_if_stale_timestamp(temporal_end, current_app.logger, "homepage")
+                temporal_start_iso = to_iso_utc(temporal_start)
+                temporal_end_iso = to_iso_utc(temporal_end)
+                temporal_coverage = (
+                    f"{temporal_start_iso}/{temporal_end_iso}"
+                    if temporal_start_iso and temporal_end_iso
+                    else None
                 )
-                if fig is not None:
-                    fig_json = json.loads(plotly_io.to_json(fig))
-    else:
-        placeholder_reason = "missing"
-        if not current_app.config.get("_home_csv_missing_warned"):
-            current_app.logger.info(
-                "[HOME] Tremor CSV not found at %s; rendering placeholder UI", csv_path
-            )
-            current_app.config["_home_csv_missing_warned"] = True
-        record_csv_error(f"Missing CSV at {csv_path}")
+                latest_value = float(df["value"].iloc[-1])
+                latest_timestamp_iso = temporal_end_iso
+                temporal_end_display = (
+                    temporal_end.tz_convert("UTC")
+                    if getattr(temporal_end, "tz", None) is not None
+                    else temporal_end.tz_localize("UTC")
+                )
+                latest_timestamp_display = temporal_end_display.strftime("%d/%m/%Y %H:%M")
+                record_csv_read(len(df), temporal_end.to_pydatetime())
+
+                plot_df = df[df["value"].notna()].copy()
+                clean_pairs = []
+                if not plot_df.empty:
+                    for ts, value in zip(
+                        plot_df["timestamp"].tolist(), plot_df["value"].tolist()
+                    ):
+                        if value is None or not isfinite(value) or value <= 0:
+                            continue
+                        ts_iso = to_iso_utc(ts)
+                        if ts_iso is None:
+                            continue
+                        clean_pairs.append((ts_iso, float(value)))
+                if clean_pairs:
+                    threshold_level = Config.ALERT_THRESHOLD_DEFAULT
+                    user = get_current_user()
+                    if user and getattr(user, "has_premium_access", False):
+                        if getattr(user, "threshold", None):
+                            threshold_level = user.threshold
+                        else:
+                            threshold_level = Config.PREMIUM_DEFAULT_THRESHOLD
+                    shapes = []
+                    if threshold_level:
+                        shapes.append(
+                            {
+                                "type": "line",
+                                "x0": clean_pairs[0][0],
+                                "x1": clean_pairs[-1][0],
+                                "y0": threshold_level,
+                                "y1": threshold_level,
+                                "line": {"color": "#ef4444", "width": 2, "dash": "dash"},
+                            }
+                        )
+                    layout = {
+                        "margin": {"l": 64, "r": 32, "t": 24, "b": 56},
+                        "hovermode": "x unified",
+                        "plot_bgcolor": "rgba(0,0,0,0)",
+                        "paper_bgcolor": "rgba(0,0,0,0)",
+                        "font": {"color": "#e2e8f0"},
+                        "xaxis": {
+                            "type": "date",
+                            "title": "",
+                            "showgrid": True,
+                            "gridcolor": "#1f2937",
+                            "linewidth": 1,
+                            "linecolor": "#334155",
+                            "hoverformat": "%d/%m %H:%M",
+                            "tickfont": {"size": 12},
+                            "ticks": "outside",
+                            "tickcolor": "#334155",
+                        },
+                        "yaxis": {
+                            "title": "Ampiezza (mV)",
+                            "type": "log",
+                            "showgrid": True,
+                            "gridcolor": "#1f2937",
+                            "linewidth": 1,
+                            "linecolor": "#334155",
+                            "tickfont": {"size": 12},
+                            "tickvals": [0.1, 0.2, 0.5, 1, 2, 5, 10],
+                            "ticktext": ["10⁻¹", "0.2", "0.5", "1", "2", "5", "10¹"],
+                            "ticksuffix": " mV",
+                            "exponentformat": "power",
+                            "minor": {"ticklen": 4, "showgrid": False},
+                            "zeroline": False,
+                        },
+                        "shapes": shapes,
+                        "hoverlabel": {
+                            "bgcolor": "rgba(15, 23, 42, 0.92)",
+                            "bordercolor": "#ef4444",
+                            "font": {"color": "#f8fafc"},
+                        },
+                    }
+                    try:
+                        fig = build_plotly_figure_from_pairs(
+                            clean_pairs,
+                            line={
+                                "color": "#4ade80",
+                                "width": 2.4,
+                                "shape": "spline",
+                                "smoothing": 1.15,
+                            },
+                            layout=layout,
+                            name="Tremore",
+                            min_points=1,
+                            eps=0.1,
+                            trace_kwargs={
+                                "fill": "tozeroy",
+                                "fillcolor": "rgba(74, 222, 128, 0.08)",
+                                "hovertemplate": "<b>%{y:.2f} mV</b><br>%{x|%d/%m %H:%M}<extra></extra>",
+                                "showlegend": False,
+                            },
+                            add_background_bands=True,
+                            mobile_tuning=True,
+                        )
+                        if fig is not None:
+                            fig_json = json.loads(plotly_io.to_json(fig))
+                    except Exception:
+                        current_app.logger.exception("[HOME] Failed to build Plotly figure")
+                        fig_json = None
+                        placeholder_reason = placeholder_reason or "error"
+        else:
+            placeholder_reason = "missing"
+            if not current_app.config.get("_home_csv_missing_warned"):
+                current_app.logger.info(
+                    "[HOME] Tremor CSV not found at %s; rendering placeholder UI", csv_path
+                )
+                current_app.config["_home_csv_missing_warned"] = True
+            record_csv_error(f"Missing CSV at {csv_path}")
+    except Exception:
+        current_app.logger.exception("[HOME] Unhandled exception while preparing homepage data")
+        placeholder_reason = placeholder_reason or "error"
+        record_csv_error("home_exception")
 
     current_app.logger.info(
         "[HOME] CSV status path=%s rows=%s min_ts=%s max_ts=%s last_ts=%s fig_json=%s plot_html=%s placeholder=%s",
@@ -537,7 +552,16 @@ def index():
         "has_data": placeholder_reason is None,
     }
 
-    tremor_summary = build_tremor_summary()
+    try:
+        tremor_summary = build_tremor_summary()
+    except Exception:
+        current_app.logger.exception("[HOME] Failed to build tremor summary")
+        tremor_summary = {
+            "trend": "NON_DISPONIBILE",
+            "badge": "Dati non disponibili",
+            "message": "Dati INGV non disponibili al momento.",
+            "disclaimer": "Solo informativo, non previsione; fai riferimento alle fonti ufficiali.",
+        }
 
     debug_requested = (request.args.get("dbg") or "").strip().lower() in {"1", "true", "yes"}
     show_csv_debug = debug_requested and is_owner_or_admin(get_current_user())
