@@ -1420,6 +1420,16 @@
     font-size: 0.95rem;
   }
 
+  .chart-fallback-banner {
+    margin-top: var(--space-3);
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.75rem;
+    background: rgba(245, 158, 11, 0.16);
+    border: 1px solid rgba(245, 158, 11, 0.45);
+    color: #fde68a;
+    font-size: 0.9rem;
+  }
+
   .chart-interaction-hint.is-highlighted {
     border-color: rgba(56, 189, 248, 0.8);
     box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);

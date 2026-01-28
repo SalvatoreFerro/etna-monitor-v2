@@ -47,6 +47,8 @@
   const activityBadge = document.getElementById('live-activity-badge');
   const statusIndicator = document.getElementById('live-status-indicator');
   const statusText = document.getElementById('live-status-text');
+  const fallbackBanner = document.getElementById('chart-fallback-banner');
+  const fallbackTimestamp = document.getElementById('chart-fallback-timestamp');
   const bodyDataset = document.body ? document.body.dataset : null;
   const debugParam = new URLSearchParams(window.location.search).get('debug');
   const shouldDebug = debugParam === '1' || (bodyDataset && bodyDataset.owner === '1');
@@ -84,6 +86,8 @@
   let plotlyReadyPromise = null;
   let noticeTimer = null;
   let lastSuccessfulPayload = null;
+  let fallbackBannerActive = false;
+  let fallbackBannerTimestamp = null;
   let currentLimit = DEFAULT_LIMIT;
   let autoRefreshTimer = null;
   let analyzeModeEnabled = false;
@@ -278,6 +282,18 @@
     } else {
       statusText.textContent = statusState === 'online' ? 'Online' : 'Offline';
     }
+  }
+
+  function updateFallbackBanner(active, timestamp) {
+    if (!fallbackBanner) return;
+    if (!active) {
+      fallbackBanner.hidden = true;
+      return;
+    }
+    if (fallbackTimestamp) {
+      fallbackTimestamp.textContent = timestamp || '--';
+    }
+    fallbackBanner.hidden = false;
   }
 
   function parseCount(value) {
@@ -682,13 +698,18 @@
 
   async function performQuickUpdate(options = {}) {
     const { showLoader = !chartDrawn } = options;
-    await forceUpdateCurva();
+    const updatePayload = await forceUpdateCurva();
+    fallbackBannerActive = updatePayload && updatePayload.source === 'fallback';
+    fallbackBannerTimestamp = fallbackBannerActive
+      ? (updatePayload.fallback_mtime_utc || updatePayload.last_ts || null)
+      : null;
     const payload = await loadChartWithRetry(currentLimit, { showLoader });
     if (payload) {
       lastSuccessfulPayload = payload;
       await drawPlot(payload.data);
       updateMetrics(payload);
-      updateStatus(payload.source === 'fallback' ? 'fallback' : 'online');
+      updateStatus(fallbackBannerActive || payload.source === 'fallback' ? 'fallback' : 'online');
+      updateFallbackBanner(fallbackBannerActive, fallbackBannerTimestamp || payload.csv_mtime_utc);
     }
     return payload;
   }
@@ -828,7 +849,8 @@
             lastSuccessfulPayload = payload;
             await drawPlot(payload.data);
             updateMetrics(payload);
-            updateStatus(payload.source === 'fallback' ? 'fallback' : 'online');
+            updateStatus(fallbackBannerActive || payload.source === 'fallback' ? 'fallback' : 'online');
+            updateFallbackBanner(fallbackBannerActive, fallbackBannerTimestamp || payload.csv_mtime_utc);
           }
         } catch (error) {
           currentLimit = previousLimit;
@@ -940,7 +962,8 @@
         lastSuccessfulPayload = payload;
         await drawPlot(payload.data);
         updateMetrics(payload);
-        updateStatus(payload.source === 'fallback' ? 'fallback' : 'online');
+        updateStatus(fallbackBannerActive || payload.source === 'fallback' ? 'fallback' : 'online');
+        updateFallbackBanner(fallbackBannerActive, fallbackBannerTimestamp || payload.csv_mtime_utc);
       })
       .catch((error) => {
         handleLoadError(error, { keepExisting: chartDrawn });

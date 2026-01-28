@@ -29,12 +29,13 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
 from ..utils.auth import admin_required, get_current_user, is_owner_or_admin
-from ..utils.config import get_curva_csv_path, get_curva_csv_status
+from ..utils.config import get_curva_csv_path, get_curva_csv_status, load_curva_dataframe
 from backend.utils.extract_colored import download_png as download_colored_png
 from backend.utils.extract_colored import extract_series_from_colored
 from ..utils.metrics import get_csv_metrics
 from ..utils.ingv_bands import load_cached_thresholds
 from ..utils.plotly_helpers import build_plotly_html_from_pairs
+from backend.utils.time import to_iso_utc
 from ..models import (
     db,
     BlogPost,
@@ -349,6 +350,33 @@ def _encode_image_base64(path: str | Path | None) -> str | None:
         return None
     encoded = base64.b64encode(image_path.read_bytes()).decode("utf-8")
     return f"data:image/png;base64,{encoded}"
+
+
+def _load_latest_colored_debug() -> dict:
+    data_dir = Path(os.getenv("DATA_DIR", "data"))
+    debug_dir = Path(os.getenv("INGV_COLORED_DEBUG_DIR", data_dir / "debug"))
+    colored_dir = Path(os.getenv("INGV_COLORED_DIR", data_dir / "ingv_colored"))
+    debug_json_path = debug_dir / "debug.json"
+    latest_png = None
+    if colored_dir.exists():
+        png_candidates = sorted(
+            colored_dir.glob("colored_*.png"),
+            key=lambda path: path.stat().st_mtime,
+            reverse=True,
+        )
+        if png_candidates:
+            latest_png = png_candidates[0]
+
+    return {
+        "raw_png": latest_png,
+        "overlay": debug_dir / "overlay.png",
+        "mask": debug_dir / "mask_polyline.png",
+        "mask_raw": debug_dir / "mask_raw.png",
+        "mask_clean": debug_dir / "mask_clean.png",
+        "crop": debug_dir / "crop_plot_area.png",
+        "overlay_markers": debug_dir / "overlay_markers.png",
+        "debug_json": debug_json_path if debug_json_path.exists() else None,
+    }
 
 
 def _apply_tracking_filters(query, model, start_dt, end_dt, banner_id, page_filter):
@@ -3041,6 +3069,7 @@ def test_colored_extraction():
         return redirect(url_for("admin.admin_home"))
 
     app = current_app
+    request_id = request.headers.get("X-Request-Id") or uuid4().hex[:8]
     tremor_summary = build_tremor_summary()
     bands_cache = load_cached_thresholds()
     bands_debug = None
@@ -3078,14 +3107,69 @@ def test_colored_extraction():
         peaks_limit = 10
     tail_limit = max(1, min(tail_limit, 2000))
     peaks_limit = max(1, min(peaks_limit, 50))
+
+    def _build_fallback_plot() -> tuple[str | None, str | None, str | None]:
+        csv_path = get_curva_csv_path()
+        df, reason = load_curva_dataframe(csv_path)
+        if reason or df is None or df.empty:
+            return None, None, None
+        df = df.sort_values("timestamp")
+        clean_pairs = []
+        for ts, value in zip(df["timestamp"].tolist(), df["value"].tolist()):
+            if value is None or not isfinite(value) or value <= 0:
+                continue
+            ts_iso = to_iso_utc(ts)
+            if ts_iso is None:
+                continue
+            clean_pairs.append((ts_iso, float(value)))
+        if not clean_pairs:
+            return None, None, None
+        last_ts = df["timestamp"].iloc[-1]
+        last_ts_display = (
+            last_ts.tz_convert("UTC").strftime("%d/%m/%Y %H:%M")
+            if getattr(last_ts, "tz", None) is not None
+            else last_ts.tz_localize("UTC").strftime("%d/%m/%Y %H:%M")
+        )
+        fallback_plot = build_plotly_html_from_pairs(
+            clean_pairs,
+            include_plotlyjs="inline",
+            line={"color": "#111", "width": 2},
+            layout={
+                "margin": {"t": 20, "r": 20, "b": 40, "l": 60},
+                "yaxis": {"type": "log", "title": "mV"},
+                "xaxis": {"title": "Timestamp", "type": "date"},
+            },
+            name="RMS (fallback)",
+            min_points=10,
+            eps=1e-2,
+        )
+        return fallback_plot, last_ts_display, str(csv_path)
     if not colored_url:
+        fallback_plot_html, fallback_ts_display, fallback_csv_path = _build_fallback_plot()
+        debug_assets = _load_latest_colored_debug()
+        debug_json_data = None
+        if debug_assets.get("debug_json"):
+            try:
+                debug_json_data = json.loads(
+                    Path(debug_assets["debug_json"]).read_text(encoding="utf-8")
+                )
+            except (OSError, json.JSONDecodeError):
+                debug_json_data = None
         return render_template(
             "admin/test_colored.html",
             error_message="INGV_COLORED_URL non configurato.",
-            plot_html=None,
-            raw_image=None,
-            overlay_image=None,
-            mask_image=None,
+            plot_html=fallback_plot_html,
+            fallback_notice=bool(fallback_plot_html),
+            fallback_timestamp=fallback_ts_display,
+            fallback_csv_path=fallback_csv_path,
+            raw_image=_encode_image_base64(debug_assets.get("raw_png")),
+            overlay_image=_encode_image_base64(debug_assets.get("overlay")),
+            mask_image=_encode_image_base64(debug_assets.get("mask")),
+            mask_raw_image=_encode_image_base64(debug_assets.get("mask_raw")),
+            mask_clean_image=_encode_image_base64(debug_assets.get("mask_clean")),
+            crop_image=_encode_image_base64(debug_assets.get("crop")),
+            overlay_markers_image=_encode_image_base64(debug_assets.get("overlay_markers")),
+            debug_json=debug_json_data,
             debug_data=None,
             tremor_summary=tremor_summary,
             bands_debug=bands_debug,
@@ -3170,30 +3254,78 @@ def test_colored_extraction():
             plot_error_message = (
                 "Dati insufficienti per generare il grafico (meno di 10 punti validi)."
             )
+        fallback_plot_html = None
+        fallback_ts_display = None
+        fallback_csv_path = None
+        if plot_html is None:
+            fallback_plot_html, fallback_ts_display, fallback_csv_path = _build_fallback_plot()
         raw_image = _encode_image_base64(png_path)
         overlay_image = _encode_image_base64(debug_paths.get("overlay"))
         mask_image = _encode_image_base64(debug_paths.get("mask"))
+        mask_raw_image = _encode_image_base64(debug_paths.get("mask_raw"))
+        mask_clean_image = _encode_image_base64(debug_paths.get("mask_clean"))
+        crop_image = _encode_image_base64(debug_paths.get("crop"))
+        overlay_markers_image = _encode_image_base64(debug_paths.get("overlay_markers"))
+        debug_json_data = None
+        if debug_paths.get("debug_json"):
+            try:
+                debug_json_data = json.loads(
+                    Path(debug_paths["debug_json"]).read_text(encoding="utf-8")
+                )
+            except (OSError, json.JSONDecodeError):
+                debug_json_data = None
         return render_template(
             "admin/test_colored.html",
-            plot_html=plot_html,
+            plot_html=plot_html or fallback_plot_html,
+            fallback_notice=plot_html is None and bool(fallback_plot_html),
+            fallback_timestamp=fallback_ts_display,
+            fallback_csv_path=fallback_csv_path,
             raw_image=raw_image,
             overlay_image=overlay_image,
             mask_image=mask_image,
+            mask_raw_image=mask_raw_image,
+            mask_clean_image=mask_clean_image,
+            crop_image=crop_image,
+            overlay_markers_image=overlay_markers_image,
             error_message=plot_error_message,
             debug_data=debug_data,
+            debug_json=debug_json_data,
             tremor_summary=tremor_summary,
             bands_debug=bands_debug,
         )
     except Exception as exc:  # pragma: no cover - debug view safety net
-        current_app.logger.exception("[ADMIN] Colored extraction failed")
+        current_app.logger.error(
+            "[ADMIN] Colored extraction failed request_id=%s reason=%s",
+            request_id,
+            exc,
+            exc_info=True,
+        )
+        fallback_plot_html, fallback_ts_display, fallback_csv_path = _build_fallback_plot()
+        debug_assets = _load_latest_colored_debug()
+        debug_json_data = None
+        if debug_assets.get("debug_json"):
+            try:
+                debug_json_data = json.loads(
+                    Path(debug_assets["debug_json"]).read_text(encoding="utf-8")
+                )
+            except (OSError, json.JSONDecodeError):
+                debug_json_data = None
         return render_template(
             "admin/test_colored.html",
             error_message=str(exc),
-            plot_html=None,
-            raw_image=None,
-            overlay_image=None,
-            mask_image=None,
+            plot_html=fallback_plot_html,
+            fallback_notice=bool(fallback_plot_html),
+            fallback_timestamp=fallback_ts_display,
+            fallback_csv_path=fallback_csv_path,
+            raw_image=_encode_image_base64(debug_assets.get("raw_png")),
+            overlay_image=_encode_image_base64(debug_assets.get("overlay")),
+            mask_image=_encode_image_base64(debug_assets.get("mask")),
+            mask_raw_image=_encode_image_base64(debug_assets.get("mask_raw")),
+            mask_clean_image=_encode_image_base64(debug_assets.get("mask_clean")),
+            crop_image=_encode_image_base64(debug_assets.get("crop")),
+            overlay_markers_image=_encode_image_base64(debug_assets.get("overlay_markers")),
             debug_data=None,
+            debug_json=debug_json_data,
             tremor_summary=tremor_summary,
             bands_debug=bands_debug,
         )
