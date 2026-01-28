@@ -24,9 +24,7 @@ BBOX_FALLBACK_PCT = {
 }
 
 BASE_MAX_DELTA_Y = 18
-NEIGHBORHOOD_EXTENDED_RANGE = 3
 Y_PICK_MODE = os.getenv("INGV_COLORED_Y_PICK_MODE", "adaptive").lower()
-Y_PICK_PERCENTILE_THICK = int(os.getenv("INGV_COLORED_Y_PICK_PERCENTILE_THICK", "80"))
 THICKNESS_THRESHOLD_PX = 2
 V_BLACK_MAX = int(os.getenv("INGV_COLORED_BLACK_V_MAX", "95"))
 S_BLACK_MAX = int(os.getenv("INGV_COLORED_BLACK_S_MAX", "80"))
@@ -49,13 +47,6 @@ INK_CLOSE_THICKNESS_GUARD = float(
     os.getenv("INGV_COLORED_INK_CLOSE_THICKNESS_GUARD", "1.5")
 )
 INK_DILATE_ITER = int(os.getenv("INGV_COLORED_INK_DILATE_ITER", "1"))
-THICKNESS_THICK_PX = int(os.getenv("INGV_COLORED_THICKNESS_THICK_PX", "8"))
-SPIKE_WINDOW_COLUMNS = int(os.getenv("INGV_COLORED_SPIKE_WINDOW_COLUMNS", "5"))
-SPIKE_MIN_COLUMNS = int(os.getenv("INGV_COLORED_SPIKE_MIN_COLUMNS", "3"))
-SPIKE_DELTA_MULTIPLIER = float(
-    os.getenv("INGV_COLORED_SPIKE_DELTA_MULTIPLIER", "1.0")
-)
-SPIKE_RUN_MIN_PX = int(os.getenv("INGV_COLORED_SPIKE_RUN_MIN_PX", "10"))
 SPIKE_DELTA_ABS_PX = int(os.getenv("INGV_COLORED_SPIKE_DELTA_ABS_PX", "12"))
 SPIKE_EPSILON_PX = int(os.getenv("INGV_COLORED_SPIKE_EPSILON_PX", "2"))
 BIAS_SAMPLE_COLUMNS = 200
@@ -170,7 +161,7 @@ def extract_series_from_colored(path_png: str | Path):
         mask_ink_core=mask_meta.get("mask_ink_core"),
         mask_ink_thin=mask_meta.get("mask_ink_thin"),
         mask_ink_combined=mask_meta.get("mask_ink_combined"),
-        mask_clean=mask_meta.get("mask_clean"),
+        mask_pretty=mask_meta.get("mask_pretty"),
         pick_tops=mask_meta.get("pick_tops"),
         pick_mids=mask_meta.get("pick_mids"),
         spike_columns=mask_meta.get("spike_columns"),
@@ -343,18 +334,10 @@ def _extract_curve_points(
     mask_meta["bbox"] = bbox
     mask_raw = mask_meta["mask_raw"]
     mask_ink = mask_meta.get("mask_ink", mask_raw)
-    mask_trend = mask_meta.get("mask_clean") or mask_candidate
-    spike_source = mask_ink if mask_ink is not None else mask_raw
-    spike_columns, mask_spike = _detect_spike_columns(spike_source)
-    mask_final = mask_trend.copy()
-    if spike_columns:
-        mask_final[:, spike_columns] = cv2.bitwise_or(
-            mask_final[:, spike_columns],
-            mask_spike[:, spike_columns],
-        )
-    mask_candidate = mask_final
-    raw_white = int(np.count_nonzero(mask_trend))
-    candidate_col_pct = _column_coverage_pct(mask_trend)
+    mask_pretty = mask_meta.get("mask_pretty")
+    mask_final = mask_ink.copy()
+    raw_white = int(np.count_nonzero(mask_final))
+    candidate_col_pct = _column_coverage_pct(mask_final)
     logger.info(
         (
             "[INGV COLORED][mask] candidate_white=%s candidate_columns=%.1f%% attempts=%s"
@@ -377,11 +360,11 @@ def _extract_curve_points(
     pick_mids: list[int | None] = []
     pick_bots: list[int | None] = []
     pick_runs: list[int | None] = []
+    pick_spikes: list[bool] = []
     continuity_adjusted = 0
     invalid_raw = 0
     previous_pick = None
     for x in range(width):
-        is_spike_column = spike_columns[x] if x < len(spike_columns) else False
         column = np.where(mask_final[:, x] == 255)[0]
         (
             candidate_y,
@@ -394,11 +377,11 @@ def _extract_curve_points(
             y_mid,
             y_bot,
             runs,
+            is_spike,
         ) = _pick_column_y(
             column,
             previous_pick,
             height,
-            is_spike_column=is_spike_column,
         )
         if candidate_y is None or candidate_y <= 0 or candidate_y >= height - 1:
             raw_points.append(None)
@@ -409,6 +392,7 @@ def _extract_curve_points(
             pick_mids.append(None)
             pick_bots.append(None)
             pick_runs.append(None)
+            pick_spikes.append(False)
             previous_pick = None
             if candidate_y is not None:
                 invalid_raw += 1
@@ -421,6 +405,7 @@ def _extract_curve_points(
             pick_mids.append(y_mid)
             pick_bots.append(y_bot)
             pick_runs.append(runs)
+            pick_spikes.append(is_spike)
             previous_pick = candidate_y
         if adjusted:
             continuity_adjusted += 1
@@ -429,42 +414,16 @@ def _extract_curve_points(
     thickness_median = float(np.median(thickness_values)) if thickness_values else 0.0
     max_delta_y = BASE_MAX_DELTA_Y
 
-    filtered_points, reasons, continuity_rejected = _apply_continuity(
+    interpolated_points, interpolation_reasons = _interpolate_gaps(
         raw_points,
         max_delta_y,
-        pick_tops=pick_tops,
-        pick_thicknesses=pick_thicknesses,
-        spike_columns=spike_columns,
     )
-    rejection_ratio = continuity_rejected / len(raw_points) if raw_points else 0.0
-    if rejection_ratio > 0.7:
-        max_delta_y = max(BASE_MAX_DELTA_Y, int(round(thickness_median * 4 + 6)))
-        logger.warning(
-            (
-                "[INGV COLORED][continuity] high rejection %.1f%%, "
-                "expanding MAX_DELTA_Y to %s"
-            ),
-            rejection_ratio * 100,
-            max_delta_y,
-        )
-        filtered_points, reasons, continuity_rejected = _apply_continuity(
-            raw_points,
-            max_delta_y,
-            pick_tops=pick_tops,
-            pick_thicknesses=pick_thicknesses,
-        )
-        rejection_ratio_after = (
-            continuity_rejected / len(raw_points) if raw_points else 0.0
-        )
-        logger.warning(
-            (
-                "[INGV COLORED][continuity] rejection before=%.1f%% after=%.1f%% "
-                "max_delta_y=%s"
-            ),
-            rejection_ratio * 100,
-            rejection_ratio_after * 100,
-            max_delta_y,
-        )
+    filtered_points, reasons, continuity_adjusted = _apply_slope_guard(
+        interpolated_points,
+        max_delta_y,
+        spike_columns=pick_spikes,
+        base_reasons=interpolation_reasons,
+    )
 
     pre_bias_valid = np.array([y for y in filtered_points if y is not None], dtype=float)
     pre_bias_stddev = float(np.std(pre_bias_valid)) if pre_bias_valid.size else 0.0
@@ -528,8 +487,8 @@ def _extract_curve_points(
         "shift_disabled_reason": bias_meta.get("disabled_reason"),
         "consecutive_equal": consecutive_equal,
         "longest_equal_run": longest_equal_run,
-        "spike_columns_count": int(sum(1 for flag in spike_columns if flag)),
-        "spike_override_used": any(spike_columns),
+        "spike_columns_count": int(sum(1 for flag in pick_spikes if flag)),
+        "spike_override_used": any(pick_spikes),
         "iqr_used_for_spikes": False,
         "pick_samples": _sample_column_picks(
             column_ranges,
@@ -571,10 +530,10 @@ def _extract_curve_points(
             mask_ink_core=mask_meta.get("mask_ink_core"),
             mask_ink_thin=mask_meta.get("mask_ink_thin"),
             mask_ink_combined=mask_meta.get("mask_ink_combined"),
-            mask_clean=mask_meta.get("mask_clean"),
+            mask_pretty=mask_meta.get("mask_pretty"),
             pick_tops=pick_tops,
             pick_mids=pick_mids,
-            spike_columns=spike_columns,
+            spike_columns=pick_spikes,
             debug_payload=debug_payload,
         )
         raise ValueError(
@@ -613,7 +572,7 @@ def _extract_curve_points(
             "y_min": y_min,
             "y_max": y_max,
             "coverage_pct": candidate_col_pct,
-            "spike_columns": spike_columns,
+            "spike_columns": pick_spikes,
             "debug_payload": debug_payload,
         },
     )
@@ -705,6 +664,7 @@ def _build_ink_mask(
     )
     combined = core_mask.copy()
     combined[(thin_mask == 255) & (within_plot_area == 255)] = 255
+    combined = cv2.bitwise_and(combined, within_plot_area)
 
     return combined, {
         "core_mask": core_mask,
@@ -770,225 +730,115 @@ def _select_candidate_mask(
     cropped: np.ndarray,
 ) -> tuple[np.ndarray, int, dict]:
     attempts = []
-    best_mask = None
-    best_raw = None
-    best_coverage = -1.0
-    best_score = -1e9
     border_components = 0
 
     plot_area_mask = _plot_area_mask(cropped.shape[0], cropped.shape[1])
     ink_combined, ink_meta = _build_ink_mask(cropped, plot_area_mask)
-    ink_clean, ink_clean_meta = _clean_ink_mask(ink_combined)
-    ink_area_ratio = float(np.count_nonzero(ink_clean)) / max(float(ink_clean.size), 1.0)
+    mask_ink = ink_combined.copy()
+    border_components = _remove_frame_components(mask_ink)
+    ink_pretty, ink_pretty_meta = _clean_ink_mask(ink_combined)
 
-    attempt_configs = [
+    coverage = _column_coverage_pct(mask_ink)
+    area_ratio = float(np.count_nonzero(mask_ink)) / max(float(mask_ink.size), 1.0)
+    attempts.append(
         {
-            "name": "hsv_ink",
-            "candidate": ink_clean,
-            "raw": ink_combined,
-            "meta": {**ink_meta, **ink_clean_meta, "area_ratio": ink_area_ratio},
-        },
+            "name": "hsv_ink_raw",
+            "coverage": coverage,
+            "area_ratio": area_ratio,
+            "removed": border_components,
+            "meta": {**ink_meta, "area_ratio": area_ratio},
+        }
+    )
+    pretty_coverage = _column_coverage_pct(ink_pretty)
+    pretty_area_ratio = float(np.count_nonzero(ink_pretty)) / max(
+        float(ink_pretty.size), 1.0
+    )
+    attempts.append(
         {
-            "name": "adaptive_close",
-            "candidate": _build_adaptive_candidate_mask(gray),
-        },
-        {
-            "name": "black_fallback",
-            "candidate": _fallback_black_curve_mask(cropped),
-        },
-        {
-            "name": "otsu_close",
-            "candidate": _build_candidate_mask(gray),
-        },
-    ]
+            "name": "hsv_ink_pretty",
+            "coverage": pretty_coverage,
+            "area_ratio": pretty_area_ratio,
+            "removed": 0,
+            "meta": {**ink_meta, **ink_pretty_meta, "area_ratio": pretty_area_ratio},
+        }
+    )
 
-    for config in attempt_configs:
-        candidate_raw = config.get("raw", config["candidate"]).copy()
-        candidate = candidate_raw.copy()
-        removed = _remove_frame_components(candidate)
-        coverage = _column_coverage_pct(candidate)
-        area_ratio = float(np.count_nonzero(candidate)) / max(float(candidate.size), 1.0)
-        score = coverage - (area_ratio * 200)
-        if area_ratio > INK_MAX_AREA_RATIO:
-            score -= 200
-        attempts.append(
-            {
-                "name": config["name"],
-                "coverage": coverage,
-                "area_ratio": area_ratio,
-                "removed": removed,
-                "meta": config.get("meta"),
-            }
-        )
-        if score > best_score:
-            best_mask = candidate
-            best_raw = candidate_raw
-            best_coverage = coverage
-            best_score = score
-            border_components = removed
-        if coverage >= TRUE_MASK_MIN_COLUMN_PCT:
-            return candidate, removed, {
-                "attempts": attempts,
-                "mask_raw": candidate_raw,
-                "mask_ink": ink_combined,
-                "mask_ink_core": ink_meta.get("core_mask"),
-                "mask_ink_thin": ink_meta.get("thin_mask"),
-                "mask_ink_combined": ink_meta.get("combined_mask"),
-                "mask_clean": ink_clean,
-                "bbox": None,
-            }
-
-    if best_mask is None:
-        best_mask = _build_candidate_mask(gray)
-        best_raw = best_mask.copy()
-
-    return best_mask, border_components, {
+    return mask_ink, border_components, {
         "attempts": attempts,
-        "mask_raw": best_raw,
-        "mask_ink": ink_combined,
+        "mask_raw": ink_combined.copy(),
+        "mask_ink": mask_ink,
         "mask_ink_core": ink_meta.get("core_mask"),
         "mask_ink_thin": ink_meta.get("thin_mask"),
         "mask_ink_combined": ink_meta.get("combined_mask"),
-        "mask_clean": ink_clean,
+        "mask_pretty": ink_pretty,
         "bbox": None,
     }
 
 
-def _apply_continuity(
-    raw_points: list[int | None],
+def _interpolate_gaps(
+    points: list[int | None],
+    max_delta_y: int,
+) -> tuple[list[int | None], list[str]]:
+    filled = points.copy()
+    reasons = ["direct" if value is not None else "empty" for value in points]
+    last_valid_idx = None
+    for idx, value in enumerate(points):
+        if value is not None:
+            if last_valid_idx is not None and idx - last_valid_idx > 1:
+                prev_val = points[last_valid_idx]
+                next_val = value
+                if prev_val is not None:
+                    span = idx - last_valid_idx
+                    slope = abs(next_val - prev_val) / span
+                    if slope <= max_delta_y:
+                        for j in range(last_valid_idx + 1, idx):
+                            ratio = (j - last_valid_idx) / span
+                            interpolated = int(round(prev_val + (next_val - prev_val) * ratio))
+                            filled[j] = interpolated
+                            reasons[j] = "interpolate"
+            last_valid_idx = idx
+    return filled, reasons
+
+
+def _apply_slope_guard(
+    points: list[int | None],
     max_delta_y: int,
     *,
-    pick_tops: list[int | None] | None = None,
-    pick_thicknesses: list[int | None] | None = None,
     spike_columns: list[bool] | None = None,
+    base_reasons: list[str] | None = None,
 ) -> tuple[list[int | None], list[str], int]:
-    filtered_points: list[int | None] = []
+    guarded: list[int | None] = []
     reasons: list[str] = []
-    continuity_rejected = 0
+    adjusted = 0
     previous_y = None
-
-    for x, candidate_y in enumerate(raw_points):
-        if spike_columns and x < len(spike_columns) and spike_columns[x]:
-            filtered_points.append(candidate_y)
-            reasons.append("spike_override")
-            if candidate_y is not None:
-                previous_y = candidate_y
+    for idx, value in enumerate(points):
+        reason = base_reasons[idx] if base_reasons and idx < len(base_reasons) else "direct"
+        if value is None:
+            guarded.append(None)
+            reasons.append(reason)
             continue
-        if candidate_y is None:
-            fallback = _interpolate_if_coherent(raw_points, x, max_delta_y)
-            if fallback is None:
-                filtered_points.append(None)
-                reasons.append("empty_column")
-                continue
-            if previous_y is not None and abs(fallback - previous_y) > max_delta_y:
-                filtered_points.append(None)
-                reasons.append("continuity_reject")
-                continuity_rejected += 1
-                continue
-            filtered_points.append(fallback)
-            reasons.append("interpolate")
-            previous_y = fallback
+        if previous_y is None:
+            guarded.append(value)
+            reasons.append(reason)
+            previous_y = value
             continue
-
-        if previous_y is not None and abs(candidate_y - previous_y) > max_delta_y:
-            if _should_accept_spike(
-                x,
-                previous_y,
-                max_delta_y,
-                pick_tops=pick_tops,
-                pick_thicknesses=pick_thicknesses,
-            ):
-                filtered_points.append(candidate_y)
-                reasons.append("spike_accept")
-                previous_y = candidate_y
-                continue
-            fallback = _interpolate_if_coherent(raw_points, x, max_delta_y)
-            if fallback is None or abs(fallback - previous_y) > max_delta_y:
-                filtered_points.append(None)
-                reasons.append("continuity_reject")
-                continuity_rejected += 1
-                continue
-            filtered_points.append(fallback)
-            reasons.append("interpolate")
-            previous_y = fallback
+        if spike_columns and idx < len(spike_columns) and spike_columns[idx]:
+            guarded.append(value)
+            reasons.append("spike_accept")
+            previous_y = value
             continue
-
-        filtered_points.append(candidate_y)
-        reasons.append("direct")
-        previous_y = candidate_y
-
-    return filtered_points, reasons, continuity_rejected
-
-
-def _detect_spike_columns(
-    mask: np.ndarray,
-) -> tuple[list[bool], np.ndarray]:
-    height, width = mask.shape
-    y_tops: list[int | None] = []
-    thicknesses: list[int | None] = []
-    for x in range(width):
-        ys = np.where(mask[:, x] == 255)[0]
-        if ys.size == 0:
-            y_tops.append(None)
-            thicknesses.append(None)
-            continue
-        y_min = int(ys[0])
-        y_max = int(ys[-1])
-        y_tops.append(y_min)
-        thicknesses.append(int(y_max - y_min + 1))
-
-    spike_columns = [False for _ in range(width)]
-    for x in range(width):
-        y_top = y_tops[x]
-        thickness = thicknesses[x]
-        if y_top is None or thickness is None:
-            continue
-        if thickness >= SPIKE_RUN_MIN_PX:
-            spike_columns[x] = True
-            continue
-        prev_idx = x - 1
-        while prev_idx >= 0 and y_tops[prev_idx] is None:
-            prev_idx -= 1
-        next_idx = x + 1
-        while next_idx < width and y_tops[next_idx] is None:
-            next_idx += 1
-        deltas = []
-        if prev_idx >= 0 and y_tops[prev_idx] is not None:
-            deltas.append(abs(y_top - y_tops[prev_idx]))
-        if next_idx < width and y_tops[next_idx] is not None:
-            deltas.append(abs(y_top - y_tops[next_idx]))
-        if deltas and max(deltas) >= SPIKE_DELTA_ABS_PX:
-            spike_columns[x] = True
-
-    spike_mask = np.zeros_like(mask)
-    for x, is_spike in enumerate(spike_columns):
-        if is_spike:
-            spike_mask[:, x] = mask[:, x]
-
-    return spike_columns, spike_mask
-
-
-def _should_accept_spike(
-    idx: int,
-    previous_y: int,
-    max_delta_y: int,
-    *,
-    pick_tops: list[int | None] | None,
-    pick_thicknesses: list[int | None] | None,
-) -> bool:
-    if not pick_tops or not pick_thicknesses:
-        return False
-    spike_delta = max_delta_y * SPIKE_DELTA_MULTIPLIER
-    window_end = min(len(pick_tops), idx + SPIKE_WINDOW_COLUMNS)
-    spike_columns = 0
-    for j in range(idx, window_end):
-        y_top = pick_tops[j] if j < len(pick_tops) else None
-        thickness = pick_thicknesses[j] if j < len(pick_thicknesses) else None
-        if y_top is None or thickness is None:
-            continue
-        if thickness <= THICKNESS_THRESHOLD_PX and (previous_y - y_top) > spike_delta:
-            spike_columns += 1
-    return spike_columns >= SPIKE_MIN_COLUMNS
+        delta = value - previous_y
+        if abs(delta) > max_delta_y:
+            clamped = int(previous_y + max_delta_y * (1 if delta > 0 else -1))
+            guarded.append(clamped)
+            reasons.append("slope_guard")
+            previous_y = clamped
+            adjusted += 1
+        else:
+            guarded.append(value)
+            reasons.append(reason)
+            previous_y = value
+    return guarded, reasons, adjusted
 
 
 def _remove_frame_components(mask: np.ndarray) -> int:
@@ -1124,8 +974,6 @@ def _pick_column_y(
     ys: np.ndarray,
     previous_y: int | None,
     height: int,
-    *,
-    is_spike_column: bool = False,
 ) -> tuple[
     int | None,
     int | None,
@@ -1137,9 +985,10 @@ def _pick_column_y(
     int | None,
     int | None,
     int,
+    bool,
 ]:
     if ys.size == 0:
-        return None, None, None, None, False, None, None, None, None, 0
+        return None, None, None, None, False, None, None, None, None, 0, False
     ys_sorted = np.sort(ys)
     y_min = int(ys_sorted[0])
     y_max = int(ys_sorted[-1])
@@ -1148,7 +997,6 @@ def _pick_column_y(
     y_top = y_min
     y_mid = int(np.median(ys_sorted))
     y_bot = y_max
-    y_pct_top = int(np.percentile(ys_sorted, 10))
 
     runs = 1
     if ys_sorted.size > 1:
@@ -1173,86 +1021,61 @@ def _pick_column_y(
             continue
         valid_candidates.append((name, value))
 
-    if is_spike_column:
+    if not valid_candidates:
+        return None, y_min, y_max, None, False, thickness, y_top, y_mid, y_bot, runs, False
+
+    if previous_y is not None and abs(y_top - previous_y) >= SPIKE_DELTA_ABS_PX:
         return (
             y_top,
             y_min,
             y_max,
-            "top",
+            "spike_top",
+            True,
+            thickness,
+            y_top,
+            y_mid,
+            y_bot,
+            runs,
+            True,
+        )
+
+    if previous_y is None:
+        pick_name, pick_value = (
+            ("top", y_top) if thickness <= THICKNESS_THRESHOLD_PX else ("mid", y_mid)
+        )
+        if pick_name not in {name for name, _ in valid_candidates}:
+            pick_name, pick_value = valid_candidates[0]
+        return (
+            pick_value,
+            y_min,
+            y_max,
+            pick_name,
             False,
             thickness,
             y_top,
             y_mid,
             y_bot,
             runs,
+            False,
         )
 
-    if not valid_candidates:
-        return None, y_min, y_max, None, False, thickness, y_top, y_mid, y_bot, runs
-
-    adjusted = False
-    pick_name = None
-    pick_value = None
-    if thickness <= THICKNESS_THRESHOLD_PX:
-        pick_name = "top"
-        pick_value = y_top
-    elif thickness >= THICKNESS_THICK_PX or runs > 2:
-        pick_name = "pct_top"
-        pick_value = y_pct_top
-    else:
-        pick_name = "mid"
-        pick_value = y_mid
-
-    valid_map = {name: value for name, value in valid_candidates}
-    if pick_name not in valid_map:
-        pick_name, pick_value = valid_candidates[0]
-
-    if previous_y is not None and not is_spike_column:
-        adjusted = True
-        pick_value = valid_map.get(pick_name, pick_value)
-
+    pick_name, pick_value = min(
+        valid_candidates,
+        key=lambda item: abs(item[1] - previous_y),
+    )
     return (
         pick_value,
         y_min,
         y_max,
         pick_name,
-        adjusted,
+        True,
         thickness,
         y_top,
         y_mid,
         y_bot,
         runs,
+        False,
     )
-
-
-def _interpolate_if_coherent(
-    values: list[int | None],
-    idx: int,
-    max_delta_y: int,
-) -> int | None:
-    prev_idx = None
-    next_idx = None
-    for offset in range(1, NEIGHBORHOOD_EXTENDED_RANGE + 1):
-        if prev_idx is None and idx - offset >= 0 and values[idx - offset] is not None:
-            prev_idx = idx - offset
-        if next_idx is None and idx + offset < len(values) and values[idx + offset] is not None:
-            next_idx = idx + offset
-        if prev_idx is not None and next_idx is not None:
-            break
-
-    if prev_idx is None or next_idx is None:
-        return None
-    prev_val = values[prev_idx]
-    next_val = values[next_idx]
-    if prev_val is None or next_val is None:
-        return None
-    if abs(prev_val - next_val) > max_delta_y * 2:
-        return None
-    span = next_idx - prev_idx
-    if span <= 0:
-        return None
-    ratio = (idx - prev_idx) / span
-    return int(round(prev_val + (next_val - prev_val) * ratio))
 
 
 def _apply_bias_correction(
@@ -1412,7 +1235,7 @@ def _write_debug_artifacts(
     mask_ink_core: np.ndarray | None = None,
     mask_ink_thin: np.ndarray | None = None,
     mask_ink_combined: np.ndarray | None = None,
-    mask_clean: np.ndarray | None = None,
+    mask_pretty: np.ndarray | None = None,
     pick_tops: list[int | None] | None = None,
     pick_mids: list[int | None] | None = None,
     spike_columns: list[bool] | None = None,
@@ -1444,7 +1267,7 @@ def _write_debug_artifacts(
     mask_ink_core_path = debug_dir / "mask_ink_core.png"
     mask_ink_thin_path = debug_dir / "mask_ink_thin.png"
     mask_ink_combined_path = debug_dir / "mask_ink_combined.png"
-    mask_clean_path = debug_dir / "mask_clean.png"
+    mask_pretty_path = debug_dir / "mask_pretty.png"
     mask_polyline_path = debug_dir / "mask_polyline.png"
     overlay_path = debug_dir / "overlay.png"
     overlay_marker_path = debug_dir / "overlay_markers.png"
@@ -1463,7 +1286,8 @@ def _write_debug_artifacts(
         cv2.imwrite(str(mask_ink_thin_path), mask_ink_thin)
     if mask_ink_combined is not None:
         cv2.imwrite(str(mask_ink_combined_path), mask_ink_combined)
-    cv2.imwrite(str(mask_clean_path), mask_clean if mask_clean is not None else mask_candidate)
+    if mask_pretty is not None:
+        cv2.imwrite(str(mask_pretty_path), mask_pretty)
     cv2.imwrite(str(mask_polyline_path), mask_polyline)
     marker_overlay = overlay.copy()
     if spike_columns:
@@ -1526,7 +1350,7 @@ def _write_debug_artifacts(
         "mask_ink_combined": (
             str(mask_ink_combined_path) if mask_ink_combined is not None else None
         ),
-        "mask_clean": str(mask_clean_path),
+        "mask_pretty": str(mask_pretty_path) if mask_pretty is not None else None,
         "mask_candidate": str(mask_candidate_path),
         "mask_polyline": str(mask_polyline_path),
         "mask": str(mask_polyline_path),
