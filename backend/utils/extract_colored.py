@@ -24,6 +24,9 @@ BBOX_FALLBACK_PCT = {
 
 MAX_DELTA_Y = 18
 NEIGHBORHOOD_EXTENDED_RANGE = 3
+Y_PICK_MODE = os.getenv("INGV_COLORED_Y_PICK_MODE", "p15").lower()
+Y_PICK_PERCENTILE = 15
+COLUMN_TOP_K = 5
 
 TRUE_MASK_MIN_COLUMN_PCT = 90.0
 FRAME_LINE_THICKNESS = 3
@@ -98,6 +101,7 @@ def extract_series_from_colored(path_png: str | Path):
     ) = _extract_curve_points(cropped)
 
     xs_px = list(range(mask_candidate.shape[1]))
+    y_offset = offsets["top"]
 
     valid_columns = sum(1 for y in filtered_points if y is not None)
     valid_ratio = (valid_columns / len(filtered_points) * 100) if filtered_points else 0.0
@@ -126,7 +130,10 @@ def extract_series_from_colored(path_png: str | Path):
         xs_px,
         raw_points,
         filtered_points,
+        mask_meta["column_ranges"],
+        y_offset,
     )
+    error_stats = _estimate_column_error(mask_meta["column_ranges"], filtered_points)
     logger.info(
         (
             "[INGV COLORED] valid_columns=%.1f%% (%s/%s) series_len=%s start_ref=%s end_ref=%s crop=%s"
@@ -150,6 +157,18 @@ def extract_series_from_colored(path_png: str | Path):
         tail_reasons,
         border_components,
         mask_meta["attempts"],
+    )
+    logger.info(
+        (
+            "[INGV COLORED][debug picks] y_offset=%s y_pick_mode=%s top_k=%s "
+            "p%02d mean_span=%.2f mean_offset_from_min=%.2f"
+        ),
+        y_offset,
+        Y_PICK_MODE,
+        COLUMN_TOP_K,
+        Y_PICK_PERCENTILE,
+        error_stats["mean_span"],
+        error_stats["mean_offset_from_min"],
     )
 
     return timestamps, values, debug_paths
@@ -251,13 +270,16 @@ def _extract_curve_points(
         )
 
     raw_points: list[int | None] = []
+    column_ranges: list[tuple[int | None, int | None]] = []
     for x in range(width):
         column = np.where(mask_candidate[:, x] == 255)[0]
-        candidate_y = _robust_column_center(column)
+        candidate_y, y_min, y_max = _pick_column_y(column)
         if candidate_y is None or candidate_y <= 0 or candidate_y >= height - 1:
             raw_points.append(None)
+            column_ranges.append((None, None))
         else:
             raw_points.append(candidate_y)
+            column_ranges.append((y_min, y_max))
 
     filtered_points: list[int | None] = []
     reasons: list[str] = []
@@ -303,7 +325,7 @@ def _extract_curve_points(
         mask_polyline,
         reasons,
         border_components,
-        mask_meta,
+        {**mask_meta, "column_ranges": column_ranges},
     )
 
 
@@ -459,17 +481,19 @@ def _count_tail_reasons(reasons: list[str], tail_columns: int) -> dict[str, int]
     return summary
 
 
-def _robust_column_center(ys: np.ndarray) -> int | None:
+def _pick_column_y(ys: np.ndarray) -> tuple[int | None, int | None, int | None]:
     if ys.size == 0:
-        return None
-    if ys.size == 1:
-        return int(ys[0])
-    p40 = np.percentile(ys, 40)
-    p60 = np.percentile(ys, 60)
-    subset = ys[(ys >= p40) & (ys <= p60)]
-    if subset.size == 0:
-        subset = ys
-    return int(np.median(subset))
+        return None, None, None
+    ys_sorted = np.sort(ys)
+    top_k = ys_sorted[: min(len(ys_sorted), COLUMN_TOP_K)]
+    y_min = int(top_k[0]) if top_k.size > 0 else None
+    y_max = int(top_k[-1]) if top_k.size > 0 else None
+    if top_k.size == 1:
+        return int(top_k[0]), y_min, y_max
+    if Y_PICK_MODE == "min":
+        return int(top_k[0]), y_min, y_max
+    percentile = np.percentile(top_k, Y_PICK_PERCENTILE)
+    return int(round(percentile)), y_min, y_max
 
 
 def _interpolate_if_coherent(values: list[int | None], idx: int) -> int | None:
@@ -511,6 +535,8 @@ def _write_debug_artifacts(
     xs: list[int],
     raw_points: list[int | None],
     filtered_points: list[int | None],
+    column_ranges: list[tuple[int | None, int | None]],
+    y_offset: int,
 ) -> dict:
     data_dir = Path(os.getenv("DATA_DIR", "data"))
     debug_dir = Path(os.getenv("INGV_COLORED_DEBUG_DIR", data_dir / "debug"))
@@ -534,15 +560,24 @@ def _write_debug_artifacts(
     mask_candidate_path = debug_dir / "mask_candidate.png"
     mask_polyline_path = debug_dir / "mask_polyline.png"
     overlay_path = debug_dir / "overlay.png"
+    overlay_marker_path = debug_dir / "overlay_marker.png"
     raw_csv_path = debug_dir / "curve_points.csv"
     filtered_csv_path = debug_dir / "curve_points_filtered.csv"
+    filtered_global_csv_path = debug_dir / "curve_points_filtered_global.csv"
 
     cv2.imwrite(str(crop_path), cropped)
     cv2.imwrite(str(mask_candidate_path), mask_candidate)
     cv2.imwrite(str(mask_polyline_path), mask_polyline)
     cv2.imwrite(str(overlay_path), overlay)
+    marker_overlay = overlay.copy()
+    _draw_column_markers(marker_overlay, xs, filtered_points, column_ranges)
+    cv2.imwrite(str(overlay_marker_path), marker_overlay)
     _write_curve_points(raw_csv_path, xs, raw_points)
     _write_curve_points(filtered_csv_path, xs, filtered_points)
+    filtered_global = [
+        None if y is None else int(y + y_offset) for y in filtered_points
+    ]
+    _write_curve_points(filtered_global_csv_path, xs, filtered_global)
 
     return {
         "crop": str(crop_path),
@@ -550,8 +585,10 @@ def _write_debug_artifacts(
         "mask_polyline": str(mask_polyline_path),
         "mask": str(mask_polyline_path),
         "overlay": str(overlay_path),
+        "overlay_marker": str(overlay_marker_path),
         "curve_points": str(raw_csv_path),
         "curve_points_filtered": str(filtered_csv_path),
+        "curve_points_filtered_global": str(filtered_global_csv_path),
     }
 
 
@@ -578,3 +615,45 @@ def _write_curve_points(path: Path, xs: list[int], ys: list[int | None]) -> None
         for x, y in zip(xs, ys):
             y_value = "" if y is None else str(y)
             handle.write(f"{x},{y_value}\n")
+
+
+def _draw_column_markers(
+    overlay: np.ndarray,
+    xs: list[int],
+    points: list[int | None],
+    column_ranges: list[tuple[int | None, int | None]],
+) -> None:
+    height, width = overlay.shape[:2]
+    sample_count = min(20, width)
+    if sample_count == 0:
+        return
+    sample_indices = np.linspace(0, width - 1, sample_count, dtype=int)
+    for idx in sample_indices:
+        if idx >= len(points):
+            continue
+        y = points[idx]
+        y_min, y_max = column_ranges[idx] if idx < len(column_ranges) else (None, None)
+        x = xs[idx] if idx < len(xs) else idx
+        if y_min is not None and y_max is not None:
+            y_min = int(max(0, min(height - 1, y_min)))
+            y_max = int(max(0, min(height - 1, y_max)))
+            cv2.line(overlay, (x, y_min), (x, y_max), (0, 255, 255), 1, cv2.LINE_AA)
+        if y is not None:
+            y = int(max(0, min(height - 1, y)))
+            cv2.circle(overlay, (x, y), 2, (0, 0, 255), -1, cv2.LINE_AA)
+
+
+def _estimate_column_error(
+    column_ranges: list[tuple[int | None, int | None]],
+    points: list[int | None],
+) -> dict[str, float]:
+    spans = []
+    offsets = []
+    for (y_min, y_max), y in zip(column_ranges, points):
+        if y_min is None or y_max is None or y is None:
+            continue
+        spans.append(y_max - y_min)
+        offsets.append(y - y_min)
+    mean_span = float(np.mean(spans)) if spans else 0.0
+    mean_offset = float(np.mean(offsets)) if offsets else 0.0
+    return {"mean_span": mean_span, "mean_offset_from_min": mean_offset}
