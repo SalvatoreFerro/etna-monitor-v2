@@ -28,6 +28,21 @@ NEIGHBORHOOD_EXTENDED_RANGE = 3
 Y_PICK_MODE = os.getenv("INGV_COLORED_Y_PICK_MODE", "adaptive").lower()
 Y_PICK_PERCENTILE_THICK = int(os.getenv("INGV_COLORED_Y_PICK_PERCENTILE_THICK", "80"))
 THICKNESS_THRESHOLD_PX = 2
+V_BLACK_MAX = int(os.getenv("INGV_COLORED_BLACK_V_MAX", "95"))
+S_BLACK_MAX = int(os.getenv("INGV_COLORED_BLACK_S_MAX", "80"))
+INK_MIN_PIXEL_RATIO = float(os.getenv("INGV_COLORED_INK_MIN_PIXEL_RATIO", "0.0002"))
+INK_CLOSE_ITER = int(os.getenv("INGV_COLORED_INK_CLOSE_ITER", "2"))
+INK_OPEN_ITER = int(os.getenv("INGV_COLORED_INK_OPEN_ITER", "1"))
+INK_OPEN_NOISE_THRESHOLD = int(os.getenv("INGV_COLORED_INK_OPEN_NOISE_THRESHOLD", "80"))
+INK_MAX_AREA_RATIO = float(os.getenv("INGV_COLORED_INK_MAX_AREA_RATIO", "0.08"))
+INK_RECT_FILL_RATIO = float(os.getenv("INGV_COLORED_INK_RECT_FILL_RATIO", "0.6"))
+INK_RECT_DIM_RATIO = float(os.getenv("INGV_COLORED_INK_RECT_DIM_RATIO", "0.25"))
+INK_MARGIN_PX = int(os.getenv("INGV_COLORED_INK_MARGIN_PX", "6"))
+EDGE_GUARD_PX = int(os.getenv("INGV_COLORED_EDGE_GUARD_PX", "2"))
+BASELINE_THICKNESS_PX = int(os.getenv("INGV_COLORED_BASELINE_THICKNESS_PX", "6"))
+BASELINE_BOTTOM_MARGIN_PX = int(
+    os.getenv("INGV_COLORED_BASELINE_BOTTOM_MARGIN_PX", "4")
+)
 BIAS_SAMPLE_COLUMNS = 200
 BIAS_IQR_THRESHOLD = 0.7
 
@@ -136,6 +151,7 @@ def extract_series_from_colored(path_png: str | Path):
         filtered_points,
         mask_meta["column_ranges"],
         y_offset,
+        mask_ink=mask_meta.get("mask_ink"),
         debug_payload=mask_meta.get("debug_payload"),
     )
     error_stats = _estimate_column_error(mask_meta["column_ranges"], filtered_points)
@@ -184,7 +200,7 @@ def extract_series_from_colored(path_png: str | Path):
     logger.info(
         (
             "[INGV COLORED][debug picks] y_offset=%s y_pick_mode=%s "
-            "thin_cols=%s thick_cols=%s thickness_median=%.2f p%02d max_delta_y=%s "
+            "thin_cols=%s thick_cols=%s thickness_median=%.2f max_delta_y=%s "
             "continuity_adjusted=%.1f%% mean_span=%.2f mean_offset_from_min=%.2f"
         ),
         y_offset,
@@ -192,7 +208,6 @@ def extract_series_from_colored(path_png: str | Path):
         thin_count,
         thick_count,
         thickness_median,
-        Y_PICK_PERCENTILE_THICK,
         mask_meta.get("max_delta_y", BASE_MAX_DELTA_Y),
         continuity_pct,
         error_stats["mean_span"],
@@ -305,6 +320,7 @@ def _extract_curve_points(
     mask_candidate, border_components, mask_meta = _select_candidate_mask(gray, cropped)
     mask_meta["bbox"] = bbox
     mask_raw = mask_meta["mask_raw"]
+    mask_ink = mask_meta.get("mask_ink", mask_raw)
     raw_white = int(np.count_nonzero(mask_candidate))
     candidate_col_pct = _column_coverage_pct(mask_candidate)
     logger.info(
@@ -337,7 +353,7 @@ def _extract_curve_points(
             pick_mode,
             adjusted,
             thickness,
-        ) = _pick_column_y(column, previous_pick)
+        ) = _pick_column_y(column, previous_pick, height)
         if candidate_y is None or candidate_y <= 0 or candidate_y >= height - 1:
             raw_points.append(None)
             column_ranges.append((None, None))
@@ -413,6 +429,7 @@ def _extract_curve_points(
     y_stddev = float(np.std(valid_y)) if valid_y.size else 0.0
     y_min = float(np.min(valid_y)) if valid_y.size else 0.0
     y_max = float(np.max(valid_y)) if valid_y.size else 0.0
+    consecutive_equal, longest_equal_run = _count_consecutive_equals(corrected_points)
     logger.info(
         (
             "[INGV COLORED][extract stats] plot_bbox=%s coverage_pct=%.1f%% "
@@ -445,12 +462,21 @@ def _extract_curve_points(
         "pick_mode": pick_modes,
         "pick_thickness": pick_thicknesses,
         "shift_disabled_reason": bias_meta.get("disabled_reason"),
+        "consecutive_equal": consecutive_equal,
+        "longest_equal_run": longest_equal_run,
+        "pick_samples": _sample_column_picks(column_ranges, pick_modes, corrected_points),
     }
     if y_stddev < 0.3 or candidate_col_pct < 20.0:
         logger.error(
-            "[INGV COLORED][extract stats] FATAL low signal stddev=%.2f coverage=%.1f%%",
+            (
+                "[INGV COLORED][extract stats] FATAL low signal stddev=%.2f "
+                "coverage=%.1f%% equal=%s max_equal_run=%s sample=%s"
+            ),
             y_stddev,
             candidate_col_pct,
+            consecutive_equal,
+            longest_equal_run,
+            debug_payload.get("pick_samples"),
         )
         _write_debug_artifacts(
             cropped,
@@ -462,6 +488,7 @@ def _extract_curve_points(
             corrected_points,
             column_ranges,
             0,
+            mask_ink=mask_ink,
             debug_payload=debug_payload,
         )
         raise ValueError(
@@ -521,6 +548,52 @@ def _build_adaptive_candidate_mask(gray: np.ndarray) -> np.ndarray:
     return mask_raw
 
 
+def _build_ink_mask(cropped: np.ndarray) -> tuple[np.ndarray, dict]:
+    hsv = cv2.cvtColor(cropped, cv2.COLOR_BGR2HSV)
+    _, s, v = cv2.split(hsv)
+    mask_vs = (v <= V_BLACK_MAX) & (s <= S_BLACK_MAX)
+    mask_v = v <= V_BLACK_MAX
+    total_pixels = max(int(cropped.shape[0] * cropped.shape[1]), 1)
+    min_pixels = max(10, int(total_pixels * INK_MIN_PIXEL_RATIO))
+    use_v_only = np.count_nonzero(mask_vs) < min_pixels and np.count_nonzero(mask_v) > 0
+    selected = mask_v if use_v_only else mask_vs
+    mask = np.where(selected, 255, 0).astype(np.uint8)
+    return mask, {
+        "mode": "v_only" if use_v_only else "v_and_s",
+        "count_vs": int(np.count_nonzero(mask_vs)),
+        "count_v": int(np.count_nonzero(mask_v)),
+        "min_pixels": min_pixels,
+    }
+
+
+def _clean_ink_mask(mask: np.ndarray) -> tuple[np.ndarray, dict]:
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    cleaned = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=INK_CLOSE_ITER)
+    open_applied = False
+    if _should_open_mask(cleaned):
+        cleaned = cv2.morphologyEx(cleaned, cv2.MORPH_OPEN, kernel, iterations=INK_OPEN_ITER)
+        open_applied = True
+    removed_border = _remove_border_components(cleaned)
+    removed_large = _remove_large_components(cleaned)
+    return cleaned, {
+        "open_applied": open_applied,
+        "removed_border": removed_border,
+        "removed_large": removed_large,
+    }
+
+
+def _should_open_mask(mask: np.ndarray) -> bool:
+    num_labels, _, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    noise_components = 0
+    for label in range(1, num_labels):
+        area = stats[label, cv2.CC_STAT_AREA]
+        if area <= 2:
+            noise_components += 1
+            if noise_components >= INK_OPEN_NOISE_THRESHOLD:
+                return True
+    return False
+
+
 def _select_candidate_mask(
     gray: np.ndarray,
     cropped: np.ndarray,
@@ -529,12 +602,21 @@ def _select_candidate_mask(
     best_mask = None
     best_raw = None
     best_coverage = -1.0
+    best_score = -1e9
     border_components = 0
+
+    ink_mask, ink_meta = _build_ink_mask(cropped)
+    ink_clean, ink_clean_meta = _clean_ink_mask(ink_mask)
+    ink_area_ratio = float(np.count_nonzero(ink_clean)) / max(
+        float(ink_clean.size), 1.0
+    )
 
     attempt_configs = [
         {
-            "name": "otsu_close",
-            "candidate": _build_candidate_mask(gray),
+            "name": "hsv_ink",
+            "candidate": ink_clean,
+            "raw": ink_mask,
+            "meta": {**ink_meta, **ink_clean_meta, "area_ratio": ink_area_ratio},
         },
         {
             "name": "adaptive_close",
@@ -544,33 +626,54 @@ def _select_candidate_mask(
             "name": "black_fallback",
             "candidate": _fallback_black_curve_mask(cropped),
         },
+        {
+            "name": "otsu_close",
+            "candidate": _build_candidate_mask(gray),
+        },
     ]
 
     for config in attempt_configs:
-        candidate_raw = config["candidate"].copy()
+        candidate_raw = config.get("raw", config["candidate"]).copy()
         candidate = candidate_raw.copy()
         removed = _remove_frame_components(candidate)
         coverage = _column_coverage_pct(candidate)
+        area_ratio = float(np.count_nonzero(candidate)) / max(float(candidate.size), 1.0)
+        score = coverage - (area_ratio * 200)
+        if area_ratio > INK_MAX_AREA_RATIO:
+            score -= 200
         attempts.append(
             {
                 "name": config["name"],
                 "coverage": coverage,
+                "area_ratio": area_ratio,
                 "removed": removed,
+                "meta": config.get("meta"),
             }
         )
-        if coverage > best_coverage:
+        if score > best_score:
             best_mask = candidate
             best_raw = candidate_raw
             best_coverage = coverage
+            best_score = score
             border_components = removed
         if coverage >= TRUE_MASK_MIN_COLUMN_PCT:
-            return candidate, removed, {"attempts": attempts, "mask_raw": candidate_raw, "bbox": None}
+            return candidate, removed, {
+                "attempts": attempts,
+                "mask_raw": candidate_raw,
+                "mask_ink": ink_mask,
+                "bbox": None,
+            }
 
     if best_mask is None:
         best_mask = _build_candidate_mask(gray)
         best_raw = best_mask.copy()
 
-    return best_mask, border_components, {"attempts": attempts, "mask_raw": best_raw, "bbox": None}
+    return best_mask, border_components, {
+        "attempts": attempts,
+        "mask_raw": best_raw,
+        "mask_ink": ink_mask,
+        "bbox": None,
+    }
 
 
 def _apply_continuity(
@@ -630,6 +733,47 @@ def _remove_frame_components(mask: np.ndarray) -> int:
     return removed
 
 
+def _remove_border_components(mask: np.ndarray) -> int:
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    height, width = mask.shape
+    removed = 0
+    for label in range(1, num_labels):
+        x, y, w, h, _ = stats[label]
+        touches_border = x <= 0 or y <= 0 or (x + w) >= width or (y + h) >= height
+        if touches_border:
+            mask[labels == label] = 0
+            removed += 1
+    return removed
+
+
+def _remove_large_components(mask: np.ndarray) -> int:
+    num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    height, width = mask.shape
+    removed = 0
+    total_pixels = max(height * width, 1)
+    for label in range(1, num_labels):
+        x, y, w, h, area = stats[label]
+        if w == 0 or h == 0:
+            continue
+        area_ratio = area / total_pixels
+        fill_ratio = area / max(w * h, 1)
+        near_margin = (
+            x <= INK_MARGIN_PX
+            or y <= INK_MARGIN_PX
+            or (x + w) >= (width - INK_MARGIN_PX)
+            or (y + h) >= (height - INK_MARGIN_PX)
+        )
+        oversize = area_ratio >= INK_MAX_AREA_RATIO
+        rectangular = (
+            fill_ratio >= INK_RECT_FILL_RATIO
+            and (w >= width * INK_RECT_DIM_RATIO or h >= height * INK_RECT_DIM_RATIO)
+        )
+        if oversize or (rectangular and near_margin):
+            mask[labels == label] = 0
+            removed += 1
+    return removed
+
+
 def _is_frame_component(
     x: int,
     y: int,
@@ -671,7 +815,7 @@ def _fallback_black_curve_mask(cropped: np.ndarray) -> np.ndarray:
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
     mask = cv2.dilate(mask, kernel, iterations=1)
-    _remove_frame_components(mask)
+    _remove_border_components(mask)
     return mask
 
 
@@ -695,7 +839,9 @@ def _count_tail_reasons(reasons: list[str], tail_columns: int) -> dict[str, int]
 
 
 def _pick_column_y(
-    ys: np.ndarray, previous_y: int | None
+    ys: np.ndarray,
+    previous_y: int | None,
+    height: int,
 ) -> tuple[int | None, int | None, int | None, str | None, bool, int | None]:
     if ys.size == 0:
         return None, None, None, None, False, None
@@ -704,30 +850,48 @@ def _pick_column_y(
     y_max = int(ys_sorted[-1])
     thickness = int(y_max - y_min)
 
-    if thickness <= THICKNESS_THRESHOLD_PX:
-        pick_mode = "median"
-        y_pick = int(round(np.median(ys_sorted)))
-    else:
-        percentile = np.percentile(ys_sorted, Y_PICK_PERCENTILE_THICK)
-        percentile_pick = int(round(percentile))
-        median_pick = int(round(np.median(ys_sorted)))
-        if previous_y is not None and percentile_pick > previous_y:
-            pick_mode = "median"
-            y_pick = median_pick
-        else:
-            pick_mode = "percentile"
-            y_pick = percentile_pick
+    y_top = y_min
+    y_mid = int(np.median(ys_sorted))
+    y_bot = y_max
+
+    candidates = [
+        ("top", y_top),
+        ("mid", y_mid),
+        ("bot", y_bot),
+    ]
+
+    valid_candidates: list[tuple[str, int]] = []
+    for name, value in candidates:
+        if value <= EDGE_GUARD_PX or value >= height - EDGE_GUARD_PX - 1:
+            continue
+        if (
+            name == "bot"
+            and thickness >= BASELINE_THICKNESS_PX
+            and value >= height - BASELINE_BOTTOM_MARGIN_PX
+        ):
+            continue
+        valid_candidates.append((name, value))
+
+    if not valid_candidates:
+        return None, y_min, y_max, None, False, thickness
 
     adjusted = False
-    if previous_y is not None:
-        closest_idx = int(np.argmin(np.abs(ys_sorted - previous_y)))
-        closest = int(ys_sorted[closest_idx])
-        if abs(closest - previous_y) <= BASE_MAX_DELTA_Y:
-            adjusted = True
-            y_pick = closest
-            pick_mode = "closest"
+    if previous_y is None:
+        for name, value in valid_candidates:
+            if name == "top":
+                return value, y_min, y_max, name, False, thickness
+        name, value = valid_candidates[0]
+        return value, y_min, y_max, name, False, thickness
 
-    return y_pick, y_min, y_max, pick_mode, adjusted, thickness
+    def candidate_sort(item: tuple[str, int]) -> tuple[int, int]:
+        name, value = item
+        distance = abs(value - previous_y)
+        preference = {"top": 0, "mid": 1, "bot": 2}.get(name, 3)
+        return (distance, preference)
+
+    name, value = sorted(valid_candidates, key=candidate_sort)[0]
+    adjusted = True
+    return value, y_min, y_max, name, adjusted, thickness
 
 
 def _interpolate_if_coherent(
@@ -913,6 +1077,7 @@ def _write_debug_artifacts(
     column_ranges: list[tuple[int | None, int | None]],
     y_offset: int,
     *,
+    mask_ink: np.ndarray | None = None,
     debug_payload: dict | None = None,
 ) -> dict:
     data_dir = Path(os.getenv("DATA_DIR", "data"))
@@ -937,6 +1102,7 @@ def _write_debug_artifacts(
     crop_path = debug_dir / "crop_plot_area.png"
     mask_candidate_path = debug_dir / "mask_candidate.png"
     mask_raw_path = debug_dir / "mask_raw.png"
+    mask_ink_path = debug_dir / "mask_ink.png"
     mask_clean_path = debug_dir / "mask_clean.png"
     mask_polyline_path = debug_dir / "mask_polyline.png"
     overlay_path = debug_dir / "overlay.png"
@@ -948,6 +1114,8 @@ def _write_debug_artifacts(
     cv2.imwrite(str(crop_path), cropped)
     cv2.imwrite(str(mask_candidate_path), mask_candidate)
     cv2.imwrite(str(mask_raw_path), mask_raw)
+    if mask_ink is not None:
+        cv2.imwrite(str(mask_ink_path), mask_ink)
     cv2.imwrite(str(mask_clean_path), mask_candidate)
     cv2.imwrite(str(mask_polyline_path), mask_polyline)
     marker_overlay = overlay.copy()
@@ -985,6 +1153,7 @@ def _write_debug_artifacts(
     return {
         "crop": str(crop_path),
         "mask_raw": str(mask_raw_path),
+        "mask_ink": str(mask_ink_path) if mask_ink is not None else None,
         "mask_clean": str(mask_clean_path),
         "mask_candidate": str(mask_candidate_path),
         "mask_polyline": str(mask_polyline_path),
@@ -1066,3 +1235,50 @@ def _estimate_column_error(
     mean_span = float(np.mean(spans)) if spans else 0.0
     mean_offset = float(np.mean(offsets)) if offsets else 0.0
     return {"mean_span": mean_span, "mean_offset_from_min": mean_offset}
+
+
+def _count_consecutive_equals(points: list[int | None]) -> tuple[int, int]:
+    longest_run = 0
+    current_run = 0
+    total_equal = 0
+    last_value = None
+    for value in points:
+        if value is None:
+            current_run = 0
+            last_value = None
+            continue
+        if last_value is not None and value == last_value:
+            current_run += 1
+            total_equal += 1
+        else:
+            current_run = 1
+        if current_run > longest_run:
+            longest_run = current_run
+        last_value = value
+    return total_equal, longest_run
+
+
+def _sample_column_picks(
+    column_ranges: list[tuple[int | None, int | None]],
+    pick_modes: list[str | None],
+    points: list[int | None],
+    sample_size: int = 8,
+) -> list[dict]:
+    if not column_ranges or not points:
+        return []
+    width = len(column_ranges)
+    sample_size = min(sample_size, width)
+    indices = np.linspace(0, width - 1, num=sample_size, dtype=int)
+    samples = []
+    for idx in indices:
+        y_min, y_max = column_ranges[idx]
+        samples.append(
+            {
+                "x": int(idx),
+                "y_min": y_min,
+                "y_max": y_max,
+                "pick": points[idx],
+                "mode": pick_modes[idx] if idx < len(pick_modes) else None,
+            }
+        )
+    return samples
