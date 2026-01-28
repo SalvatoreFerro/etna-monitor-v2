@@ -29,12 +29,15 @@ PLOT_ROI_BOTTOM_PCT = 0.1
 MAX_DELTA_Y = 18
 VERTICAL_GRADIENT_MIN = 10
 DARK_INTENSITY_THRESHOLD = 55
+MASK_INTENSITY_THRESHOLD = 85
 LOCAL_WINDOW_PX = 12
 SPIKE_DELTA = 22
 SPIKE_MEDIAN_WINDOW = 7
 
 MAX_GAP_COLUMNS = 14
 SMOOTHING_WINDOW = 5
+NEIGHBORHOOD_RANGE = 1
+DILATION_ITERATIONS = 1
 
 
 logger = logging.getLogger(__name__)
@@ -95,21 +98,22 @@ def extract_series_from_colored(path_png: str | Path):
         raise ValueError(f"Impossibile leggere PNG colorato: {image_path}")
 
     cropped, offsets = _crop_plot_area(image)
-    ys_px, intensities, discarded_points, mask = _extract_curve_points(cropped)
+    ys_px, intensities, discarded_points, mask_raw, mask_dilated = _extract_curve_points(cropped)
 
-    xs_px = list(range(mask.shape[1]))
+    xs_px = list(range(mask_dilated.shape[1]))
     valid_columns = sum(1 for y in ys_px if y is not None)
     valid_ratio = (valid_columns / len(ys_px) * 100) if ys_px else 0.0
 
     spike_mask, spike_points, max_jump_px = _detect_spikes(ys_px, intensities)
 
+    missing_tail = _count_missing_tail_columns(ys_px, tail_columns=50)
     ys_px = _interpolate_gaps(ys_px, max_gap=MAX_GAP_COLUMNS)
     ys_px = _smooth_series(ys_px, window=SMOOTHING_WINDOW, spike_mask=spike_mask)
 
     end_time = datetime.now(timezone.utc)
     start_time = end_time - EXTRACTION_DURATION
     duration_seconds = EXTRACTION_DURATION.total_seconds()
-    steps = max(mask.shape[1] - 1, 1)
+    steps = max(mask_dilated.shape[1] - 1, 1)
     seconds_per_pixel = duration_seconds / steps
 
     timestamps = []
@@ -119,25 +123,29 @@ def extract_series_from_colored(path_png: str | Path):
             continue
         timestamp = start_time + timedelta(seconds=seconds_per_pixel * x)
         timestamps.append(timestamp)
-        values.append(_pixel_to_mv(y, mask.shape[0]))
+        values.append(_pixel_to_mv(y, mask_dilated.shape[0]))
 
     debug_paths = _write_debug_artifacts(
         cropped,
-        mask,
+        mask_raw,
+        mask_dilated,
         xs_px,
         ys_px,
-        image_path,
         discarded_points,
         spike_points,
     )
     logger.info(
-        "[INGV COLORED] valid_columns=%.1f%% (%s/%s) series_len=%s num_spikes=%s max_jump_px=%s start_ref=%s end_ref=%s crop=%s",
+        (
+            "[INGV COLORED] valid_columns=%.1f%% (%s/%s) series_len=%s num_spikes=%s "
+            "max_jump_px=%s missing_tail=%s start_ref=%s end_ref=%s crop=%s"
+        ),
         valid_ratio,
         valid_columns,
         len(ys_px),
         len(values),
         len(spike_points),
         max_jump_px,
+        missing_tail,
         start_time.isoformat(),
         end_time.isoformat(),
         offsets,
@@ -152,8 +160,19 @@ def _crop_plot_area(image: np.ndarray):
     bottom = int(height * (1 - CROP_BOTTOM_PCT))
     left = int(width * CROP_LEFT_PCT)
     right = int(width * (1 - CROP_RIGHT_PCT))
+    right_max = min(width - 1, (right - 1) + 30)
+    right = right_max + 1
 
     cropped = image[top:bottom, left:right]
+    logger.info(
+        "[INGV COLORED] plot_bbox x_min=%s x_max=%s y_min=%s y_max=%s crop_size=%sx%s",
+        left,
+        right - 1,
+        top,
+        bottom - 1,
+        cropped.shape[1],
+        cropped.shape[0],
+    )
     offsets = {
         "top": top,
         "bottom": height - bottom,
@@ -165,7 +184,13 @@ def _crop_plot_area(image: np.ndarray):
 
 def _extract_curve_points(
     cropped: np.ndarray,
-) -> tuple[list[int | None], list[int | None], list[tuple[int, int]], np.ndarray]:
+) -> tuple[
+    list[int | None],
+    list[int | None],
+    list[tuple[int, int]],
+    np.ndarray,
+    np.ndarray,
+]:
     gray = cv2.cvtColor(cropped, cv2.COLOR_BGR2GRAY)
     height, width = gray.shape
 
@@ -173,24 +198,42 @@ def _extract_curve_points(
     roi_bottom = int(height * (1 - PLOT_ROI_BOTTOM_PCT))
     roi_bottom = max(roi_bottom, roi_top + 1)
 
-    mask = np.zeros((height, width), dtype=np.uint8)
+    mask_raw = cv2.inRange(gray, 0, MASK_INTENSITY_THRESHOLD)
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    mask_dilated = cv2.dilate(mask_raw, kernel, iterations=DILATION_ITERATIONS)
+    _apply_edge_margin(mask_dilated)
     points: list[int | None] = []
     intensities: list[int | None] = []
     discarded: list[tuple[int, int]] = []
     previous_y = None
 
     for x in range(width):
-        column = gray[roi_top:roi_bottom, x]
-        if column.size == 0:
+        candidate_y, candidate_intensity, source_x = _pick_candidate_from_mask(
+            gray,
+            mask_dilated,
+            x,
+            roi_top,
+            roi_bottom,
+            previous_y,
+        )
+        if candidate_y is None:
+            candidate_y, candidate_intensity, source_x = _fallback_candidate_from_neighbors(
+                gray,
+                mask_dilated,
+                x,
+                roi_top,
+                roi_bottom,
+                previous_y,
+            )
+        if candidate_y is None or candidate_intensity is None:
             points.append(None)
             intensities.append(None)
             continue
 
-        rel_y = int(np.argmin(column))
-        candidate_y = roi_top + rel_y
-        candidate_intensity = int(column[rel_y])
-
-        if not _has_vertical_contrast(column, rel_y):
+        source_x = source_x if source_x is not None else x
+        column = gray[roi_top:roi_bottom, source_x]
+        rel_y = candidate_y - roi_top
+        if source_x == x and not _has_vertical_contrast(column, rel_y):
             discarded.append((x, candidate_y))
             points.append(None)
             intensities.append(None)
@@ -202,7 +245,6 @@ def _extract_curve_points(
                 if candidate_intensity < DARK_INTENSITY_THRESHOLD:
                     points.append(candidate_y)
                     intensities.append(candidate_intensity)
-                    mask[candidate_y, x] = 255
                     previous_y = candidate_y
                     continue
 
@@ -222,11 +264,9 @@ def _extract_curve_points(
 
         points.append(candidate_y)
         intensities.append(candidate_intensity)
-        mask[candidate_y, x] = 255
         previous_y = candidate_y
 
-    _apply_edge_margin(mask)
-    return points, intensities, discarded, mask
+    return points, intensities, discarded, mask_raw, mask_dilated
 
 
 def _has_vertical_contrast(column: np.ndarray, rel_y: int) -> bool:
@@ -238,6 +278,67 @@ def _has_vertical_contrast(column: np.ndarray, rel_y: int) -> bool:
     if rel_y > 0:
         local = max(local, diffs[rel_y - 1])
     return local >= VERTICAL_GRADIENT_MIN
+
+
+def _pick_candidate_from_mask(
+    gray: np.ndarray,
+    mask: np.ndarray,
+    x: int,
+    roi_top: int,
+    roi_bottom: int,
+    previous_y: int | None,
+) -> tuple[int | None, int | None, int | None]:
+    column_mask = mask[roi_top:roi_bottom, x]
+    if column_mask.size == 0:
+        return None, None, None
+    candidate_rel = np.where(column_mask == 255)[0]
+    if candidate_rel.size == 0:
+        return None, None, None
+    candidate_y = candidate_rel + roi_top
+    intensities = gray[candidate_y, x]
+    if previous_y is None:
+        idx = int(np.argmin(intensities))
+        return int(candidate_y[idx]), int(intensities[idx]), x
+
+    distances = np.abs(candidate_y - previous_y)
+    scores = intensities.astype(np.float32) + distances.astype(np.float32)
+    idx = int(np.argmin(scores))
+    return int(candidate_y[idx]), int(intensities[idx]), x
+
+
+def _fallback_candidate_from_neighbors(
+    gray: np.ndarray,
+    mask: np.ndarray,
+    x: int,
+    roi_top: int,
+    roi_bottom: int,
+    previous_y: int | None,
+) -> tuple[int | None, int | None, int | None]:
+    best_candidate = (None, None, None)
+    best_score = None
+    for offset in range(-NEIGHBORHOOD_RANGE, NEIGHBORHOOD_RANGE + 1):
+        if offset == 0:
+            continue
+        neighbor_x = x + offset
+        if neighbor_x < 0 or neighbor_x >= mask.shape[1]:
+            continue
+        candidate_y, candidate_intensity, source_x = _pick_candidate_from_mask(
+            gray,
+            mask,
+            neighbor_x,
+            roi_top,
+            roi_bottom,
+            previous_y,
+        )
+        if candidate_y is None or candidate_intensity is None:
+            continue
+        score = candidate_intensity
+        if previous_y is not None:
+            score += abs(candidate_y - previous_y)
+        if best_score is None or score < best_score:
+            best_score = score
+            best_candidate = (candidate_y, candidate_intensity, source_x)
+    return best_candidate
 
 
 def _local_min_nearby(
@@ -264,7 +365,14 @@ def _apply_edge_margin(mask: np.ndarray) -> None:
     mask[:margin_y, :] = 0
     mask[-margin_y:, :] = 0
     mask[:, :margin_x] = 0
-    mask[:, -margin_x:] = 0
+    mask[:, -min(margin_x, 2):] = 0
+
+
+def _count_missing_tail_columns(values: list[int | None], tail_columns: int) -> int:
+    if not values:
+        return 0
+    tail = values[-tail_columns:] if len(values) > tail_columns else values
+    return sum(1 for value in tail if value is None)
 
 
 def _interpolate_gaps(values: list[int | None], max_gap: int) -> list[int | None]:
@@ -359,18 +467,17 @@ def _pixel_to_mv(y_pixel: int, height: int) -> float:
 
 def _write_debug_artifacts(
     cropped: np.ndarray,
-    mask: np.ndarray,
+    mask_raw: np.ndarray,
+    mask_dilated: np.ndarray,
     xs: list[int],
     ys: list[int | None],
-    source_path: Path,
     discarded: list[tuple[int, int]] | None = None,
     spikes: list[tuple[int, int]] | None = None,
 ) -> dict:
-    debug_dir = Path(os.getenv("INGV_COLORED_DEBUG_DIR", source_path.parent / "debug"))
+    debug_dir = Path("/data/debug")
     debug_dir.mkdir(parents=True, exist_ok=True)
 
     overlay = cropped.copy()
-    mask_overlay = np.zeros_like(mask)
     previous_point = None
     for x, y in zip(xs, ys):
         if y is None:
@@ -379,9 +486,6 @@ def _write_debug_artifacts(
         point = (x, y)
         if previous_point is not None:
             cv2.line(overlay, previous_point, point, (0, 0, 255), 1)
-            cv2.line(mask_overlay, previous_point, point, 255, 1)
-        else:
-            mask_overlay[y, x] = 255
         previous_point = point
 
     if discarded:
@@ -392,13 +496,20 @@ def _write_debug_artifacts(
         for x, y in spikes:
             cv2.circle(overlay, (x, y), 2, (255, 0, 0), -1)
 
-    mask_path = debug_dir / f"mask_{source_path.stem}.png"
-    overlay_path = debug_dir / f"overlay_{source_path.stem}.png"
+    crop_path = debug_dir / "crop_plot_area.png"
+    mask_raw_path = debug_dir / "mask_raw.png"
+    mask_dilated_path = debug_dir / "mask_dilated.png"
+    overlay_path = debug_dir / "overlay.png"
 
-    cv2.imwrite(str(mask_path), mask_overlay if np.any(mask_overlay) else mask)
+    cv2.imwrite(str(crop_path), cropped)
+    cv2.imwrite(str(mask_raw_path), mask_raw)
+    cv2.imwrite(str(mask_dilated_path), mask_dilated)
     cv2.imwrite(str(overlay_path), overlay)
 
     return {
-        "mask": str(mask_path),
+        "crop": str(crop_path),
+        "mask_raw": str(mask_raw_path),
+        "mask_dilated": str(mask_dilated_path),
+        "mask": str(mask_dilated_path),
         "overlay": str(overlay_path),
     }
