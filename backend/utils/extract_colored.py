@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from datetime import datetime, timedelta, timezone
@@ -22,10 +23,10 @@ BBOX_FALLBACK_PCT = {
     "right": 0.05,
 }
 
-MAX_DELTA_Y = 18
+BASE_MAX_DELTA_Y = 18
 NEIGHBORHOOD_EXTENDED_RANGE = 3
 Y_PICK_MODE = os.getenv("INGV_COLORED_Y_PICK_MODE", "adaptive").lower()
-Y_PICK_PERCENTILE_THICK = int(os.getenv("INGV_COLORED_Y_PICK_PERCENTILE_THICK", "35"))
+Y_PICK_PERCENTILE_THICK = int(os.getenv("INGV_COLORED_Y_PICK_PERCENTILE_THICK", "80"))
 THICKNESS_THRESHOLD_PX = 2
 BIAS_SAMPLE_COLUMNS = 200
 BIAS_IQR_THRESHOLD = 0.7
@@ -135,17 +136,27 @@ def extract_series_from_colored(path_png: str | Path):
         filtered_points,
         mask_meta["column_ranges"],
         y_offset,
+        debug_payload=mask_meta.get("debug_payload"),
     )
     error_stats = _estimate_column_error(mask_meta["column_ranges"], filtered_points)
     pick_modes = mask_meta["pick_modes"]
     pick_thicknesses = mask_meta["pick_thicknesses"]
     continuity_adjusted = mask_meta["continuity_adjusted"]
     bias_meta = mask_meta["bias_meta"]
-    thin_count = sum(1 for mode in pick_modes if mode == "thin")
-    thick_count = sum(1 for mode in pick_modes if mode == "thick")
+    thin_count = sum(
+        1
+        for thickness in pick_thicknesses
+        if thickness is not None and thickness <= THICKNESS_THRESHOLD_PX
+    )
+    thick_count = sum(
+        1
+        for thickness in pick_thicknesses
+        if thickness is not None and thickness > THICKNESS_THRESHOLD_PX
+    )
     pick_columns = max(thin_count + thick_count, 1)
     continuity_pct = continuity_adjusted / pick_columns * 100
-    thickness_median = float(np.median(pick_thicknesses)) if pick_thicknesses else 0.0
+    thickness_values = [value for value in pick_thicknesses if value is not None]
+    thickness_median = float(np.median(thickness_values)) if thickness_values else 0.0
     logger.info(
         (
             "[INGV COLORED] valid_columns=%.1f%% (%s/%s) series_len=%s start_ref=%s end_ref=%s crop=%s"
@@ -182,7 +193,7 @@ def extract_series_from_colored(path_png: str | Path):
         thick_count,
         thickness_median,
         Y_PICK_PERCENTILE_THICK,
-        mask_meta.get("max_delta_y", MAX_DELTA_Y),
+        mask_meta.get("max_delta_y", BASE_MAX_DELTA_Y),
         continuity_pct,
         error_stats["mean_span"],
         error_stats["mean_offset_from_min"],
@@ -313,7 +324,7 @@ def _extract_curve_points(
     raw_points: list[int | None] = []
     column_ranges: list[tuple[int | None, int | None]] = []
     pick_modes: list[str | None] = []
-    pick_thicknesses: list[int] = []
+    pick_thicknesses: list[int | None] = []
     continuity_adjusted = 0
     invalid_raw = 0
     previous_pick = None
@@ -323,7 +334,7 @@ def _extract_curve_points(
             candidate_y,
             y_min,
             y_max,
-            mode,
+            pick_mode,
             adjusted,
             thickness,
         ) = _pick_column_y(column, previous_pick)
@@ -331,34 +342,35 @@ def _extract_curve_points(
             raw_points.append(None)
             column_ranges.append((None, None))
             pick_modes.append(None)
+            pick_thicknesses.append(None)
             previous_pick = None
             if candidate_y is not None:
                 invalid_raw += 1
         else:
             raw_points.append(candidate_y)
             column_ranges.append((y_min, y_max))
-            pick_modes.append(mode)
-            previous_pick = candidate_y
-        if thickness is not None and mode is not None:
+            pick_modes.append(pick_mode)
             pick_thicknesses.append(thickness)
+            previous_pick = candidate_y
         if adjusted:
             continuity_adjusted += 1
 
-    thickness_median = float(np.median(pick_thicknesses)) if pick_thicknesses else 0.0
-    max_delta_y = MAX_DELTA_Y
+    thickness_values = [value for value in pick_thicknesses if value is not None]
+    thickness_median = float(np.median(thickness_values)) if thickness_values else 0.0
+    max_delta_y = BASE_MAX_DELTA_Y
 
     filtered_points, reasons, continuity_rejected = _apply_continuity(
         raw_points,
         max_delta_y,
     )
-    if raw_points:
-        rejection_ratio = continuity_rejected / len(raw_points)
-    else:
-        rejection_ratio = 0.0
+    rejection_ratio = continuity_rejected / len(raw_points) if raw_points else 0.0
     if rejection_ratio > 0.7:
-        max_delta_y = max(MAX_DELTA_Y, int(round(thickness_median * 4 + 6)))
+        max_delta_y = max(BASE_MAX_DELTA_Y, int(round(thickness_median * 4 + 6)))
         logger.warning(
-            "[INGV COLORED][continuity] high rejection %.1f%%, expanding MAX_DELTA_Y to %s",
+            (
+                "[INGV COLORED][continuity] high rejection %.1f%%, "
+                "expanding MAX_DELTA_Y to %s"
+            ),
             rejection_ratio * 100,
             max_delta_y,
         )
@@ -366,11 +378,27 @@ def _extract_curve_points(
             raw_points,
             max_delta_y,
         )
+        rejection_ratio_after = (
+            continuity_rejected / len(raw_points) if raw_points else 0.0
+        )
+        logger.warning(
+            (
+                "[INGV COLORED][continuity] rejection before=%.1f%% after=%.1f%% "
+                "max_delta_y=%s"
+            ),
+            rejection_ratio * 100,
+            rejection_ratio_after * 100,
+            max_delta_y,
+        )
 
+    pre_bias_valid = np.array([y for y in filtered_points if y is not None], dtype=float)
+    pre_bias_stddev = float(np.std(pre_bias_valid)) if pre_bias_valid.size else 0.0
     corrected_points, bias_meta = _apply_bias_correction(
         filtered_points,
         cropped,
         height,
+        coverage_pct=candidate_col_pct,
+        y_stddev=pre_bias_stddev,
     )
 
     mask_polyline = _build_polyline_mask(height, width, corrected_points)
@@ -401,6 +429,23 @@ def _extract_curve_points(
         y_max,
         max_delta_y,
     )
+    debug_payload = {
+        "bbox": mask_meta["bbox"],
+        "coverage_pct": candidate_col_pct,
+        "empty_cols": empty_columns,
+        "rejected_by_continuity": continuity_reject_count,
+        "clamped_or_invalid": clamped_invalid,
+        "stddev_y": y_stddev,
+        "min_y": y_min,
+        "max_y": y_max,
+        "shift_y": bias_meta.get("shift", 0),
+        "iqr": bias_meta.get("iqr", 0.0),
+        "threshold": bias_meta.get("threshold", BIAS_IQR_THRESHOLD),
+        "max_delta_y": max_delta_y,
+        "pick_mode": pick_modes,
+        "pick_thickness": pick_thicknesses,
+        "shift_disabled_reason": bias_meta.get("disabled_reason"),
+    }
     if y_stddev < 0.3 or candidate_col_pct < 20.0:
         logger.error(
             "[INGV COLORED][extract stats] FATAL low signal stddev=%.2f coverage=%.1f%%",
@@ -417,6 +462,7 @@ def _extract_curve_points(
             corrected_points,
             column_ranges,
             0,
+            debug_payload=debug_payload,
         )
         raise ValueError(
             "Colored PNG extraction failed: curve is flat or missing (stddev/coverage guard)."
@@ -442,6 +488,7 @@ def _extract_curve_points(
             "y_min": y_min,
             "y_max": y_max,
             "coverage_pct": candidate_col_pct,
+            "debug_payload": debug_payload,
         },
     )
 
@@ -537,7 +584,7 @@ def _apply_continuity(
 
     for x, candidate_y in enumerate(raw_points):
         if candidate_y is None:
-            fallback = _interpolate_if_coherent(raw_points, x)
+            fallback = _interpolate_if_coherent(raw_points, x, max_delta_y)
             if fallback is None:
                 filtered_points.append(None)
                 reasons.append("empty_column")
@@ -553,7 +600,7 @@ def _apply_continuity(
             continue
 
         if previous_y is not None and abs(candidate_y - previous_y) > max_delta_y:
-            fallback = _interpolate_if_coherent(raw_points, x)
+            fallback = _interpolate_if_coherent(raw_points, x, max_delta_y)
             if fallback is None or abs(fallback - previous_y) > max_delta_y:
                 filtered_points.append(None)
                 reasons.append("continuity_reject")
@@ -658,25 +705,36 @@ def _pick_column_y(
     thickness = int(y_max - y_min)
 
     if thickness <= THICKNESS_THRESHOLD_PX:
-        mode = "thin"
+        pick_mode = "median"
         y_pick = int(round(np.median(ys_sorted)))
     else:
-        mode = "thick"
         percentile = np.percentile(ys_sorted, Y_PICK_PERCENTILE_THICK)
-        y_pick = int(round(percentile))
+        percentile_pick = int(round(percentile))
+        median_pick = int(round(np.median(ys_sorted)))
+        if previous_y is not None and percentile_pick > previous_y:
+            pick_mode = "median"
+            y_pick = median_pick
+        else:
+            pick_mode = "percentile"
+            y_pick = percentile_pick
 
     adjusted = False
     if previous_y is not None:
         closest_idx = int(np.argmin(np.abs(ys_sorted - previous_y)))
         closest = int(ys_sorted[closest_idx])
-        if abs(closest - previous_y) <= MAX_DELTA_Y:
-            adjusted = closest != y_pick
+        if abs(closest - previous_y) <= BASE_MAX_DELTA_Y:
+            adjusted = True
             y_pick = closest
+            pick_mode = "closest"
 
-    return y_pick, y_min, y_max, mode, adjusted, thickness
+    return y_pick, y_min, y_max, pick_mode, adjusted, thickness
 
 
-def _interpolate_if_coherent(values: list[int | None], idx: int) -> int | None:
+def _interpolate_if_coherent(
+    values: list[int | None],
+    idx: int,
+    max_delta_y: int,
+) -> int | None:
     prev_idx = None
     next_idx = None
     for offset in range(1, NEIGHBORHOOD_EXTENDED_RANGE + 1):
@@ -693,7 +751,7 @@ def _interpolate_if_coherent(values: list[int | None], idx: int) -> int | None:
     next_val = values[next_idx]
     if prev_val is None or next_val is None:
         return None
-    if abs(prev_val - next_val) > MAX_DELTA_Y * 2:
+    if abs(prev_val - next_val) > max_delta_y * 2:
         return None
     span = next_idx - prev_idx
     if span <= 0:
@@ -706,7 +764,38 @@ def _apply_bias_correction(
     points: list[int | None],
     cropped: np.ndarray,
     height: int,
+    *,
+    coverage_pct: float,
+    y_stddev: float,
 ) -> tuple[list[int | None], dict]:
+    if coverage_pct < 60.0:
+        logger.warning(
+            "[INGV COLORED][bias] SHIFT DISABLED coverage guard (coverage=%.1f%%)",
+            coverage_pct,
+        )
+        return points, {
+            "applied": False,
+            "shift": 0,
+            "median": 0.0,
+            "iqr": 0.0,
+            "samples": 0,
+            "threshold": BIAS_IQR_THRESHOLD,
+            "disabled_reason": "coverage_guard",
+        }
+    if y_stddev < 1.0:
+        logger.warning(
+            "[INGV COLORED][bias] SHIFT DISABLED stddev guard (stddev=%.2f)",
+            y_stddev,
+        )
+        return points, {
+            "applied": False,
+            "shift": 0,
+            "median": 0.0,
+            "iqr": 0.0,
+            "samples": 0,
+            "threshold": BIAS_IQR_THRESHOLD,
+            "disabled_reason": "stddev_guard",
+        }
     available_indices = [idx for idx, y in enumerate(points) if y is not None]
     if not available_indices:
         return points, {
@@ -823,6 +912,8 @@ def _write_debug_artifacts(
     filtered_points: list[int | None],
     column_ranges: list[tuple[int | None, int | None]],
     y_offset: int,
+    *,
+    debug_payload: dict | None = None,
 ) -> dict:
     data_dir = Path(os.getenv("DATA_DIR", "data"))
     debug_dir = Path(os.getenv("INGV_COLORED_DEBUG_DIR", data_dir / "debug"))
@@ -830,6 +921,7 @@ def _write_debug_artifacts(
 
     overlay = cropped.copy()
     segment: list[tuple[int, int]] = []
+    points_available = sum(1 for y in filtered_points if y is not None)
     for x, y in zip(xs, filtered_points):
         if y is None:
             if len(segment) >= 2:
@@ -858,7 +950,6 @@ def _write_debug_artifacts(
     cv2.imwrite(str(mask_raw_path), mask_raw)
     cv2.imwrite(str(mask_clean_path), mask_candidate)
     cv2.imwrite(str(mask_polyline_path), mask_polyline)
-    cv2.imwrite(str(overlay_path), overlay)
     marker_overlay = overlay.copy()
     _draw_column_markers(marker_overlay, xs, filtered_points, column_ranges)
     if all(y is None for y in filtered_points):
@@ -872,6 +963,9 @@ def _write_debug_artifacts(
             2,
             cv2.LINE_AA,
         )
+    if points_available < 2:
+        overlay = marker_overlay.copy()
+    cv2.imwrite(str(overlay_path), overlay)
     cv2.imwrite(str(overlay_marker_path), marker_overlay)
     _write_curve_points(raw_csv_path, xs, raw_points)
     _write_curve_points(filtered_csv_path, xs, filtered_points)
@@ -879,6 +973,14 @@ def _write_debug_artifacts(
         None if y is None else int(y + y_offset) for y in filtered_points
     ]
     _write_curve_points(filtered_global_csv_path, xs, filtered_global)
+
+    debug_json_path = None
+    if debug_payload is not None:
+        debug_json_path = debug_dir / "debug.json"
+        debug_json_path.write_text(
+            json.dumps(debug_payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
 
     return {
         "crop": str(crop_path),
@@ -893,6 +995,7 @@ def _write_debug_artifacts(
         "curve_points": str(raw_csv_path),
         "curve_points_filtered": str(filtered_csv_path),
         "curve_points_filtered_global": str(filtered_global_csv_path),
+        "debug_json": str(debug_json_path) if debug_json_path else None,
     }
 
 
