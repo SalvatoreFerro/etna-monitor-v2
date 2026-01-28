@@ -24,9 +24,11 @@ BBOX_FALLBACK_PCT = {
 
 MAX_DELTA_Y = 18
 NEIGHBORHOOD_EXTENDED_RANGE = 3
-Y_PICK_MODE = os.getenv("INGV_COLORED_Y_PICK_MODE", "p15").lower()
-Y_PICK_PERCENTILE = 15
-COLUMN_TOP_K = 5
+Y_PICK_MODE = os.getenv("INGV_COLORED_Y_PICK_MODE", "adaptive").lower()
+Y_PICK_PERCENTILE_THICK = int(os.getenv("INGV_COLORED_Y_PICK_PERCENTILE_THICK", "35"))
+THICKNESS_THRESHOLD_PX = 2
+BIAS_SAMPLE_COLUMNS = 200
+BIAS_IQR_THRESHOLD = 0.7
 
 TRUE_MASK_MIN_COLUMN_PCT = 90.0
 FRAME_LINE_THICKNESS = 3
@@ -134,6 +136,15 @@ def extract_series_from_colored(path_png: str | Path):
         y_offset,
     )
     error_stats = _estimate_column_error(mask_meta["column_ranges"], filtered_points)
+    pick_modes = mask_meta["pick_modes"]
+    pick_thicknesses = mask_meta["pick_thicknesses"]
+    continuity_adjusted = mask_meta["continuity_adjusted"]
+    bias_meta = mask_meta["bias_meta"]
+    thin_count = sum(1 for mode in pick_modes if mode == "thin")
+    thick_count = sum(1 for mode in pick_modes if mode == "thick")
+    pick_columns = max(thin_count + thick_count, 1)
+    continuity_pct = continuity_adjusted / pick_columns * 100
+    thickness_median = float(np.median(pick_thicknesses)) if pick_thicknesses else 0.0
     logger.info(
         (
             "[INGV COLORED] valid_columns=%.1f%% (%s/%s) series_len=%s start_ref=%s end_ref=%s crop=%s"
@@ -160,16 +171,35 @@ def extract_series_from_colored(path_png: str | Path):
     )
     logger.info(
         (
-            "[INGV COLORED][debug picks] y_offset=%s y_pick_mode=%s top_k=%s "
-            "p%02d mean_span=%.2f mean_offset_from_min=%.2f"
+            "[INGV COLORED][debug picks] y_offset=%s y_pick_mode=%s "
+            "thin_cols=%s thick_cols=%s thickness_median=%.2f p%02d "
+            "continuity_adjusted=%.1f%% mean_span=%.2f mean_offset_from_min=%.2f"
         ),
         y_offset,
         Y_PICK_MODE,
-        COLUMN_TOP_K,
-        Y_PICK_PERCENTILE,
+        thin_count,
+        thick_count,
+        thickness_median,
+        Y_PICK_PERCENTILE_THICK,
+        continuity_pct,
         error_stats["mean_span"],
         error_stats["mean_offset_from_min"],
     )
+    if bias_meta["applied"]:
+        logger.info(
+            "[INGV COLORED][bias] shift_y=%s bias_median=%.2f iqr=%.2f samples=%s",
+            bias_meta["shift"],
+            bias_meta["median"],
+            bias_meta["iqr"],
+            bias_meta["samples"],
+        )
+    else:
+        logger.info(
+            "[INGV COLORED][bias] skipped bias_median=%.2f iqr=%.2f samples=%s",
+            bias_meta["median"],
+            bias_meta["iqr"],
+            bias_meta["samples"],
+        )
 
     return timestamps, values, debug_paths
 
@@ -271,15 +301,34 @@ def _extract_curve_points(
 
     raw_points: list[int | None] = []
     column_ranges: list[tuple[int | None, int | None]] = []
+    pick_modes: list[str | None] = []
+    pick_thicknesses: list[int] = []
+    continuity_adjusted = 0
+    previous_pick = None
     for x in range(width):
         column = np.where(mask_candidate[:, x] == 255)[0]
-        candidate_y, y_min, y_max = _pick_column_y(column)
+        (
+            candidate_y,
+            y_min,
+            y_max,
+            mode,
+            adjusted,
+            thickness,
+        ) = _pick_column_y(column, previous_pick)
         if candidate_y is None or candidate_y <= 0 or candidate_y >= height - 1:
             raw_points.append(None)
             column_ranges.append((None, None))
+            pick_modes.append(None)
+            previous_pick = None
         else:
             raw_points.append(candidate_y)
             column_ranges.append((y_min, y_max))
+            pick_modes.append(mode)
+            previous_pick = candidate_y
+        if thickness is not None and mode is not None:
+            pick_thicknesses.append(thickness)
+        if adjusted:
+            continuity_adjusted += 1
 
     filtered_points: list[int | None] = []
     reasons: list[str] = []
@@ -316,16 +365,29 @@ def _extract_curve_points(
         reasons.append("direct")
         previous_y = candidate_y
 
-    mask_polyline = _build_polyline_mask(height, width, filtered_points)
+    corrected_points, bias_meta = _apply_bias_correction(
+        filtered_points,
+        cropped,
+        height,
+    )
+
+    mask_polyline = _build_polyline_mask(height, width, corrected_points)
 
     return (
         raw_points,
-        filtered_points,
+        corrected_points,
         mask_candidate,
         mask_polyline,
         reasons,
         border_components,
-        {**mask_meta, "column_ranges": column_ranges},
+        {
+            **mask_meta,
+            "column_ranges": column_ranges,
+            "pick_modes": pick_modes,
+            "pick_thicknesses": pick_thicknesses,
+            "continuity_adjusted": continuity_adjusted,
+            "bias_meta": bias_meta,
+        },
     )
 
 
@@ -481,19 +543,33 @@ def _count_tail_reasons(reasons: list[str], tail_columns: int) -> dict[str, int]
     return summary
 
 
-def _pick_column_y(ys: np.ndarray) -> tuple[int | None, int | None, int | None]:
+def _pick_column_y(
+    ys: np.ndarray, previous_y: int | None
+) -> tuple[int | None, int | None, int | None, str | None, bool, int | None]:
     if ys.size == 0:
-        return None, None, None
+        return None, None, None, None, False, None
     ys_sorted = np.sort(ys)
-    top_k = ys_sorted[: min(len(ys_sorted), COLUMN_TOP_K)]
-    y_min = int(top_k[0]) if top_k.size > 0 else None
-    y_max = int(top_k[-1]) if top_k.size > 0 else None
-    if top_k.size == 1:
-        return int(top_k[0]), y_min, y_max
-    if Y_PICK_MODE == "min":
-        return int(top_k[0]), y_min, y_max
-    percentile = np.percentile(top_k, Y_PICK_PERCENTILE)
-    return int(round(percentile)), y_min, y_max
+    y_min = int(ys_sorted[0])
+    y_max = int(ys_sorted[-1])
+    thickness = int(y_max - y_min)
+
+    if thickness <= THICKNESS_THRESHOLD_PX:
+        mode = "thin"
+        y_pick = int(round(np.median(ys_sorted)))
+    else:
+        mode = "thick"
+        percentile = np.percentile(ys_sorted, Y_PICK_PERCENTILE_THICK)
+        y_pick = int(round(percentile))
+
+    adjusted = False
+    if previous_y is not None:
+        closest_idx = int(np.argmin(np.abs(ys_sorted - previous_y)))
+        closest = int(ys_sorted[closest_idx])
+        if abs(closest - previous_y) <= MAX_DELTA_Y:
+            adjusted = closest != y_pick
+            y_pick = closest
+
+    return y_pick, y_min, y_max, mode, adjusted, thickness
 
 
 def _interpolate_if_coherent(values: list[int | None], idx: int) -> int | None:
@@ -520,6 +596,73 @@ def _interpolate_if_coherent(values: list[int | None], idx: int) -> int | None:
         return None
     ratio = (idx - prev_idx) / span
     return int(round(prev_val + (next_val - prev_val) * ratio))
+
+
+def _apply_bias_correction(
+    points: list[int | None],
+    cropped: np.ndarray,
+    height: int,
+) -> tuple[list[int | None], dict]:
+    available_indices = [idx for idx, y in enumerate(points) if y is not None]
+    if not available_indices:
+        return points, {"applied": False, "shift": 0, "median": 0.0, "iqr": 0.0, "samples": 0}
+
+    sample_size = min(BIAS_SAMPLE_COLUMNS, len(available_indices))
+    rng = np.random.default_rng(42)
+    sample_indices = rng.choice(available_indices, size=sample_size, replace=False)
+    black_mask = _fallback_black_curve_mask(cropped)
+
+    diffs = []
+    for idx in sample_indices:
+        y_pick = points[idx]
+        if y_pick is None:
+            continue
+        column = np.where(black_mask[:, idx] == 255)[0]
+        if column.size == 0:
+            continue
+        closest_idx = int(np.argmin(np.abs(column - y_pick)))
+        y_black = int(column[closest_idx])
+        diffs.append(float(y_pick - y_black))
+
+    if len(diffs) < 10:
+        return points, {"applied": False, "shift": 0, "median": 0.0, "iqr": 0.0, "samples": len(diffs)}
+
+    median_bias = float(np.median(diffs))
+    iqr = float(np.percentile(diffs, 75) - np.percentile(diffs, 25))
+    if iqr >= BIAS_IQR_THRESHOLD:
+        return points, {
+            "applied": False,
+            "shift": 0,
+            "median": median_bias,
+            "iqr": iqr,
+            "samples": len(diffs),
+        }
+
+    shift = int(round(median_bias))
+    if shift == 0:
+        return points, {
+            "applied": False,
+            "shift": 0,
+            "median": median_bias,
+            "iqr": iqr,
+            "samples": len(diffs),
+        }
+
+    corrected = []
+    for y in points:
+        if y is None:
+            corrected.append(None)
+            continue
+        adjusted = int(max(0, min(height - 1, y - shift)))
+        corrected.append(adjusted)
+
+    return corrected, {
+        "applied": True,
+        "shift": shift,
+        "median": median_bias,
+        "iqr": iqr,
+        "samples": len(diffs),
+    }
 
 
 def _pixel_to_mv(y_pixel: int, height: int) -> float:
@@ -560,7 +703,7 @@ def _write_debug_artifacts(
     mask_candidate_path = debug_dir / "mask_candidate.png"
     mask_polyline_path = debug_dir / "mask_polyline.png"
     overlay_path = debug_dir / "overlay.png"
-    overlay_marker_path = debug_dir / "overlay_marker.png"
+    overlay_marker_path = debug_dir / "overlay_markers.png"
     raw_csv_path = debug_dir / "curve_points.csv"
     filtered_csv_path = debug_dir / "curve_points_filtered.csv"
     filtered_global_csv_path = debug_dir / "curve_points_filtered_global.csv"
@@ -586,6 +729,7 @@ def _write_debug_artifacts(
         "mask": str(mask_polyline_path),
         "overlay": str(overlay_path),
         "overlay_marker": str(overlay_marker_path),
+        "overlay_markers": str(overlay_marker_path),
         "curve_points": str(raw_csv_path),
         "curve_points_filtered": str(filtered_csv_path),
         "curve_points_filtered_global": str(filtered_global_csv_path),
@@ -624,10 +768,12 @@ def _draw_column_markers(
     column_ranges: list[tuple[int | None, int | None]],
 ) -> None:
     height, width = overlay.shape[:2]
-    sample_count = min(20, width)
+    sample_count = min(30, width)
     if sample_count == 0:
         return
-    sample_indices = np.linspace(0, width - 1, sample_count, dtype=int)
+    rng = np.random.default_rng(42)
+    sample_indices = rng.choice(width, size=sample_count, replace=False)
+    sample_indices = np.sort(sample_indices)
     for idx in sample_indices:
         if idx >= len(points):
             continue
