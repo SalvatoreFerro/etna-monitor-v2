@@ -30,6 +30,7 @@ from .cron_run import CronRun
 from .alert_state import AlertState
 from .telegram_link_token import TelegramLinkToken
 from .api_access import ApiClient, ApiKey, ApiUsage, ApiUsageDaily, ApiUsageMinute
+from .tremor_prediction import TremorPrediction
 
 try:
     from .sponsor_banner import (
@@ -75,6 +76,7 @@ __all__ = [
     'ApiUsage',
     'ApiUsageDaily',
     'ApiUsageMinute',
+    'TremorPrediction',
 ]
 
 if SponsorBanner is not None:

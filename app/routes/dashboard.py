@@ -3,7 +3,7 @@ from ..utils.auth import login_required, get_current_user
 from ..utils.logger import get_logger
 from ..utils.config import get_curva_csv_path
 from ..utils.csrf import validate_csrf_token
-from ..models import db, TelegramLinkToken
+from ..models import db, TelegramLinkToken, TremorPrediction
 from ..models.event import Event
 from ..services.badge_service import LEVEL_DESCRIPTIONS, get_user_badges_for_display
 from ..utils.plot import make_tremor_figure
@@ -113,6 +113,16 @@ def dashboard_home():
     user_badges = get_user_badges_for_display(user.id)
     user_level = user.user_level or 1
     level_description = LEVEL_DESCRIPTIONS.get(user_level, LEVEL_DESCRIPTIONS[1])
+
+    active_prediction = (
+        TremorPrediction.query.filter(
+            TremorPrediction.user_id == user.id,
+            TremorPrediction.resolved.is_(False),
+            TremorPrediction.horizon_hours == 24,
+        )
+        .order_by(TremorPrediction.created_at.desc())
+        .first()
+    )
     
     return render_template("dashboard.html",
                          user=user,
@@ -127,6 +137,7 @@ def dashboard_home():
                          user_badges=user_badges,
                          user_level=user_level,
                          user_level_description=level_description,
+                         active_prediction=active_prediction,
                          page_title="Dashboard tremore Etna – EtnaMonitor",
                          page_description="Grafico del tremore vulcanico dell'Etna, soglie personalizzate e storico eventi per utenti Premium.")
 

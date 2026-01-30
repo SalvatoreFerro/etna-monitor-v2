@@ -4,6 +4,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from app.utils.logger import get_logger
 from .telegram_service import TelegramService
+from .prediction_service import resolve_expired_predictions
 import atexit
 
 logger = get_logger(__name__)
@@ -25,6 +26,13 @@ class SchedulerService:
             id='telegram_alerts',
             name='Check tremor levels and send Telegram alerts',
             replace_existing=True
+        )
+        self.scheduler.add_job(
+            func=self._resolve_predictions_with_context,
+            trigger=IntervalTrigger(minutes=10),
+            id="tremor_predictions",
+            name="Resolve tremor prediction game results",
+            replace_existing=True,
         )
         
         self.scheduler.start()
@@ -61,5 +69,30 @@ class SchedulerService:
                         "job_id": "telegram_alerts",
                         "finished_at": finished_at.isoformat(),
                         "duration_s": duration,
+                    },
+                )
+
+    def _resolve_predictions_with_context(self):
+        from flask import current_app
+        with current_app.app_context():
+            started_at = datetime.now(timezone.utc)
+            logger.info(
+                "[WORKER] scheduler.job.start",
+                extra={"job_id": "tremor_predictions", "started_at": started_at.isoformat()},
+            )
+            try:
+                resolved = resolve_expired_predictions(now=started_at)
+            except Exception:  # pragma: no cover - defensive guard
+                logger.exception("[WORKER] scheduler.job.error", extra={"job_id": "tremor_predictions"})
+            else:
+                finished_at = datetime.now(timezone.utc)
+                duration = (finished_at - started_at).total_seconds()
+                logger.info(
+                    "[WORKER] scheduler.job.stop",
+                    extra={
+                        "job_id": "tremor_predictions",
+                        "finished_at": finished_at.isoformat(),
+                        "duration_s": duration,
+                        "resolved_count": resolved,
                     },
                 )

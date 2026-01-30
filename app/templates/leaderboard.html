@@ -1,0 +1,43 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<section class="leaderboard-page" aria-label="Classifica Prediction Game">
+  <header>
+    <h1>Prediction Game – Classifica</h1>
+    <p class="muted">Top 20 utenti per punti accumulati e previsioni corrette.</p>
+  </header>
+
+  <article class="card-premium">
+    <table class="leaderboard-table">
+      <thead>
+        <tr>
+          <th scope="col">#</th>
+          <th scope="col">Utente</th>
+          <th scope="col">Punti</th>
+          <th scope="col">Previsioni corrette</th>
+          <th scope="col">Totale previsioni</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if leaderboard %}
+          {% for entry in leaderboard %}
+          <tr>
+            <td>{{ entry.rank }}</td>
+            <td>{{ entry.name }}</td>
+            <td>{{ entry.points }}</td>
+            <td>{{ entry.correct }}</td>
+            <td>{{ entry.total }}</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="5" class="muted">Ancora nessuna previsione risolta.</td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </article>
+
+  <a class="btn btn-secondary" href="{{ url_for('dashboard.dashboard_home') }}">Torna alla dashboard</a>
+</section>
+{% endblock %}
