@@ -110,6 +110,7 @@ from ..services.media_library import (
     upload_media_asset,
     validate_media_file,
 )
+from ..services.badge_service import recompute_badges_for_user
 from ..services.tremor_summary import build_tremor_summary, get_ai_cache_status
 from ..services.sentieri_geojson import (
     parse_geojson_text,
@@ -3593,3 +3594,27 @@ def monitor_kpis():
             "health_checks": health_checks,
         }
     )
+
+
+@bp.route("/admin/recompute-badges", methods=["POST"])
+@admin_required
+def recompute_badges_admin():
+    raw_user_id = request.form.get("user_id") or request.args.get("user_id")
+    try:
+        if raw_user_id:
+            user_id = int(raw_user_id)
+            recompute_badges_for_user(user_id)
+            db.session.commit()
+            return jsonify({"status": "ok", "user_id": user_id})
+
+        user_ids = [user_id for (user_id,) in db.session.query(User.id).all()]
+        for user_id in user_ids:
+            recompute_badges_for_user(user_id)
+        db.session.commit()
+        return jsonify({"status": "ok", "processed": len(user_ids)})
+    except ValueError:
+        return jsonify({"status": "error", "message": "Invalid user_id"}), 400
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception("Failed to recompute badges via admin endpoint")
+        return jsonify({"status": "error", "message": "Database error"}), 500

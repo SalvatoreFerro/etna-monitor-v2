@@ -275,6 +275,36 @@
             </div>
           {% endif %}
         </article>
+        <article class="card-premium badge-summary-card" aria-label="Badge e livelli">
+          <header class="card-header">
+            <h3>Badge e livelli</h3>
+            <p class="muted">Segui i tuoi progressi con badge e livello attuale.</p>
+          </header>
+          <div class="badge-level">
+            <span class="badge-level__value">Level {{ user_level }}</span>
+            <p class="muted">{{ user_level_description }}</p>
+          </div>
+          {% if user_badges %}
+            <ul class="badge-list">
+              {% for badge in user_badges %}
+                <li class="badge-item">
+                  <span class="badge-icon" aria-hidden="true">{{ badge.icon }}</span>
+                  <div class="badge-content">
+                    <strong>{{ badge.label }}</strong>
+                    <p class="muted">{{ badge.description }}</p>
+                    {% if badge.earned_at %}
+                      <span class="badge-date">Sbloccato il {{ badge.earned_at.strftime('%d/%m/%Y') }}</span>
+                    {% endif %}
+                  </div>
+                </li>
+              {% endfor %}
+            </ul>
+          {% else %}
+            <div class="badge-empty">
+              <p class="muted">Inizia a monitorare per sbloccare i badge.</p>
+            </div>
+          {% endif %}
+        </article>
         <article class="card-premium threshold-card animate-premium-slide" id="threshold-settings">
           <header class="card-header">
             <h3>Impostazioni soglia</h3>

@@ -3,6 +3,9 @@ from datetime import datetime
 
 class Event(db.Model):
     __tablename__ = 'events'
+    __table_args__ = (
+        db.Index("ix_events_user_id_timestamp", "user_id", "timestamp"),
+    )
     
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
