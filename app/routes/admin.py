@@ -23,6 +23,7 @@ from flask import (
 )
 from flask_login import current_user
 from sqlalchemy import and_, cast, func, or_, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import joinedload
 from werkzeug.datastructures import FileStorage
@@ -47,6 +48,8 @@ from ..models import (
     ForumThread,
     ForumReply,
     CronRun,
+    UserBadge,
+    UserGamificationProfile,
 )
 from ..models.user import User
 from ..models.event import Event
@@ -319,6 +322,17 @@ def _parse_datetime_param(value: str | None) -> datetime | None:
     if parsed.tzinfo is None:
         return parsed.replace(tzinfo=timezone.utc)
     return parsed.astimezone(timezone.utc)
+
+
+def _format_event_meta(event: Event) -> str:
+    parts: list[str] = []
+    if event.message:
+        parts.append(event.message)
+    if event.value is not None:
+        parts.append(f"value={event.value}")
+    if event.threshold is not None:
+        parts.append(f"threshold={event.threshold}")
+    return " | ".join(parts) if parts else "—"
 
 
 def _parse_range_window(value: str | None) -> timedelta:
@@ -596,6 +610,11 @@ def admin_home():
     search_query = (request.args.get("q") or "").strip()
     plan_filter = (request.args.get("plan") or "all").lower()
     page = _coerce_positive_int(request.args.get("page"), default=1)
+    event_type = (request.args.get("event_type") or "all").lower()
+    event_user_id_input = (request.args.get("event_user_id") or "").strip()
+    event_user_id = (
+        int(event_user_id_input) if event_user_id_input.isdigit() else None
+    )
 
     users_query = _build_users_query(search_query, plan_filter)
     pagination = users_query.paginate(
@@ -768,6 +787,87 @@ def admin_home():
     )
 
     csv_metrics = get_csv_metrics()
+    event_query = (
+        db.session.query(Event, User)
+        .join(User, User.id == Event.user_id)
+        .order_by(Event.timestamp.desc())
+    )
+    if event_type in {"login", "alert"}:
+        event_query = event_query.filter(Event.event_type == event_type)
+    if event_user_id is not None:
+        event_query = event_query.filter(Event.user_id == event_user_id)
+
+    maintenance_event_rows = [
+        {
+            "timestamp": event.timestamp.isoformat() if event.timestamp else "—",
+            "user_id": event.user_id,
+            "email": user.email,
+            "event_type": event.event_type,
+            "meta": _format_event_meta(event),
+        }
+        for event, user in event_query.limit(30).all()
+    ]
+
+    badge_total = db.session.query(func.count(UserBadge.id)).scalar() or 0
+    top_users = (
+        db.session.query(
+            User.id,
+            User.email,
+            func.count(UserBadge.id).label("badge_count"),
+            UserGamificationProfile.level,
+        )
+        .outerjoin(UserBadge, UserBadge.user_id == User.id)
+        .outerjoin(UserGamificationProfile, UserGamificationProfile.user_id == User.id)
+        .group_by(User.id, User.email, UserGamificationProfile.level)
+        .order_by(func.count(UserBadge.id).desc(), User.email.asc())
+        .limit(10)
+        .all()
+    )
+    gamification_top_users = [
+        {
+            "user_id": user_id,
+            "email": email,
+            "badge_count": int(badge_count or 0),
+            "level": int(level or 1),
+        }
+        for user_id, email, badge_count, level in top_users
+    ]
+    level_counts_raw = dict(
+        db.session.query(
+            UserGamificationProfile.level, func.count(UserGamificationProfile.id)
+        )
+        .group_by(UserGamificationProfile.level)
+        .all()
+    )
+    gamification_level_counts = {
+        1: int(level_counts_raw.get(1, 0)),
+        2: int(level_counts_raw.get(2, 0)),
+        3: int(level_counts_raw.get(3, 0)),
+    }
+
+    db_uri = current_app.config.get("SQLALCHEMY_DATABASE_URI") or ""
+    db_type = "unknown"
+    if db_uri:
+        try:
+            db_type = make_url(db_uri).drivername.split("+")[0]
+        except Exception:
+            db_type = "unknown"
+
+    curva_colored_path = Path(current_app.root_path).parent / "data" / "curva_colored.csv"
+    curva_colored_mtime = None
+    if curva_colored_path.exists():
+        stat = curva_colored_path.stat()
+        curva_colored_mtime = datetime.fromtimestamp(
+            stat.st_mtime, tz=timezone.utc
+        ).isoformat()
+
+    raw_version = (
+        os.getenv("RENDER_GIT_COMMIT")
+        or os.getenv("APP_VERSION")
+        or os.getenv("GIT_COMMIT")
+        or "unknown"
+    )
+    version_label = raw_version[:8] if raw_version != "unknown" else raw_version
 
     return render_template(
         "admin.html",
@@ -787,6 +887,17 @@ def admin_home():
         moderators_count=moderators_count,
         admin_shortcuts=admin_shortcuts,
         csv_metrics=csv_metrics,
+        maintenance_event_rows=maintenance_event_rows,
+        maintenance_event_type=event_type,
+        maintenance_event_user_id=event_user_id_input,
+        gamification_badge_total=int(badge_total),
+        gamification_top_users=gamification_top_users,
+        gamification_level_counts=gamification_level_counts,
+        maintenance_health={
+            "db_type": db_type,
+            "curva_colored_mtime": curva_colored_mtime,
+            "app_version": version_label,
+        },
     )
 
 
@@ -3596,7 +3707,7 @@ def monitor_kpis():
     )
 
 
-@bp.route("/admin/recompute-badges", methods=["POST"])
+@bp.route("/recompute-badges", methods=["POST"])
 @admin_required
 def recompute_badges_admin():
     raw_user_id = request.form.get("user_id") or request.args.get("user_id")
@@ -3618,3 +3729,34 @@ def recompute_badges_admin():
         db.session.rollback()
         current_app.logger.exception("Failed to recompute badges via admin endpoint")
         return jsonify({"status": "error", "message": "Database error"}), 500
+
+
+@bp.post("/recompute-badges-ui")
+@admin_required
+def recompute_badges_ui():
+    csrf_token = request.form.get("csrf_token")
+    if not _is_csrf_valid(csrf_token):
+        flash("Token CSRF non valido. Riprova.", "error")
+        return redirect(url_for("admin.admin_home", _anchor="maintenance-gamification"))
+
+    raw_user_id = (request.form.get("user_id") or "").strip()
+    try:
+        if raw_user_id:
+            user_id = int(raw_user_id)
+            recompute_badges_for_user(user_id)
+            db.session.commit()
+            flash(f"Badge ricalcolati per l'utente {user_id}.", "success")
+        else:
+            user_ids = [user_id for (user_id,) in db.session.query(User.id).all()]
+            for user_id in user_ids:
+                recompute_badges_for_user(user_id)
+            db.session.commit()
+            flash(f"Badge ricalcolati per {len(user_ids)} utenti.", "success")
+    except ValueError:
+        flash("User ID non valido.", "error")
+    except SQLAlchemyError:
+        db.session.rollback()
+        current_app.logger.exception("Failed to recompute badges via admin UI")
+        flash("Errore durante il ricalcolo dei badge.", "error")
+
+    return redirect(url_for("admin.admin_home", _anchor="maintenance-gamification"))
