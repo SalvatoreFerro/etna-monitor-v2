@@ -72,13 +72,16 @@ class UserBadge(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     code = db.Column(db.String(60), nullable=False)
+    badge_code = db.Column(db.String(60), nullable=False, index=True)
     label = db.Column(db.String(120), nullable=False)
     awarded_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    earned_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     user = db.relationship("User", backref=db.backref("badges", lazy="dynamic", cascade="all, delete-orphan"))
 
     __table_args__ = (
         db.UniqueConstraint("user_id", "code", name="uq_user_badges_user_code"),
+        db.UniqueConstraint("user_id", "badge_code", name="uq_user_badges_user_badge_code"),
     )
 
     def __repr__(self) -> str:  # pragma: no cover - helper

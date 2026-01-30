@@ -100,6 +100,12 @@ class User(UserMixin, db.Model):
         default="system",
         server_default="system",
     )
+    user_level = db.Column(
+        db.Integer,
+        nullable=False,
+        default=1,
+        server_default="1",
+    )
     deleted_at = db.Column(db.DateTime(timezone=True), nullable=True)
     erased_at = db.Column(db.DateTime(timezone=True), nullable=True)
     _is_active = db.Column(

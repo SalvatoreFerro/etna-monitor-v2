@@ -78,7 +78,14 @@ class GamificationService:
         unlocked_codes = {badge.code for badge in profile.user.badges}
         for threshold, (code, label) in self.BADGE_THRESHOLDS:
             if profile.points >= threshold and code not in unlocked_codes:
-                db.session.add(UserBadge(user_id=profile.user_id, code=code, label=label))
+                db.session.add(
+                    UserBadge(
+                        user_id=profile.user_id,
+                        code=code,
+                        badge_code=code,
+                        label=label,
+                    )
+                )
 
 
 def ensure_demo_profiles() -> None:

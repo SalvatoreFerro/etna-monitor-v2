@@ -30,7 +30,9 @@ from sqlalchemy.orm import load_only
 
 from ..extensions import cache
 from ..models import db
+from ..models.event import Event
 from ..models.user import User
+from ..services.badge_service import recompute_badges_for_user
 from ..utils.auth import check_password, hash_password
 
 bp = Blueprint("auth", __name__)
@@ -72,6 +74,18 @@ def _disable_google_id_column_usage():
             "[LOGIN] Disabling google_id usage due to runtime database error"
         )
         _GOOGLE_ID_COLUMN_SUPPORTED = False
+
+
+def _record_login_activity(user_id: int) -> None:
+    try:
+        db.session.add(Event(user_id=user_id, event_type="login"))
+        recompute_badges_for_user(user_id)
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception(
+            "[LOGIN] Failed to record login activity for user %s", user_id
+        )
 
 
 def find_user_by_google_id(session, gid: str):
@@ -285,6 +299,7 @@ def login():
         login_user(user)
         session.permanent = True
         session["user_id"] = user.id
+        _record_login_activity(user.id)
         return redirect(url_for("dashboard.dashboard_home"))
 
     return _render_login_page()
@@ -311,6 +326,7 @@ def register():
     login_user(user)
     session.permanent = True
     session["user_id"] = user.id
+    _record_login_activity(user.id)
     return redirect(url_for("dashboard.dashboard_home"))
 
 
@@ -592,6 +608,7 @@ def auth_callback():
         if id_token:
             session["google_id_token"] = id_token
         flash("Login effettuato con Google!", "success")
+        _record_login_activity(user_id)
 
         next_page = session.pop("post_login_redirect", None) or request.args.get("next")
         if next_page:
