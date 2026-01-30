@@ -394,6 +394,170 @@
       <ol class="audit-list" id="admin-alert-feed" aria-live="polite" aria-busy="true"></ol>
     </article>
   </section>
+
+  <section class="admin-card admin-card--maintenance card-premium animate-premium-slide" id="maintenance-gamification" aria-labelledby="admin-maintenance-title">
+    <header class="admin-section-header">
+      <div>
+        <h2 id="admin-maintenance-title"><i class="fas fa-screwdriver-wrench"></i> Maintenance &amp; Gamification</h2>
+        <p>Strumenti rapidi per manutenzione, badge e controlli di salute.</p>
+      </div>
+    </header>
+    <div class="admin-maintenance-grid admin-grid--columns">
+      <article class="admin-maintenance-panel">
+        <header class="admin-section-header">
+          <div>
+            <h3><i class="fas fa-award"></i> Ricalcola badge &amp; level</h3>
+            <p>Forza il ricalcolo dei badge senza passare da script esterni.</p>
+          </div>
+        </header>
+        <div class="admin-maintenance-actions">
+          <form method="post" action="{{ url_for('admin.recompute_badges_ui') }}" data-confirm="Confermi il ricalcolo dei badge per tutti gli utenti?" class="admin-maintenance-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-premium btn-sm">
+              <i class="fas fa-rotate"></i> Ricalcola per tutti
+            </button>
+          </form>
+          <form method="post" action="{{ url_for('admin.recompute_badges_ui') }}" data-confirm="Confermi il ricalcolo dei badge per l'utente selezionato?" class="admin-maintenance-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label class="admin-field">
+              <span class="admin-field__label">user_id</span>
+              <input type="number" name="user_id" min="1" inputmode="numeric" placeholder="Es. 1234">
+            </label>
+            <button type="submit" class="btn btn-secondary glass btn-sm">
+              <i class="fas fa-user-gear"></i> Ricalcola utente
+            </button>
+          </form>
+        </div>
+        <p class="admin-caption">Le operazioni sono protette da conferma per evitare click accidentali.</p>
+      </article>
+
+      <article class="admin-maintenance-panel">
+        <header class="admin-section-header">
+          <div>
+            <h3><i class="fas fa-gamepad"></i> Gamification overview</h3>
+            <p>Riepilogo dei badge e livelli assegnati.</p>
+          </div>
+        </header>
+        <div class="admin-analytics-grid admin-analytics-grid--expanded">
+          <div class="admin-analytics-metric">
+            <span class="admin-analytics-label">Badge totali assegnati</span>
+            <span class="admin-analytics-value">{{ gamification_badge_total }}</span>
+          </div>
+          <div class="admin-analytics-metric">
+            <span class="admin-analytics-label">Utenti livello L1</span>
+            <span class="admin-analytics-value">{{ gamification_level_counts[1] }}</span>
+          </div>
+          <div class="admin-analytics-metric">
+            <span class="admin-analytics-label">Utenti livello L2</span>
+            <span class="admin-analytics-value">{{ gamification_level_counts[2] }}</span>
+          </div>
+          <div class="admin-analytics-metric">
+            <span class="admin-analytics-label">Utenti livello L3</span>
+            <span class="admin-analytics-value">{{ gamification_level_counts[3] }}</span>
+          </div>
+        </div>
+        <div class="admin-table-wrapper admin-table-wrapper--compact">
+          <table class="table table-premium admin-table admin-table--compact">
+            <thead>
+              <tr>
+                <th scope="col">Email</th>
+                <th scope="col">Level</th>
+                <th scope="col">Badge</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for entry in gamification_top_users %}
+                <tr>
+                  <td>{{ entry.email or ('User #' ~ entry.user_id) }}</td>
+                  <td>L{{ entry.level }}</td>
+                  <td>{{ entry.badge_count }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <p class="admin-empty" {% if gamification_top_users %}hidden{% endif %}>Nessun dato gamification disponibile.</p>
+        </div>
+      </article>
+
+      <article class="admin-maintenance-panel">
+        <header class="admin-section-header">
+          <div>
+            <h3><i class="fas fa-heartbeat"></i> Health checks (light)</h3>
+            <p>Informazioni rapide senza esporre credenziali.</p>
+          </div>
+        </header>
+        <dl class="admin-stats-list">
+          <div class="admin-stats-list__item">
+            <dt>DB URI type</dt>
+            <dd>{{ maintenance_health.db_type }}</dd>
+          </div>
+          <div class="admin-stats-list__item">
+            <dt>Ultimo update curva_colored.csv</dt>
+            <dd>{{ maintenance_health.curva_colored_mtime or '—' }}</dd>
+          </div>
+          <div class="admin-stats-list__item">
+            <dt>Versione app</dt>
+            <dd>{{ maintenance_health.app_version }}</dd>
+          </div>
+        </dl>
+      </article>
+
+      <article class="admin-maintenance-panel admin-maintenance-panel--wide">
+        <header class="admin-section-header admin-section-header--split">
+          <div>
+            <h3><i class="fas fa-clipboard-list"></i> Event Logs (quick view)</h3>
+            <p>Ultimi 30 eventi di login/alert con filtri rapidi.</p>
+          </div>
+        </header>
+        <form method="get" action="{{ url_for('admin.admin_home') }}#maintenance-gamification" class="admin-maintenance-form admin-maintenance-form--filters">
+          <input type="hidden" name="q" value="{{ search_query }}">
+          <input type="hidden" name="plan" value="{{ plan_filter }}">
+          <input type="hidden" name="page" value="{{ page }}">
+          <label class="admin-field">
+            <span class="admin-field__label">Tipo evento</span>
+            <select name="event_type">
+              <option value="all" {% if maintenance_event_type == 'all' %}selected{% endif %}>ALL</option>
+              <option value="login" {% if maintenance_event_type == 'login' %}selected{% endif %}>login</option>
+              <option value="alert" {% if maintenance_event_type == 'alert' %}selected{% endif %}>alert</option>
+            </select>
+          </label>
+          <label class="admin-field">
+            <span class="admin-field__label">user_id (opzionale)</span>
+            <input type="number" name="event_user_id" min="1" inputmode="numeric" value="{{ maintenance_event_user_id }}" placeholder="Es. 42">
+          </label>
+          <button type="submit" class="btn btn-secondary glass btn-sm">
+            <i class="fas fa-filter"></i> Filtra
+          </button>
+        </form>
+        <div class="admin-table-wrapper admin-table-wrapper--compact">
+          <table class="table table-premium admin-table admin-table--compact">
+            <thead>
+              <tr>
+                <th scope="col">Timestamp</th>
+                <th scope="col">Utente</th>
+                <th scope="col">Tipo</th>
+                <th scope="col">Meta</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in maintenance_event_rows %}
+                <tr>
+                  <td>{{ row.timestamp }}</td>
+                  <td>
+                    <div>{{ row.email or ('User #' ~ row.user_id) }}</div>
+                    <span class="admin-caption">ID {{ row.user_id }}</span>
+                  </td>
+                  <td>{{ row.event_type }}</td>
+                  <td>{{ row.meta }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+          <p class="admin-empty" {% if maintenance_event_rows %}hidden{% endif %}>Nessun evento disponibile con i filtri selezionati.</p>
+        </div>
+      </article>
+    </div>
+  </section>
 </section>
 
 <div class="audit-status" data-audit-status aria-live="polite"></div>
@@ -469,6 +633,16 @@
     let adminActionsTimer = null;
     let auditTimer = null;
     let auditRefresher = null;
+
+    const confirmForms = document.querySelectorAll('[data-confirm]');
+    confirmForms.forEach((form) => {
+      form.addEventListener('submit', (event) => {
+        const message = form.getAttribute('data-confirm');
+        if (message && !window.confirm(message)) {
+          event.preventDefault();
+        }
+      });
+    });
 
     function escapeHtml(value) {
       if (value === null || value === undefined) {
