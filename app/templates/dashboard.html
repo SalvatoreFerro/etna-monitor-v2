@@ -214,6 +214,43 @@
             {% endif %}
           </div>
         </article>
+        <article class="card-premium prediction-card" aria-label="Prediction Game">
+          <header class="card-header">
+            <h2>Prediction Game</h2>
+            <p class="muted">Prevedi l’andamento del tremore tra 24 ore e accumula punti.</p>
+          </header>
+          {% if active_prediction %}
+            <div class="prediction-status">
+              <span class="prediction-badge prediction-badge--active">Previsione attiva</span>
+              <p class="prediction-choice">Hai scelto: <strong>{{ active_prediction.prediction }}</strong></p>
+              <p class="muted">
+                Si risolve automaticamente il
+                <span data-prediction-resolves="{{ active_prediction.resolves_at.isoformat() }}">
+                  {{ active_prediction.resolves_at.strftime('%d/%m/%Y %H:%M') }}
+                </span>.
+              </p>
+              <p class="prediction-countdown" data-prediction-countdown data-resolves-at="{{ active_prediction.resolves_at.isoformat() }}">
+                Countdown in arrivo…
+              </p>
+              <p class="muted">Sarà valutata automaticamente con i dati INGV.</p>
+            </div>
+          {% else %}
+            <form class="prediction-form" data-prediction-form>
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <input type="hidden" name="prediction" value="">
+              <div class="prediction-actions" role="group" aria-label="Scegli previsione">
+                <button type="button" class="btn btn-secondary btn-sm" data-prediction-choice="UP">UP</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-prediction-choice="FLAT">FLAT</button>
+                <button type="button" class="btn btn-secondary btn-sm" data-prediction-choice="DOWN">DOWN</button>
+              </div>
+              <p class="muted prediction-helper">Una sola previsione attiva alla volta.</p>
+              <p class="prediction-feedback" data-prediction-feedback role="status" aria-live="polite"></p>
+            </form>
+          {% endif %}
+          <a class="btn btn-ghost btn-sm prediction-link" href="{{ url_for('predictions.leaderboard_page') }}">
+            Vai alla classifica
+          </a>
+        </article>
         <article class="card-premium telegram-status-card" aria-label="Stato Telegram">
           <header class="card-header">
             <h2>Telegram</h2>
@@ -540,4 +577,5 @@
 
 <script src="{{ url_for('static', filename='vendor/plotly.min.js') }}" nonce="{{ csp_nonce() }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ csp_nonce() }}"></script>
+<script src="{{ url_for('static', filename='js/prediction_game.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ csp_nonce() }}"></script>
 {% endblock %}
