@@ -133,12 +133,16 @@ def make_tremor_figure(
     if mobile_tuning:
         fig.update_layout(
             autosize=True,
-            height=320,
-            margin=dict(l=44, r=10, t=18, b=38),
+            margin=dict(l=48, r=12, t=18, b=42),
             font=dict(size=11),
         )
         fig.update_xaxes(tickfont=dict(size=10))
         fig.update_yaxes(tickfont=dict(size=10), title_standoff=6)
-        fig.update_traces(line=dict(width=1.6), selector=dict(mode="lines"))
+        fig.update_traces(
+            fill=None,
+            mode="lines",
+            line=dict(width=1.0),
+            selector=dict(mode="lines"),
+        )
 
     return fig
