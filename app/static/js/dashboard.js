@@ -509,6 +509,106 @@ class EtnaDashboard {
             console.error('Errore nel caricamento stato:', error);
         }
     }
+
+    isThresholdTrace(trace) {
+        if (!trace) return false;
+        const name = (trace.name || '').toLowerCase();
+        const dash = trace?.line?.dash;
+        if (name.includes('soglia') || name.includes('threshold')) {
+            return true;
+        }
+        if (dash && dash !== 'solid') {
+            return true;
+        }
+        return false;
+    }
+
+    isGreenLine(color) {
+        if (!color || typeof color !== 'string') return false;
+        const normalized = color.toLowerCase();
+        const knownGreens = ['#4ade80', '#00aa00', '#22c55e', '#16a34a', '#4caf50', '#2ecc71'];
+        if (knownGreens.includes(normalized)) {
+            return true;
+        }
+        if (normalized.includes('green')) {
+            return true;
+        }
+        const rgbMatch = normalized.match(/rgb\(\s*(\d+),\s*(\d+),\s*(\d+)\s*\)/);
+        if (!rgbMatch) {
+            return false;
+        }
+        const [r, g, b] = rgbMatch.slice(1).map((value) => parseInt(value, 10));
+        return g > r + 20 && g > b + 20;
+    }
+
+    applyMobileTraceOverrides(traces, { isMobile } = {}) {
+        if (!isMobile || !Array.isArray(traces)) {
+            return traces;
+        }
+
+        const cloned = traces.map((trace) => ({
+            ...trace,
+            line: trace?.line ? { ...trace.line } : undefined,
+            marker: trace?.marker ? { ...trace.marker } : undefined
+        }));
+
+        const dataRichIndexes = cloned
+            .map((trace, index) => {
+                const hasDenseData = Array.isArray(trace?.x) && Array.isArray(trace?.y)
+                    && trace.x.length > 2
+                    && trace.y.length > 2;
+                return hasDenseData ? index : null;
+            })
+            .filter((index) => index !== null);
+
+        const primaryIndexes = new Set();
+        cloned.forEach((trace, index) => {
+            const name = (trace.name || '').toLowerCase();
+            if (name.includes('tremore')) {
+                primaryIndexes.add(index);
+            } else if (this.isGreenLine(trace?.line?.color)) {
+                primaryIndexes.add(index);
+            }
+        });
+
+        if (!primaryIndexes.size && dataRichIndexes.length === 1) {
+            primaryIndexes.add(dataRichIndexes[0]);
+        }
+
+        const fallbackWidthIndexes = new Set();
+        if (!primaryIndexes.size) {
+            cloned.forEach((trace, index) => {
+                if (this.isThresholdTrace(trace)) {
+                    return;
+                }
+                const dash = trace?.line?.dash;
+                if (this.isGreenLine(trace?.line?.color) || !dash || dash === 'solid') {
+                    fallbackWidthIndexes.add(index);
+                }
+            });
+        }
+
+        cloned.forEach((trace, index) => {
+            if (this.isThresholdTrace(trace)) {
+                return;
+            }
+            trace.mode = 'lines';
+            if (trace.marker) {
+                trace.marker = { ...trace.marker, size: 0 };
+            }
+            if (trace.fill !== undefined) {
+                trace.fill = null;
+            }
+            if (primaryIndexes.has(index) || fallbackWidthIndexes.has(index)) {
+                if (!trace.line) {
+                    trace.line = {};
+                }
+                trace.line.width = 0.8;
+            }
+        });
+
+        return cloned;
+    }
     
     renderPlot(data) {
         const plotDiv = document.getElementById('tremor-plot');
@@ -607,6 +707,7 @@ class EtnaDashboard {
                 hovertemplate: '<b>%{y:.2f} mV</b><br>%{x|%d/%m %H:%M}<extra></extra>',
                 showlegend: false
             };
+            const traces = this.applyMobileTraceOverrides([trace], { isMobile });
 
             const config = {
                 displayModeBar: false,
@@ -617,9 +718,9 @@ class EtnaDashboard {
             };
 
             if (hasExistingPlot) {
-                Plotly.react(plotDiv, [trace], layout, config);
+                Plotly.react(plotDiv, traces, layout, config);
             } else {
-                Plotly.newPlot(plotDiv, [trace], layout, config);
+                Plotly.newPlot(plotDiv, traces, layout, config);
             }
             this.applyInteractionState(plotDiv);
             this.syncFocusPlot(plotDiv);
@@ -675,6 +776,7 @@ class EtnaDashboard {
             hovertemplate: '%{x|%d %b %Y %H:%M}<br><b>%{y:.2f} mV</b><extra></extra>',
             showlegend: false
         };
+        const traces = this.applyMobileTraceOverrides([trace], { isMobile });
 
         const layout = {
             autosize: true,
@@ -740,9 +842,9 @@ class EtnaDashboard {
         };
 
         if (hasExistingPlot) {
-            Plotly.react(plotDiv, [trace], layout, config);
+            Plotly.react(plotDiv, traces, layout, config);
         } else {
-            Plotly.newPlot(plotDiv, [trace], layout, config);
+            Plotly.newPlot(plotDiv, traces, layout, config);
         }
 
         plotDiv.classList.add('loaded');
