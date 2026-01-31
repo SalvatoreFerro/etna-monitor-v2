@@ -124,7 +124,7 @@ def dashboard_home():
         .first()
     )
     
-    return render_template("dashboard.html",
+    return render_template("dashboard_v2.html",
                          user=user,
                          graph_json=graph_json,
                          latest_value=latest_value,
@@ -138,6 +138,8 @@ def dashboard_home():
                          user_level=user_level,
                          user_level_description=level_description,
                          active_prediction=active_prediction,
+                         hide_footer=True,
+                         hide_nav=True,
                          page_title="Dashboard tremore Etna – EtnaMonitor",
                          page_description="Grafico del tremore vulcanico dell'Etna, soglie personalizzate e storico eventi per utenti Premium.")
 

@@ -550,6 +550,8 @@ class EtnaDashboard {
         const tickFormatStops = this.getTickFormatStops();
         const fontFamily = "'Inter', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif";
 
+        const mobileMargins = { l: 20, r: 10, t: 20, b: 40 };
+
         if (this.ingvMode) {
             const layout = {
                 title: 'ECBD - RMS (UTC Time)',
@@ -576,9 +578,9 @@ class EtnaDashboard {
                 template: 'plotly_white',
                 plot_bgcolor: 'white',
                 paper_bgcolor: 'white',
-                font: { family: 'Arial', size: isMobile ? 11 : 10, color: 'black' },
+                font: { family: 'Arial', size: isMobile ? 10 : 11, color: 'black' },
                 autosize: true,
-                margin: { l: isMobile ? 50 : 60, r: 18, t: 36, b: isMobile ? 52 : 40 },
+                margin: isMobile ? mobileMargins : { l: 60, r: 18, t: 36, b: 40 },
                 showlegend: false,
                 shapes: threshold > 0 ? [{
                     type: 'line',
@@ -669,7 +671,7 @@ class EtnaDashboard {
 
         const layout = {
             autosize: true,
-            margin: { l: isMobile ? 52 : 64, r: isMobile ? 24 : 36, t: isMobile ? 36 : 48, b: isMobile ? 64 : 56 },
+            margin: isMobile ? mobileMargins : { l: 64, r: 36, t: 48, b: 56 },
             hovermode: 'x',
             dragmode: this.analyzeModeEnabled ? 'select' : 'pan',
             plot_bgcolor: 'rgba(0,0,0,0)',
@@ -684,7 +686,7 @@ class EtnaDashboard {
                 linewidth: 1,
                 linecolor: axisLineColor,
                 hoverformat: '%d/%m %H:%M',
-                tickfont: { size: isMobile ? 13 : 12 },
+                tickfont: { size: isMobile ? 11 : 12 },
                 tickpadding: isMobile ? 8 : 6,
                 nticks: isMobile ? 4 : 6,
                 tickformatstops: tickFormatStops,
@@ -701,7 +703,7 @@ class EtnaDashboard {
                 gridwidth: 0.6,
                 linewidth: 1,
                 linecolor: axisLineColor,
-                tickfont: { size: isMobile ? 13 : 12 },
+                tickfont: { size: isMobile ? 11 : 12 },
                 tickpadding: isMobile ? 8 : 6,
                 tickvals: LOG_TICKS.map((tick) => tick.value),
                 ticktext: LOG_TICKS.map((tick) => tick.label),
@@ -749,6 +751,7 @@ class EtnaDashboard {
     updateStats(data) {
         const lastUpdated = document.getElementById('last-updated');
         const dataPoints = document.getElementById('data-points');
+        const trendStatus = document.getElementById('trend-status');
         
         if (lastUpdated && data.last_ts) {
             lastUpdated.textContent = `Ultimo aggiornamento: ${new Date(data.last_ts).toLocaleString()}`;
@@ -756,6 +759,38 @@ class EtnaDashboard {
         
         if (dataPoints) {
             dataPoints.textContent = `${data.data.length} punti`;
+        }
+
+        if (trendStatus) {
+            const rows = Array.isArray(data.data) ? data.data : [];
+            const values = rows
+                .map((row) => {
+                    if (!row) return null;
+                    const rawValue = row.value ?? row[1];
+                    const numericValue = Number(rawValue);
+                    return Number.isFinite(numericValue) ? numericValue : null;
+                })
+                .filter((value) => value !== null);
+            if (values.length >= 2) {
+                const latest = values[values.length - 1];
+                const previous = values[values.length - 2];
+                const delta = latest - previous;
+                const threshold = Math.max(0.02, Math.abs(latest) * 0.01);
+                let label = 'Stabile';
+                let className = 'trend-indicator trend-flat';
+                if (delta > threshold) {
+                    label = 'In salita';
+                    className = 'trend-indicator trend-up';
+                } else if (delta < -threshold) {
+                    label = 'In calo';
+                    className = 'trend-indicator trend-down';
+                }
+                trendStatus.textContent = label;
+                trendStatus.className = className;
+            } else {
+                trendStatus.textContent = '--';
+                trendStatus.className = 'trend-indicator';
+            }
         }
     }
     
@@ -771,9 +806,26 @@ class EtnaDashboard {
         if (statusIndicator && statusText) {
             const threshold = this.getActiveThreshold();
             const source = this.getActiveThresholdData().source;
-            const isAbove = Number.isFinite(data.current_value) ? data.current_value > threshold : false;
-            statusIndicator.className = `status-indicator ${isAbove ? 'status-above' : 'status-below'}`;
-            statusText.textContent = isAbove ? 'Sopra Soglia' : 'Sotto Soglia';
+            const currentValue = Number.isFinite(data.current_value) ? data.current_value : null;
+            const isAbove = currentValue !== null ? currentValue > threshold : false;
+            let levelClass = 'status-level-green';
+            let levelLabel = 'Basso';
+            if (currentValue !== null) {
+                if (currentValue >= 2) {
+                    levelClass = 'status-level-red';
+                    levelLabel = 'Critico';
+                } else if (currentValue >= 1) {
+                    levelClass = 'status-level-orange';
+                    levelLabel = 'Alto';
+                } else if (currentValue >= 0.5) {
+                    levelClass = 'status-level-yellow';
+                    levelLabel = 'Moderato';
+                }
+            }
+            statusIndicator.className = `status-indicator ${levelClass}`;
+            statusText.textContent = currentValue !== null
+                ? `${levelLabel}${isAbove ? ' · Sopra soglia' : ''}`
+                : '--';
             this.updateActiveThresholdDisplay(threshold, source);
             this.updateDebugThresholdLabel(data.current_value, threshold, source);
         }
