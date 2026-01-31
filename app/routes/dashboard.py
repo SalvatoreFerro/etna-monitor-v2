@@ -26,6 +26,8 @@ def dashboard_home():
     import plotly
 
     user = get_current_user()
+    user_agent = (request.user_agent.string or "").lower()
+    is_mobile = any(token in user_agent for token in ("iphone", "ipad", "ipod", "android", "mobile"))
     
     try:
         curva_path = get_curva_csv_path()
@@ -67,7 +69,13 @@ def dashboard_home():
             raw_series = df['timestamp'] * 0 if 'timestamp' in df.columns else df.index.to_series() * 0
         smooth_source = df['value_avg'] if 'value_avg' in df.columns else raw_series
         smooth_series = smooth_source.rolling(window=9, min_periods=1, center=True).median()
-        fig = make_tremor_figure(df['timestamp'], raw_series, threshold, smooth_series)
+        fig = make_tremor_figure(
+            df['timestamp'],
+            raw_series,
+            threshold,
+            smooth_series,
+            mobile_tuning=is_mobile,
+        )
         if debug_alerts_enabled:
             logger.debug(
                 "plot_threshold=%.2f source=%s user_id=%s",
@@ -75,11 +83,13 @@ def dashboard_home():
                 threshold_source,
                 user.id,
             )
+        plot_height = 320 if is_mobile else 520
         fig.update_layout(
             plot_bgcolor='rgba(0,0,0,0)',
             paper_bgcolor='rgba(0,0,0,0)',
             font_color='#e6e7ea',
-            height=400
+            autosize=True,
+            height=plot_height
         )
         graph_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
         

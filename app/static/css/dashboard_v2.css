@@ -212,6 +212,15 @@
   margin-top: 16px;
 }
 
+.plot-wrap {
+  width: 100%;
+  max-width: 100%;
+}
+
+.card--plot .inner {
+  padding: 0;
+}
+
 .chart-header {
   display: flex;
   flex-direction: column;
@@ -653,5 +662,15 @@
   .chart-actions > *:only-child,
   .chart-interaction-controls > *:only-child {
     grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .card--plot {
+    padding: 10px;
+  }
+
+  .dashboard-chart .chart-container {
+    height: clamp(260px, 38vh, 360px);
   }
 }

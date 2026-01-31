@@ -73,7 +73,7 @@
       {% endif %}
     </section>
 
-    <section class="dashboard-chart card" id="tremor-chart" aria-label="Grafico tremore">
+    <section class="dashboard-chart card card--plot" id="tremor-chart" aria-label="Grafico tremore">
       <header class="chart-header">
         <div>
           <h2>Grafico</h2>
@@ -125,13 +125,15 @@
         Modalità analisi attiva
       </span>
 
-      <div
-        id="tremor-plot"
-        class="chart-container"
-        role="img"
-        tabindex="0"
-        aria-label="Grafico dati tremore vulcanico"
-      ></div>
+      <div class="plot-wrap inner">
+        <div
+          id="tremor-plot"
+          class="chart-container"
+          role="img"
+          tabindex="0"
+          aria-label="Grafico dati tremore vulcanico"
+        ></div>
+      </div>
     </section>
 
     <section class="dashboard-actions" aria-label="Azioni e impostazioni">
