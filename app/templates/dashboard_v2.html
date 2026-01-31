@@ -11,10 +11,19 @@
 <div class="dashboard-v2">
   <header class="dashboard-app-bar" role="banner">
     <div class="app-bar-left">
-      <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="Logo EtnaMonitor" class="app-bar-logo" />
-      <span class="app-bar-title">Dashboard</span>
+      <a class="app-bar-brand" href="/" aria-label="EtnaMonitor home">
+        <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="Logo EtnaMonitor" class="app-bar-logo" />
+        <span class="app-bar-title">EtnaMonitor</span>
+      </a>
+      <span class="app-bar-context">Dashboard</span>
+      <nav class="app-bar-nav" aria-label="Navigazione rapida">
+        <a href="{{ url_for('main.index') }}">Home</a>
+        <a href="{{ url_for('main.index') }}#grafico-etna">Grafico</a>
+        <a href="{{ url_for('community.community_landing') }}">Community</a>
+      </nav>
     </div>
     <div class="app-bar-actions">
+      <a class="btn btn-ghost btn-sm" href="{{ url_for('dashboard.settings') }}">Impostazioni</a>
       <a class="btn btn-secondary btn-sm" href="{{ url_for('main.logout') }}">Logout</a>
     </div>
   </header>
@@ -133,7 +142,7 @@
 
       <div class="accordion">
         <details class="accordion-item" id="account-section">
-          <summary>Account</summary>
+          <summary><span class="accordion-title">Account</span></summary>
           <div class="accordion-body">
             {% if user.has_premium_access %}
               <span class="badge premium">🟢 Premium attivo</span>
@@ -156,7 +165,7 @@
         </details>
 
         <details class="accordion-item" id="alert-settings">
-          <summary>Telegram</summary>
+          <summary><span class="accordion-title">Telegram</span></summary>
           <div class="accordion-body">
             {% if telegram_connected %}
               <span class="telegram-badge telegram-badge--connected">Connesso</span>
@@ -177,7 +186,7 @@
         </details>
 
         <details class="accordion-item" id="threshold-settings">
-          <summary>Soglia</summary>
+          <summary><span class="accordion-title">Soglia</span></summary>
           <div class="accordion-body">
             {% if user.has_premium_access %}
               <div class="threshold-controls">
@@ -198,7 +207,7 @@
         </details>
 
         <details class="accordion-item" id="recent-events">
-          <summary>Log eventi</summary>
+          <summary><span class="accordion-title">Log eventi</span></summary>
           <div class="accordion-body">
             {% if user.has_premium_access %}
               {% if recent_events %}
@@ -233,10 +242,105 @@
         </details>
 
         <details class="accordion-item" id="account-settings">
-          <summary>Impostazioni account</summary>
+          <summary><span class="accordion-title">Impostazioni account</span></summary>
           <div class="accordion-body">
             <p class="muted">Email registrata: {{ user.email }}</p>
             <a class="btn btn-secondary btn-sm" href="{{ url_for('dashboard.settings') }}">Gestisci email / password</a>
+          </div>
+        </details>
+
+        <details class="accordion-item" id="prediction-game">
+          <summary>
+            <span class="accordion-title">Prediction Game</span>
+            <span class="accordion-meta">Gioca</span>
+          </summary>
+          <div class="accordion-body prediction-card">
+            <p class="muted">Prevedi l’andamento del tremore tra 24 ore e accumula punti.</p>
+            {% if active_prediction %}
+              <div class="prediction-status">
+                <span class="prediction-badge prediction-badge--active">Previsione attiva</span>
+                <p class="prediction-choice">Hai scelto: <strong>{{ active_prediction.prediction }}</strong></p>
+                <p class="muted">
+                  Si risolve automaticamente il
+                  <span data-prediction-resolves="{{ active_prediction.resolves_at.isoformat() }}">
+                    {{ active_prediction.resolves_at.strftime('%d/%m/%Y %H:%M') }}
+                  </span>.
+                </p>
+                <p class="prediction-countdown" data-prediction-countdown data-resolves-at="{{ active_prediction.resolves_at.isoformat() }}">
+                  Countdown in arrivo…
+                </p>
+                <p class="muted">Sarà valutata automaticamente con i dati INGV.</p>
+              </div>
+            {% else %}
+              <form class="prediction-form" data-prediction-form>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="prediction" value="">
+                <div class="prediction-actions" role="group" aria-label="Scegli previsione">
+                  <button type="button" class="btn btn-secondary btn-sm" data-prediction-choice="UP">UP</button>
+                  <button type="button" class="btn btn-secondary btn-sm" data-prediction-choice="FLAT">FLAT</button>
+                  <button type="button" class="btn btn-secondary btn-sm" data-prediction-choice="DOWN">DOWN</button>
+                </div>
+                <p class="muted prediction-helper">Una sola previsione attiva alla volta.</p>
+                <p class="prediction-feedback" data-prediction-feedback role="status" aria-live="polite"></p>
+              </form>
+            {% endif %}
+            <a class="btn btn-ghost btn-sm prediction-link" href="{{ url_for('predictions.leaderboard_page') }}">
+              Vai alla classifica
+            </a>
+          </div>
+        </details>
+
+        <details class="accordion-item" id="badge-levels">
+          <summary>
+            <span class="accordion-title">Badge e livelli</span>
+            <span class="accordion-meta">Level {{ user_level }}</span>
+          </summary>
+          <div class="accordion-body badge-summary-card">
+            <p class="muted">Segui i tuoi progressi con badge e livello attuale.</p>
+            {% set badge_count = user_badges|length if user_badges else 0 %}
+            {% if user_level < 3 %}
+              {% set level_base = 0 if user_level == 1 else 2 %}
+              {% set level_target = 2 if user_level == 1 else 4 %}
+              {% set progress_raw = (badge_count - level_base) / (level_target - level_base) * 100 %}
+              {% set progress = 0 if progress_raw < 0 else (100 if progress_raw > 100 else progress_raw) %}
+            {% else %}
+              {% set progress = 100 %}
+            {% endif %}
+            {% set progress_percent = progress | round(0, 'floor') %}
+            <div class="badge-level">
+              <span class="badge-level__value">Level {{ user_level }}</span>
+              <p class="muted">{{ user_level_description }}</p>
+              <div class="badge-progress" role="progressbar" aria-valuenow="{{ progress_percent }}" aria-valuemin="0" aria-valuemax="100">
+                <span class="badge-progress__bar" style="width: {{ progress_percent }}%"></span>
+              </div>
+              <span class="badge-progress__label">
+                {% if user_level >= 3 %}
+                  Livello massimo raggiunto
+                {% else %}
+                  {{ progress_percent }}% verso il prossimo livello
+                {% endif %}
+              </span>
+            </div>
+            {% if user_badges %}
+              <ul class="badge-list">
+                {% for badge in user_badges %}
+                  <li class="badge-item">
+                    <span class="badge-icon" aria-hidden="true">{{ badge.icon }}</span>
+                    <div class="badge-content">
+                      <strong>{{ badge.label }}</strong>
+                      <p class="muted">{{ badge.description }}</p>
+                      {% if badge.earned_at %}
+                        <span class="badge-date">Sbloccato il {{ badge.earned_at.strftime('%d/%m/%Y') }}</span>
+                      {% endif %}
+                    </div>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <div class="badge-empty">
+                <p class="muted">Inizia a monitorare per sbloccare i badge.</p>
+              </div>
+            {% endif %}
           </div>
         </details>
       </div>
@@ -271,4 +375,5 @@
 
 <script src="{{ url_for('static', filename='vendor/plotly.min.js') }}" nonce="{{ csp_nonce() }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ csp_nonce() }}"></script>
+<script src="{{ url_for('static', filename='js/prediction_game.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ csp_nonce() }}"></script>
 {% endblock %}

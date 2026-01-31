@@ -3,7 +3,7 @@
 }
 
 .dashboard-v2 {
-  padding: 96px 16px 40px;
+  padding: calc(96px + env(safe-area-inset-top)) 16px 40px;
   max-width: 1200px;
   margin: 0 auto;
   overflow-x: hidden;
@@ -14,21 +14,36 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 72px;
+  height: calc(72px + env(safe-area-inset-top));
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 18px;
+  padding: env(safe-area-inset-top) 18px 0;
   background: rgba(5, 12, 30, 0.92);
   border-bottom: 1px solid rgba(148, 163, 184, 0.2);
   backdrop-filter: blur(16px);
   z-index: 1000;
 }
 
+.app-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .app-bar-left {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
+}
+
+.app-bar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: inherit;
+  text-decoration: none;
 }
 
 .app-bar-logo {
@@ -40,6 +55,36 @@
   font-family: "Space Grotesk", "Inter", sans-serif;
   font-size: 1.1rem;
   font-weight: 600;
+}
+
+.app-bar-context {
+  font-size: 0.85rem;
+  color: rgba(148, 163, 184, 0.9);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.app-bar-nav {
+  display: none;
+  align-items: center;
+  gap: 12px;
+  margin-left: 6px;
+}
+
+.app-bar-nav a {
+  color: rgba(226, 232, 240, 0.9);
+  font-size: 0.9rem;
+  text-decoration: none;
+  padding: 6px 8px;
+  border-radius: 999px;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.app-bar-nav a:hover,
+.app-bar-nav a:focus-visible {
+  background: rgba(148, 163, 184, 0.2);
+  color: #f8fafc;
 }
 
 .dashboard-layout {
@@ -163,9 +208,7 @@
 
 .dashboard-chart .chart-container {
   width: 100%;
-  height: 70vh;
-  min-height: 65vh;
-  max-height: 75vh;
+  height: clamp(420px, 70vh, 620px);
   margin-top: 16px;
 }
 
@@ -176,9 +219,17 @@
 }
 
 .chart-header-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
+}
+
+.chart-header-actions .btn,
+.chart-header-actions .input-base,
+.chart-actions .btn,
+.chart-interaction-controls .btn {
+  width: 100%;
+  justify-content: center;
 }
 
 .chart-toolbar {
@@ -191,8 +242,8 @@
 
 .chart-interaction-controls,
 .chart-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 
@@ -238,6 +289,11 @@
   font-weight: 600;
   cursor: pointer;
   list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  transition: background 0.2s ease;
 }
 
 .accordion-item summary::-webkit-details-marker {
@@ -246,12 +302,17 @@
 
 .accordion-item summary::after {
   content: "▾";
-  float: right;
   color: rgba(148, 163, 184, 0.8);
+  display: inline-block;
+  transition: transform 0.2s ease;
 }
 
 .accordion-item[open] summary::after {
   transform: rotate(180deg);
+}
+
+.accordion-item[open] summary {
+  background: rgba(15, 23, 42, 0.5);
 }
 
 .accordion-body {
@@ -260,6 +321,21 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+.accordion-title {
+  font-size: 0.95rem;
+}
+
+.accordion-meta {
+  margin-left: auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #93c5fd;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .badge {
@@ -349,6 +425,126 @@
   gap: 8px;
 }
 
+.prediction-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.prediction-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.prediction-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.prediction-badge--active {
+  background: rgba(34, 197, 94, 0.2);
+  color: #bbf7d0;
+}
+
+.prediction-choice,
+.prediction-helper {
+  margin: 0;
+}
+
+.prediction-countdown {
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.prediction-feedback {
+  min-height: 1.2rem;
+  color: rgba(148, 163, 184, 0.95);
+}
+
+.prediction-link {
+  align-self: flex-start;
+}
+
+.badge-level {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.badge-level__value {
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.badge-progress {
+  position: relative;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.2);
+  overflow: hidden;
+}
+
+.badge-progress__bar {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: linear-gradient(90deg, #38bdf8, #6366f1);
+}
+
+.badge-progress__label {
+  font-size: 0.75rem;
+  color: rgba(148, 163, 184, 0.9);
+}
+
+.badge-list {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.badge-item {
+  display: flex;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.badge-icon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.badge-content {
+  display: grid;
+  gap: 4px;
+}
+
+.badge-date {
+  font-size: 0.75rem;
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.badge-empty {
+  margin-top: 10px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.4);
+  border: 1px dashed rgba(148, 163, 184, 0.25);
+}
+
 .chart-focus-modal {
   position: fixed;
   inset: 0;
@@ -413,7 +609,7 @@
 
 @media (min-width: 900px) {
   .dashboard-v2 {
-    padding: 104px 24px 48px;
+    padding: calc(104px + env(safe-area-inset-top)) 24px 48px;
   }
 
   .dashboard-layout {
@@ -439,7 +635,23 @@
 
   .dashboard-chart .chart-container {
     height: 520px;
-    min-height: 520px;
     max-height: none;
+  }
+}
+
+@media (min-width: 1024px) {
+  .app-bar-nav {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 640px) {
+  .chart-header-actions > *:only-child {
+    grid-column: 1 / -1;
+  }
+
+  .chart-actions > *:only-child,
+  .chart-interaction-controls > *:only-child {
+    grid-column: 1 / -1;
   }
 }
