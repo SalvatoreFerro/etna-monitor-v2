@@ -10,6 +10,7 @@ import requests
 from flask import (
     Blueprint,
     current_app,
+    flash,
     jsonify,
     abort,
     redirect,
@@ -21,7 +22,7 @@ from flask import (
     session,
     url_for,
 )
-from flask_login import current_user
+from flask_login import current_user, logout_user
 
 from ..utils.auth import get_current_user, is_owner_or_admin
 
@@ -219,6 +220,16 @@ def csp_test():
             "content_security_policy": policy_header,
         }
     )
+
+
+@bp.route("/logout", methods=["GET"])
+def logout():
+    logout_user()
+    session.pop("user_id", None)
+    session.pop("oauth_state", None)
+    session.clear()
+    flash("Sei stato disconnesso.", "info")
+    return redirect(url_for("main.index"))
 
 
 @bp.route("/")

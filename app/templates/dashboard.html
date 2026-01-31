@@ -45,6 +45,7 @@
         </div>
 
         <div class="dashboard-hero-controls" aria-label="Azioni rapide">
+          <a class="btn btn-secondary glass btn-sm" href="{{ url_for('main.logout') }}">Logout</a>
           <button id="theme-toggle" class="control-button glass" aria-label="Cambia tra tema chiaro e scuro">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
               <circle cx="12" cy="12" r="5" />
@@ -61,50 +62,71 @@
           </div>
         </div>
       </div>
+    </div>
+  </section>
 
-      <div class="dashboard-hero-metrics" role="group" aria-label="Metriche principali">
-        <div class="metric-card card-premium">
-          <span class="metric-label">Ultimo aggiornamento</span>
-          <span class="metric-value" id="last-updated">Ultimo aggiornamento: --</span>
-        </div>
-        <div class="metric-card card-premium">
-          <span class="metric-label">Campioni disponibili</span>
-          <span class="metric-value" id="data-points">-- punti</span>
-        </div>
-        <div class="metric-card card-premium status-metric">
-          <span class="metric-label">Stato attuale</span>
-          <div class="status-value">
-            <span class="metric-number" id="current-value">--</span>
-            <span class="metric-unit">mV</span>
+  <section class="dashboard-panels" role="region" aria-label="Strumenti di monitoraggio">
+    {% set telegram_connected = (user.telegram_chat_id or user.chat_id) and user.telegram_opt_in %}
+    {% set threshold_configured = user.has_premium_access and user.threshold is not none %}
+    <div class="dashboard-grid">
+      <div class="dashboard-stack dashboard-stack--main">
+        <article class="card-premium status-card" id="tremor-status" aria-label="Stato Tremore">
+          <header class="card-header">
+            <h2>Stato Tremore</h2>
+            <p class="muted">KPI live, soglia operativa e trend recenti in un colpo d'occhio.</p>
+          </header>
+          <div class="kpi-grid" role="group" aria-label="Metriche principali">
+            <div class="kpi-card kpi-card--primary">
+              <span class="kpi-label">Tremore attuale</span>
+              <div class="kpi-value">
+                <span id="current-value">--</span>
+                <span class="kpi-unit">mV</span>
+              </div>
+              <div class="status-indicator" id="status-indicator">
+                <span id="status-text">--</span>
+              </div>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-label">Ultimo aggiornamento</span>
+              <span class="kpi-value kpi-value--small" id="last-updated">Ultimo aggiornamento: --</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-label">Soglia attiva</span>
+              <span
+                class="kpi-value kpi-value--small"
+                id="active-threshold"
+                data-threshold="{{ '%.2f'|format(active_threshold) }}"
+                data-source="{{ threshold_source }}"
+                data-debug="{{ '1' if debug_alerts_enabled else '0' }}"
+              >
+                Soglia attiva: {{ "%.2f"|format(active_threshold) }} mV ({% if threshold_source == 'user/custom' %}personalizzata{% else %}default{% endif %})
+              </span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-label">Campioni disponibili</span>
+              <span class="kpi-value kpi-value--small" id="data-points">-- punti</span>
+            </div>
           </div>
-          <div class="status-indicator" id="status-indicator">
-            <span id="status-text">--</span>
-          </div>
-          <p
-            class="muted"
-            id="active-threshold"
-            data-threshold="{{ '%.2f'|format(active_threshold) }}"
-            data-source="{{ threshold_source }}"
-            data-debug="{{ '1' if debug_alerts_enabled else '0' }}"
-          >
-            Soglia attiva: {{ "%.2f"|format(active_threshold) }} mV ({% if threshold_source == 'user/custom' %}personalizzata{% else %}default{% endif %})
-          </p>
           {% if debug_alerts_enabled %}
           <p class="muted" id="debug-threshold">
             DEBUG: threshold_used_for_badge={{ "%.2f"|format(active_threshold) }} | source={{ threshold_source }} | current={{ "%.2f"|format(latest_value) }}
           </p>
           {% endif %}
-        </div>
-      </div>
-    </div>
-  </section>
+          <div class="status-cta-row">
+            {% if not telegram_connected %}
+              <a class="btn btn-secondary glass btn-sm" href="{{ url_for('dashboard.dashboard_home') }}#alert-settings">Collega Telegram</a>
+            {% endif %}
+            {% if user.has_premium_access %}
+              <a class="btn btn-secondary glass btn-sm" href="{{ url_for('dashboard.dashboard_home') }}#threshold-settings">Imposta soglia</a>
+              <a class="btn btn-ghost btn-sm" href="{{ url_for('dashboard.dashboard_home') }}#recent-events">Vedi log</a>
+            {% endif %}
+          </div>
+        </article>
 
-  <section class="dashboard-panels" role="region" aria-label="Strumenti di monitoraggio">
-    <div class="panels-grid">
-      <article class="card-premium chart-card">
+        <article class="card-premium chart-card" id="tremor-chart">
         <header class="chart-card-header">
           <div>
-            <p class="chart-eyebrow">Monitoraggio Tremore Vulcanico</p>
+            <p class="chart-eyebrow">Grafico</p>
             <h2>Serie storica in tempo reale</h2>
           </div>
         </header>
@@ -181,9 +203,204 @@
         </footer>
       </article>
 
-      <div class="side-grid">
-        {% set telegram_connected = (user.telegram_chat_id or user.chat_id) and user.telegram_opt_in %}
-        {% set threshold_configured = user.has_premium_access and user.threshold is not none %}
+      <article class="card-premium alerts-card animate-premium-fade" id="alert-settings">
+        <header class="card-header">
+          <h3>Impostazioni avvisi</h3>
+          <p>Gestisci le notifiche automatiche via email e Telegram.</p>
+        </header>
+
+        <div class="alert-controls">
+          {% if user.has_premium_access %}
+          <label class="checkbox-label">
+            <input type="checkbox" id="email-alerts" {% if user.email_alerts %}checked{% endif %} onchange="toggleAlert('email', this.checked)">
+            <span>Notifiche email</span>
+          </label>
+          {% else %}
+          <div class="upgrade-prompt">
+            <p>Le notifiche email sono riservate agli utenti Premium.</p>
+          </div>
+          {% endif %}
+
+          <div class="telegram-section">
+            <h4>Notifiche Telegram</h4>
+            {% if user.telegram_chat_id or user.chat_id %}
+              <div class="telegram-connected glass">
+                <span class="connection-status status-success">✓ Connesso</span>
+                <p>Chat ID: {{ user.telegram_chat_id or user.chat_id }}</p>
+                {% if not user.has_premium_access %}
+                  <p class="trial-hint">Riceverai l'alert di prova alla prossima attività significativa. Premium con donazione PayPal (min. €9,99) con email registrazione.</p>
+                {% endif %}
+                <form method="POST" action="{{ url_for('dashboard.disconnect_telegram') }}">
+                  <button type="submit" class="btn btn-secondary btn-sm">Disconnetti</button>
+                </form>
+                <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener" class="btn btn-secondary glass btn-sm">Verifica connessione</a>
+              </div>
+            {% else %}
+              <div class="telegram-setup">
+                <p class="telegram-intro">Collega il bot in un tap per ricevere gli avvisi disponibili sul tuo piano.</p>
+                <p class="muted">Il link rimane valido 15 minuti e si avvia in automatico su Telegram.</p>
+                <form method="POST" action="{{ url_for('dashboard.generate_telegram_link') }}" class="telegram-form" target="_blank">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button
+                    type="submit"
+                    class="btn btn-premium"
+                    data-track-event="telegram_link_link_generated"
+                    data-track-location="dashboard"
+                  >Attiva avvisi Telegram (30 sec)</button>
+                </form>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+      </article>
+
+      {% if user.has_premium_access %}
+      <article class="card-premium events-card animate-premium-fade" id="recent-events">
+        <header class="card-header">
+          <h3>Eventi recenti</h3>
+          <p>Ultimi eventi sismici rilevati dalla piattaforma.</p>
+        </header>
+        {% if recent_events %}
+        <div class="events-table-wrapper">
+          <table class="events-table" id="events-list">
+            <thead>
+              <tr>
+                <th scope="col">Data</th>
+                <th scope="col">Evento</th>
+                <th scope="col">Valore</th>
+                <th scope="col">Dettagli</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for event in recent_events %}
+              <tr>
+                <td>{{ event.timestamp.strftime('%d/%m %H:%M') }}</td>
+                <td>{{ event.event_type.replace('_', ' ').title() }}</td>
+                <td>
+                  {% if event.value %}
+                    {{ "%.2f"|format(event.value) }} mV
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td class="event-message">{{ event.message }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+          <p class="no-events">Nessun evento sismico significativo nelle ultime 24 ore.</p>
+        {% endif %}
+      </article>
+      {% else %}
+      <article class="card-premium events-card animate-premium-fade" id="recent-events">
+        <header class="card-header">
+          <h3>Storico eventi</h3>
+          <p>Nel piano Free lo storico completo non è disponibile.</p>
+        </header>
+        <div class="empty-state">
+          <p>Continua a monitorare il grafico in tempo reale e lo stato corrente.</p>
+        </div>
+      </article>
+      {% endif %}
+      </div>
+
+      <div class="dashboard-stack dashboard-stack--side">
+        <article class="card-premium account-summary-card" aria-label="Account" id="account-section">
+          <header class="card-header">
+            <h2>Account</h2>
+            <p class="muted">Stato, badge piano e azioni rapide.</p>
+          </header>
+          {% if user.has_premium_access %}
+            <div class="account-summary">
+              <div class="account-summary__status">
+                <span class="badge premium">🟢 Premium attivo</span>
+                <p class="muted">Accesso completo agli alert e alla personalizzazione.</p>
+              </div>
+              <ul class="account-benefits">
+                <li>Alert Telegram + email senza limiti</li>
+                <li>Soglia personalizzata e log eventi</li>
+                <li>Esportazioni e accesso anticipato</li>
+              </ul>
+              <div class="account-summary__actions">
+                <a class="btn btn-secondary glass btn-sm" href="{{ url_for('dashboard.settings') }}">Impostazioni account</a>
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('main.logout') }}">Logout</a>
+              </div>
+            </div>
+          {% else %}
+            <div class="account-summary">
+              <div class="account-summary__status">
+                <span class="badge free">⚪ Free</span>
+                <p class="muted">Hai accesso al grafico realtime e a 1 alert di prova.</p>
+              </div>
+              <div class="account-summary__actions">
+                <p class="muted">Sblocca soglia personalizzata + log eventi + alert Telegram.</p>
+                <a class="btn btn-premium btn-sm" href="{{ url_for('billing.donate') }}">Attiva Premium (PayPal)</a>
+                <p class="helper-text">Donazione PayPal (min. €9,99)</p>
+                <p class="helper-text">Nella donazione inserisci la tua email di registrazione</p>
+                <p class="helper-text">PayPal: salvoferro16@gmail.com</p>
+                <a class="btn btn-ghost btn-sm" href="{{ url_for('main.logout') }}">Logout</a>
+              </div>
+            </div>
+          {% endif %}
+        </article>
+
+        <article class="card-premium telegram-status-card" aria-label="Telegram" id="telegram-section">
+          <header class="card-header">
+            <h2>Telegram</h2>
+            <p class="muted">Collega il bot per ricevere alert sul telefono.</p>
+          </header>
+          {% if telegram_connected %}
+            <div class="telegram-status-body" data-track-view="telegram_link_success" data-track-location="dashboard">
+              <span class="telegram-badge telegram-badge--connected">Telegram attivo ✅</span>
+              <p class="muted">Alert attivi via Telegram.</p>
+              <a class="btn btn-secondary glass btn-sm" href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">Apri bot</a>
+            </div>
+          {% else %}
+            <div class="telegram-status-body">
+              <span class="telegram-badge telegram-badge--disconnected">Telegram non collegato</span>
+              <ol class="step-list">
+                <li>Genera il link di collegamento</li>
+                <li>Apri Telegram e premi Start</li>
+              </ol>
+              <form method="POST" action="{{ url_for('dashboard.generate_telegram_link') }}" target="_blank">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button
+                  type="submit"
+                  class="btn btn-secondary glass btn-sm"
+                  data-track-event="telegram_link_link_generated"
+                  data-track-location="dashboard"
+                >Attiva avvisi Telegram (30 sec)</button>
+              </form>
+            </div>
+          {% endif %}
+        </article>
+
+        <article class="card-premium threshold-card animate-premium-slide" id="threshold-settings">
+          <header class="card-header">
+            <h3>Soglia</h3>
+            <p>Gestisci il livello di allerta per notifiche e visualizzazioni.</p>
+          </header>
+
+          {% if user.has_premium_access %}
+          <div class="threshold-controls">
+            <label for="threshold-slider">Soglia personalizzata</label>
+            <div class="slider-container">
+              <input type="range" id="threshold-slider" min="0.1" max="10" step="0.1" value="{{ '%.2f'|format(active_threshold) }}" aria-label="Cursore soglia" aria-describedby="threshold-help">
+              <input type="number" id="threshold-input" min="0.1" max="10" step="0.1" value="{{ '%.2f'|format(active_threshold) }}" aria-label="Valore soglia" aria-describedby="threshold-help">
+            </div>
+            <p id="threshold-help" class="help-text">Imposta una soglia tra 0.1 e 10 mV per gli avvisi automatici.</p>
+            <button id="save-threshold" class="btn btn-premium btn-sm">Salva</button>
+          </div>
+          {% else %}
+          <div class="upgrade-prompt">
+            <p>Soglia fissa: {{ "%.2f"|format(active_threshold) }} mV.</p>
+            <p class="muted">Premium con donazione PayPal (min. €9,99). Inserisci l’email di registrazione.</p>
+          </div>
+          {% endif %}
+        </article>
+
         <article class="card-premium setup-card" aria-label="Setup progress">
           <header class="card-header">
             <h2>Setup progress</h2>
@@ -214,6 +431,7 @@
             {% endif %}
           </div>
         </article>
+
         <article class="card-premium prediction-card" aria-label="Prediction Game">
           <header class="card-header">
             <h2>Prediction Game</h2>
@@ -251,67 +469,6 @@
             Vai alla classifica
           </a>
         </article>
-        <article class="card-premium telegram-status-card" aria-label="Stato Telegram">
-          <header class="card-header">
-            <h2>Telegram</h2>
-            <p class="muted">Collega il bot per ricevere alert sul telefono.</p>
-          </header>
-          {% if telegram_connected %}
-            <div class="telegram-status-body" data-track-view="telegram_link_success" data-track-location="dashboard">
-              <span class="telegram-badge telegram-badge--connected">Telegram attivo ✅</span>
-              <p class="muted">Alert attivi via Telegram.</p>
-            </div>
-          {% else %}
-            <div class="telegram-status-body">
-              <span class="telegram-badge telegram-badge--disconnected">Telegram non collegato</span>
-              <ol class="step-list">
-                <li>Genera il link di collegamento</li>
-                <li>Apri Telegram e premi Start</li>
-              </ol>
-              <form method="POST" action="{{ url_for('dashboard.generate_telegram_link') }}" target="_blank">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <button
-                  type="submit"
-                  class="btn btn-secondary glass btn-sm"
-                  data-track-event="telegram_link_link_generated"
-                  data-track-location="dashboard"
-                >Attiva avvisi Telegram (30 sec)</button>
-              </form>
-            </div>
-          {% endif %}
-        </article>
-        <article class="card-premium account-summary-card" aria-label="Account">
-          <header class="card-header">
-            <h2>Account</h2>
-            <p class="muted">Stato e attivazione Premium in un colpo d'occhio.</p>
-          </header>
-          {% if user.has_premium_access %}
-            <div class="account-summary">
-              <div class="account-summary__status">
-                <span class="badge premium">🟢 Premium attivo</span>
-                <p class="muted">Accesso completo agli alert e alla personalizzazione.</p>
-              </div>
-              <ul class="account-benefits">
-                <li>Alert Telegram + email senza limiti</li>
-                <li>Soglia personalizzata e log eventi</li>
-                <li>Esportazioni e accesso anticipato</li>
-              </ul>
-            </div>
-          {% else %}
-            <div class="account-summary">
-              <div class="account-summary__status">
-                <span class="badge free">⚪ Free</span>
-                <p class="muted">Hai accesso al grafico realtime e a 1 alert di prova.</p>
-              </div>
-              <div class="account-summary__actions">
-                <a class="btn btn-premium btn-sm" href="{{ url_for('billing.donate') }}">Attiva Premium (PayPal)</a>
-                <p class="helper-text">Donazione PayPal (min. €9,99)</p>
-                <p class="helper-text">Nella donazione inserisci la tua email di registrazione</p>
-                <p class="helper-text">PayPal: salvoferro16@gmail.com</p>
-              </div>
-            </div>
-          {% endif %}
-        </article>
         <article class="card-premium badge-summary-card" aria-label="Badge e livelli">
           <header class="card-header">
             <h3>Badge e livelli</h3>
@@ -342,30 +499,6 @@
             </div>
           {% endif %}
         </article>
-        <article class="card-premium threshold-card animate-premium-slide" id="threshold-settings">
-          <header class="card-header">
-            <h3>Impostazioni soglia</h3>
-            <p>Gestisci il livello di allerta per notifiche e visualizzazioni.</p>
-          </header>
-
-          {% if user.has_premium_access %}
-          <div class="threshold-controls">
-            <label for="threshold-slider">Soglia personalizzata</label>
-            <div class="slider-container">
-              <input type="range" id="threshold-slider" min="0.1" max="10" step="0.1" value="{{ '%.2f'|format(active_threshold) }}" aria-label="Cursore soglia" aria-describedby="threshold-help">
-              <input type="number" id="threshold-input" min="0.1" max="10" step="0.1" value="{{ '%.2f'|format(active_threshold) }}" aria-label="Valore soglia" aria-describedby="threshold-help">
-            </div>
-            <p id="threshold-help" class="help-text">Imposta una soglia tra 0.1 e 10 mV per gli avvisi automatici.</p>
-            <button id="save-threshold" class="btn btn-premium btn-sm">Salva</button>
-          </div>
-          {% else %}
-          <div class="upgrade-prompt">
-            <p>Soglia fissa: {{ "%.2f"|format(active_threshold) }} mV.</p>
-            <p class="muted">Premium con donazione PayPal (min. €9,99). Inserisci l’email di registrazione.</p>
-          </div>
-          {% endif %}
-        </article>
-
         <article class="card-premium refresh-card animate-premium-slide">
           <header class="card-header">
             <h3>Aggiornamento automatico</h3>
@@ -423,7 +556,7 @@
 
         <article class="card-premium account-card animate-premium-slide" id="account-privacy">
           <header class="card-header">
-            <h3>Gestione account</h3>
+            <h3>Impostazioni</h3>
             <p>Esporta i tuoi dati o richiedi l'eliminazione dell'account in autonomia.</p>
           </header>
 
@@ -438,109 +571,6 @@
           <p class="account-hint">Riceverai un'email con il link di conferma. Dopo la conferma i dati verranno anonimizzati e cancellati entro 30 giorni.</p>
         </article>
       </div>
-    </div>
-    <div class="premium-grid">
-      <article class="card-premium alerts-card animate-premium-fade" id="alert-settings">
-        <header class="card-header">
-          <h3>Impostazioni avvisi</h3>
-          <p>Gestisci le notifiche automatiche via email e Telegram.</p>
-        </header>
-
-        <div class="alert-controls">
-          {% if user.has_premium_access %}
-          <label class="checkbox-label">
-            <input type="checkbox" id="email-alerts" {% if user.email_alerts %}checked{% endif %} onchange="toggleAlert('email', this.checked)">
-            <span>Notifiche email</span>
-          </label>
-          {% else %}
-          <div class="upgrade-prompt">
-            <p>Le notifiche email sono riservate agli utenti Premium.</p>
-          </div>
-          {% endif %}
-
-          <div class="telegram-section">
-            <h4>Notifiche Telegram</h4>
-            {% if user.telegram_chat_id or user.chat_id %}
-              <div class="telegram-connected glass">
-                <span class="connection-status status-success">✓ Connesso</span>
-                <p>Chat ID: {{ user.telegram_chat_id or user.chat_id }}</p>
-                {% if not user.has_premium_access %}
-                  <p class="trial-hint">Riceverai l'alert di prova alla prossima attività significativa. Premium con donazione PayPal (min. €9,99) con email registrazione.</p>
-                {% endif %}
-                <form method="POST" action="{{ url_for('dashboard.disconnect_telegram') }}">
-                  <button type="submit" class="btn btn-secondary btn-sm">Disconnetti</button>
-                </form>
-                <a href="https://t.me/etna_turi_bot" target="_blank" rel="noopener" class="btn btn-secondary glass btn-sm">Verifica connessione</a>
-              </div>
-            {% else %}
-              <div class="telegram-setup">
-                <p class="telegram-intro">Collega il bot in un tap per ricevere gli avvisi disponibili sul tuo piano.</p>
-                <p class="muted">Il link rimane valido 15 minuti e si avvia in automatico su Telegram.</p>
-                <form method="POST" action="{{ url_for('dashboard.generate_telegram_link') }}" class="telegram-form" target="_blank">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                  <button
-                    type="submit"
-                    class="btn btn-premium"
-                    data-track-event="telegram_link_link_generated"
-                    data-track-location="dashboard"
-                  >Attiva avvisi Telegram (30 sec)</button>
-                </form>
-              </div>
-            {% endif %}
-          </div>
-        </div>
-      </article>
-
-      {% if user.has_premium_access %}
-      <article class="card-premium events-card animate-premium-fade">
-        <header class="card-header">
-          <h3>Eventi recenti</h3>
-          <p>Ultimi eventi sismici rilevati dalla piattaforma.</p>
-        </header>
-        {% if recent_events %}
-        <div class="events-table-wrapper">
-          <table class="events-table" id="events-list">
-            <thead>
-              <tr>
-                <th scope="col">Data</th>
-                <th scope="col">Evento</th>
-                <th scope="col">Valore</th>
-                <th scope="col">Dettagli</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for event in recent_events %}
-              <tr>
-                <td>{{ event.timestamp.strftime('%d/%m %H:%M') }}</td>
-                <td>{{ event.event_type.replace('_', ' ').title() }}</td>
-                <td>
-                  {% if event.value %}
-                    {{ "%.2f"|format(event.value) }} mV
-                  {% else %}
-                    —
-                  {% endif %}
-                </td>
-                <td class="event-message">{{ event.message }}</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        {% else %}
-          <p class="no-events">Nessun evento sismico significativo nelle ultime 24 ore.</p>
-        {% endif %}
-      </article>
-      {% else %}
-      <article class="card-premium events-card animate-premium-fade">
-        <header class="card-header">
-          <h3>Storico eventi</h3>
-          <p>Nel piano Free lo storico completo non è disponibile.</p>
-        </header>
-        <div class="empty-state">
-          <p>Continua a monitorare il grafico in tempo reale e lo stato corrente.</p>
-        </div>
-      </article>
-      {% endif %}
     </div>
   </section>
 </div>

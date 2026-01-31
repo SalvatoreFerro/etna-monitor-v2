@@ -177,6 +177,8 @@
 
     <div class="site-nav__actions">
       {% if is_authenticated %}
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('dashboard.dashboard_home') }}">Dashboard</a>
+        <a class="btn btn-secondary btn-sm" href="{{ url_for('main.logout') }}">Logout</a>
         {% set display_name = (current_user.name if current_user else None) or (current_user.email if current_user else None) or 'Utente' %}
         {% set user_initials = 'EM' %}
         {% if display_name %}
@@ -205,10 +207,11 @@
           </button>
           <div class="user-menu-dropdown" role="menu" data-user-menu-dropdown hidden>
             <a role="menuitem" href="{{ url_for('dashboard.dashboard_home') }}">Dashboard</a>
-            <a role="menuitem" href="{{ url_for('auth.logout') }}">Esci</a>
+            <a role="menuitem" href="{{ url_for('main.logout') }}">Esci</a>
           </div>
         </div>
       {% else %}
+        <a class="btn btn-ghost btn-sm" href="{{ url_for('auth.login') }}">Login</a>
         <form class="site-nav__auth-form" action="{{ url_for('auth.auth_google') }}" method="post">
           <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}" />
           <button type="submit" class="btn btn-ghost btn-sm">Accedi / Registrati</button>
