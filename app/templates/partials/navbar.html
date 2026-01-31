@@ -51,10 +51,6 @@
   {% set nav_links = [{'label': 'Etna Experience', 'children': experience_children}] + nav_links %}
 {% endif %}
 
-{% if is_authenticated %}
-  {% set nav_links = [{'label': 'Dashboard', 'url': dashboard_url, 'endpoint': 'dashboard.dashboard_home'}] + nav_links %}
-{% endif %}
-
 {% set ordered_links = nav_links %}
 {% set secondary_links = [] %}
 
