@@ -550,7 +550,7 @@ class EtnaDashboard {
         const tickFormatStops = this.getTickFormatStops();
         const fontFamily = "'Inter', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif";
 
-        const mobileMargins = { l: 20, r: 10, t: 20, b: 40 };
+        const mobileMargins = { l: 52, r: 16, t: 18, b: 42 };
 
         if (this.ingvMode) {
             const layout = {
@@ -563,7 +563,8 @@ class EtnaDashboard {
                     gridwidth: 1,
                     gridcolor: 'lightgray',
                     tickangle: -90,
-                    tickformat: '%d/%m\n%H:%M'
+                    tickformat: '%d/%m\n%H:%M',
+                    tickfont: { size: 10 }
                 },
                 yaxis: {
                     title: 'Amplitude (mV)',
@@ -573,12 +574,13 @@ class EtnaDashboard {
                     gridwidth: 1,
                     gridcolor: 'lightgray',
                     tickvals: LOG_TICKS.map((tick) => tick.value),
-                    ticktext: LOG_TICKS.map((tick) => tick.label)
+                    ticktext: LOG_TICKS.map((tick) => tick.label),
+                    tickfont: { size: 10 }
                 },
                 template: 'plotly_white',
                 plot_bgcolor: 'white',
                 paper_bgcolor: 'white',
-                font: { family: 'Arial', size: isMobile ? 10 : 11, color: 'black' },
+                font: { family: 'Arial', size: 12, color: 'black' },
                 autosize: true,
                 margin: isMobile ? mobileMargins : { l: 60, r: 18, t: 36, b: 40 },
                 showlegend: false,
@@ -676,7 +678,7 @@ class EtnaDashboard {
             dragmode: this.analyzeModeEnabled ? 'select' : 'pan',
             plot_bgcolor: 'rgba(0,0,0,0)',
             paper_bgcolor: 'rgba(0,0,0,0)',
-            font: { color: isDark ? '#e2e8f0' : '#0f172a', family: fontFamily, size: isMobile ? 13 : 12 },
+            font: { color: isDark ? '#e2e8f0' : '#0f172a', family: fontFamily, size: 12 },
             xaxis: {
                 type: 'date',
                 title: '',
@@ -686,7 +688,7 @@ class EtnaDashboard {
                 linewidth: 1,
                 linecolor: axisLineColor,
                 hoverformat: '%d/%m %H:%M',
-                tickfont: { size: isMobile ? 11 : 12 },
+                tickfont: { size: 10 },
                 tickpadding: isMobile ? 8 : 6,
                 nticks: isMobile ? 4 : 6,
                 tickformatstops: tickFormatStops,
@@ -703,7 +705,7 @@ class EtnaDashboard {
                 gridwidth: 0.6,
                 linewidth: 1,
                 linecolor: axisLineColor,
-                tickfont: { size: isMobile ? 11 : 12 },
+                tickfont: { size: 10 },
                 tickpadding: isMobile ? 8 : 6,
                 tickvals: LOG_TICKS.map((tick) => tick.value),
                 ticktext: LOG_TICKS.map((tick) => tick.label),
