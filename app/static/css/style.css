@@ -1059,6 +1059,14 @@
     margin-top: clamp(var(--space-3), 3vw, var(--space-5));
   }
 
+  .tremor-chart-mobile-label {
+    display: none;
+    margin: var(--space-2) 0 var(--space-3);
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    letter-spacing: 0.01em;
+  }
+
   .tremor-summary-card {
     margin-bottom: clamp(var(--space-4), 3vw, var(--space-5));
     padding: clamp(var(--space-3), 3vw, var(--space-5));
@@ -1141,6 +1149,25 @@
     .tremor-summary-card__header {
       flex-direction: column;
       align-items: flex-start;
+    }
+  }
+
+  @media (max-width: 768px) {
+    .monitor-graph-section {
+      margin-top: var(--space-3);
+    }
+
+    .tremor-summary-card {
+      margin-bottom: var(--space-3);
+      padding: var(--space-3) var(--space-3) var(--space-4);
+    }
+
+    .tremor-summary-card__body {
+      margin-bottom: var(--space-2);
+    }
+
+    .tremor-chart-mobile-label {
+      display: block;
     }
   }
 
@@ -1532,7 +1559,7 @@
 
   @media (max-width: 768px) {
     .tremor-plot-wrap {
-      min-height: 70vh;
+      min-height: 66vh;
     }
   }
 
