@@ -134,9 +134,11 @@
   >
     <a href="#main-content" class="skip-link">Salta al contenuto</a>
 
-    {% include 'partials/navbar.html' %}
+    {% if not hide_nav %}
+      {% include 'partials/navbar.html' %}
 
-    {% include 'partials/sponsor_banners.html' %}
+      {% include 'partials/sponsor_banners.html' %}
+    {% endif %}
 
     <main id="main-content" role="main" aria-label="Contenuto principale">
       <div class="container">
@@ -157,6 +159,7 @@
       {% block content %}{% endblock %}
     </main>
 
+    {% if not hide_footer %}
     <footer class="site-footer" role="contentinfo" aria-label="Piè di pagina EtnaMonitor">
       <div class="container site-footer__inner">
         <div class="site-footer__brand">
@@ -221,6 +224,7 @@
         </p>
       </div>
     </footer>
+    {% endif %}
 
     <script src="{{ url_for('static', filename='js/analytics.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ csp_nonce() }}" defer></script>
     <script src="{{ url_for('static', filename='js/nav.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ csp_nonce() }}" defer></script>

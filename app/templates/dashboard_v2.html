@@ -1,0 +1,274 @@
+{% extends "layout.html" %}
+
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard_v2.css') }}?v={{ STATIC_ASSET_VERSION }}">
+<meta name="theme-color" content="#041021">
+{% endblock %}
+
+{% block content %}
+{% set telegram_connected = (user.telegram_chat_id or user.chat_id) and user.telegram_opt_in %}
+{% set threshold_configured = user.has_premium_access and user.threshold is not none %}
+<div class="dashboard-v2">
+  <header class="dashboard-app-bar" role="banner">
+    <div class="app-bar-left">
+      <img src="{{ url_for('static', filename='images/logo.svg') }}" alt="Logo EtnaMonitor" class="app-bar-logo" />
+      <span class="app-bar-title">Dashboard</span>
+    </div>
+    <div class="app-bar-actions">
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('main.logout') }}">Logout</a>
+    </div>
+  </header>
+
+  <section class="dashboard-layout" aria-label="Dashboard Utente">
+    <section class="dashboard-status card" id="tremor-status" aria-label="Stato">
+      <header class="card-header">
+        <h2>Stato</h2>
+        <p class="muted">KPI live con trend, soglia attiva e ultimo aggiornamento.</p>
+      </header>
+      <div class="kpi-grid" role="group" aria-label="Metriche principali">
+        <div class="kpi-card">
+          <span class="kpi-label">Tremore</span>
+          <div class="kpi-value-row">
+            <span class="kpi-value" id="current-value">--</span>
+            <span class="kpi-unit">mV</span>
+          </div>
+          <span class="status-indicator" id="status-indicator">
+            <span id="status-text">--</span>
+          </span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Trend</span>
+          <span class="trend-indicator" id="trend-status">--</span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Soglia attiva</span>
+          <span
+            class="kpi-value kpi-value--small"
+            id="active-threshold"
+            data-threshold="{{ '%.2f'|format(active_threshold) }}"
+            data-source="{{ threshold_source }}"
+            data-debug="{{ '1' if debug_alerts_enabled else '0' }}"
+          >
+            {{ "%.2f"|format(active_threshold) }} mV ({% if threshold_source == 'user/custom' %}personalizzata{% else %}default{% endif %})
+          </span>
+        </div>
+        <div class="kpi-card">
+          <span class="kpi-label">Ultimo update</span>
+          <span class="kpi-value kpi-value--small" id="last-updated">Ultimo aggiornamento: --</span>
+        </div>
+      </div>
+      {% if debug_alerts_enabled %}
+      <p class="muted" id="debug-threshold">
+        DEBUG: threshold_used_for_badge={{ "%.2f"|format(active_threshold) }} | source={{ threshold_source }} | current={{ "%.2f"|format(latest_value) }}
+      </p>
+      {% endif %}
+    </section>
+
+    <section class="dashboard-chart card" id="tremor-chart" aria-label="Grafico tremore">
+      <header class="chart-header">
+        <div>
+          <h2>Grafico</h2>
+          <p class="muted">Serie storica del tremore in tempo reale.</p>
+        </div>
+        <div class="chart-header-actions">
+          <label for="time-range" class="sr-only">Seleziona intervallo temporale per il grafico</label>
+          <select id="time-range" class="input-base" aria-label="Selettore intervallo temporale">
+            <option value="288">Ultime 24 ore</option>
+            <option value="864">Ultimi 3 giorni</option>
+            <option value="2016" selected>Ultimi 7 giorni</option>
+          </select>
+          {% if user.has_premium_access %}
+          <button id="update-btn" class="btn btn-premium btn-sm">Aggiorna</button>
+          {% endif %}
+        </div>
+      </header>
+
+      <div class="chart-toolbar">
+        <div class="chart-actions">
+          {% if user.has_premium_access %}
+          <button id="export-csv" class="btn btn-secondary btn-sm glass" aria-label="Esporta dati come file CSV">CSV</button>
+          <button id="export-png" class="btn btn-secondary btn-sm glass" aria-label="Esporta grafico come immagine PNG">PNG</button>
+          {% endif %}
+        </div>
+        <div class="chart-interaction-controls" role="group" aria-label="Controlli analisi grafico">
+          <button
+            type="button"
+            id="dashboard-analyze-toggle"
+            class="btn btn-secondary btn-sm chart-interaction-toggle"
+            aria-pressed="false"
+          >
+            Analizza
+          </button>
+          <button
+            type="button"
+            id="dashboard-reset-view"
+            class="btn btn-ghost btn-sm chart-interaction-reset"
+          >
+            Reset vista
+          </button>
+        </div>
+      </div>
+
+      <p id="dashboard-analyze-hint" class="chart-interaction-hint" role="status" aria-live="polite">
+        Suggerimento: premi Analizza e trascina sul grafico per selezionare un intervallo.
+      </p>
+      <span id="dashboard-analyze-status" class="chart-mode-indicator" aria-live="polite" aria-hidden="true">
+        Modalità analisi attiva
+      </span>
+
+      <div
+        id="tremor-plot"
+        class="chart-container"
+        role="img"
+        tabindex="0"
+        aria-label="Grafico dati tremore vulcanico"
+      ></div>
+    </section>
+
+    <section class="dashboard-actions" aria-label="Azioni e impostazioni">
+      <header class="card-header">
+        <h2>Azioni / Impostazioni</h2>
+        <p class="muted">Sezioni compatte da aprire solo quando servono.</p>
+      </header>
+
+      <div class="accordion">
+        <details class="accordion-item" id="account-section">
+          <summary>Account</summary>
+          <div class="accordion-body">
+            {% if user.has_premium_access %}
+              <span class="badge premium">🟢 Premium attivo</span>
+              <p class="muted">Accesso completo: soglia personalizzata, log eventi, alert illimitati.</p>
+            {% else %}
+              <span class="badge free">⚪ Free</span>
+              <p class="muted">Grafico realtime + 1 alert di prova.</p>
+            {% endif %}
+            <p class="account-email">{{ user.email }}</p>
+            {% if not user.has_premium_access %}
+              <a class="btn btn-premium btn-sm" href="{{ url_for('billing.donate') }}">Attiva Premium (PayPal)</a>
+              <p class="helper-text">Donazione PayPal (min. €9,99) · Inserisci email di registrazione</p>
+              <p class="helper-text">PayPal: salvoferro16@gmail.com</p>
+            {% endif %}
+            <div class="account-actions">
+              <a class="btn btn-secondary btn-sm" href="{{ url_for('dashboard.settings') }}">Impostazioni account</a>
+              <a class="btn btn-ghost btn-sm" href="{{ url_for('main.logout') }}">Logout</a>
+            </div>
+          </div>
+        </details>
+
+        <details class="accordion-item" id="alert-settings">
+          <summary>Telegram</summary>
+          <div class="accordion-body">
+            {% if telegram_connected %}
+              <span class="telegram-badge telegram-badge--connected">Connesso</span>
+              <p class="muted">Chat ID: {{ user.telegram_chat_id or user.chat_id }}</p>
+              <form method="POST" action="{{ url_for('dashboard.disconnect_telegram') }}">
+                <button type="submit" class="btn btn-secondary btn-sm">Disconnetti</button>
+              </form>
+              <a class="btn btn-ghost btn-sm" href="https://t.me/etna_turi_bot" target="_blank" rel="noopener">Apri bot</a>
+            {% else %}
+              <span class="telegram-badge telegram-badge--disconnected">Non collegato</span>
+              <p class="muted">Collega il bot per ricevere notifiche Telegram.</p>
+              <form method="POST" action="{{ url_for('dashboard.generate_telegram_link') }}" class="telegram-form" target="_blank">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-secondary btn-sm">Collega Telegram</button>
+              </form>
+            {% endif %}
+          </div>
+        </details>
+
+        <details class="accordion-item" id="threshold-settings">
+          <summary>Soglia</summary>
+          <div class="accordion-body">
+            {% if user.has_premium_access %}
+              <div class="threshold-controls">
+                <label for="threshold-slider">Soglia personalizzata</label>
+                <div class="slider-container">
+                  <input type="range" id="threshold-slider" min="0.1" max="10" step="0.1" value="{{ '%.2f'|format(active_threshold) }}" aria-label="Cursore soglia" aria-describedby="threshold-help">
+                  <input type="number" id="threshold-input" min="0.1" max="10" step="0.1" value="{{ '%.2f'|format(active_threshold) }}" aria-label="Valore soglia" aria-describedby="threshold-help">
+                </div>
+                <p id="threshold-help" class="help-text">Imposta una soglia tra 0.1 e 10 mV.</p>
+                <button id="save-threshold" class="btn btn-premium btn-sm">Salva</button>
+              </div>
+            {% else %}
+              <p class="muted">Soglia fissa: {{ "%.2f"|format(active_threshold) }} mV.</p>
+              <p class="muted">Sblocca la soglia personalizzata con Premium.</p>
+              <a class="btn btn-premium btn-sm" href="{{ url_for('billing.donate') }}">Passa a Premium</a>
+            {% endif %}
+          </div>
+        </details>
+
+        <details class="accordion-item" id="recent-events">
+          <summary>Log eventi</summary>
+          <div class="accordion-body">
+            {% if user.has_premium_access %}
+              {% if recent_events %}
+              <ul class="events-list" id="events-list">
+                {% for event in recent_events %}
+                  <li>
+                    <div class="event-meta">
+                      <span class="event-date">{{ event.timestamp.strftime('%d/%m %H:%M') }}</span>
+                      <span class="event-type">{{ event.event_type.replace('_', ' ').title() }}</span>
+                    </div>
+                    <div class="event-body">
+                      <span class="event-value">
+                        {% if event.value %}
+                          {{ "%.2f"|format(event.value) }} mV
+                        {% else %}
+                          —
+                        {% endif %}
+                      </span>
+                      <span class="event-message">{{ event.message }}</span>
+                    </div>
+                  </li>
+                {% endfor %}
+              </ul>
+              {% else %}
+                <p class="muted">Nessun evento significativo nelle ultime 24 ore.</p>
+              {% endif %}
+            {% else %}
+              <p class="muted">Disponibile solo per utenti Premium.</p>
+              <a class="btn btn-premium btn-sm" href="{{ url_for('billing.donate') }}">Attiva Premium</a>
+            {% endif %}
+          </div>
+        </details>
+
+        <details class="accordion-item" id="account-settings">
+          <summary>Impostazioni account</summary>
+          <div class="accordion-body">
+            <p class="muted">Email registrata: {{ user.email }}</p>
+            <a class="btn btn-secondary btn-sm" href="{{ url_for('dashboard.settings') }}">Gestisci email / password</a>
+          </div>
+        </details>
+      </div>
+    </section>
+  </section>
+</div>
+
+<div
+  id="tremor-focus-modal"
+  class="chart-focus-modal"
+  role="dialog"
+  aria-label="Modalità focus grafico tremore"
+  aria-hidden="true"
+>
+  <div class="chart-focus-backdrop" data-focus-close></div>
+  <div class="chart-focus-panel" role="document">
+    <header class="chart-focus-header">
+      <div>
+        <span class="chart-focus-title">Tremore vulcanico</span>
+        <span class="chart-focus-subtitle">Modalità Focus</span>
+      </div>
+      <div class="chart-focus-actions">
+        <button type="button" class="btn btn-ghost btn-sm" id="focus-reset-view">Reset vista</button>
+        <button type="button" class="btn btn-secondary btn-sm" id="focus-close">Chiudi</button>
+      </div>
+    </header>
+    <div id="tremor-plot-focus" class="chart-focus-plot" role="img" aria-label="Grafico tremore in modalità focus"></div>
+  </div>
+</div>
+
+<div id="toast-container" class="toast-container"></div>
+
+<script src="{{ url_for('static', filename='vendor/plotly.min.js') }}" nonce="{{ csp_nonce() }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}?v={{ STATIC_ASSET_VERSION }}" nonce="{{ csp_nonce() }}"></script>
+{% endblock %}

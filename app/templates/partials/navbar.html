@@ -179,44 +179,8 @@
       {% if is_authenticated %}
         <a class="btn btn-ghost btn-sm" href="{{ url_for('dashboard.dashboard_home') }}">Dashboard</a>
         <a class="btn btn-secondary btn-sm" href="{{ url_for('main.logout') }}">Logout</a>
-        {% set display_name = (current_user.name if current_user else None) or (current_user.email if current_user else None) or 'Utente' %}
-        {% set user_initials = 'EM' %}
-        {% if display_name %}
-          {% set normalized_name = display_name.strip() %}
-          {% if '@' in normalized_name %}
-            {% set user_initials = normalized_name[:2] | upper %}
-          {% else %}
-            {% set name_parts = normalized_name.split() %}
-            {% if name_parts | length > 1 %}
-              {% set user_initials = (name_parts[0][:1] ~ name_parts[1][:1]) | upper %}
-            {% elif name_parts | length == 1 %}
-              {% set user_initials = name_parts[0][:2] | upper %}
-            {% endif %}
-          {% endif %}
-        {% endif %}
-        <div class="user-menu" data-user-menu>
-          <button
-            type="button"
-            class="user-menu-trigger"
-            aria-haspopup="true"
-            aria-expanded="false"
-            data-user-menu-trigger
-          >
-            <span aria-hidden="true">{{ user_initials }}</span>
-            <span class="sr-only">Apri menu utente</span>
-          </button>
-          <div class="user-menu-dropdown" role="menu" data-user-menu-dropdown hidden>
-            <a role="menuitem" href="{{ url_for('dashboard.dashboard_home') }}">Dashboard</a>
-            <a role="menuitem" href="{{ url_for('main.logout') }}">Esci</a>
-          </div>
-        </div>
       {% else %}
         <a class="btn btn-ghost btn-sm" href="{{ url_for('auth.login') }}">Login</a>
-        <form class="site-nav__auth-form" action="{{ url_for('auth.auth_google') }}" method="post">
-          <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}" />
-          <button type="submit" class="btn btn-ghost btn-sm">Accedi / Registrati</button>
-        </form>
-        <a class="btn btn-primary btn-sm" href="{{ url_for('main.pricing') }}">Piani</a>
       {% endif %}
     </div>
   </div>
