@@ -550,7 +550,7 @@ class EtnaDashboard {
         const tickFormatStops = this.getTickFormatStops();
         const fontFamily = "'Inter', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif";
 
-        const mobileMargins = { l: 52, r: 16, t: 18, b: 42 };
+        const mobileMargins = { l: 48, r: 12, t: 18, b: 42 };
 
         if (this.ingvMode) {
             const layout = {
@@ -602,7 +602,7 @@ class EtnaDashboard {
                 name: 'RMS',
                 line: {
                     color: '#00AA00',
-                    width: 1.6
+                    width: isMobile ? 1.0 : 1.6
                 },
                 hovertemplate: '<b>%{y:.2f} mV</b><br>%{x|%d/%m %H:%M}<extra></extra>',
                 showlegend: false
@@ -664,9 +664,14 @@ class EtnaDashboard {
             type: 'scatter',
             mode: 'lines',
             name: 'Segnale Tremore',
-            line: { color: lineColor, width: 2, shape: 'spline', smoothing: 1.1 },
-            fill: 'tozeroy',
-            fillcolor: fillColor,
+            line: {
+                color: lineColor,
+                width: isMobile ? 1.0 : 2,
+                shape: 'spline',
+                smoothing: 1.1
+            },
+            fill: isMobile ? 'none' : 'tozeroy',
+            fillcolor: isMobile ? undefined : fillColor,
             hovertemplate: '%{x|%d %b %Y %H:%M}<br><b>%{y:.2f} mV</b><extra></extra>',
             showlegend: false
         };

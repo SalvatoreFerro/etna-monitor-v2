@@ -671,6 +671,6 @@
   }
 
   .dashboard-chart .chart-container {
-    height: clamp(260px, 38vh, 360px);
+    height: clamp(320px, 45vh, 420px);
   }
 }
