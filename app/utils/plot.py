@@ -22,7 +22,14 @@ def _log_range(values):
     return [min_log, max_log]
 
 
-def make_tremor_figure(times, raw_values, threshold: float, smooth_values=None, ingv_mode: bool = False):
+def make_tremor_figure(
+    times,
+    raw_values,
+    threshold: float,
+    smooth_values=None,
+    ingv_mode: bool = False,
+    mobile_tuning: bool = False,
+):
     go = _graph_objects()
     fig = go.Figure()
     has_smooth = smooth_values is not None
@@ -122,4 +129,16 @@ def make_tremor_figure(times, raw_values, threshold: float, smooth_values=None, 
         tickvals=[0.1, 1, 10],
         ticktext=['10⁻¹', '10⁰', '10¹']
     )
+
+    if mobile_tuning:
+        fig.update_layout(
+            autosize=True,
+            height=320,
+            margin=dict(l=44, r=10, t=18, b=38),
+            font=dict(size=11),
+        )
+        fig.update_xaxes(tickfont=dict(size=10))
+        fig.update_yaxes(tickfont=dict(size=10), title_standoff=6)
+        fig.update_traces(line=dict(width=1.6), selector=dict(mode="lines"))
+
     return fig
