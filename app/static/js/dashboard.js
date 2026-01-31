@@ -576,8 +576,9 @@ class EtnaDashboard {
                 template: 'plotly_white',
                 plot_bgcolor: 'white',
                 paper_bgcolor: 'white',
-                font: { family: 'Arial', size: 10, color: 'black' },
-                margin: { l: 60, r: 20, t: 40, b: 40 },
+                font: { family: 'Arial', size: isMobile ? 11 : 10, color: 'black' },
+                autosize: true,
+                margin: { l: isMobile ? 50 : 60, r: 18, t: 36, b: isMobile ? 52 : 40 },
                 showlegend: false,
                 shapes: threshold > 0 ? [{
                     type: 'line',
@@ -667,7 +668,8 @@ class EtnaDashboard {
         };
 
         const layout = {
-            margin: { l: 64, r: 36, t: 48, b: 56 },
+            autosize: true,
+            margin: { l: isMobile ? 52 : 64, r: isMobile ? 24 : 36, t: isMobile ? 36 : 48, b: isMobile ? 64 : 56 },
             hovermode: 'x',
             dragmode: this.analyzeModeEnabled ? 'select' : 'pan',
             plot_bgcolor: 'rgba(0,0,0,0)',
