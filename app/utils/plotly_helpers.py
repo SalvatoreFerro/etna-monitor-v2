@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+
+import pandas as pd
 import plotly.graph_objects as go
 from plotly import offline as plotly_offline
 
@@ -75,6 +77,10 @@ def _build_tremor_layout(
             "linewidth": 1,
             "linecolor": "#334155",
             "hoverformat": "%d/%m %H:%M",
+            "tickformat": "%d %b",
+            "tickangle": 0,
+            "nticks": MOBILE_X_NTICKS,
+            "rangeslider": {"visible": False},
             "tickfont": {"size": 12},
             "ticks": "outside",
             "tickcolor": "#334155",
@@ -141,6 +147,15 @@ def _build_tremor_layout(
         }
 
     return base_layout
+
+
+def _normalize_plot_timestamps(plot_timestamps: Sequence[object]) -> list:
+    if not plot_timestamps:
+        return []
+    parsed = pd.to_datetime(list(plot_timestamps), utc=True, errors="coerce")
+    if hasattr(parsed, "to_pydatetime"):
+        return list(parsed.to_pydatetime())
+    return list(parsed)
 
 
 def _apply_plot_tuning(
@@ -252,7 +267,7 @@ def build_plotly_html_from_pairs(
 ) -> str | None:
     if len(clean_pairs) < min_points:
         return None
-    plot_timestamps = [pair[0] for pair in clean_pairs]
+    plot_timestamps = _normalize_plot_timestamps([pair[0] for pair in clean_pairs])
     plot_values = [max(pair[1], eps) for pair in clean_pairs]
     trace_options = {
         "x": plot_timestamps,
@@ -288,7 +303,7 @@ def build_plotly_figure_from_pairs(
 ) -> go.Figure | None:
     if len(clean_pairs) < min_points:
         return None
-    plot_timestamps = [pair[0] for pair in clean_pairs]
+    plot_timestamps = _normalize_plot_timestamps([pair[0] for pair in clean_pairs])
     plot_values = [max(pair[1], eps) for pair in clean_pairs]
     trace_options = {
         "x": plot_timestamps,
