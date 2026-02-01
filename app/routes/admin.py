@@ -37,7 +37,6 @@ from ..utils.metrics import get_csv_metrics
 from ..utils.ingv_bands import load_cached_thresholds
 from ..utils.plotly_helpers import build_tremor_figure
 from plotly import offline as plotly_offline
-from backend.utils.time import to_iso_utc
 from ..models import (
     db,
     BlogPost,
@@ -3254,10 +3253,10 @@ def test_colored_extraction():
         for ts, value in zip(df["timestamp"].tolist(), df["value"].tolist()):
             if value is None or not isfinite(value) or value <= 0:
                 continue
-            ts_iso = to_iso_utc(ts)
-            if ts_iso is None:
+            if ts is None:
                 continue
-            clean_pairs.append((ts_iso, float(value)))
+            timestamp = ts.to_pydatetime() if hasattr(ts, "to_pydatetime") else ts
+            clean_pairs.append((timestamp, float(value)))
         if not clean_pairs:
             return None, None, None
         last_ts = df["timestamp"].iloc[-1]
