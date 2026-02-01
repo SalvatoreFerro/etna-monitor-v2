@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 from sqlalchemy import func
 
@@ -16,6 +17,20 @@ from app.services.badge_service import recompute_badges_for_user
 from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
+
+
+def _normalize_datetime(dt: datetime) -> datetime:
+    """Normalize datetime to timezone-aware UTC.
+    
+    Args:
+        dt: Datetime to normalize
+        
+    Returns:
+        Timezone-aware datetime in UTC
+    """
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 @dataclass(frozen=True)
@@ -217,7 +232,7 @@ def _check_mission_completion(mission: UserMission, now: datetime) -> bool:
     return False
 
 
-def claim_mission_reward(mission_id: int, user_id: int) -> dict[str, any]:
+def claim_mission_reward(mission_id: int, user_id: int) -> dict[str, Any]:
     """Claim rewards for a completed mission.
 
     Args:
@@ -293,9 +308,7 @@ def get_user_missions(
 
     if not include_expired:
         # Normalize now for comparison
-        now_normalized = now
-        if now_normalized.tzinfo is None:
-            now_normalized = now_normalized.replace(tzinfo=timezone.utc)
+        now_normalized = _normalize_datetime(now)
         
         query = query.filter(
             db.or_(
@@ -350,8 +363,7 @@ def _get_mission_progress(mission: UserMission, now: datetime) -> dict:
         Dict with current/total progress
     """
     # Normalize now for comparisons
-    if now.tzinfo is None:
-        now = now.replace(tzinfo=timezone.utc)
+    now = _normalize_datetime(now)
         
     if mission.mission_code == "daily_prediction":
         prediction_count = (
@@ -365,9 +377,7 @@ def _get_mission_progress(mission: UserMission, now: datetime) -> dict:
         return {"current": min(prediction_count, 1), "total": 1}
 
     elif mission.mission_code == "weekly_login_streak":
-        expires_at = mission.expires_at
-        if expires_at.tzinfo is None:
-            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        expires_at = _normalize_datetime(mission.expires_at)
         
         distinct_days = (
             db.session.query(func.count(func.distinct(func.date(Event.timestamp))))
