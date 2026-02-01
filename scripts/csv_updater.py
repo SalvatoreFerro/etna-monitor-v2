@@ -3,6 +3,7 @@ import hashlib
 import json
 import logging
 import os
+import shutil
 import sys
 import time
 import traceback
@@ -128,7 +129,6 @@ def _copy_to_fallback_csv(csv_path: Path) -> None:
     if csv_path.name == "curva_colored.csv":
         fallback_path = csv_path.parent / "curva.csv"
         try:
-            import shutil
             shutil.copy2(csv_path, fallback_path)
             log.info("[CSV] Copied to fallback: %s", fallback_path)
         except Exception as exc:

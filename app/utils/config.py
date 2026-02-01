@@ -26,14 +26,14 @@ def get_curva_csv_path() -> Path:
     
     # Check if canonical path (curva_colored.csv) exists and has data
     if CURVA_CANONICAL_PATH.exists():
-        df, reason = load_curva_dataframe(CURVA_CANONICAL_PATH)
+        df, _ = load_curva_dataframe(CURVA_CANONICAL_PATH)
         if df is not None and not df.empty:
             return CURVA_CANONICAL_PATH
     
     # Fall back to checking all paths in order
     for fallback in _CURVA_FALLBACK_PATHS:
         if fallback.exists():
-            df, reason = load_curva_dataframe(fallback)
+            df, _ = load_curva_dataframe(fallback)
             if df is not None and not df.empty:
                 return fallback
     
