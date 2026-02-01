@@ -61,7 +61,7 @@ function renderHomePreview(data) {
     type: 'scatter',
     mode: 'lines',
     name: 'RAW (picchi reali)',
-    line: { color: '#4ade80', width: 2 },
+    line: { color: '#4ade80', width: 1 },
     showlegend: true
   };
 
@@ -71,7 +71,7 @@ function renderHomePreview(data) {
     type: 'scatter',
     mode: 'lines',
     name: 'Trend (smoothed)',
-    line: { color: '#22d3ee', width: 2 },
+    line: { color: '#22d3ee', width: 1 },
     opacity: 0.8,
     showlegend: true
   };
@@ -94,7 +94,7 @@ function renderHomePreview(data) {
       x1: timestamps[timestamps.length - 1],
       y0: threshold,
       y1: threshold,
-      line: { color: '#ef4444', width: 2, dash: 'dash' }
+      line: { color: '#ef4444', width: 1, dash: 'dash' }
     }]
   };
 
