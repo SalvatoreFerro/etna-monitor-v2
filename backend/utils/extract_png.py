@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 import requests
 
+from .ingv_timestamp import extract_updated_timestamp_from_image
 from .time import to_iso_utc
 
 
@@ -41,7 +42,15 @@ def download_png(url="https://www.ct.ingv.it/RMS_Etna/2.png"):
             else:
                 reference_time = parsed_dt.astimezone(timezone.utc)
 
-    return response.content, reference_time
+    png_bytes = response.content
+    image = cv2.imdecode(np.frombuffer(png_bytes, np.uint8), cv2.IMREAD_COLOR)
+    try:
+        reference_time = extract_updated_timestamp_from_image(image)
+    except Exception as exc:
+        logger.error("[INGV OCR] impossibile estrarre timestamp dal PNG INGV: %s", exc)
+        raise
+
+    return png_bytes, reference_time
 
 def extract_green_curve_from_png(
     png_bytes,
