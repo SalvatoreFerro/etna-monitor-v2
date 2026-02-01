@@ -75,6 +75,30 @@ flowchart LR
 - **Log eventi recenti**: elenco con timestamp, valore misurato, soglia applicata, esito alert visibile dalla dashboard.
 - **Admin**: pannello opzionale per consultare utenti, promuovere/demozionare Premium e monitorare stato notifiche.
 
+### Gamification (opzionale)
+Le funzionalità di gamification possono essere abilitate tramite la variabile d'ambiente `ENABLE_MISSIONS=1`:
+
+- **Prediction Game con orizzonti multipli**: 
+  - Gli utenti possono fare previsioni sul tremore a 6, 12 o 24 ore
+  - Tre scelte disponibili: UP (aumento), DOWN (diminuzione), FLAT (stabile)
+  - Risoluzione automatica delle previsioni con assegnazione punti (3 punti per previsione corretta)
+  - Endpoint API: `POST /api/predictions` con parametro `horizon_hours`
+
+- **Missioni giornaliere e settimanali**:
+  - `daily_prediction`: Invia almeno una previsione oggi (5 punti)
+  - `weekly_login_streak`: Accedi per almeno 5 giorni su 7 (15 punti)
+  - Auto-completamento e verifica automatica delle missioni
+  - Endpoint API: `GET /api/missions`, `POST /api/missions/<id>/claim`
+
+- **Sistema badge e livelli**:
+  - Badge automatici: WATCHER_7D, WATCHER_30D, PREMIUM_SUPPORTER, ALERT_TRIGGERED
+  - Badge missioni: MISSION_COMPLETE (dopo 5 missioni completate)
+  - Progressione a livelli basata sul numero di badge sbloccati
+
+- **Classifica globale**:
+  - Leaderboard accessibile via `GET /api/leaderboard` e `/leaderboard`
+  - Classifica basata su punti totali, previsioni corrette e numero di previsioni
+
 ## Directory partner
 La directory EtnaMonitor è organizzata in categorie a numero chiuso (es. Guide, Hotel, Ristoranti) con massimo 10 slot attivi per ognuna.
 

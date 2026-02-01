@@ -45,6 +45,12 @@ BADGE_DEFINITIONS = {
         icon="🚨",
         description="Hai ricevuto almeno un alert",
     ),
+    "MISSION_COMPLETE": BadgeDefinition(
+        code="MISSION_COMPLETE",
+        label="Completista",
+        icon="🏆",
+        description="Hai completato almeno 5 missioni",
+    ),
 }
 
 LEVEL_DESCRIPTIONS = {
@@ -77,6 +83,22 @@ def _has_alert(user_id: int) -> bool:
         .first()
         is not None
     )
+
+
+def _completed_missions_count(user_id: int) -> int:
+    """Count completed missions for a user."""
+    # Import here to avoid circular dependency
+    from ..models.mission import UserMission
+
+    count = (
+        db.session.query(UserMission.id)
+        .filter(
+            UserMission.user_id == user_id,
+            UserMission.completed_at.isnot(None),
+        )
+        .count()
+    )
+    return int(count or 0)
 
 
 def _normalize_existing_badges(badges: list[UserBadge]) -> set[str]:
@@ -124,6 +146,8 @@ def recompute_badges_for_user(user_id: int) -> int | None:
         should_have.add("PREMIUM_SUPPORTER")
     if _has_alert(user_id):
         should_have.add("ALERT_TRIGGERED")
+    if _completed_missions_count(user_id) >= 5:
+        should_have.add("MISSION_COMPLETE")
 
     now = datetime.utcnow()
     for code in should_have:

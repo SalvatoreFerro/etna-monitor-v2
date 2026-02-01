@@ -10,6 +10,7 @@ from app.models.tremor_prediction import TremorPrediction
 from app.models.user import User
 from app.services.prediction_service import (
     PREDICTION_CHOICES,
+    PREDICTION_HORIZONS,
     PREDICTION_HORIZON_HOURS,
 )
 from app.utils.auth import get_current_user
@@ -73,11 +74,30 @@ def create_prediction():
     if prediction not in PREDICTION_CHOICES:
         return jsonify({"ok": False, "error": "invalid_prediction"}), 400
 
+    # Extract and validate horizon_hours
+    horizon_hours = payload.get("horizon_hours")
+    if horizon_hours is None:
+        horizon_hours = PREDICTION_HORIZON_HOURS  # Default to 24
+    else:
+        try:
+            horizon_hours = int(horizon_hours)
+        except (ValueError, TypeError):
+            return jsonify({"ok": False, "error": "invalid_horizon"}), 400
+
+    if horizon_hours not in PREDICTION_HORIZONS:
+        return jsonify(
+            {
+                "ok": False,
+                "error": "invalid_horizon",
+                "valid_horizons": PREDICTION_HORIZONS,
+            }
+        ), 400
+
     existing = (
         TremorPrediction.query.filter(
             TremorPrediction.user_id == user.id,
             TremorPrediction.resolved.is_(False),
-            TremorPrediction.horizon_hours == PREDICTION_HORIZON_HOURS,
+            TremorPrediction.horizon_hours == horizon_hours,
         )
         .order_by(TremorPrediction.created_at.desc())
         .first()
@@ -95,12 +115,12 @@ def create_prediction():
         )
 
     created_at = datetime.now(timezone.utc)
-    resolves_at = created_at + timedelta(hours=PREDICTION_HORIZON_HOURS)
+    resolves_at = created_at + timedelta(hours=horizon_hours)
 
     prediction_row = TremorPrediction(
         user_id=user.id,
         created_at=created_at,
-        horizon_hours=PREDICTION_HORIZON_HOURS,
+        horizon_hours=horizon_hours,
         prediction=prediction,
         resolves_at=resolves_at,
         resolved=False,
