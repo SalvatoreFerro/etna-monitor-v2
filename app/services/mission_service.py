@@ -211,19 +211,20 @@ def _check_mission_completion(mission: UserMission, now: datetime) -> bool:
         return prediction is not None
 
     elif mission.mission_code == "weekly_login_streak":
-        # Check if user has logged in at least 5 days in the past 7 days
-        days_since_awarded = (now - mission.awarded_at).days
-        if days_since_awarded < 7:
-            # Mission not yet completable
-            return False
-
+        # Check if user has logged in at least 5 distinct days within the mission period
+        # Normalize timestamps for consistent comparison
+        awarded_at = _normalize_datetime(mission.awarded_at)
+        expires_at = _normalize_datetime(mission.expires_at)
+        now_normalized = _normalize_datetime(now)
+        
+        # Count distinct days where user has logged in during the mission period
         distinct_days = (
             db.session.query(func.count(func.distinct(func.date(Event.timestamp))))
             .filter(
                 Event.user_id == mission.user_id,
                 Event.event_type == "login",
-                Event.timestamp >= mission.awarded_at,
-                Event.timestamp <= mission.expires_at,
+                Event.timestamp >= awarded_at,
+                Event.timestamp <= min(now_normalized, expires_at),
             )
             .scalar()
         )

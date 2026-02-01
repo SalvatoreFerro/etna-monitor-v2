@@ -292,6 +292,70 @@
           </div>
         </details>
 
+        {% if missions_enabled %}
+        <details class="accordion-item" id="missions-section">
+          <summary>
+            <span class="accordion-title">Missioni</span>
+            <span class="accordion-meta">
+              {% if user_missions %}
+                {% set active_count = user_missions | selectattr('is_active') | list | length %}
+                {% set completed_count = user_missions | selectattr('is_completed') | list | length %}
+                {{ active_count }} attive
+              {% else %}
+                0 attive
+              {% endif %}
+            </span>
+          </summary>
+          <div class="accordion-body missions-card">
+            <p class="muted">Completa missioni giornaliere e settimanali per guadagnare punti.</p>
+            {% if user_missions %}
+              <ul class="missions-list">
+                {% for mission in user_missions %}
+                  <li class="mission-item {% if mission.is_completed %}mission-item--completed{% elif mission.is_expired %}mission-item--expired{% else %}mission-item--active{% endif %}">
+                    <div class="mission-header">
+                      <span class="mission-icon" aria-hidden="true">{{ mission.icon }}</span>
+                      <div class="mission-info">
+                        <strong class="mission-label">{{ mission.label }}</strong>
+                        <p class="mission-description muted">{{ mission.description }}</p>
+                      </div>
+                      <span class="mission-points">+{{ mission.points }} pts</span>
+                    </div>
+                    <div class="mission-progress">
+                      <div class="mission-progress-bar">
+                        {% set progress_pct = (mission.progress.current / mission.progress.total * 100) | round(0, 'floor') %}
+                        <span class="mission-progress-fill" style="width: {{ progress_pct }}%"></span>
+                      </div>
+                      <span class="mission-progress-text">{{ mission.progress.current }}/{{ mission.progress.total }}</span>
+                    </div>
+                    <div class="mission-status">
+                      {% if mission.is_completed %}
+                        <span class="mission-badge mission-badge--completed">✓ Completata</span>
+                        <button 
+                          class="btn btn-premium btn-sm mission-claim-btn" 
+                          data-mission-id="{{ mission.id }}"
+                          data-mission-claim
+                        >
+                          Riscatta
+                        </button>
+                      {% elif mission.is_expired %}
+                        <span class="mission-badge mission-badge--expired">Scaduta</span>
+                      {% else %}
+                        <span class="mission-badge mission-badge--active">In corso</span>
+                        <span class="mission-expires muted">Scade: {{ mission.expires_at[:10] }}</span>
+                      {% endif %}
+                    </div>
+                  </li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <div class="missions-empty">
+                <p class="muted">Nessuna missione attiva al momento.</p>
+              </div>
+            {% endif %}
+          </div>
+        </details>
+        {% endif %}
+
         <details class="accordion-item" id="badge-levels">
           <summary>
             <span class="accordion-title">Badge e livelli</span>

@@ -48,6 +48,7 @@ class EtnaDashboard {
         this.setupINGVMode();
         this.setupFocusMode();
         this.setupAutoRefresh();
+        this.setupMissions();
         this.loadInitialData();
 
         if ('serviceWorker' in navigator) {
@@ -1149,6 +1150,67 @@ class EtnaDashboard {
                 </div>
             `;
         }
+    }
+    
+    setupMissions() {
+        const claimButtons = document.querySelectorAll('[data-mission-claim]');
+        claimButtons.forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const missionId = btn.dataset.missionId;
+                if (!missionId) return;
+                
+                // Disable button during request
+                btn.disabled = true;
+                btn.textContent = 'Riscatto...';
+                
+                try {
+                    const csrfToken = this.getCSRFToken();
+                    const response = await fetch(`/api/missions/${missionId}/claim`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ csrf_token: csrfToken })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.ok) {
+                        this.showToast(`Missione riscattata! +${result.points_awarded} punti`, 'success');
+                        // Reload page after brief delay
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        const errorMessages = {
+                            'mission_not_found': 'Missione non trovata',
+                            'unauthorized': 'Non autorizzato',
+                            'mission_not_completed': 'Missione non ancora completata',
+                            'invalid_csrf': 'Sessione scaduta, ricarica la pagina'
+                        };
+                        const errorMsg = errorMessages[result.error] || 'Errore nel riscattare la missione';
+                        this.showToast(errorMsg, 'error');
+                        btn.disabled = false;
+                        btn.textContent = 'Riscatta';
+                    }
+                } catch (error) {
+                    console.error('Error claiming mission:', error);
+                    this.showToast('Errore di connessione', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Riscatta';
+                }
+            });
+        });
+    }
+    
+    getCSRFToken() {
+        const meta = document.querySelector('meta[name="csrf-token"]');
+        if (meta) return meta.content;
+        
+        // Fallback: try to find in a hidden input
+        const input = document.querySelector('input[name="csrf_token"]');
+        if (input) return input.value;
+        
+        return '';
     }
     
     showToast(message, type = 'info', duration = 5000) {

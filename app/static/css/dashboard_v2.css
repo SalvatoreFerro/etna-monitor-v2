@@ -674,3 +674,161 @@
     height: clamp(320px, 45vh, 420px);
   }
 }
+
+/* Mission Styles */
+.missions-card {
+  padding: 1rem 0;
+}
+
+.missions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.mission-item {
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  padding: 1rem;
+  background: var(--bg-surface);
+  transition: all 0.2s ease;
+}
+
+.mission-item--active {
+  border-color: var(--primary-muted);
+}
+
+.mission-item--completed {
+  border-color: var(--success-muted);
+  background: var(--success-subtle);
+}
+
+.mission-item--expired {
+  border-color: var(--muted);
+  opacity: 0.6;
+}
+
+.mission-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.mission-icon {
+  font-size: 1.75rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.mission-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mission-label {
+  display: block;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+  color: var(--text-primary);
+}
+
+.mission-description {
+  font-size: 0.8125rem;
+  margin: 0;
+}
+
+.mission-points {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--premium-gold);
+  flex-shrink: 0;
+}
+
+.mission-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.mission-progress-bar {
+  flex: 1;
+  height: 6px;
+  background: var(--border-subtle);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.mission-progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--primary);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.mission-item--completed .mission-progress-fill {
+  background: var(--success);
+}
+
+.mission-progress-text {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.mission-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.mission-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.25rem 0.625rem;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.mission-badge--active {
+  background: var(--primary-muted);
+  color: var(--primary);
+}
+
+.mission-badge--completed {
+  background: var(--success-muted);
+  color: var(--success);
+}
+
+.mission-badge--expired {
+  background: var(--muted);
+  color: var(--text-tertiary);
+}
+
+.mission-expires {
+  font-size: 0.75rem;
+}
+
+.mission-claim-btn {
+  margin-left: auto;
+}
+
+.missions-empty {
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.missions-empty .muted {
+  font-size: 0.9375rem;
+}
