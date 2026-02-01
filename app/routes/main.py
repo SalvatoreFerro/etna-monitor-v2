@@ -313,10 +313,10 @@ def index():
                     ):
                         if value is None or not isfinite(value) or value <= 0:
                             continue
-                        ts_iso = to_iso_utc(ts)
-                        if ts_iso is None:
+                        if ts is None:
                             continue
-                        clean_pairs.append((ts_iso, float(value)))
+                        timestamp = ts.to_pydatetime() if hasattr(ts, "to_pydatetime") else ts
+                        clean_pairs.append((timestamp, float(value)))
                 if clean_pairs:
                     threshold_level = Config.ALERT_THRESHOLD_DEFAULT
                     user = get_current_user()
