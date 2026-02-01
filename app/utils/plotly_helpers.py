@@ -205,14 +205,13 @@ def build_tremor_figure(
     layout = _build_tremor_layout(mode=mode, shapes=shapes)
     is_home_variant = mode in {"home", "desktop", "home_mobile_modal"}
     if is_home_variant:
-        line_width = MOBILE_MODAL_LINE_WIDTH if mode == "home_mobile_modal" else 2.4
+        line_width = 1 if mode in {"home", "home_mobile_modal"} else 2.4
     else:
         line_width = 2
     line = {
         "color": "#4ade80" if is_home_variant else "#111",
         "width": line_width,
-        "shape": "spline" if is_home_variant else "linear",
-        "smoothing": 1.15 if is_home_variant else 0,
+        "shape": "linear",
     }
     trace_kwargs = None
     name = "Tremore" if is_home_variant else "RMS"
@@ -222,6 +221,7 @@ def build_tremor_figure(
             "fillcolor": "rgba(74, 222, 128, 0.08)",
             "hovertemplate": "<b>%{y:.2f} mV</b><br>%{x|%d/%m %H:%M}<extra></extra>",
             "showlegend": False,
+            "opacity": 0.85,
         }
     return build_plotly_figure_from_pairs(
         clean_pairs,
