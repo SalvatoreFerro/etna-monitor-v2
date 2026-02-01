@@ -292,9 +292,15 @@ def get_user_missions(
     query = UserMission.query.filter(UserMission.user_id == user_id)
 
     if not include_expired:
+        # Normalize now for comparison
+        now_normalized = now
+        if now_normalized.tzinfo is None:
+            now_normalized = now_normalized.replace(tzinfo=timezone.utc)
+        
         query = query.filter(
             db.or_(
-                UserMission.completed_at.isnot(None), UserMission.expires_at > now
+                UserMission.completed_at.isnot(None),
+                UserMission.expires_at > now_normalized
             )
         )
 
@@ -343,6 +349,10 @@ def _get_mission_progress(mission: UserMission, now: datetime) -> dict:
     Returns:
         Dict with current/total progress
     """
+    # Normalize now for comparisons
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=timezone.utc)
+        
     if mission.mission_code == "daily_prediction":
         prediction_count = (
             TremorPrediction.query.filter(
@@ -355,13 +365,17 @@ def _get_mission_progress(mission: UserMission, now: datetime) -> dict:
         return {"current": min(prediction_count, 1), "total": 1}
 
     elif mission.mission_code == "weekly_login_streak":
+        expires_at = mission.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        
         distinct_days = (
             db.session.query(func.count(func.distinct(func.date(Event.timestamp))))
             .filter(
                 Event.user_id == mission.user_id,
                 Event.event_type == "login",
                 Event.timestamp >= mission.awarded_at,
-                Event.timestamp <= min(now, mission.expires_at),
+                Event.timestamp <= min(now, expires_at),
             )
             .scalar()
         )

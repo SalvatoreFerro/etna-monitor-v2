@@ -46,7 +46,11 @@ class UserMission(db.Model):
         """Check if mission is expired and not completed."""
         if self.is_completed:
             return False
-        return datetime.now(timezone.utc) > self.expires_at
+        now = datetime.now(timezone.utc)
+        expires_at = self.expires_at
+        if expires_at.tzinfo is None:
+            expires_at = expires_at.replace(tzinfo=timezone.utc)
+        return now > expires_at
 
     @property
     def is_active(self) -> bool:
