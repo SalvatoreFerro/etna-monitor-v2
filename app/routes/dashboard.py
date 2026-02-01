@@ -133,6 +133,19 @@ def dashboard_home():
         .order_by(TremorPrediction.created_at.desc())
         .first()
     )
+
+    # Load missions if feature is enabled
+    user_missions = []
+    enable_missions = os.getenv("ENABLE_MISSIONS", "").strip().lower()
+    if enable_missions in {"1", "true", "yes"}:
+        try:
+            from ..services.mission_service import get_user_missions, check_and_complete_missions
+            # Check and auto-complete missions
+            check_and_complete_missions(user.id)
+            user_missions = get_user_missions(user.id, include_expired=False)
+        except Exception:
+            logger.exception("Failed to load missions for user %s", user.id)
+            user_missions = []
     
     return render_template("dashboard_v2.html",
                          user=user,
@@ -148,6 +161,8 @@ def dashboard_home():
                          user_level=user_level,
                          user_level_description=level_description,
                          active_prediction=active_prediction,
+                         user_missions=user_missions,
+                         missions_enabled=enable_missions in {"1", "true", "yes"},
                          hide_footer=True,
                          hide_nav=True,
                          page_title="Dashboard tremore Etna – EtnaMonitor",

@@ -12,7 +12,8 @@ from app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-PREDICTION_HORIZON_HOURS = 24
+PREDICTION_HORIZONS = [6, 12, 24]
+PREDICTION_HORIZON_HOURS = 24  # Keep for backward compatibility
 PREDICTION_CHOICES = {"UP", "DOWN", "FLAT"}
 TREND_UP_THRESHOLD = 1.10
 TREND_DOWN_THRESHOLD = 0.90
@@ -30,6 +31,7 @@ def _normalize_reference_time(reference_time: datetime | None) -> datetime | Non
 def compute_tremor_outcome(
     df: pd.DataFrame,
     reference_time: datetime | None = None,
+    horizon_hours: int = 24,
 ) -> dict[str, Any] | None:
     if df is None or df.empty:
         return None
@@ -58,7 +60,7 @@ def compute_tremor_outcome(
     now_window = df_before.tail(max(1, NOW_WINDOW_POINTS))
     now_value = float(now_window["value"].max())
 
-    prev_target = reference_time - timedelta(hours=PREDICTION_HORIZON_HOURS)
+    prev_target = reference_time - timedelta(hours=horizon_hours)
     prev_idx = (df["timestamp"] - prev_target).abs().idxmin()
     prev_value = float(df.loc[prev_idx, "value"])
 
@@ -104,7 +106,9 @@ def resolve_expired_predictions(
 
     resolved_count = 0
     for prediction in predictions:
-        outcome_payload = compute_tremor_outcome(df, prediction.resolves_at)
+        outcome_payload = compute_tremor_outcome(
+            df, prediction.resolves_at, horizon_hours=prediction.horizon_hours
+        )
         if outcome_payload is None:
             logger.warning(
                 "[PREDICTIONS] Unable to resolve prediction id=%s due to missing trend",
@@ -133,5 +137,6 @@ __all__ = [
     "compute_tremor_outcome",
     "resolve_expired_predictions",
     "PREDICTION_CHOICES",
+    "PREDICTION_HORIZONS",
     "PREDICTION_HORIZON_HOURS",
 ]
