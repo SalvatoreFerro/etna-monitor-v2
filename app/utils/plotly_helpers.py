@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from math import log10
-
 import plotly.graph_objects as go
 from plotly import offline as plotly_offline
 
@@ -17,14 +15,13 @@ MOBILE_LINE_WIDTH = 3.5
 MOBILE_MODAL_MARGIN = {"l": 45, "r": 10, "t": 20, "b": 45}
 MOBILE_MODAL_TICK_FONT_SIZE = 13
 MOBILE_MODAL_LINE_WIDTH = 3.2
-DEFAULT_Y_TICKVALS = [0.1, 0.2, 0.5, 1, 2, 5, 10]
-DEFAULT_Y_TICKTEXT = ["10⁻¹", "0.2", "0.5", "1", "2", "5", "10¹"]
+Y_AXIS_LOG_RANGE = [0, 1]
 
 
 def _compute_log_range(plot_values: Sequence[float]) -> tuple[list[float], float]:
     max_y = max(plot_values) if plot_values else Y_AXIS_MIN_MV
     y_max = max(10.0, max_y * 2)
-    return [log10(Y_AXIS_MIN_MV), log10(y_max)], y_max
+    return Y_AXIS_LOG_RANGE, y_max
 
 
 def _build_background_band_shapes(
@@ -90,11 +87,11 @@ def _build_tremor_layout(
             "linewidth": 1,
             "linecolor": "#334155",
             "tickfont": {"size": 12},
-            "tickvals": DEFAULT_Y_TICKVALS,
-            "ticktext": DEFAULT_Y_TICKTEXT,
+            "dtick": 1,
+            "tickformat": ".0e",
             "ticksuffix": " mV",
             "exponentformat": "power",
-            "minor": {"ticklen": 4, "showgrid": False},
+            "minor": {"ticks": "", "showgrid": False},
             "zeroline": False,
         },
         "plot_bgcolor": "rgba(0,0,0,0)",
@@ -178,6 +175,9 @@ def _apply_plot_tuning(
             **(mobile_overrides.get("yaxis") or {}),
             "range": log_range,
             "tickfont": {"size": MOBILE_TICK_FONT_SIZE},
+            "dtick": 1,
+            "tickformat": ".0e",
+            "minor": {"ticks": "", "showgrid": False},
             "nticks": MOBILE_Y_NTICKS,
             "automargin": True,
         }
