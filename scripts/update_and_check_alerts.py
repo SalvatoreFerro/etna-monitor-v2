@@ -1,11 +1,11 @@
 import logging
 import os
 import sys
+from pathlib import Path
 
 from app import create_app
 from app.services.telegram_service import TelegramService
 from scripts.csv_updater import update_with_retries
-from app.utils.config import get_curva_csv_path
 
 
 log = logging.getLogger("update_and_check_alerts")
@@ -19,7 +19,7 @@ def main() -> None:
 
     ingv_url = os.getenv("INGV_URL", "https://www.ct.ingv.it/RMS_Etna/2.png")
     colored_url = (os.getenv("INGV_COLORED_URL") or "").strip() or None
-    csv_path = get_curva_csv_path()
+    csv_path = Path(os.getenv("CURVA_CSV_PATH", "data/curva_colored.csv"))
 
     result = update_with_retries(ingv_url, colored_url, csv_path)
     if not result.get("ok"):

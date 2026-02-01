@@ -20,7 +20,6 @@ from backend.utils.extract_colored import extract_series_from_colored
 from backend.utils.extract_png import download_png as download_white_png
 from backend.utils.extract_png import clean_and_save_data, process_png_bytes_to_csv
 from app.services.runlog_service import log_cron_run_external
-from app.utils.config import get_curva_csv_path
 
 
 DEFAULT_INTERVAL_SECONDS = 3600
@@ -234,6 +233,13 @@ def update_with_retries(ingv_url: str, colored_url: str | None, csv_path: Path) 
             continue
 
         last_ts = _read_csv_last_timestamp(csv_path)
+        try:
+            stat = csv_path.stat()
+            mtime = datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat()
+        except OSError:
+            mtime = None
+        max_ts = last_ts.isoformat() if last_ts else None
+        log.info("writing CSV to %s | mtime=%s | max_ts=%s", csv_path, mtime, max_ts)
         updated = False
         if last_ts and (previous_last_ts is None or last_ts > previous_last_ts):
             updated = True
@@ -350,7 +356,7 @@ def main() -> None:
 
     ingv_url = os.getenv("INGV_URL", "https://www.ct.ingv.it/RMS_Etna/2.png")
     colored_url = (os.getenv("INGV_COLORED_URL") or "").strip() or None
-    csv_path = get_curva_csv_path()
+    csv_path = Path(os.getenv("CURVA_CSV_PATH", "data/curva_colored.csv"))
     interval_seconds = int(os.getenv("CSV_UPDATE_INTERVAL", str(DEFAULT_INTERVAL_SECONDS)))
     run_once = os.getenv("RUN_ONCE", "").lower() in {"1", "true", "yes"}
 

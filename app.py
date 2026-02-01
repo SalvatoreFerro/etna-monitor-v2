@@ -5,7 +5,9 @@ from pathlib import Path
 ROOT = pathlib.Path(__file__).resolve().parent
 DATA_DIR = pathlib.Path(os.getenv("DATA_DIR", "/data"))
 LOG_DIR = pathlib.Path(os.getenv("LOG_DIR", "/data/log"))
-CSV_PATH = pathlib.Path(os.getenv("CSV_PATH", "/data/curva.csv"))
+CSV_PATH = pathlib.Path(
+    os.getenv("CURVA_CSV_PATH") or os.getenv("CSV_PATH", "/data/curva_colored.csv")
+)
 
 def ensure_path(p: pathlib.Path):
     """Create directory with fallback if /data is not writable"""
