@@ -30,7 +30,12 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
 from ..utils.auth import admin_required, get_current_user, is_owner_or_admin
-from ..utils.config import get_curva_csv_path, get_curva_csv_status, load_curva_dataframe
+from ..utils.config import (
+    get_curva_csv_path,
+    get_curva_csv_status,
+    get_curva_csv_temporal_status,
+    load_curva_dataframe,
+)
 from backend.utils.extract_colored import download_png as download_colored_png
 from backend.utils.extract_colored import extract_series_from_colored
 from ..utils.metrics import get_csv_metrics
@@ -3206,22 +3211,17 @@ def test_colored_extraction():
             )
             return cached_response
     tremor_summary = build_tremor_summary()
+    csv_temporal_status = get_curva_csv_temporal_status(get_curva_csv_path())
     bands_cache = load_cached_thresholds()
     bands_debug = None
     if bands_cache:
-        updated_at = bands_cache.get("updated_at")
         verification = bands_cache.get("verification") or {}
         checked_at = verification.get("checked_at")
-        today = datetime.now(timezone.utc).date()
-        detected_today = False
-        if updated_at:
-            try:
-                detected_today = datetime.fromisoformat(updated_at).date() == today
-            except ValueError:
-                detected_today = False
         bands_debug = {
-            "updated_at": updated_at,
-            "detected_today": detected_today,
+            "updated_at": csv_temporal_status.get("updated_at_iso"),
+            "detected_today": csv_temporal_status.get("detected_today"),
+            "is_stale": csv_temporal_status.get("is_stale"),
+            "stale_threshold_hours": csv_temporal_status.get("stale_threshold_hours"),
             "verification_status": verification.get("status"),
             "verification_checked_at": checked_at,
             "verification_notes": verification.get("notes"),

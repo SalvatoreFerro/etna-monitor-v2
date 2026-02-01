@@ -862,8 +862,11 @@ class EtnaDashboard {
         const dataPoints = document.getElementById('data-points');
         const trendStatus = document.getElementById('trend-status');
         
-        if (lastUpdated && data.last_ts) {
-            lastUpdated.textContent = `Ultimo aggiornamento: ${new Date(data.last_ts).toLocaleString()}`;
+        const updatedAt = data.updated_at || data.last_ts;
+        if (lastUpdated && updatedAt) {
+            const timestampLabel = new Date(updatedAt).toLocaleString();
+            const staleSuffix = data.is_stale ? ' · dato non aggiornato' : '';
+            lastUpdated.textContent = `Ultimo aggiornamento: ${timestampLabel}${staleSuffix}`;
         }
         
         if (dataPoints) {

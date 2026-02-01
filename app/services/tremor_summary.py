@@ -10,7 +10,7 @@ import pandas as pd
 from flask import current_app
 from openai import OpenAI
 
-from ..utils.config import get_curva_csv_path
+from ..utils.config import get_curva_csv_path, get_temporal_status_from_timestamp
 from ..utils.ingv_bands import get_ingv_band_thresholds
 from backend.utils.time import to_iso_utc
 from config import Config
@@ -351,6 +351,10 @@ def _get_ai_summary(payload: dict[str, Any]) -> dict[str, Any] | None:
 def build_tremor_summary(window_minutes: int = 60) -> dict[str, Any]:
     df, reason = load_tremor_dataframe()
     trend = calculate_trend(df, window_minutes=window_minutes) if df is not None and not reason else None
+    temporal_status = None
+    if df is not None and not df.empty:
+        latest_ts = df["timestamp"].max()
+        temporal_status = get_temporal_status_from_timestamp(latest_ts)
 
     try:
         ingv_bands = get_ingv_band_thresholds(_get_logger())
@@ -413,6 +417,10 @@ def build_tremor_summary(window_minutes: int = 60) -> dict[str, Any]:
         "median_last_hour": median_last_hour,
         "median_prev_hour": median_prev_hour,
         "delta_pct": delta_pct,
+        "updated_at": temporal_status.get("updated_at_iso") if temporal_status else None,
+        "detected_today": temporal_status.get("detected_today") if temporal_status else False,
+        "is_stale": temporal_status.get("is_stale") if temporal_status else False,
+        "stale_threshold_hours": temporal_status.get("stale_threshold_hours") if temporal_status else None,
         "thresholds_used": {
             "t1": thresholds.get("t1"),
             "t2": thresholds.get("t2"),

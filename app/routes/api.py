@@ -9,7 +9,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from ..utils.metrics import record_csv_error, record_csv_read, record_csv_update
 from ..utils.auth import get_current_user, is_owner_or_admin
-from ..utils.config import get_curva_csv_path, warn_if_stale_timestamp
+from ..utils.config import get_curva_csv_path, get_temporal_status_from_timestamp, warn_if_stale_timestamp
 from ..models.hotspots_cache import HotspotsCache
 from ..models.hotspots_record import HotspotsRecord
 from ..services.copernicus_smart_view import build_copernicus_view_payload
@@ -172,6 +172,7 @@ def get_curva():
         df = df.tail(limit)
 
         last_ts = df["timestamp"].iloc[-1]
+        temporal_status = get_temporal_status_from_timestamp(last_ts)
         warn_if_stale_timestamp(last_ts, current_app.logger, "api_curva")
         record_csv_read(len(df), last_ts.to_pydatetime())
 
@@ -187,6 +188,9 @@ def get_curva():
             "rows": len(data),
             "csv_mtime_utc": csv_mtime_utc,
             "source": "file",
+            "updated_at": temporal_status.get("updated_at_iso"),
+            "detected_today": temporal_status.get("detected_today"),
+            "is_stale": temporal_status.get("is_stale"),
         }
         if extraction_error:
             payload["source"] = "fallback"
@@ -238,6 +242,7 @@ def get_status():
             if reason is None:
                 df = df.sort_values("timestamp")
                 last_ts = df["timestamp"].iloc[-1]
+                temporal_status = get_temporal_status_from_timestamp(last_ts)
                 record_csv_read(len(df), last_ts.to_pydatetime())
 
                 current_value = float(df["value"].iloc[-1])
@@ -249,6 +254,9 @@ def get_status():
                     "above_threshold": above_threshold,
                     "threshold": threshold,
                     "last_update": to_iso_utc(last_ts),
+                    "updated_at": temporal_status.get("updated_at_iso"),
+                    "detected_today": temporal_status.get("detected_today"),
+                    "is_stale": temporal_status.get("is_stale"),
                     "total_points": len(df)
                 })
 

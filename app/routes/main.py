@@ -52,7 +52,12 @@ from app.utils.meteo import (
     get_webcam_weather_payload,
 )
 from ..services.sentieri_geojson import read_geojson_file, validate_feature_collection
-from ..utils.config import get_curva_csv_path, load_curva_dataframe, warn_if_stale_timestamp
+from ..utils.config import (
+    get_curva_csv_path,
+    get_temporal_status_from_timestamp,
+    load_curva_dataframe,
+    warn_if_stale_timestamp,
+)
 from plotly import io as plotly_io
 
 bp = Blueprint("main", __name__)
@@ -244,6 +249,7 @@ def index():
     latest_value: float | None = None
     latest_timestamp_iso: str | None = None
     latest_timestamp_display: str | None = None
+    temporal_status: dict | None = None
     data_points = 0
     placeholder_reason: str | None = None
     csv_mtime_utc: str | None = None
@@ -290,6 +296,7 @@ def index():
                 warn_if_stale_timestamp(temporal_end, current_app.logger, "homepage")
                 temporal_start_iso = to_iso_utc(temporal_start)
                 temporal_end_iso = to_iso_utc(temporal_end)
+                temporal_status = get_temporal_status_from_timestamp(temporal_end)
                 temporal_coverage = (
                     f"{temporal_start_iso}/{temporal_end_iso}"
                     if temporal_start_iso and temporal_end_iso
@@ -507,6 +514,7 @@ def index():
         "rows": data_points,
         "placeholder_reason": placeholder_reason,
         "has_data": placeholder_reason is None,
+        "temporal_status": temporal_status,
     }
 
     try:
@@ -559,6 +567,7 @@ def index():
         show_csv_debug=show_csv_debug,
         csv_debug=csv_debug,
         fig_json=fig_json,
+        temporal_status=temporal_status,
     )
 
 
@@ -626,6 +635,7 @@ def eruzione_oggi():
     preview_rows: list[dict[str, object]] = []
     latest_value: float | None = None
     latest_timestamp_display: str | None = None
+    temporal_status: dict | None = None
     placeholder_reason: str | None = None
     activity_level = "unknown"
     activity_level_text = "In caricamento"
@@ -659,6 +669,7 @@ def eruzione_oggi():
                         else temporal_end.tz_localize("UTC")
                     )
                     latest_timestamp_display = temporal_end_display.strftime("%d/%m/%Y %H:%M")
+                    temporal_status = get_temporal_status_from_timestamp(temporal_end)
                     
                     # Determine activity level
                     if latest_value < 0.5:
@@ -739,6 +750,7 @@ def eruzione_oggi():
         preview_rows=preview_rows,
         latest_value=latest_value,
         latest_timestamp_display=latest_timestamp_display,
+        temporal_status=temporal_status,
         activity_level=activity_level,
         activity_level_text=activity_level_text,
         current_date=current_date,
@@ -996,6 +1008,7 @@ def observatory():
     csv_path = get_curva_csv_path()
     preview_rows: list[dict[str, object]] = []
     latest_timestamp_display: str | None = None
+    temporal_status: dict | None = None
     data_points = 0
     placeholder_reason: str | None = None
 
@@ -1028,6 +1041,7 @@ def observatory():
                         else temporal_end.tz_localize("UTC")
                     )
                     latest_timestamp_display = temporal_end_display.strftime("%d/%m/%Y %H:%M")
+                    temporal_status = get_temporal_status_from_timestamp(temporal_end)
         except Exception:
             placeholder_reason = "error"
             current_app.logger.exception("[OBSERVATORY] Failed to read tremor CSV")
@@ -1117,6 +1131,7 @@ def observatory():
         csv_snapshot=csv_snapshot,
         preview_rows=preview_rows,
         latest_timestamp_display=latest_timestamp_display,
+        temporal_status=temporal_status,
         data_points_count=data_points,
         hotspots_summary={
             "last_fetch_display": _format_hotspots_timestamp(hotspots_last_fetch),
