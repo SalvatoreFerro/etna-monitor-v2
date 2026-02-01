@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 import requests
 
+from backend.utils.ingv_timestamp import extract_updated_timestamp_from_image
 from backend.utils.time import to_iso_utc
 
 
@@ -132,7 +133,11 @@ def extract_series_from_colored(path_png: str | Path):
     missing_tail = _count_missing_tail_columns(filtered_points, tail_columns=50)
     tail_reasons = _count_tail_reasons(reasons, tail_columns=50)
 
-    end_time = datetime.now(timezone.utc)
+    try:
+        end_time = extract_updated_timestamp_from_image(image)
+    except Exception as exc:
+        logger.error("[INGV COLORED] timestamp OCR failed: %s", exc)
+        raise
     start_time = end_time - EXTRACTION_DURATION
     duration_seconds = EXTRACTION_DURATION.total_seconds()
     steps = max(mask_candidate.shape[1] - 1, 1)
