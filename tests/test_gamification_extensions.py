@@ -204,7 +204,6 @@ def test_mission_completion_daily_prediction(app):
     assert mission.is_completed is True
 
 
-@pytest.mark.skip(reason="Weekly login streak logic is complex and needs further testing")
 def test_mission_completion_weekly_login(app):
     """Test completing a weekly login streak mission."""
     user = User(email="mission@example.com")
@@ -220,8 +219,8 @@ def test_mission_completion_weekly_login(app):
     )
     assert mission is not None
 
-    # Create login events for 7 different days (more than the 5 required)
-    for day in range(7):
+    # Create login events for 5 different days (exactly the minimum required)
+    for day in range(5):
         event_time = now + timedelta(days=day, hours=12)
         event = Event(
             user_id=user.id,
@@ -232,8 +231,8 @@ def test_mission_completion_weekly_login(app):
 
     db.session.commit()
 
-    # Check after 7 days + 1 hour (mission should now be completable)
-    check_time = now + timedelta(days=7, hours=1)
+    # Check after 5th login (should now be completable)
+    check_time = now + timedelta(days=5, hours=13)
     completed_count = check_and_complete_missions(user.id, now=check_time)
     
     # Mission should have been completed
