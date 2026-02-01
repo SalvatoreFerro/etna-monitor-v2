@@ -1554,14 +1554,14 @@
   }
 
   .tremor-plot-wrap {
-    min-height: clamp(240px, 42vh, 420px);
-    aspect-ratio: 16 / 7;
+    min-height: clamp(260px, 42vh, 440px);
+    aspect-ratio: 16 / 9;
   }
 
   @media (max-width: 768px) {
     .tremor-plot-wrap {
-      min-height: clamp(220px, 38vh, 340px);
-      aspect-ratio: 16 / 8;
+      min-height: clamp(260px, 55vh, 480px);
+      aspect-ratio: auto;
     }
   }
 

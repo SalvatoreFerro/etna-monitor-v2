@@ -22,9 +22,13 @@
     }
   };
 
-  const computePlotHeight = () => {
+  const computePlotHeight = (container) => {
+    const containerHeight = container?.getBoundingClientRect?.().height;
+    if (containerHeight && Number.isFinite(containerHeight)) {
+      return Math.round(containerHeight);
+    }
     const height = window.innerHeight * 0.66;
-    return Math.round(Math.min(760, Math.max(460, height)));
+    return Math.round(Math.min(520, Math.max(320, height)));
   };
 
   const isMobileViewport = () => window.innerWidth <= MOBILE_BREAKPOINT;
@@ -56,10 +60,10 @@
     return title.text || '';
   };
 
-  const buildMobileOverrides = (layout) => {
+  const buildMobileOverrides = (layout, container) => {
     const mobileOverrides = extractMobileOverrides(layout);
     return {
-      height: computePlotHeight(),
+      height: computePlotHeight(container),
       margin: mobileOverrides.margin,
       'xaxis.tickfont.size': mobileOverrides.xaxis?.tickfont?.size || MOBILE_TICK_FONT_SIZE,
       'xaxis.nticks': mobileOverrides.xaxis?.nticks,
@@ -104,7 +108,9 @@
       return;
     }
     const isMobile = isMobileViewport();
-    const layoutUpdates = isMobile ? buildMobileOverrides(baseLayout) : buildDesktopOverrides(baseLayout);
+    const layoutUpdates = isMobile
+      ? buildMobileOverrides(baseLayout, container)
+      : buildDesktopOverrides(baseLayout);
     if (!isMobile && baseYTitleText !== undefined) {
       layoutUpdates['yaxis.title.text'] = baseYTitleText;
       layoutUpdates['yaxis.title.standoff'] = baseYTitleStandoff;
