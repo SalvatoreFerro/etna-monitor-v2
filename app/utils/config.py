@@ -8,6 +8,8 @@ import pandas as pd
 
 from backend.utils.time import to_iso_utc
 
+_DEFAULT_STALE_HOURS = int(os.getenv("CURVA_STALE_HOURS", "6"))
+
 _CURVA_ENV_PATH = os.getenv("CURVA_CSV_PATH")
 CURVA_CANONICAL_PATH = Path(_CURVA_ENV_PATH or "data/curva_colored.csv")
 _CURVA_FALLBACK_PATHS = [Path("data/curva_colored.csv"), Path("data/curva.csv")]
@@ -49,6 +51,49 @@ def _prepare_curva_dataframe(df: pd.DataFrame) -> tuple[pd.DataFrame, str | None
         return df, "empty"
 
     return df, None
+
+
+def _normalize_timestamp_utc(value) -> datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, pd.Timestamp):
+        if value.tz is None:
+            return value.tz_localize("UTC").to_pydatetime()
+        return value.tz_convert("UTC").to_pydatetime()
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+    return None
+
+
+def get_temporal_status_from_timestamp(
+    last_ts: pd.Timestamp | datetime | None,
+    *,
+    stale_hours: int | None = None,
+) -> dict:
+    updated_at = _normalize_timestamp_utc(last_ts)
+    updated_at_iso = to_iso_utc(updated_at) if updated_at else None
+    now = datetime.now(timezone.utc)
+    stale_threshold = timedelta(hours=stale_hours or _DEFAULT_STALE_HOURS)
+    age_hours = None
+    is_stale = False
+    detected_today = False
+    if updated_at:
+        age_delta = now - updated_at
+        age_hours = round(age_delta.total_seconds() / 3600, 2)
+        is_stale = age_delta > stale_threshold
+        detected_today = updated_at.date() == now.date()
+        if is_stale:
+            detected_today = False
+    return {
+        "updated_at": updated_at,
+        "updated_at_iso": updated_at_iso,
+        "detected_today": detected_today,
+        "is_stale": is_stale,
+        "age_hours": age_hours,
+        "stale_threshold_hours": stale_threshold.total_seconds() / 3600,
+    }
 
 
 def load_curva_dataframe(path: Path) -> tuple[pd.DataFrame | None, str | None]:
@@ -110,6 +155,17 @@ def get_curva_csv_status(path: Path, df: pd.DataFrame | None = None) -> dict:
     return status
 
 
+def get_curva_csv_temporal_status(path: Path, df: pd.DataFrame | None = None) -> dict:
+    if df is None:
+        df, reason = load_curva_dataframe(path)
+        if reason or df is None or df.empty:
+            return get_temporal_status_from_timestamp(None)
+
+    df = df.sort_values("timestamp")
+    last_ts = df["timestamp"].iloc[-1] if len(df) else None
+    return get_temporal_status_from_timestamp(last_ts)
+
+
 def warn_if_stale_timestamp(
     last_ts: pd.Timestamp | datetime | None,
     logger,
@@ -144,6 +200,8 @@ __all__ = [
     "CURVA_CANONICAL_PATH",
     "get_curva_csv_path",
     "get_curva_csv_status",
+    "get_curva_csv_temporal_status",
+    "get_temporal_status_from_timestamp",
     "load_curva_dataframe",
     "warn_if_stale_timestamp",
 ]

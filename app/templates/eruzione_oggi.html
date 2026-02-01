@@ -34,7 +34,7 @@
           {% endif %}
           {% if latest_timestamp_display %}
             <p class="status-card__meta">
-              <i class="fas fa-clock"></i> Ultimo aggiornamento: {{ latest_timestamp_display }} UTC
+              <i class="fas fa-clock"></i> Ultimo aggiornamento: {{ latest_timestamp_display }} UTC{% if temporal_status and temporal_status.is_stale %} · dato non aggiornato{% endif %}
             </p>
           {% endif %}
           <div class="status-card__actions">

@@ -110,6 +110,9 @@
         {% else %}
           --
         {% endif %}
+        {% if temporal_status and temporal_status.is_stale %}
+          · dato non aggiornato
+        {% endif %}
       </p>
       {% if tremor_summary and tremor_summary.ai_explain %}
         {% if tremor_summary.ai_headline %}
@@ -197,7 +200,7 @@
                 <dt>Aggiornato</dt>
                 <dd>
                   {% if latest_timestamp_display %}
-                    {{ latest_timestamp_display }} UTC
+                    {{ latest_timestamp_display }} UTC{% if temporal_status and temporal_status.is_stale %} · dato non aggiornato{% endif %}
                   {% else %}
                     --
                   {% endif %}

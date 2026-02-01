@@ -35,7 +35,7 @@
             </div>
             <div class="observatory-card__meta">
               <span>Ultimo aggiornamento</span>
-              <strong>{{ latest_timestamp_display or '—' }}</strong>
+              <strong>{{ latest_timestamp_display or '—' }}{% if temporal_status and temporal_status.is_stale %} · dato non aggiornato{% endif %}</strong>
             </div>
           </header>
           <div class="observatory-card__body">
@@ -97,7 +97,7 @@
             <div class="observatory-tremor-meta">
               <div class="observatory-kpi">
                 <span>Ultimo aggiornamento</span>
-                <strong id="live-last-update">{{ latest_timestamp_display or '--' }}</strong>
+                <strong id="live-last-update">{{ latest_timestamp_display or '--' }}{% if temporal_status and temporal_status.is_stale %} · dato non aggiornato{% endif %}</strong>
               </div>
               <div class="observatory-kpi">
                 <span>Campioni elaborati</span>

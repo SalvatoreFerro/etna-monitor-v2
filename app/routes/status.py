@@ -5,7 +5,7 @@ import time
 
 from backend.utils.time import to_iso_utc
 from app.security import serialize_csp
-from app.utils.config import get_curva_csv_path
+from app.utils.config import get_curva_csv_path, get_temporal_status_from_timestamp
 
 status_bp = Blueprint("status", __name__)
 
@@ -67,13 +67,17 @@ def get_status():
                     else:
                         df = df.sort_values("timestamp")
                         last_ts = df["timestamp"].iloc[-1]
+                        temporal_status = get_temporal_status_from_timestamp(last_ts)
                         current_value = df["value"].iloc[-1] if len(df) > 0 else None
                         status_data.update({
                             "last_ts": to_iso_utc(last_ts),
                             "rows": len(df),
                             "current_value": float(current_value) if current_value is not None else None,
                             "above_threshold": bool(current_value > threshold) if current_value is not None else False,
-                            "data_age_minutes": int((time.time() - last_ts.timestamp()) / 60) if last_ts else None
+                            "data_age_minutes": int((time.time() - last_ts.timestamp()) / 60) if last_ts else None,
+                            "updated_at": temporal_status.get("updated_at_iso"),
+                            "detected_today": temporal_status.get("detected_today"),
+                            "is_stale": temporal_status.get("is_stale"),
                         })
         else:
             status_data.update({
