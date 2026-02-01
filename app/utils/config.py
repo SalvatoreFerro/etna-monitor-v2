@@ -8,13 +8,20 @@ import pandas as pd
 
 from backend.utils.time import to_iso_utc
 
-CURVA_CANONICAL_PATH = Path(
-    os.getenv("CURVA_CSV_PATH", "data/curva_colored.csv")
-)
+_CURVA_ENV_PATH = os.getenv("CURVA_CSV_PATH")
+CURVA_CANONICAL_PATH = Path(_CURVA_ENV_PATH or "data/curva_colored.csv")
+_CURVA_FALLBACK_PATHS = [Path("data/curva_colored.csv"), Path("data/curva.csv")]
 
 
 def get_curva_csv_path() -> Path:
     """Return the canonical curva.csv path."""
+    if _CURVA_ENV_PATH:
+        return CURVA_CANONICAL_PATH
+    if CURVA_CANONICAL_PATH.exists():
+        return CURVA_CANONICAL_PATH
+    for fallback in _CURVA_FALLBACK_PATHS:
+        if fallback.exists():
+            return fallback
     return CURVA_CANONICAL_PATH
 
 
