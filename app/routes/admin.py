@@ -1315,7 +1315,7 @@ def toggle_premium(user_id):
             user.mark_premium_plan()
             user.subscription_status = "active"
             if not user.premium_since:
-                user.premium_since = datetime.utcnow()
+                user.premium_since = datetime.now(timezone.utc)
 
         db.session.commit()
     except Exception as exc:  # pragma: no cover - database failure safeguard
@@ -1737,7 +1737,7 @@ def donations():
 def premium_requests():
     status_filter = (request.args.get("status") or "pending").strip().lower()
     email_filter = (request.args.get("email") or "").strip().lower()
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
     start_date = _parse_date_param(request.args.get("start_date"), today - timedelta(days=30))
     end_date = _parse_date_param(request.args.get("end_date"), today)
     if start_date > end_date:
@@ -2025,7 +2025,7 @@ def partners_dashboard():
             "order": order_by,
         },
         payment_methods=current_app.config.get("PARTNER_PAYMENT_METHODS", ("paypal_manual", "cash")),
-        current_year=datetime.utcnow().year,
+        current_year=datetime.now(timezone.utc).year,
         max_upload_bytes=int(
             current_app.config.get("MEDIA_UPLOAD_MAX_BYTES", 8 * 1024 * 1024)
         ),
@@ -2060,7 +2060,7 @@ def partners_update_slots(category_id: int):
         return redirect(url_for("admin.partners_dashboard"))
 
     category.max_slots = max_slots
-    category.updated_at = datetime.utcnow()
+    category.updated_at = datetime.now(timezone.utc)
     db.session.commit()
 
     flash(f"Slot aggiornati per {category.name}.", "success")
@@ -2167,7 +2167,7 @@ def partners_create():
     )
     partner.slug = slug_value
     if publish_now:
-        partner.approved_at = datetime.utcnow()
+        partner.approved_at = datetime.now(timezone.utc)
 
     db.session.add(partner)
     db.session.commit()
@@ -2453,7 +2453,7 @@ def partners_create_subscription(partner_id: int):
         return redirect(url_for("admin.partners_dashboard"))
 
     try:
-        year = int(request.form.get("year") or datetime.utcnow().year)
+        year = int(request.form.get("year") or datetime.now(timezone.utc).year)
     except ValueError:
         flash("Anno non valido.", "error")
         return redirect(url_for("admin.partners_dashboard"))
@@ -2471,7 +2471,7 @@ def partners_create_subscription(partner_id: int):
         return redirect(url_for("admin.partners_dashboard"))
 
     payment_ref = (request.form.get("payment_ref") or "").strip() or None
-    paid_at = datetime.utcnow()
+    paid_at = datetime.now(timezone.utc)
 
     subscription = create_subscription(
         partner,
@@ -2551,7 +2551,7 @@ def sponsor_analytics():
         flash("Funzionalità sponsor non disponibile.", "error")
         return redirect(url_for("admin.admin_home"))
 
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
     end_date = _parse_date_param(request.args.get("end_date"), today)
     start_default = end_date - timedelta(days=30)
     start_date = _parse_date_param(request.args.get("start_date"), start_default)

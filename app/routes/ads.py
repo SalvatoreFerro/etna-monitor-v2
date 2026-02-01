@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Tuple
 
 from flask import Blueprint, Response, current_app, make_response, redirect, request
@@ -106,7 +106,7 @@ def _should_record_impression(
 def _record_impression(banner: SponsorBanner, session_id: str, page: str) -> None:
     if SponsorBannerImpression is None:
         return
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if not _should_record_impression(banner.id, session_id, now):
         return
 
@@ -129,7 +129,7 @@ def _record_click(banner: SponsorBanner, session_id: str, page: str) -> None:
     user = get_current_user()
     click = SponsorBannerClick(
         banner_id=banner.id,
-        ts=datetime.utcnow(),
+        ts=datetime.now(timezone.utc),
         page=page[:255] if page else None,
         session_id=session_id,
         user_id=user.id if user else None,

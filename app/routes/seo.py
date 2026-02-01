@@ -235,7 +235,7 @@ def sitemap() -> Response:
     # Blog index and articles
     blog_posts: list[BlogPost] = []
     try:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         blog_posts = (
             BlogPost.query.filter(
                 BlogPost.published.is_(True),
@@ -255,7 +255,7 @@ def sitemap() -> Response:
             )
         except Exception:
             continue
-        lastmod = (post.updated_at or post.created_at or datetime.utcnow()).date().isoformat()
+        lastmod = (post.updated_at or post.created_at or datetime.now(timezone.utc)).date().isoformat()
         _append_url(urls, seen_urls, absolute, lastmod, "weekly", "0.7")
 
     try:
@@ -267,7 +267,7 @@ def sitemap() -> Response:
             default=None,
         )
         lastmod = (
-            (latest_post_dt or datetime.utcnow()).date().isoformat()
+            (latest_post_dt or datetime.now(timezone.utc)).date().isoformat()
             if latest_post_dt
             else _default_lastmod()
         )
@@ -308,7 +308,7 @@ def sitemap() -> Response:
             lastmod_dt = last_partner.updated_at or last_partner.created_at
             lastmod = lastmod_dt.date().isoformat()
         else:
-            fallback = category.updated_at or datetime.utcnow()
+            fallback = category.updated_at or datetime.now(timezone.utc)
             lastmod = fallback.date().isoformat()
         _append_url(urls, seen_urls, absolute, lastmod, "daily", "0.9")
 
@@ -344,7 +344,7 @@ def sitemap() -> Response:
             )
         except Exception:
             continue
-        timestamp = partner.updated_at or partner.created_at or datetime.utcnow()
+        timestamp = partner.updated_at or partner.created_at or datetime.now(timezone.utc)
         _append_url(
             urls,
             seen_urls,
@@ -373,7 +373,7 @@ def sitemap() -> Response:
             )
         except Exception:
             continue
-        timestamp = thread.updated_at or thread.created_at or datetime.utcnow()
+        timestamp = thread.updated_at or thread.created_at or datetime.now(timezone.utc)
         _append_url(
             urls,
             seen_urls,

@@ -171,7 +171,7 @@ class User(UserMixin, db.Model):
         self.is_premium = True
         self.premium = True
         self.premium_lifetime = True
-        self.premium_since = datetime.utcnow()
+        self.premium_since = datetime.now(timezone.utc)
         self.mark_premium_plan()
 
     @classmethod

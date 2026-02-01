@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from sqlalchemy import func
@@ -17,7 +17,7 @@ PLAN_OPTIONS = ["FREE", "PARTNER", "PRO"]
 
 
 def _usage_summary(client_id: int) -> dict:
-    today = datetime.utcnow().date()
+    today = datetime.now(timezone.utc).date()
 
     def _sum_range(days: int) -> int:
         start = today - timedelta(days=days - 1)

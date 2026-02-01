@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from flask_login import current_user
 
@@ -98,7 +98,7 @@ def ensure_demo_profiles() -> None:
     )
 
     for user in users_without_profile:
-        db.session.add(UserGamificationProfile(user_id=user.id, last_interaction_at=datetime.utcnow()))
+        db.session.add(UserGamificationProfile(user_id=user.id, last_interaction_at=datetime.now(timezone.utc)))
 
     if users_without_profile:
         db.session.commit()

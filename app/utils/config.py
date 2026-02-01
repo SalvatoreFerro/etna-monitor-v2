@@ -10,11 +10,27 @@ from backend.utils.time import to_iso_utc
 
 _CURVA_ENV_PATH = os.getenv("CURVA_CSV_PATH")
 CURVA_CANONICAL_PATH = Path(_CURVA_ENV_PATH or "data/curva_colored.csv")
-_CURVA_FALLBACK_PATHS = [Path("data/curva_colored.csv"), Path("data/curva.csv")]
+# Fallback paths for backward compatibility (deprecated - use canonical path)
+_CURVA_FALLBACK_PATHS = [Path("data/curva_colored.csv")]
 
 
 def get_curva_csv_path() -> Path:
-    """Return the canonical curva.csv path."""
+    """
+    Return the canonical curva.csv path with fallback logic.
+    
+    Resolution order:
+    1. If CURVA_CSV_PATH env var is set, use that path (no fallback)
+    2. Try canonical path: data/curva_colored.csv
+    3. Fallback to: data/curva.csv (for backward compatibility)
+    4. If nothing exists, return canonical path anyway
+    
+    The fallback exists for backward compatibility with older deployments.
+    New deployments should always use data/curva_colored.csv as the
+    single source of truth.
+    
+    Returns:
+        Path: The path to use for reading/writing tremor CSV data
+    """
     if _CURVA_ENV_PATH:
         return CURVA_CANONICAL_PATH
     if CURVA_CANONICAL_PATH.exists():

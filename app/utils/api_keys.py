@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import wraps
 from time import perf_counter
 from typing import Callable, Tuple
@@ -96,7 +96,7 @@ def require_api_key(allowed_plans: list[str] | None = None):
                     return response
 
                 rate_status = enforce_rate_limits(api_key.id, client.plan)
-                api_key.last_used_at = datetime.utcnow()
+                api_key.last_used_at = datetime.now(timezone.utc)
                 if not rate_status.allowed:
                     response = _error_response(
                         "rate_limited",
@@ -129,7 +129,7 @@ def require_api_key(allowed_plans: list[str] | None = None):
                             endpoint=request.path,
                             method=request.method,
                             status_code=status_code,
-                            ts=datetime.utcnow(),
+                            ts=datetime.now(timezone.utc),
                             latency_ms=latency_ms,
                         )
                     )

@@ -226,7 +226,7 @@ def connect_telegram():
         user.chat_id = chat_id
         user.telegram_chat_id = chat_id
         user.telegram_opt_in = True
-        user.consent_ts = user.consent_ts or datetime.utcnow()
+        user.consent_ts = user.consent_ts or datetime.now(timezone.utc)
         user.privacy_version = Config.PRIVACY_POLICY_VERSION
 
         event = Event(

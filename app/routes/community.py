@@ -84,7 +84,7 @@ def community_landing():
 
 @bp.route("/blog/")
 def blog_index():
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     total_count = BlogPost.query.count()
     published_count = BlogPost.query.filter(BlogPost.published.is_(True)).count()
     scheduled_count = BlogPost.query.filter(
@@ -157,7 +157,7 @@ def blog_detail(slug: str):
     if post is None:
         current_app.logger.warning("[BLOG] Detail slug not found=%s", slug)
         abort(404)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     is_visible = post.published and (
         post.published_at is None or post.published_at <= now
     )
@@ -319,7 +319,7 @@ def forum_home():
             author_name=author_name,
             author_email=author_email,
         )
-        thread.updated_at = datetime.utcnow()
+        thread.updated_at = datetime.now(timezone.utc)
         db.session.add(thread)
         service.award("forum:thread")
         db.session.commit()
@@ -365,7 +365,7 @@ def thread_detail(slug: str):
         thread.status = (
             "resolved" if request.form.get("mark_resolved") == "1" else thread.status
         )
-        thread.updated_at = datetime.utcnow()
+        thread.updated_at = datetime.now(timezone.utc)
         service.award("forum:reply")
         db.session.commit()
         flash("Risposta pubblicata!", "success")

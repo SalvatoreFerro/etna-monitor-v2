@@ -2,7 +2,7 @@ from flask import Blueprint, request, jsonify, redirect, url_for, render_templat
 import stripe
 import os
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from ..utils.auth import login_required, get_current_user
 from ..models import db
 from ..models.user import User
@@ -100,7 +100,7 @@ def stripe_webhook():
             user.premium = True
             user.is_premium = True
             if not user.premium_since:
-                user.premium_since = datetime.utcnow()
+                user.premium_since = datetime.now(timezone.utc)
             user.subscription_status = 'active'
             user.subscription_id = session['subscription']
             db.session.commit()
@@ -185,7 +185,7 @@ def confirm_donation():
         "tx_id": tx_id,
         "amount": amount or None,
         "user_email": user.email,
-        "submitted_at": datetime.utcnow().isoformat(),
+        "submitted_at": datetime.now(timezone.utc).isoformat(),
     }
 
     pending_request = PremiumRequest.query.filter_by(email=user.email, status="pending").first()
@@ -197,7 +197,7 @@ def confirm_donation():
         pending_request.amount_cents = amount_cents
         pending_request.currency = "EUR" if amount_cents else pending_request.currency
         pending_request.raw_payload = payloads
-        pending_request.created_at = datetime.utcnow()
+        pending_request.created_at = datetime.now(timezone.utc)
     else:
         pending_request = PremiumRequest(
             user_id=user.id,

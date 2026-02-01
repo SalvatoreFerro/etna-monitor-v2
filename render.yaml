@@ -12,7 +12,7 @@ services:
       - key: LOG_DIR
         value: /data/log
       - key: CURVA_CSV_PATH
-        value: /workspace/etna-monitor-v2/data/curva_colored.csv
+        value: data/curva_colored.csv
       - key: SECRET_KEY
         sync: false
       - key: DATABASE_URL
@@ -62,7 +62,7 @@ services:
       - key: LOG_DIR
         value: /data/log
       - key: CURVA_CSV_PATH
-        value: /workspace/etna-monitor-v2/data/curva_colored.csv
+        value: data/curva_colored.csv
       - key: RUN_ONCE
         value: "1"
   - type: cron

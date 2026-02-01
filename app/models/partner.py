@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 
 from slugify import slugify
@@ -178,7 +178,7 @@ class Partner(db.Model):
 
     def mark_approved(self) -> None:
         self.status = "approved"
-        self.approved_at = datetime.utcnow()
+        self.approved_at = datetime.now(timezone.utc)
 
     def mark_expired(self) -> None:
         self.status = "expired"
@@ -294,7 +294,7 @@ class PartnerLead(db.Model):
 
 
 def generate_invoice_number(sequence: int, *, year: int | None = None) -> str:
-    current_year = year or datetime.utcnow().year
+    current_year = year or datetime.now(timezone.utc).year
     return f"EM-PARTNER-{current_year}-{sequence:04d}"
 
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from . import db
 
@@ -36,15 +36,15 @@ class UserGamificationProfile(db.Model):
     def add_points(self, amount: int) -> None:
         amount = max(0, int(amount))
         self.points += amount
-        self.last_interaction_at = datetime.utcnow()
+        self.last_interaction_at = datetime.now(timezone.utc)
         self._normalize_level()
 
     def register_onboarding(self) -> None:
-        self.onboarding_completed_at = datetime.utcnow()
+        self.onboarding_completed_at = datetime.now(timezone.utc)
         self.add_points(25)
 
     def register_streak(self, today: datetime | None = None) -> None:
-        today = today or datetime.utcnow()
+        today = today or datetime.now(timezone.utc)
         if self.last_interaction_at is None:
             self.streak_days = 1
         else:
