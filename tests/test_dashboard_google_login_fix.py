@@ -51,7 +51,6 @@ def test_dashboard_imports_badge_definitions(app, client):
         user_id = user.id
         
         # Login the user using flask-login
-        from flask_login import login_user
         login_user(user)
         
     # Access dashboard - should not raise NameError
