@@ -62,7 +62,7 @@ Added missing environment variables to the cron job:
 
 ```yaml
 - key: INGV_URL
-  value: https://www.ct.ingv.it/RMS_Etna/2.png
+  value: https://www.ct.ingv.it/RMS_Etna/0.png
 - key: CURVA_PIPELINE_MODE
   value: white
 ```
@@ -152,7 +152,7 @@ $ ls -la data/*.csv
 
 $ grep -A2 "INGV_URL" render.yaml
       - key: INGV_URL
-        value: https://www.ct.ingv.it/RMS_Etna/2.png
+        value: https://www.ct.ingv.it/RMS_Etna/0.png
 # ✅ Configuration present
 
 $ get_curva_csv_path()
