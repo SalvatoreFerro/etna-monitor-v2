@@ -1520,7 +1520,7 @@ def healthcheck():
     uptime = None
     start_time = current_app.config.get("START_TIME")
     if isinstance(start_time, datetime):
-        uptime = (datetime.utcnow() - start_time).total_seconds()
+        uptime = (datetime.now(timezone.utc) - start_time).total_seconds()
 
     csv_metrics = get_csv_metrics()
 

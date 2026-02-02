@@ -43,7 +43,7 @@ def _record_csv_update(
     error_message: str | None = None,
 ) -> None:
     payload = {
-        "last_update_at": datetime.utcnow().isoformat(),
+        "last_update_at": datetime.now(timezone.utc).isoformat(),
         "row_count": rows,
         "last_data_timestamp": last_timestamp.isoformat() if last_timestamp else None,
         "last_error": error_message,
@@ -117,7 +117,7 @@ def _update_hash_state(current_hash: str, threshold: int) -> tuple[int, bool]:
     state = {
         "hash": current_hash,
         "count": count,
-        "updated_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     _store_hash_state(state)
     return count, count >= threshold

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import func
 
@@ -61,7 +61,7 @@ LEVEL_DESCRIPTIONS = {
 
 
 def _distinct_login_days(user_id: int, days: int) -> int:
-    start_date = datetime.utcnow().date() - timedelta(days=days - 1)
+    start_date = datetime.now(timezone.utc).date() - timedelta(days=days - 1)
     start_datetime = datetime.combine(start_date, datetime.min.time())
     count = (
         db.session.query(func.count(func.distinct(func.date(Event.timestamp))))
@@ -102,7 +102,7 @@ def _completed_missions_count(user_id: int) -> int:
 
 
 def _normalize_existing_badges(badges: list[UserBadge]) -> set[str]:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     normalized_codes: set[str] = set()
     for badge in badges:
         code = badge.badge_code or badge.code
@@ -149,7 +149,7 @@ def recompute_badges_for_user(user_id: int) -> int | None:
     if _completed_missions_count(user_id) >= 5:
         should_have.add("MISSION_COMPLETE")
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     for code in should_have:
         if code in unlocked_codes:
             continue

@@ -1,5 +1,27 @@
+"""
+⚠️  DEPRECATED SCRIPT - DO NOT USE IN PRODUCTION ⚠️
+
+This script is DEPRECATED and should NOT be used in production.
+
+ISSUES:
+- Writes to log/log.csv instead of canonical data/curva_colored.csv
+- Uses different column names (timestamp,mV) vs canonical (timestamp,value)
+- Has hardcoded base time datetime(2025, 5, 5, 23, 0) which is incorrect
+- Runs parallel data pipeline that conflicts with csv_updater.py
+
+USE INSTEAD:
+- scripts/csv_updater.py for data extraction
+- scripts/update_and_check_alerts.py for cron jobs
+
+This file is kept for reference only. If you need to run it, update it to:
+1. Write to data/curva_colored.csv
+2. Use correct column names (timestamp, value)
+3. Fix timezone handling and base time calculation
+"""
+
 import logging
 import os
+import sys
 import time
 from datetime import datetime, timedelta
 
@@ -11,6 +33,15 @@ import requests
 
 from app.utils.logger import configure_logging
 from backend.utils.archive import ArchiveManager
+
+# ⚠️  DEPRECATED - Emit warning and exit
+logger = logging.getLogger(__name__)
+logger.error("=" * 80)
+logger.error("⚠️  DEPRECATED SCRIPT CALLED: etna_loop.py")
+logger.error("This script is deprecated and should not be used.")
+logger.error("Use scripts/csv_updater.py or scripts/update_and_check_alerts.py instead.")
+logger.error("=" * 80)
+sys.exit(1)
 
 os.makedirs("grafici", exist_ok=True)
 os.makedirs("log", exist_ok=True)

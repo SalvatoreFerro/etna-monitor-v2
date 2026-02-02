@@ -132,7 +132,7 @@ def get_audit_feed():
         .all()
     )
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     alerts_last_24h = (
         Event.query.filter(
             Event.event_type == "alert",
@@ -147,7 +147,7 @@ def get_audit_feed():
 
     payload = {
         "ok": True,
-        "generated_at": _serialize_timestamp(datetime.utcnow()),
+        "generated_at": _serialize_timestamp(datetime.now(timezone.utc)),
         "events": [_serialize_event(event) for event in events],
         "alerts": [_serialize_event(event) for event in alert_events],
         "metrics": {
@@ -181,7 +181,7 @@ def get_admin_actions():
     return jsonify(
         {
             "ok": True,
-            "generated_at": _serialize_timestamp(datetime.utcnow()),
+            "generated_at": _serialize_timestamp(datetime.now(timezone.utc)),
             "limit": entries_limit,
             "total": int(total_entries),
             "entries": [_serialize_admin_action(entry) for entry in entries],
@@ -207,7 +207,7 @@ def get_admin_analytics():
     )
     free_users = max(0, int(total_users) - int(premium_users))
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     alerts_last_24h = (
         Event.query.filter(
             Event.event_type == "alert",
@@ -221,7 +221,7 @@ def get_admin_analytics():
     return jsonify(
         {
             "ok": True,
-            "generated_at": _serialize_timestamp(datetime.utcnow()),
+            "generated_at": _serialize_timestamp(datetime.now(timezone.utc)),
             "metrics": {
                 "total_users": int(total_users),
                 "premium_users": int(premium_users),
@@ -254,7 +254,7 @@ def get_user_analytics():
     limit = _coerce_limit(request.args.get("limit"), default=100, maximum=300)
 
     try:
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         period_start = now - timedelta(days=period_days)
 
         telegram_clause = or_(
@@ -394,7 +394,7 @@ def get_user_analytics():
 
         payload = {
             "ok": True,
-            "generated_at": _serialize_timestamp(datetime.utcnow()),
+            "generated_at": _serialize_timestamp(datetime.now(timezone.utc)),
             "filters": {
                 "period_days": period_days,
                 "telegram": telegram_filter,

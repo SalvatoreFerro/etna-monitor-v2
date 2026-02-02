@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from . import db
 
@@ -31,13 +31,13 @@ class UserFeedback(db.Model):
     def mark_reviewed(self, reviewer: str) -> None:
         self.status = "reviewed"
         self.handled_by = reviewer
-        self.handled_at = datetime.utcnow()
+        self.handled_at = datetime.now(timezone.utc)
 
     def archive(self, reviewer: str | None = None) -> None:
         self.status = "archived"
         if reviewer:
             self.handled_by = reviewer
-        self.handled_at = datetime.utcnow()
+        self.handled_at = datetime.now(timezone.utc)
 
 
 class FeedbackVote(db.Model):

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import text
 
@@ -71,7 +71,7 @@ def _increment_minute_count(key_id: int, minute_bucket: datetime) -> int:
 
 
 def enforce_rate_limits(key_id: int, plan: str | None) -> RateLimitStatus:
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     limits = _plan_limits(plan)
     minute_bucket = now.replace(second=0, microsecond=0)
     day_value = now.date()

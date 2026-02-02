@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections import deque
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import re
 from typing import Iterable, Mapping
 
@@ -262,7 +262,7 @@ def serialize_partner_for_ldjson(partner: Partner) -> dict[str, object]:
 
 def rate_limit(key: str) -> bool:
     bucket_key = f"partner_rl::{key}"
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     window_start = now - timedelta(seconds=_RATE_LIMIT_SECONDS)
 
     entries = deque(session.get(bucket_key, []))

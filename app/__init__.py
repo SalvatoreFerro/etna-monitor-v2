@@ -9,7 +9,7 @@ import redis
 import warnings
 import copy
 import click
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from time import perf_counter
 from urllib.parse import urlparse, urlunparse
 from pathlib import Path
@@ -622,7 +622,7 @@ def create_app(config_overrides: dict | None = None):
     app.config.setdefault("LAST_CSV_LAST_TS", None)
     app.config.setdefault("LAST_CSV_ROW_COUNT", 0)
     app.config.setdefault("LAST_CSV_ERROR", None)
-    app.config["START_TIME"] = datetime.utcnow()
+    app.config["START_TIME"] = datetime.now(timezone.utc)
     app.send_file_max_age_default = timedelta(hours=6)
 
     override_database_uri = None
@@ -707,7 +707,7 @@ def create_app(config_overrides: dict | None = None):
     app.logger.info(f"[BOOT] ADMIN_EMAILS_SET={admin_set}")
 
     def get_current_year() -> int:
-        return datetime.utcnow().year
+        return datetime.now(timezone.utc).year
 
     @app.before_request
     def enforce_canonical_host():

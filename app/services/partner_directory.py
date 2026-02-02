@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -100,7 +100,7 @@ def generate_invoice_pdf(subscription: PartnerSubscription) -> Path:
         "P.IVA: IT00000000000",
         "",
         f"Fattura {subscription.invoice_number}",
-        f"Data pagamento: {(subscription.paid_at or datetime.utcnow()).date().isoformat()}",
+        f"Data pagamento: {(subscription.paid_at or datetime.now(timezone.utc)).date().isoformat()}",
         f"Validità: {subscription.valid_from} -> {subscription.valid_to}",
         "",
         "Destinatario:",

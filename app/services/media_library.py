@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable
 
@@ -75,9 +75,9 @@ def validate_media_file(
 def build_cloudinary_public_id(filename: str) -> str:
     """Build a deterministic Cloudinary public ID for the file."""
 
-    timestamp = int(datetime.utcnow().timestamp())
+    timestamp = int(datetime.now(timezone.utc).timestamp())
     base_slug = slugify(Path(filename).stem) or "media"
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     return f"etnamonitor/{now:%Y}/{now:%m}/{base_slug}-{timestamp}"
 
 
