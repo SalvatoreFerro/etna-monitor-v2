@@ -12,7 +12,6 @@ def test_resolve_series_end_time_uses_current_time():
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
         tmp_path = Path(tmp.name)
         tmp.write(b"fake png data")
-    
     try:
         # Get the end time that the function resolves
         resolved_time = _resolve_series_end_time(tmp_path)
@@ -40,7 +39,6 @@ def test_resolve_series_end_time_does_not_use_file_mtime():
     with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
         tmp_path = Path(tmp.name)
         tmp.write(b"fake png data")
-    
     try:
         # Get the file's modification time
         file_mtime = datetime.fromtimestamp(tmp_path.stat().st_mtime, tz=timezone.utc)
