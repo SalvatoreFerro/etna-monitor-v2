@@ -395,7 +395,6 @@
                         </button>
                       {% elif mission.is_expired %}
                         <span class="mission-badge mission-badge--expired">Scaduta</span>
-                        <button class="btn btn-secondary btn-sm" disabled>Scaduta</button>
                       {% else %}
                         <span class="mission-badge mission-badge--active">In corso</span>
                         <span class="mission-expires muted">Scade: {{ mission.expires_at[:10] }}</span>
@@ -513,7 +512,7 @@
               >
                 Vai al Prediction Game
               </button>
-            {% elif active_prediction %}
+            {% else %}
               <p class="cta-loop-message">⏳ Hai una previsione attiva. Torna quando si risolve per vedere l'esito!</p>
             {% endif %}
             

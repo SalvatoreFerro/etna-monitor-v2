@@ -180,12 +180,13 @@ def dashboard_home():
     # Create next level hint message
     if user_level >= 3:
         next_level_hint = "Livello massimo raggiunto! Continua a giocare."
-    elif badges_needed > 0:
-        if badges_needed == 1:
-            next_level_hint = f"Ti manca {badges_needed} badge per raggiungere Level {level_target}"
-        else:
-            next_level_hint = f"Ti mancano {badges_needed} badge per raggiungere Level {level_target}"
+    elif badges_needed == 1:
+        next_level_hint = f"Ti manca {badges_needed} badge per raggiungere Level {level_target}"
+    elif badges_needed > 1:
+        next_level_hint = f"Ti mancano {badges_needed} badge per raggiungere Level {level_target}"
     else:
+        # Edge case: user_level < 3 but badges_needed <= 0
+        # This might happen if level hasn't updated yet
         next_level_hint = f"Completa missioni e previsioni per salire di livello"
     
     return render_template("dashboard_v2.html",
