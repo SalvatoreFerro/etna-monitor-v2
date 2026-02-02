@@ -107,11 +107,13 @@ def download_png(url: str) -> Path:
 
 
 def _resolve_series_end_time(path_png: Path) -> datetime:
-    try:
-        stat = path_png.stat()
-    except OSError:
-        return datetime.now(timezone.utc)
-    return datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc)
+    """Resolve the end time for the data series.
+    
+    The INGV colored PNG shows the last 7 days of tremor data,
+    with the rightmost edge representing the current time.
+    Therefore, we always use the current time as the end time.
+    """
+    return datetime.now(timezone.utc)
 
 
 def extract_series_from_colored(path_png: str | Path):
