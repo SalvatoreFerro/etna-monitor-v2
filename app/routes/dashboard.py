@@ -5,7 +5,7 @@ from ..utils.config import get_curva_csv_path
 from ..utils.csrf import validate_csrf_token
 from ..models import db, TelegramLinkToken, TremorPrediction
 from ..models.event import Event
-from ..services.badge_service import LEVEL_DESCRIPTIONS, get_user_badges_for_display
+from ..services.badge_service import BADGE_DEFINITIONS, LEVEL_DESCRIPTIONS, get_user_badges_for_display
 from ..utils.plot import make_tremor_figure
 from ..utils.metrics import record_csv_error, record_csv_read
 from config import Config
