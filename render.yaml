@@ -63,6 +63,10 @@ services:
         value: /data/log
       - key: CURVA_CSV_PATH
         value: /workspace/etna-monitor-v2/data/curva_colored.csv
+      - key: INGV_URL
+        value: https://www.ct.ingv.it/RMS_Etna/2.png
+      - key: CURVA_PIPELINE_MODE
+        value: white
       - key: RUN_ONCE
         value: "1"
   - type: cron
