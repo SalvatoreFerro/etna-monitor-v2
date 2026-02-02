@@ -147,6 +147,47 @@ def dashboard_home():
             logger.exception("Failed to load missions for user %s", user.id)
             user_missions = []
     
+    # Calculate gamification stats for hero section
+    badge_count = len(user_badges)
+    total_badges = len(BADGE_DEFINITIONS)
+    badges_missing = total_badges - badge_count
+    
+    # Get user points from gamification profile if available
+    from ..models.gamification import UserGamificationProfile
+    user_profile = UserGamificationProfile.query.filter_by(user_id=user.id).first()
+    user_points = user_profile.points if user_profile else 0
+    
+    # Calculate progress to next level
+    if user_level == 1:
+        level_target = 2
+        badges_needed = 2 - badge_count
+    elif user_level == 2:
+        level_target = 3
+        badges_needed = 4 - badge_count
+    else:
+        level_target = 3
+        badges_needed = 0
+    
+    # Calculate progress percentage
+    if user_level < 3:
+        level_base = 0 if user_level == 1 else 2
+        level_target_badges = 2 if user_level == 1 else 4
+        progress_raw = (badge_count - level_base) / (level_target_badges - level_base) * 100
+        level_progress = max(0, min(100, progress_raw))
+    else:
+        level_progress = 100
+    
+    # Create next level hint message
+    if user_level >= 3:
+        next_level_hint = "Livello massimo raggiunto! Continua a giocare."
+    elif badges_needed > 0:
+        if badges_needed == 1:
+            next_level_hint = f"Ti manca {badges_needed} badge per raggiungere Level {level_target}"
+        else:
+            next_level_hint = f"Ti mancano {badges_needed} badge per raggiungere Level {level_target}"
+    else:
+        next_level_hint = f"Completa missioni e previsioni per salire di livello"
+    
     return render_template("dashboard_v2.html",
                          user=user,
                          graph_json=graph_json,
@@ -163,6 +204,12 @@ def dashboard_home():
                          active_prediction=active_prediction,
                          user_missions=user_missions,
                          missions_enabled=enable_missions in {"1", "true", "yes"},
+                         badge_count=badge_count,
+                         badges_missing=badges_missing,
+                         total_badges=total_badges,
+                         user_points=user_points,
+                         level_progress=level_progress,
+                         next_level_hint=next_level_hint,
                          hide_footer=True,
                          hide_nav=True,
                          page_title="Dashboard tremore Etna – EtnaMonitor",

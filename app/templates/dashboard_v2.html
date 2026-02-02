@@ -136,6 +136,63 @@
       </div>
     </section>
 
+    <!-- TASK 1: Gamification Hero Section -->
+    <section class="dashboard-gamification-hero card" id="gamification-overview" aria-label="Il tuo progresso">
+      <header class="card-header">
+        <h2>🎮 Il tuo progresso</h2>
+        <p class="muted">Il tuo livello, punti e badge sbloccati.</p>
+      </header>
+      
+      <div class="gamification-kpi-grid">
+        <!-- KPI 1: Level -->
+        <div class="gamification-kpi-card">
+          <span class="kpi-label">Level attuale</span>
+          <div class="kpi-value-row">
+            <span class="kpi-value">Level {{ user_level }}</span>
+          </div>
+          <span class="gamification-level-title">{{ user_level_description.split('·')[1].strip() if '·' in user_level_description else user_level_description }}</span>
+        </div>
+
+        <!-- KPI 2: Punti -->
+        <div class="gamification-kpi-card">
+          <span class="kpi-label">Punti totali</span>
+          <div class="kpi-value-row">
+            {% if user_points > 0 %}
+              <span class="kpi-value">{{ user_points }}</span>
+              <span class="kpi-unit">pts</span>
+            {% else %}
+              <span class="kpi-value kpi-value--small">Progressi in corso</span>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- KPI 3: Badge -->
+        <div class="gamification-kpi-card">
+          <span class="kpi-label">Badge sbloccati</span>
+          <div class="kpi-value-row">
+            <span class="kpi-value">{{ badge_count }}</span>
+            <span class="kpi-unit">/ {{ total_badges }}</span>
+          </div>
+          {% if badges_missing > 0 %}
+            <span class="gamification-badge-missing">{{ badges_missing }} da sbloccare</span>
+          {% else %}
+            <span class="gamification-badge-complete">Tutti sbloccati!</span>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Progress Bar Section -->
+      <div class="gamification-progress-section">
+        <div class="gamification-progress-bar-wrapper">
+          <div class="gamification-progress-bar" role="progressbar" aria-valuenow="{{ level_progress|round(0, 'floor')|int }}" aria-valuemin="0" aria-valuemax="100">
+            <div class="gamification-progress-fill" style="width: {{ level_progress }}%"></div>
+          </div>
+          <span class="gamification-progress-label">{{ level_progress|round(0, 'floor')|int }}%</span>
+        </div>
+        <p class="gamification-hint">{{ next_level_hint }}</p>
+      </div>
+    </section>
+
     <section class="dashboard-actions" aria-label="Azioni e impostazioni">
       <header class="card-header">
         <h2>Azioni / Impostazioni</h2>
@@ -295,11 +352,10 @@
         {% if missions_enabled %}
         <details class="accordion-item" id="missions-section">
           <summary>
-            <span class="accordion-title">Missioni</span>
+            <span class="accordion-title">🎯 Missioni attive</span>
             <span class="accordion-meta">
               {% if user_missions %}
                 {% set active_count = user_missions | selectattr('is_active') | list | length %}
-                {% set completed_count = user_missions | selectattr('is_completed') | list | length %}
                 {{ active_count }} attive
               {% else %}
                 0 attive
@@ -307,7 +363,7 @@
             </span>
           </summary>
           <div class="accordion-body missions-card">
-            <p class="muted">Completa missioni giornaliere e settimanali per guadagnare punti.</p>
+            <p class="muted">Completa missioni giornaliere e settimanali per guadagnare punti e salire di livello.</p>
             {% if user_missions %}
               <ul class="missions-list">
                 {% for mission in user_missions %}
@@ -335,10 +391,11 @@
                           data-mission-id="{{ mission.id }}"
                           data-mission-claim
                         >
-                          Riscatta
+                          Riscatta +{{ mission.points }} pts
                         </button>
                       {% elif mission.is_expired %}
                         <span class="mission-badge mission-badge--expired">Scaduta</span>
+                        <button class="btn btn-secondary btn-sm" disabled>Scaduta</button>
                       {% else %}
                         <span class="mission-badge mission-badge--active">In corso</span>
                         <span class="mission-expires muted">Scade: {{ mission.expires_at[:10] }}</span>
@@ -349,7 +406,14 @@
               </ul>
             {% else %}
               <div class="missions-empty">
-                <p class="muted">Nessuna missione attiva al momento.</p>
+                <p class="missions-cta-title">🔥 Nessuna missione attiva</p>
+                <p class="muted">Fai una previsione oggi per sbloccare la prima missione!</p>
+                <button 
+                  class="btn btn-premium btn-sm missions-cta-btn" 
+                  onclick="document.getElementById('prediction-game').scrollIntoView({behavior: 'smooth'}); document.getElementById('prediction-game').open = true;"
+                >
+                  Gioca ora
+                </button>
               </div>
             {% endif %}
           </div>
@@ -358,57 +422,106 @@
 
         <details class="accordion-item" id="badge-levels">
           <summary>
-            <span class="accordion-title">Badge e livelli</span>
-            <span class="accordion-meta">Level {{ user_level }}</span>
+            <span class="accordion-title">🏆 Badge & Trofei</span>
+            <span class="accordion-meta">{{ badge_count }}/{{ total_badges }}</span>
           </summary>
           <div class="accordion-body badge-summary-card">
-            <p class="muted">Segui i tuoi progressi con badge e livello attuale.</p>
-            {% set badge_count = user_badges|length if user_badges else 0 %}
-            {% if user_level < 3 %}
-              {% set level_base = 0 if user_level == 1 else 2 %}
-              {% set level_target = 2 if user_level == 1 else 4 %}
-              {% set progress_raw = (badge_count - level_base) / (level_target - level_base) * 100 %}
-              {% set progress = 0 if progress_raw < 0 else (100 if progress_raw > 100 else progress_raw) %}
-            {% else %}
-              {% set progress = 100 %}
-            {% endif %}
-            {% set progress_percent = progress | round(0, 'floor') %}
-            <div class="badge-level">
-              <span class="badge-level__value">Level {{ user_level }}</span>
-              <p class="muted">{{ user_level_description }}</p>
-              <div class="badge-progress" role="progressbar" aria-valuenow="{{ progress_percent }}" aria-valuemin="0" aria-valuemax="100">
-                <span class="badge-progress__bar" style="width: {{ progress_percent }}%"></span>
-              </div>
-              <span class="badge-progress__label">
-                {% if user_level >= 3 %}
-                  Livello massimo raggiunto
-                {% else %}
-                  {{ progress_percent }}% verso il prossimo livello
-                {% endif %}
-              </span>
-            </div>
+            <p class="muted">Sblocca badge completando missioni, facendo previsioni e monitorando l'Etna.</p>
+            
             {% if user_badges %}
-              <ul class="badge-list">
-                {% for badge in user_badges %}
-                  <li class="badge-item">
-                    <span class="badge-icon" aria-hidden="true">{{ badge.icon }}</span>
-                    <div class="badge-content">
-                      <strong>{{ badge.label }}</strong>
-                      <p class="muted">{{ badge.description }}</p>
+              <div class="badges-section">
+                <h3 class="badges-section-title">Badge sbloccati</h3>
+                <div class="badge-grid">
+                  {% for badge in user_badges %}
+                    <div class="badge-grid-item badge-grid-item--unlocked">
+                      <span class="badge-grid-icon" aria-hidden="true">{{ badge.icon }}</span>
+                      <strong class="badge-grid-label">{{ badge.label }}</strong>
+                      <p class="badge-grid-description muted">{{ badge.description }}</p>
                       {% if badge.earned_at %}
-                        <span class="badge-date">Sbloccato il {{ badge.earned_at.strftime('%d/%m/%Y') }}</span>
+                        <span class="badge-grid-date">{{ badge.earned_at.strftime('%d/%m/%Y') }}</span>
                       {% endif %}
                     </div>
-                  </li>
-                {% endfor %}
-              </ul>
-            {% else %}
+                  {% endfor %}
+                </div>
+              </div>
+            {% endif %}
+
+            {% if badges_missing > 0 %}
+              <div class="badges-section badges-section--locked">
+                <h3 class="badges-section-title">Prossimi badge</h3>
+                <div class="badge-grid badge-grid--locked">
+                  {% set unlocked_codes = user_badges | map(attribute='code') | list %}
+                  {% if 'WATCHER_7D' not in unlocked_codes %}
+                    <div class="badge-grid-item badge-grid-item--locked">
+                      <span class="badge-grid-icon badge-grid-icon--locked" aria-hidden="true">🔒</span>
+                      <strong class="badge-grid-label">Watcher 7 giorni</strong>
+                      <p class="badge-grid-description muted">Accedi per 7 giorni consecutivi</p>
+                    </div>
+                  {% endif %}
+                  {% if 'WATCHER_30D' not in unlocked_codes %}
+                    <div class="badge-grid-item badge-grid-item--locked">
+                      <span class="badge-grid-icon badge-grid-icon--locked" aria-hidden="true">🔒</span>
+                      <strong class="badge-grid-label">Watcher 30 giorni</strong>
+                      <p class="badge-grid-description muted">Accedi per 30 giorni consecutivi</p>
+                    </div>
+                  {% endif %}
+                  {% if 'PREMIUM_SUPPORTER' not in unlocked_codes %}
+                    <div class="badge-grid-item badge-grid-item--locked">
+                      <span class="badge-grid-icon badge-grid-icon--locked" aria-hidden="true">🔒</span>
+                      <strong class="badge-grid-label">Premium supporter</strong>
+                      <p class="badge-grid-description muted">Attiva un piano Premium</p>
+                    </div>
+                  {% endif %}
+                  {% if 'ALERT_TRIGGERED' not in unlocked_codes %}
+                    <div class="badge-grid-item badge-grid-item--locked">
+                      <span class="badge-grid-icon badge-grid-icon--locked" aria-hidden="true">🔒</span>
+                      <strong class="badge-grid-label">Alert attivato</strong>
+                      <p class="badge-grid-description muted">Ricevi almeno un alert</p>
+                    </div>
+                  {% endif %}
+                  {% if 'MISSION_COMPLETE' not in unlocked_codes %}
+                    <div class="badge-grid-item badge-grid-item--locked">
+                      <span class="badge-grid-icon badge-grid-icon--locked" aria-hidden="true">🔒</span>
+                      <strong class="badge-grid-label">Completista</strong>
+                      <p class="badge-grid-description muted">Completa almeno 5 missioni</p>
+                    </div>
+                  {% endif %}
+                </div>
+              </div>
+            {% endif %}
+
+            {% if not user_badges and badges_missing == total_badges %}
               <div class="badge-empty">
                 <p class="muted">Inizia a monitorare per sbloccare i badge.</p>
               </div>
             {% endif %}
           </div>
         </details>
+
+        <!-- TASK 4: CTA Loop for Retention -->
+        <div class="gamification-cta-loop card">
+          <div class="cta-loop-header">
+            <span class="cta-loop-icon">📌</span>
+            <h3 class="cta-loop-title">Suggerimento di oggi</h3>
+          </div>
+          <div class="cta-loop-content">
+            {% if not active_prediction %}
+              <p class="cta-loop-message">🎯 Gioca ora e guadagna punti facendo una previsione!</p>
+              <button 
+                class="btn btn-premium btn-sm cta-loop-btn" 
+                onclick="document.getElementById('prediction-game').scrollIntoView({behavior: 'smooth'}); document.getElementById('prediction-game').open = true;"
+              >
+                Vai al Prediction Game
+              </button>
+            {% elif active_prediction %}
+              <p class="cta-loop-message">⏳ Hai una previsione attiva. Torna quando si risolve per vedere l'esito!</p>
+            {% endif %}
+            
+            {% if missions_enabled and not user_missions %}
+              <p class="cta-loop-message">🔥 Nessuna missione attiva? Fai una previsione per attivarle!</p>
+            {% endif %}
+          </div>
+        </div>
       </div>
     </section>
   </section>

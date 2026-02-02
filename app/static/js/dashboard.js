@@ -111,6 +111,52 @@ class EtnaDashboard {
         }
 
         this.updateAnalyzeUI();
+        
+        // Mission claim buttons
+        this.setupMissionClaim();
+    }
+    
+    setupMissionClaim() {
+        const claimButtons = document.querySelectorAll('[data-mission-claim]');
+        claimButtons.forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                const missionId = btn.dataset.missionId;
+                if (!missionId) return;
+                
+                const originalText = btn.textContent;
+                btn.disabled = true;
+                btn.textContent = 'Riscattando...';
+                
+                try {
+                    const response = await fetch(`/api/missions/${missionId}/claim`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            csrf_token: this.getCSRFToken()
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.ok) {
+                        this.showToast(`✓ Ricompensa riscattata! +${data.points_awarded} punti`, 'success');
+                        setTimeout(() => window.location.reload(), 1500);
+                    } else {
+                        this.showToast(`✕ Errore: ${data.error || 'Impossibile riscattare'}`, 'error');
+                        btn.disabled = false;
+                        btn.textContent = originalText;
+                    }
+                } catch (error) {
+                    console.error('Mission claim error:', error);
+                    this.showToast('✕ Errore di rete', 'error');
+                    btn.disabled = false;
+                    btn.textContent = originalText;
+                }
+            });
+        });
     }
 
     setupTelegramValidation() {
