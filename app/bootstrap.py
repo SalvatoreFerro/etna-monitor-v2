@@ -364,6 +364,21 @@ def ensure_curva_csv(app: Flask | None = None) -> Path:
             if rows:
                 return csv_path
 
+    # Try to copy from seed file if available (for development/testing)
+    seed_path = csv_path.parent / f"{csv_path.stem}.seed"
+    if seed_path.exists() and seed_path.stat().st_size > 100:
+        try:
+            import shutil
+            shutil.copy2(seed_path, csv_path)
+            app.logger.info(
+                "[BOOT] curva.csv initialized from seed file path=%s", csv_path
+            )
+            return csv_path
+        except Exception as exc:  # pragma: no cover - defensive guard
+            app.logger.warning(
+                "[BOOT] Failed to copy seed file: %s", exc
+            )
+
     if not csv_path.exists() or csv_path.stat().st_size == 0:
         csv_path.write_text("timestamp,value\n", encoding="utf-8")
 
