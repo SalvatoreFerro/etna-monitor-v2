@@ -85,6 +85,30 @@ def _parse_iso_timestamp(value: str) -> datetime | None:
         return None
 
 
+def ensure_utc_aware(dt: datetime | None) -> datetime | None:
+    """
+    Normalize a datetime to UTC timezone-aware format.
+    
+    - If None, returns None
+    - If naive (no tzinfo), assumes UTC and adds tzinfo
+    - If aware, converts to UTC
+    
+    Logs a warning when converting naive datetimes to track the origin.
+    """
+    if dt is None:
+        return None
+    
+    if dt.tzinfo is None:
+        log.warning(
+            "Converting naive datetime to UTC-aware: %s. "
+            "This may indicate timestamps from legacy CSV data.",
+            dt.isoformat()
+        )
+        return dt.replace(tzinfo=timezone.utc)
+    
+    return dt.astimezone(timezone.utc)
+
+
 def _resolve_hash_state_path() -> Path:
     data_dir = os.getenv("DATA_DIR", "data")
     return Path(os.getenv("INGV_WHITE_HASH_STATE", os.path.join(data_dir, "ingv_white_hash.json")))
@@ -241,7 +265,10 @@ def update_with_retries(ingv_url: str, colored_url: str | None, csv_path: Path) 
         max_ts = last_ts.isoformat() if last_ts else None
         log.info("writing CSV to %s | mtime=%s | max_ts=%s", csv_path, mtime, max_ts)
         updated = False
-        if last_ts and (previous_last_ts is None or last_ts > previous_last_ts):
+        # Normalize both timestamps to UTC-aware for safe comparison
+        last_ts_normalized = ensure_utc_aware(last_ts)
+        previous_last_ts_normalized = ensure_utc_aware(previous_last_ts)
+        if last_ts_normalized and (previous_last_ts_normalized is None or last_ts_normalized > previous_last_ts_normalized):
             updated = True
         _record_csv_update(result.get("rows"), last_ts)
         _log_cron_run(
