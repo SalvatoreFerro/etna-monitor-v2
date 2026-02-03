@@ -28,3 +28,7 @@ app/static/invoices/
 data/copernicus_status.json
 data/copernicus_preview.log
 app/static/copernicus/*.png
+
+# CSV updater runtime artifacts
+data/csv_metrics.json
+data/ingv_white_hash.json

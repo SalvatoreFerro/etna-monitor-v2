@@ -6,13 +6,27 @@ services:
     buildCommand: pip install -r requirements.txt
     preDeployCommand: python -m scripts.run_migrations
     startCommand: python startup.py
+    disk:
+      name: etna-monitor-data
+      mountPath: /data
+      sizeGB: 1
     envVars:
       - key: DATA_DIR
         value: /data
       - key: LOG_DIR
         value: /data/log
       - key: CURVA_CSV_PATH
-        value: /workspace/etna-monitor-v2/data/curva_colored.csv
+        value: /data/curva_colored.csv
+      - key: INGV_URL
+        value: https://www.ct.ingv.it/RMS_Etna/0.png
+      - key: INGV_COLORED_URL
+        value: https://www.ct.ingv.it/RMS_Etna/0.png
+      - key: CURVA_PIPELINE_MODE
+        value: colored
+      - key: ENABLE_BACKGROUND_UPDATER
+        value: "true"
+      - key: CSV_UPDATE_INTERVAL
+        value: "1800"
       - key: SECRET_KEY
         sync: false
       - key: DATABASE_URL
@@ -49,26 +63,6 @@ services:
         sync: false
       - key: PYTHON_VERSION
         value: 3.13.1
-  - type: cron
-    name: etnamonitor-csv-updater
-    env: python
-    plan: free
-    buildCommand: pip install -r requirements.cron.txt
-    schedule: "0 * * * *"
-    command: python scripts/update_and_check_alerts.py
-    envVars:
-      - key: DATA_DIR
-        value: /data
-      - key: LOG_DIR
-        value: /data/log
-      - key: CURVA_CSV_PATH
-        value: /workspace/etna-monitor-v2/data/curva_colored.csv
-      - key: INGV_URL
-        value: https://www.ct.ingv.it/RMS_Etna/0.png
-      - key: CURVA_PIPELINE_MODE
-        value: white
-      - key: RUN_ONCE
-        value: "1"
   - type: cron
     name: etnamonitor-copernicus-previews
     env: python
