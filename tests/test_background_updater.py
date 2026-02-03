@@ -86,6 +86,25 @@ def test_background_updater_enabled_with_variations():
             os.environ.pop("ENABLE_BACKGROUND_UPDATER", None)
 
 
+def test_background_updater_disabled_with_false_values():
+    """Test that the background updater doesn't start with false-equivalent values."""
+    import startup
+    
+    for value in ["0", "false", "False", "FALSE", "no", "NO", "off", "disabled"]:
+        os.environ["ENABLE_BACKGROUND_UPDATER"] = value
+        
+        try:
+            initial_threads = threading.active_count()
+            
+            startup._start_background_updater()
+            time.sleep(0.1)
+            
+            # Should NOT have started a thread
+            assert threading.active_count() == initial_threads
+        finally:
+            os.environ.pop("ENABLE_BACKGROUND_UPDATER", None)
+
+
 def test_background_updater_invalid_interval():
     """Test that the background updater uses default interval when CSV_UPDATE_INTERVAL is invalid."""
     import startup
@@ -106,6 +125,7 @@ def test_background_updater_invalid_interval():
 def test_background_updater_reads_environment_variables():
     """Test that the background updater reads the correct environment variables."""
     import startup
+    from pathlib import Path
     
     os.environ["ENABLE_BACKGROUND_UPDATER"] = "true"
     os.environ["CSV_UPDATE_INTERVAL"] = "5"
@@ -115,15 +135,25 @@ def test_background_updater_reads_environment_variables():
     
     try:
         with patch("scripts.csv_updater.update_with_retries") as mock_update:
+            mock_update.return_value = {"ok": True, "updated": True}
+            
             startup._start_background_updater()
             
-            # Wait for the thread to potentially call the updater once
-            # (it should call immediately, then sleep)
+            # Wait for the thread to make at least one call to the updater
             time.sleep(0.5)
             
-            # The updater should eventually be called with the right parameters
-            # Note: We can't guarantee it's called immediately due to threading,
-            # but the test verifies the thread was created
+            # Verify the updater was called with the correct parameters
+            assert mock_update.call_count >= 1
+            
+            # Check the arguments of the first call
+            call_args = mock_update.call_args
+            assert call_args is not None
+            
+            # Verify keyword arguments
+            kwargs = call_args.kwargs
+            assert kwargs["ingv_url"] == "https://example.com/test.png"
+            assert kwargs["colored_url"] == "https://example.com/colored.png"
+            assert kwargs["csv_path"] == Path("/tmp/test.csv")
             
     finally:
         os.environ.pop("ENABLE_BACKGROUND_UPDATER", None)
