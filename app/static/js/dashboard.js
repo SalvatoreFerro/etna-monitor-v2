@@ -524,19 +524,91 @@ class EtnaDashboard {
         await this.loadData();
         await this.loadStatus();
     }
+
+    async fetchDashboardJson(url, options = {}) {
+        const response = await fetch(url, {
+            credentials: 'include',
+            cache: 'no-store',
+            headers: {
+                'Accept': 'application/json',
+                ...(options.headers || {})
+            },
+            ...options
+        });
+
+        const contentType = response.headers.get('content-type') || '';
+        const isJson = contentType.includes('application/json');
+
+        if (!response.ok || !isJson) {
+            await this.logDashboardFetchError(url, response, contentType);
+        }
+
+        if (response.status === 401 || response.status === 403) {
+            return { ok: false, error: 'unauthorized', status: response.status };
+        }
+
+        if (!isJson) {
+            return { ok: false, error: 'non-json', status: response.status };
+        }
+
+        if (!response.ok) {
+            return { ok: false, error: 'http-error', status: response.status };
+        }
+
+        try {
+            const data = await response.json();
+            return { ok: true, data };
+        } catch (error) {
+            await this.logDashboardFetchError(url, response, contentType, 'json-parse-error');
+            return { ok: false, error: 'json-parse-error', status: response.status };
+        }
+    }
+
+    async logDashboardFetchError(url, response, contentType, note) {
+        let snippet = '';
+        try {
+            const text = await response.clone().text();
+            snippet = text.slice(0, 200);
+        } catch (error) {
+            snippet = '';
+        }
+
+        const nonJsonNote = contentType && !contentType.includes('application/json')
+            ? 'NON-JSON (probabile redirect/login)'
+            : undefined;
+
+        console.warn('[Dashboard] API fetch error', {
+            url,
+            status: response.status,
+            contentType,
+            snippet,
+            note: nonJsonNote || note
+        });
+    }
+
+    handleDashboardError(errorType, defaultMessage) {
+        if (errorType === 'unauthorized') {
+            this.showToast('Sessione scaduta: effettua login', 'error');
+            return;
+        }
+        if (errorType === 'non-json') {
+            this.showToast('Risposta non JSON (redirect). Ricarica o fai login', 'error');
+            return;
+        }
+        if (defaultMessage) {
+            this.showToast(defaultMessage, 'error');
+        }
+    }
     
     async loadData() {
         try {
             const limit = this.getSelectedLimit();
-            const response = await fetch(`/api/curva?limit=${limit}`, {
-                credentials: 'same-origin',
-                cache: 'no-store',
-                headers: { 'Accept': 'application/json' }
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+            const result = await this.fetchDashboardJson(`/api/curva?limit=${limit}`);
+            if (!result.ok) {
+                this.handleDashboardError(result.error, 'Errore nel caricamento dati');
+                return;
             }
-            const data = await response.json();
+            const data = result.data;
             
             if (data.ok && data.data) {
                 this.plotData = data;
@@ -554,15 +626,12 @@ class EtnaDashboard {
     
     async loadStatus() {
         try {
-            const response = await fetch('/api/status', {
-                credentials: 'same-origin',
-                cache: 'no-store',
-                headers: { 'Accept': 'application/json' }
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}`);
+            const result = await this.fetchDashboardJson('/api/status');
+            if (!result.ok) {
+                this.handleDashboardError(result.error, 'Errore nel caricamento stato');
+                return;
             }
-            const data = await response.json();
+            const data = result.data;
             
             if (data.ok) {
                 this.updateStatus(data);
@@ -1156,8 +1225,12 @@ class EtnaDashboard {
         try {
             if (format === 'csv') {
                 const limit = this.getSelectedLimit();
-                const response = await fetch(`/api/curva?limit=${limit}`);
-                const data = await response.json();
+                const result = await this.fetchDashboardJson(`/api/curva?limit=${limit}`);
+                if (!result.ok) {
+                    this.handleDashboardError(result.error, 'Esportazione fallita');
+                    return;
+                }
+                const data = result.data;
                 
                 if (data.ok && data.data) {
                     const csv = this.convertToCSV(data.data);

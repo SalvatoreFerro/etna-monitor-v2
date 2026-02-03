@@ -100,8 +100,11 @@ def _prepare_tremor_dataframe(raw_df: pd.DataFrame) -> tuple[pd.DataFrame, str |
 @api_bp.get("/api/curva")
 def get_curva():
     """Return curva.csv data as JSON with no-cache headers"""
+    user = get_current_user()
+    if not user:
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
     csv_path = get_curva_csv_path()
-    include_csv_path = is_owner_or_admin(get_current_user())
+    include_csv_path = is_owner_or_admin(user)
     request_id = request.headers.get("X-Request-Id") or uuid4().hex[:8]
     csv_mtime_utc = None
     if csv_path.exists():
