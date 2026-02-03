@@ -17,12 +17,23 @@ _JSON_FIELDS = {"payload", "diagnostic_json", "skipped_by_reason"}
 
 
 def sanitize_json_value(value: Any) -> Any:
+    """
+    Recursively sanitize values for JSON serialization.
+    
+    Converts datetime objects to ISO strings, handles nested structures,
+    and ensures all values are JSON-serializable.
+    """
+    if isinstance(value, datetime):
+        # Ensure timezone-aware and convert to ISO format
+        if value.tzinfo is None:
+            value = value.replace(tzinfo=timezone.utc)
+        return value.isoformat()
+    if isinstance(value, date):
+        return value.isoformat()
     if isinstance(value, dict):
         return {str(key): sanitize_json_value(val) for key, val in value.items()}
     if isinstance(value, (list, tuple, set)):
         return [sanitize_json_value(item) for item in value]
-    if isinstance(value, (datetime, date)):
-        return value.isoformat()
     if isinstance(value, Decimal):
         return float(value)
     if isinstance(value, bytes):

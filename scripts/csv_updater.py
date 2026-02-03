@@ -32,7 +32,41 @@ DEFAULT_PIPELINE_MODE = "colored"
 log = logging.getLogger("csv_updater")
 
 
+def serialize_datetimes(obj):
+    """
+    Recursively serialize datetime objects to ISO 8601 strings.
+    
+    This function handles nested structures (dicts, lists) and ensures
+    that all datetime objects are converted to timezone-aware ISO format
+    strings, preventing JSON serialization errors.
+    
+    Args:
+        obj: Any Python object that may contain datetime instances
+        
+    Returns:
+        The same structure with datetime objects converted to strings
+    """
+    if isinstance(obj, datetime):
+        # Ensure timezone-aware and convert to ISO format
+        if obj.tzinfo is None:
+            obj = obj.replace(tzinfo=timezone.utc)
+        return obj.isoformat()
+    elif isinstance(obj, date):
+        return obj.isoformat()
+    elif isinstance(obj, dict):
+        return {k: serialize_datetimes(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [serialize_datetimes(v) for v in obj]
+    elif isinstance(obj, tuple):
+        return tuple(serialize_datetimes(v) for v in obj)
+    elif isinstance(obj, set):
+        return {serialize_datetimes(v) for v in obj}
+    else:
+        return obj
+
+
 def _sanitize_json(obj):
+    """Legacy function - use serialize_datetimes for new code."""
     if isinstance(obj, datetime):
         return obj.isoformat()
     if isinstance(obj, date):
@@ -66,7 +100,7 @@ def _record_csv_update(
     error_message: str | None = None,
 ) -> None:
     payload = {
-        "last_update_at": datetime.utcnow().isoformat(),
+        "last_update_at": datetime.now(timezone.utc).isoformat(),
         "row_count": rows,
         "last_data_timestamp": last_timestamp.isoformat() if last_timestamp else None,
         "last_error": error_message,
@@ -77,9 +111,17 @@ def _record_csv_update(
 
 
 def _read_csv_last_timestamp(csv_path: Path) -> datetime | None:
+    """
+    Read the last valid timestamp from CSV, filtering out obsolete data.
+    
+    Timestamps with year < current year are considered obsolete/corrupted
+    and are skipped to prevent graph visualization issues.
+    """
     if not csv_path.exists():
         return None
 
+    current_year = datetime.now(timezone.utc).year
+    
     try:
         with csv_path.open("r", encoding="utf-8") as handle:
             reader = csv.DictReader(handle)
@@ -90,6 +132,15 @@ def _read_csv_last_timestamp(csv_path: Path) -> datetime | None:
                     continue
                 candidate = _parse_iso_timestamp(ts)
                 if candidate is not None:
+                    # Filter out obsolete timestamps from previous years
+                    if candidate.year < current_year:
+                        log.warning(
+                            "Skipping obsolete timestamp from CSV: %s (year %d < %d)",
+                            candidate.isoformat(),
+                            candidate.year,
+                            current_year
+                        )
+                        continue
                     last_ts = candidate
             return last_ts
     except Exception:
@@ -170,7 +221,7 @@ def _update_hash_state(current_hash: str, threshold: int) -> tuple[int, bool]:
     state = {
         "hash": current_hash,
         "count": count,
-        "updated_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     _store_hash_state(state)
     return count, count >= threshold
@@ -402,8 +453,9 @@ def _log_cron_run(
     }
 
     try:
-        sanitized_payload = _sanitize_json(cron_payload)
-        log.debug("cron payload sanitized (datetime->isoformat)")
+        # Use serialize_datetimes for robust datetime handling
+        sanitized_payload = serialize_datetimes(cron_payload)
+        log.debug("cron payload serialized (datetime->isoformat)")
         log_cron_run_external(sanitized_payload)
     except Exception:  # pragma: no cover - defensive logging
         log.exception("[CSV] Failed to persist cron run log")

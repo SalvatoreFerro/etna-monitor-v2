@@ -5,6 +5,65 @@ import sys
 from datetime import datetime, timezone
 
 
+def test_serialize_datetimes():
+    """Test the serialize_datetimes function for recursive datetime conversion."""
+    from scripts.csv_updater import serialize_datetimes
+    
+    # Test simple datetime
+    dt = datetime(2026, 2, 3, 12, 0, 0, tzinfo=timezone.utc)
+    result = serialize_datetimes(dt)
+    assert isinstance(result, str)
+    assert result == "2026-02-03T12:00:00+00:00"
+    
+    # Test naive datetime (should be converted to UTC-aware)
+    naive_dt = datetime(2026, 2, 3, 12, 0, 0)
+    result = serialize_datetimes(naive_dt)
+    assert isinstance(result, str)
+    assert "+00:00" in result or "Z" in result
+    
+    # Test nested dict with datetimes
+    nested = {
+        "started_at": datetime(2026, 2, 3, 12, 0, 0, tzinfo=timezone.utc),
+        "finished_at": datetime(2026, 2, 3, 12, 5, 0, tzinfo=timezone.utc),
+        "payload": {
+            "last_ts": datetime(2026, 2, 3, 11, 0, 0, tzinfo=timezone.utc),
+            "nested": {
+                "timestamp": datetime(2026, 2, 3, 10, 0, 0, tzinfo=timezone.utc)
+            }
+        }
+    }
+    result = serialize_datetimes(nested)
+    assert isinstance(result["started_at"], str)
+    assert isinstance(result["finished_at"], str)
+    assert isinstance(result["payload"]["last_ts"], str)
+    assert isinstance(result["payload"]["nested"]["timestamp"], str)
+    
+    # Test list with datetimes
+    dt_list = [
+        datetime(2026, 2, 3, 12, 0, 0, tzinfo=timezone.utc),
+        datetime(2026, 2, 3, 13, 0, 0, tzinfo=timezone.utc),
+    ]
+    result = serialize_datetimes(dt_list)
+    assert isinstance(result, list)
+    assert all(isinstance(item, str) for item in result)
+    
+    # Test mixed structure
+    mixed = {
+        "string": "test",
+        "number": 42,
+        "datetime": datetime(2026, 2, 3, 12, 0, 0, tzinfo=timezone.utc),
+        "list": [1, 2, datetime(2026, 2, 3, 12, 0, 0, tzinfo=timezone.utc)],
+        "none": None
+    }
+    result = serialize_datetimes(mixed)
+    assert result["string"] == "test"
+    assert result["number"] == 42
+    assert isinstance(result["datetime"], str)
+    assert result["list"][0] == 1
+    assert isinstance(result["list"][2], str)
+    assert result["none"] is None
+
+
 def test_ensure_utc_aware():
     """Test the ensure_utc_aware helper function for datetime normalization."""
     from scripts.csv_updater import ensure_utc_aware
