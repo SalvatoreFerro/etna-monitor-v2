@@ -22,6 +22,10 @@ def sanitize_json_value(value: Any) -> Any:
     
     Converts datetime objects to ISO strings, handles nested structures,
     and ensures all values are JSON-serializable.
+    
+    Note: Similar logic exists in scripts/csv_updater.serialize_datetimes().
+    Both functions are kept separate to avoid cross-module dependencies,
+    since csv_updater may run outside the Flask app context.
     """
     if isinstance(value, datetime):
         # Ensure timezone-aware and convert to ISO format

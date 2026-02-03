@@ -66,7 +66,13 @@ def serialize_datetimes(obj):
 
 
 def _sanitize_json(obj):
-    """Legacy function - use serialize_datetimes for new code."""
+    """
+    Legacy function - use serialize_datetimes for new code.
+    
+    Kept for backward compatibility with existing code that may call it directly.
+    This function is less comprehensive than serialize_datetimes() and may be
+    deprecated in future versions.
+    """
     if isinstance(obj, datetime):
         return obj.isoformat()
     if isinstance(obj, date):
