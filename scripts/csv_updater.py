@@ -94,6 +94,8 @@ def ensure_utc_aware(dt: datetime | None) -> datetime | None:
     - If aware, converts to UTC
     
     Logs a warning when converting naive datetimes to track the origin.
+    This helps identify timestamps from legacy CSV data that lack timezone info.
+    The warning is intentional and should be monitored for data quality issues.
     """
     if dt is None:
         return None

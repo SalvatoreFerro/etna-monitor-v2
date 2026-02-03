@@ -31,8 +31,8 @@ def test_ensure_utc_aware():
     assert result == aware_utc
     
     # Test non-UTC aware datetime (should convert to UTC)
-    from datetime import timezone as tz, timedelta
-    est = tz(timedelta(hours=-5))  # EST is UTC-5
+    from datetime import timedelta
+    est = timezone(timedelta(hours=-5))  # EST is UTC-5
     aware_est = datetime(2025, 1, 1, 12, 0, 0, tzinfo=est)
     result = ensure_utc_aware(aware_est)
     assert result is not None
