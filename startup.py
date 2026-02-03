@@ -6,6 +6,8 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import threading
+import time
 
 from app import create_app
 from app.bootstrap import ensure_curva_csv
@@ -14,8 +16,62 @@ from app.utils.logger import configure_logging
 logger = logging.getLogger(__name__)
 
 
+def _start_background_updater() -> None:
+    """Start a background thread that periodically updates the tremor CSV.
+
+    When ENABLE_BACKGROUND_UPDATER is set to ``true`` (case‑insensitive), this
+    function spawns a daemon thread that runs ``scripts.csv_updater.update_with_retries``
+    in a loop.  The interval between runs is read from CSV_UPDATE_INTERVAL
+    (defaults to 3600 seconds).  Errors are logged but do not terminate
+    the thread.
+    """
+    from pathlib import Path
+    from scripts import csv_updater
+
+    enable = os.getenv("ENABLE_BACKGROUND_UPDATER", "false").lower() in {"1", "true", "yes"}
+    if not enable:
+        logger.info("[BACKGROUND_UPDATER] Disabled (ENABLE_BACKGROUND_UPDATER not set)")
+        return
+    
+    try:
+        interval = int(os.getenv("CSV_UPDATE_INTERVAL", "3600"))
+    except ValueError:
+        interval = 3600
+        logger.warning("[BACKGROUND_UPDATER] Invalid CSV_UPDATE_INTERVAL, using default: 3600")
+
+    def _updater_loop() -> None:
+        logger.info("[BACKGROUND_UPDATER] Thread started with interval=%s seconds", interval)
+        while True:
+            try:
+                # Read environment variables like the cron job would
+                ingv_url = os.getenv("INGV_URL", "https://www.ct.ingv.it/RMS_Etna/2.png")
+                colored_url = (os.getenv("INGV_COLORED_URL") or "").strip() or None
+                csv_path = Path(os.getenv("CURVA_CSV_PATH", "data/curva_colored.csv"))
+                
+                logger.info("[BACKGROUND_UPDATER] Starting CSV update cycle")
+                csv_updater.update_with_retries(
+                    ingv_url=ingv_url,
+                    colored_url=colored_url,
+                    csv_path=csv_path,
+                )
+                logger.info("[BACKGROUND_UPDATER] CSV update cycle completed")
+            except Exception:
+                logger.exception("[BACKGROUND_UPDATER] CSV updater encountered an error")
+            
+            time.sleep(interval)
+
+    threading.Thread(target=_updater_loop, daemon=True, name="csv-updater").start()
+    logger.info("[BACKGROUND_UPDATER] Background thread launched successfully")
+
+
 def main() -> None:
-    """Entrypoint used by Procfile to run migrations and start Gunicorn."""
+    """Entrypoint used by Procfile to run migrations and start Gunicorn.
+    
+    Performs initial setup such as ensuring the existence of the tremor CSV file
+    and optionally starting a background CSV updater thread.  If
+    RUN_CSV_UPDATER_ONCE is set in the environment, it will run the CSV updater
+    script once before starting the server.
+    """
 
     os.environ.setdefault("ALLOW_AUTO_MIGRATE", "1")
     configure_logging(os.getenv("LOG_DIR", "logs"))
@@ -47,6 +103,9 @@ def main() -> None:
         ensure_curva_csv(app)
     except Exception:
         logger.exception("Failed to bootstrap curva.csv before Gunicorn start")
+
+    # Start the background updater if enabled
+    _start_background_updater()
 
     port = os.environ.get("PORT", "5000")
     workers = os.environ.get("WEB_CONCURRENCY", "2")
