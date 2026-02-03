@@ -371,7 +371,7 @@ def ensure_curva_csv(app: Flask | None = None) -> Path:
             import shutil
             shutil.copy2(seed_path, csv_path)
             app.logger.info(
-                "[BOOT] curva.csv initialized from seed file path=%s", csv_path
+                "[BOOT] curva_colored.csv initialized from seed file path=%s", csv_path
             )
             return csv_path
         except Exception as exc:  # pragma: no cover - defensive guard
