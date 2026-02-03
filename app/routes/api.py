@@ -78,14 +78,27 @@ def _hotspot_payload(item: HotspotsRecord) -> dict:
     }
 
 
-def _prepare_tremor_dataframe(raw_df: pd.DataFrame) -> tuple[pd.DataFrame, str | None]:
+def _prepare_tremor_dataframe(raw_df: pd.DataFrame) -> tuple[pd.DataFrame, str | None, dict]:
     """Normalise timestamp typing and detect empty datasets."""
+    stats = {
+        "raw_rows": int(len(raw_df)),
+        "parsed_rows": 0,
+        "rows_after_dropna": 0,
+        "invalid_timestamp_samples": [],
+    }
     if "timestamp" not in raw_df.columns:
-        return pd.DataFrame(columns=["timestamp", "value"]), "missing_timestamp"
+        return pd.DataFrame(columns=["timestamp", "value"]), "missing_timestamp", stats
 
     df = raw_df.copy()
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+    parsed_ts = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+    invalid_mask = parsed_ts.isna() & df["timestamp"].notna()
+    stats["parsed_rows"] = int(parsed_ts.notna().sum())
+    stats["invalid_timestamp_samples"] = (
+        df.loc[invalid_mask, "timestamp"].astype(str).head(3).tolist()
+    )
+    df["timestamp"] = parsed_ts
     df = df.dropna(subset=["timestamp"])
+    stats["rows_after_dropna"] = int(len(df))
     if "value" not in df.columns:
         if "value_max" in df.columns:
             df["value"] = df["value_max"]
@@ -93,9 +106,10 @@ def _prepare_tremor_dataframe(raw_df: pd.DataFrame) -> tuple[pd.DataFrame, str |
             df["value"] = df["value_avg"]
 
     if df.empty:
-        return df, "empty_data"
+        return df, "empty_data", stats
 
-    return df, None
+    return df, None, stats
+
 
 @api_bp.get("/api/curva")
 def get_curva():
@@ -134,7 +148,20 @@ def get_curva():
 
     try:
         raw_df = pd.read_csv(csv_path)
-        df, reason = _prepare_tremor_dataframe(raw_df)
+        df, reason, stats = _prepare_tremor_dataframe(raw_df)
+
+        current_app.logger.warning(
+            "[API] curva csv stats path=%s raw_rows=%s parsed_rows=%s rows_after_dropna=%s",
+            csv_path,
+            stats.get("raw_rows"),
+            stats.get("parsed_rows"),
+            stats.get("rows_after_dropna"),
+        )
+        if stats.get("invalid_timestamp_samples"):
+            current_app.logger.warning(
+                "[API] curva invalid timestamps samples=%s",
+                stats.get("invalid_timestamp_samples"),
+            )
 
         if reason is not None:
             record_csv_error(reason)
@@ -146,6 +173,7 @@ def get_curva():
             status_code = 200
             payload = {
                 "ok": False,
+                "error": "Insufficient valid data",
                 "reason": reason,
                 "rows": 0,
             }
@@ -154,6 +182,22 @@ def get_curva():
             return jsonify(payload), status_code
 
         df = df.sort_values("timestamp")
+        if len(df) < 10:
+            current_app.logger.warning(
+                "[API] curva dataset insufficient reason=insufficient_valid_data path=%s rows=%s",
+                csv_path,
+                len(df),
+            )
+            record_csv_error("insufficient_valid_data")
+            payload = {
+                "ok": False,
+                "error": "Insufficient valid data",
+                "reason": "insufficient_valid_data",
+                "rows": len(df),
+            }
+            if include_csv_path:
+                payload["csv_path_used"] = str(csv_path)
+            return jsonify(payload), 200
 
         limit = request.args.get("limit", type=int)
         if limit is None:
@@ -178,6 +222,22 @@ def get_curva():
             )
 
         df = df.tail(limit)
+        if df.empty:
+            current_app.logger.warning(
+                "[API] curva dataset empty reason=limit path=%s limit=%s",
+                csv_path,
+                limit,
+            )
+            record_csv_error("empty_after_limit")
+            payload = {
+                "ok": False,
+                "error": "Insufficient valid data",
+                "reason": "empty_after_limit",
+                "rows": 0,
+            }
+            if include_csv_path:
+                payload["csv_path_used"] = str(csv_path)
+            return jsonify(payload), 200
 
         last_ts = df["timestamp"].iloc[-1]
         temporal_status = get_temporal_status_from_timestamp(last_ts)
@@ -245,7 +305,7 @@ def get_status():
     try:
         if csv_path.exists():
             raw_df = pd.read_csv(csv_path)
-            df, reason = _prepare_tremor_dataframe(raw_df)
+            df, reason, _stats = _prepare_tremor_dataframe(raw_df)
 
             if reason is None:
                 df = df.sort_values("timestamp")

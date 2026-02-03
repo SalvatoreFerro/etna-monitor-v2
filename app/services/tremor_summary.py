@@ -69,7 +69,15 @@ def load_tremor_dataframe() -> tuple[pd.DataFrame | None, str | None]:
 
 def calculate_trend(df: pd.DataFrame, window_minutes: int = 60) -> dict | None:
     if df.empty:
-        return None
+        return {
+            "ts_utc": None,
+            "status": "UNKNOWN",
+            "direction": "unknown",
+            "value_mv": None,
+            "window_min": window_minutes,
+            "message": "Dati INGV non disponibili al momento.",
+            "source": "INGV",
+        }
 
     latest_ts = df["timestamp"].max()
     window_start = latest_ts - timedelta(minutes=window_minutes)
@@ -79,7 +87,15 @@ def calculate_trend(df: pd.DataFrame, window_minutes: int = 60) -> dict | None:
     prev_df = df[(df["timestamp"] < window_start) & (df["timestamp"] >= prev_start)].copy()
 
     if last_df.empty or prev_df.empty:
-        return None
+        return {
+            "ts_utc": to_iso_utc(latest_ts.to_pydatetime()),
+            "status": "UNKNOWN",
+            "direction": "unknown",
+            "value_mv": None,
+            "window_min": window_minutes,
+            "message": "Dati INGV non disponibili al momento.",
+            "source": "INGV",
+        }
 
     median_last_hour = float(last_df["value"].median())
     median_prev_hour = float(prev_df["value"].median())
