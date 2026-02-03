@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import create_engine
@@ -11,6 +12,33 @@ from sqlalchemy.engine import Connection
 from app.models import db
 from app.models.cron_run import CronRun
 from config import Config, get_database_uri_from_env
+
+_JSON_FIELDS = {"payload", "diagnostic_json", "skipped_by_reason"}
+
+
+def sanitize_json_value(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {str(key): sanitize_json_value(val) for key, val in value.items()}
+    if isinstance(value, (list, tuple, set)):
+        return [sanitize_json_value(item) for item in value]
+    if isinstance(value, (datetime, date)):
+        return value.isoformat()
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, bytes):
+        return value.hex()
+    return value
+
+
+def _sanitize_json_fields(payload: dict) -> dict:
+    sanitized = dict(payload)
+    for field in _JSON_FIELDS:
+        if field in sanitized and sanitized[field] is not None:
+            try:
+                sanitized[field] = sanitize_json_value(sanitized[field])
+            except Exception:
+                sanitized[field] = str(sanitized[field])
+    return sanitized
 
 
 def _resolve_database_uri() -> str:
@@ -57,6 +85,7 @@ def log_cron_run(payload: dict, *, commit: bool = True) -> CronRun | None:
         payload["status"] = "success" if payload.get("ok") else "error"
     if payload.get("diagnostic_json") is None and payload.get("payload") is not None:
         payload["diagnostic_json"] = payload.get("payload")
+    payload = _sanitize_json_fields(payload)
     run = CronRun(**payload)
     try:
         db.session.add(run)
@@ -80,6 +109,7 @@ def log_cron_run_external(payload: dict, *, database_uri: str | None = None) -> 
         payload["status"] = "success" if payload.get("ok") else "error"
     if payload.get("diagnostic_json") is None and payload.get("payload") is not None:
         payload["diagnostic_json"] = payload.get("payload")
+    payload = _sanitize_json_fields(payload)
     engine = create_engine(database_uri or _resolve_database_uri())
     with engine.begin() as connection:
         connection.execute(CronRun.__table__.insert().values(**payload))
