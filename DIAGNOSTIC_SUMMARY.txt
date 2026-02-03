@@ -1,0 +1,194 @@
+================================================================================
+  ETNA MONITOR - DASHBOARD BUG DIAGNOSTIC SUMMARY
+================================================================================
+
+SINTOMO RIPORTATO:
+------------------
+✓ KPI "Tremore"         → Mostra valore (1.98 mV)
+✗ Trend                 → Resta "--"
+✗ Ultimo Aggiornamento  → Resta "-"
+✗ Preview Grafico       → Errore caricamento dati
+
+================================================================================
+ARCHITETTURA DASHBOARD (Flusso Dati)
+================================================================================
+
+┌─────────────────┐
+│   Browser       │
+│   Dashboard     │
+└────────┬────────┘
+         │
+         ├──────────────────────────────────────────────────┐
+         │                                                  │
+         ▼                                                  ▼
+   loadStatus()                                      loadData()
+         │                                                  │
+         ▼                                                  ▼
+   /api/status                                      /api/curva?limit=2016
+   (api.py riga 229)                               (api.py riga 100)
+         │                                                  │
+         ▼                                                  ▼
+   curva.csv                                         curva.csv
+   (legge ultimo valore)                            (legge array completo)
+         │                                                  │
+         ▼                                                  ▼
+   ✓ current_value: 1.98                            ✗ HTML redirect (302)
+         │                                              oppure
+         ▼                                            ✗ {ok: false, reason: "empty_data"}
+   updateStatus()                                         │
+         │                                                  ▼
+         ▼                                              FALLISCE
+   ✓ #current-value                                       │
+     mostra "1.98 mV"                                     ▼
+                                                      updateStats() NON chiamato
+                                                      renderPlot() NON chiamato
+                                                           │
+                                                           ▼
+                                                      ✗ #trend-status: "--"
+                                                      ✗ #last-updated: "-"
+                                                      ✗ #tremor-plot: errore
+
+================================================================================
+CAUSA PRINCIPALE (80% probabilità)
+================================================================================
+
+/api/curva ritorna HTML redirect invece di JSON
+
+PERCHÉ:
+-------
+1. Flask middleware redirect su sessione scaduta
+2. WSGI/proxy (nginx) rewrite errato
+3. Cookie credentials: 'same-origin' ma cookie mancante
+4. Route /api/curva protetta impropriamente
+
+COME SI MANIFESTA:
+------------------
+- HTTP Status: 302 Found (redirect a /auth/login)
+- Content-Type: text/html invece di application/json
+- Body: <!DOCTYPE html>... invece di {"ok": true, "data": [...]}
+- Frontend: response.json() → SyntaxError: Unexpected token '<'
+- Catch generico: toast "Errore nel caricamento dati"
+
+================================================================================
+VERIFICA IMMEDIATA (30 secondi)
+================================================================================
+
+OPZIONE A - Browser DevTools:
+-------------------------------
+1. Apri https://etnamonitor.com/dashboard
+2. F12 → Network tab
+3. Reload (Ctrl+R)
+4. Trova richiesta: /api/curva
+5. Clicca → Headers tab
+6. Guarda:
+   - Status Code: 200? 302? 500?
+   - Response Headers: Content-Type: ?
+
+✗ Se Content-Type: text/html → PROBLEMA CONFERMATO
+✓ Se Content-Type: application/json → altra causa
+
+OPZIONE B - Curl:
+-----------------
+$ curl -v https://etnamonitor.com/api/curva?limit=10 \
+    -H "Accept: application/json"
+
+✗ Se output inizia con: <!DOCTYPE html> o <html> → PROBLEMA CONFERMATO
+✓ Se output inizia con: {"ok":true → API funziona, problema frontend
+
+================================================================================
+CAUSE ALTERNATIVE
+================================================================================
+
+CAUSA #2 (15%): CSV timestamp corrotti
+---------------------------------------
+- Sintomo: /api/curva ritorna {"ok": false, "reason": "empty_data"}
+- Causa: timestamp non ISO 8601 → pd.to_datetime() → NaT → dropna() → vuoto
+- Test: head -5 /path/to/curva.csv
+- Fix: normalizzare formato timestamp in pipeline generazione CSV
+
+CAUSA #3 (5%): Conflitto blueprints /api/status
+------------------------------------------------
+- Sintomo: /api/status ritorna payload diverso da atteso
+- Causa: due registrazioni stesso endpoint (api.py e status.py)
+- Test: flask routes | grep "/api/status"
+- Poco probabile: payload keys compatibili (last_ts presente in entrambi)
+
+================================================================================
+CHECKLIST VERIFICA MANUALE (Top 5)
+================================================================================
+
+[1] Test API da browser autenticato
+    → https://etnamonitor.com/api/curva?limit=10
+    → Verifica: JSON valido con ok: true?
+
+[2] Test Content-Type header
+    → curl -I https://etnamonitor.com/api/curva
+    → Aspettato: Content-Type: application/json
+
+[3] Verifica CSV esiste e valido
+    → ls -lh /path/to/curva.csv
+    → head -20 /path/to/curva.csv
+    → Colonne: timestamp, value
+
+[4] Console browser Network tab
+    → DevTools → Network → Filtra "curva"
+    → Status code? Response preview JSON o HTML?
+
+[5] Logs Flask durante chiamata
+    → tail -f /var/log/app.log | grep "api/curva"
+    → Errori CSV read? Exception stack trace?
+
+================================================================================
+AZIONI IMMEDIATE
+================================================================================
+
+PER SVILUPPATORE:
+-----------------
+1. Conferma causa con DevTools/curl
+2. Se HTML redirect:
+   - Rimuovi @login_required da /api/curva (già pubblico)
+   - Verifica middleware sessione non interferisc con /api/*
+   - Check nginx/proxy config per rewrite /api/curva
+3. Se JSON ok: false:
+   - Verifica formato timestamp CSV (ISO 8601)
+   - Check logs: grep "curva dataset unavailable" /var/log/app.log
+
+PER UTENTE:
+-----------
+- Workaround: ricarica pagina dopo login
+- KPI tremore attuale resta affidabile (usa /api/status diverso)
+
+================================================================================
+DOCUMENTI COMPLETI
+================================================================================
+
+DASHBOARD_DIAGNOSTIC_REPORT.md (580+ righe)
+--------------------------------------------
+- Sezione A: Mappa dati Dashboard (tabella 7 elementi UI)
+- Sezione B: Contratti API (3 endpoint con edge cases)
+- Sezione C: Diagnosi (6 mismatch identificati)
+- Sezione D: Checklist manuale (12 check con curl/Python)
+- Sezione E: Top 3 cause + prove concrete
+
+DIAGNOSI_RAPIDA.md
+------------------
+- Guida veloce in italiano
+- Verifica 30 secondi
+- Azioni immediate
+
+================================================================================
+CONFORMITÀ TASK ✅
+================================================================================
+
+✅ ZERO modifiche codice (solo analisi)
+✅ Basato SOLO su repository attuale
+✅ Riferimenti precisi: file + funzione + route + JSON keys
+✅ Output formato richiesto (A, B, C, D, E)
+✅ 8-12 check pratici documentati
+✅ Top 3 cause con % probabilità e prove
+✅ Credentials policy specificata (same-origin)
+✅ Redirect HTML vs JSON evidenziato
+
+================================================================================
+END OF DIAGNOSTIC SUMMARY
+================================================================================
