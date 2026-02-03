@@ -73,7 +73,11 @@ def _read_csv_last_timestamp(csv_path: Path) -> datetime | None:
         return None
 
 
-def _parse_iso_timestamp(value: str) -> datetime | None:
+def _parse_iso_timestamp(value: str | datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if isinstance(value, datetime):
+        return ensure_utc_aware(value)
     raw = value.strip()
     if not raw:
         return None
@@ -273,28 +277,31 @@ def update_with_retries(ingv_url: str, colored_url: str | None, csv_path: Path) 
         if last_ts_normalized and (previous_last_ts_normalized is None or last_ts_normalized > previous_last_ts_normalized):
             updated = True
         _record_csv_update(result.get("rows"), last_ts)
-        _log_cron_run(
-            csv_path,
-            ok=True,
-            reason="completed",
-            duration_ms=(perf_counter() - started_at) * 1000,
-            pipeline_id=pipeline_id,
-            payload={
-                "ingv_url": ingv_url,
-                "ingv_colored_url": colored_url,
-                "attempts": attempt,
-                "rows": result.get("rows"),
-                "first_ts": result.get("first_ts"),
-                "last_ts": result.get("last_ts"),
-                "start_ref": result.get("start_time"),
-                "end_ref": result.get("end_time"),
-                "interval_minutes": result.get("interval_minutes"),
-                "pixel_columns": result.get("pixel_columns"),
-                "output_path": result.get("output_path"),
-                "source": result.get("source"),
-                "stale_count": result.get("stale_count"),
-            },
-        )
+        try:
+            _log_cron_run(
+                csv_path,
+                ok=True,
+                reason="completed",
+                duration_ms=(perf_counter() - started_at) * 1000,
+                pipeline_id=pipeline_id,
+                payload={
+                    "ingv_url": ingv_url,
+                    "ingv_colored_url": colored_url,
+                    "attempts": attempt,
+                    "rows": result.get("rows"),
+                    "first_ts": result.get("first_ts"),
+                    "last_ts": result.get("last_ts"),
+                    "start_ref": result.get("start_time"),
+                    "end_ref": result.get("end_time"),
+                    "interval_minutes": result.get("interval_minutes"),
+                    "pixel_columns": result.get("pixel_columns"),
+                    "output_path": result.get("output_path"),
+                    "source": result.get("source"),
+                    "stale_count": result.get("stale_count"),
+                },
+            )
+        except Exception:  # pragma: no cover - defensive logging
+            log.exception("[CSV] Failed to persist cron run log")
         return {
             "ok": True,
             "updated": updated,
