@@ -135,6 +135,11 @@ def get_curva():
 
         if reason is not None:
             record_csv_error(reason)
+            current_app.logger.warning(
+                "[API] curva dataset unavailable reason=%s path=%s",
+                reason,
+                csv_path,
+            )
             status_code = 200
             payload = {
                 "ok": False,
@@ -261,6 +266,11 @@ def get_status():
                 })
 
             record_csv_error(f"status::{reason}")
+            current_app.logger.warning(
+                "[API] status dataset unavailable reason=%s path=%s",
+                reason,
+                csv_path,
+            )
             status_code = 200
             return jsonify({
                 "ok": False,

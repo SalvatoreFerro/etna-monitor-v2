@@ -100,9 +100,21 @@
       };
     });
 
+  const adjustRgbaOpacity = (color, opacityMultiplier) => {
+    if (!color || typeof color !== 'string' || !color.startsWith('rgba')) {
+      return color;
+    }
+    const match = color.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
+    if (!match) {
+      return color;
+    }
+    const nextOpacity = Math.max(0, Math.min(1, parseFloat(match[4]) * opacityMultiplier));
+    return `rgba(${match[1]}, ${match[2]}, ${match[3]}, ${nextOpacity})`;
+  };
+
   const applyResponsiveLayout = (
     container,
-    { baseLayout, baseShapes, baseLineWidth, baseYTitleText, baseYTitleStandoff } = {},
+    { baseLayout, baseShapes, baseLineWidth, baseYTitleText, baseYTitleStandoff, baseTrace } = {},
   ) => {
     if (!container || !window.Plotly) {
       return;
@@ -125,9 +137,42 @@
     window.requestAnimationFrame(() => {
       window.Plotly?.Plots?.resize(container);
     });
-    if (baseLineWidth) {
-      const targetWidth = isMobile ? Math.round(baseLineWidth * 1.25 * 10) / 10 : baseLineWidth;
-      window.Plotly.restyle(container, { 'line.width': targetWidth }, [0]);
+    if (baseLineWidth || baseTrace) {
+      const targetWidth = baseLineWidth
+        ? (isMobile ? Math.max(0.8, Math.round(baseLineWidth * 0.75 * 10) / 10) : baseLineWidth)
+        : undefined;
+      const traceUpdates = {};
+      if (targetWidth) {
+        traceUpdates['line.width'] = targetWidth;
+      }
+      if (isMobile) {
+        traceUpdates.mode = 'lines';
+        if (baseTrace?.fill) {
+          traceUpdates.fill = 'none';
+        }
+        if (baseTrace?.fillcolor) {
+          traceUpdates.fillcolor = adjustRgbaOpacity(baseTrace.fillcolor, 0.45);
+        }
+        if (baseTrace?.opacity !== undefined) {
+          traceUpdates.opacity = Math.min(0.75, baseTrace.opacity);
+        }
+      } else if (baseTrace) {
+        if (baseTrace.mode) {
+          traceUpdates.mode = baseTrace.mode;
+        }
+        if (baseTrace.fill !== undefined) {
+          traceUpdates.fill = baseTrace.fill;
+        }
+        if (baseTrace.fillcolor) {
+          traceUpdates.fillcolor = baseTrace.fillcolor;
+        }
+        if (baseTrace.opacity !== undefined) {
+          traceUpdates.opacity = baseTrace.opacity;
+        }
+      }
+      if (Object.keys(traceUpdates).length) {
+        window.Plotly.restyle(container, traceUpdates, [0]);
+      }
     }
   };
 
@@ -185,6 +230,7 @@
     const data = figPayload.data || [];
     const baseShapes = layout.shapes ? JSON.parse(JSON.stringify(layout.shapes)) : null;
     const baseLineWidth = data[0]?.line?.width;
+    const baseTrace = data[0] ? { ...data[0] } : null;
     const baseYTitleText = getYTitleText(layout);
     const baseYTitleStandoff = layout?.yaxis?.title?.standoff;
     mobileMarkerTraceIndex = null;
@@ -195,6 +241,7 @@
       baseLineWidth,
       baseYTitleText,
       baseYTitleStandoff,
+      baseTrace,
     });
     updateMobileMarker(container, data);
     return true;
@@ -217,6 +264,7 @@
         const baseLayout = desktopPlot.layout || figPayload.layout || {};
         const baseShapes = baseLayout.shapes || figPayload.layout?.shapes || null;
         const baseLineWidth = desktopPlot.data?.[0]?.line?.width || figPayload.data?.[0]?.line?.width;
+        const baseTrace = desktopPlot.data?.[0] || figPayload.data?.[0] || null;
         const baseYTitleText = getYTitleText(baseLayout || figPayload.layout || {});
         const baseYTitleStandoff = baseLayout?.yaxis?.title?.standoff || figPayload.layout?.yaxis?.title?.standoff;
         applyResponsiveLayout(desktopPlot, {
@@ -225,6 +273,7 @@
           baseLineWidth,
           baseYTitleText,
           baseYTitleStandoff,
+          baseTrace,
         });
         updateMobileMarker(desktopPlot, desktopPlot.data || figPayload.data || []);
       };

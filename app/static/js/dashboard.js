@@ -528,7 +528,14 @@ class EtnaDashboard {
     async loadData() {
         try {
             const limit = this.getSelectedLimit();
-            const response = await fetch(`/api/curva?limit=${limit}`);
+            const response = await fetch(`/api/curva?limit=${limit}`, {
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             const data = await response.json();
             
             if (data.ok && data.data) {
@@ -536,6 +543,7 @@ class EtnaDashboard {
                 this.renderPlot(data);
                 this.updateStats(data);
             } else {
+                console.warn('Dashboard API returned no data:', data);
                 this.showNoDataMessage();
             }
         } catch (error) {
@@ -546,11 +554,20 @@ class EtnaDashboard {
     
     async loadStatus() {
         try {
-            const response = await fetch('/api/status');
+            const response = await fetch('/api/status', {
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: { 'Accept': 'application/json' }
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
             const data = await response.json();
             
             if (data.ok) {
                 this.updateStatus(data);
+            } else {
+                console.warn('Status API returned not ok:', data);
             }
         } catch (error) {
             console.error('Errore nel caricamento stato:', error);
