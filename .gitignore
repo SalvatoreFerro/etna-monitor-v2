@@ -32,3 +32,10 @@ app/static/copernicus/*.png
 # CSV updater runtime artifacts
 data/csv_metrics.json
 data/ingv_white_hash.json
+
+# Runtime CSV data (generated dynamically by background updater)
+data/curva_colored.csv
+data/curva.csv
+# Keep seed/backup files for testing and recovery
+!data/curva_colored.csv.seed
+!data/*.backup-*
