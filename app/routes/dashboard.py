@@ -6,6 +6,7 @@ from ..utils.csrf import validate_csrf_token
 from ..models import db, TelegramLinkToken, TremorPrediction
 from ..models.event import Event
 from ..services.badge_service import BADGE_DEFINITIONS, LEVEL_DESCRIPTIONS, get_user_badges_for_display
+from ..services.prediction_service import resolve_expired_predictions
 from ..utils.plot import make_tremor_figure
 from ..utils.metrics import record_csv_error, record_csv_read
 from config import Config
@@ -123,6 +124,11 @@ def dashboard_home():
     user_badges = get_user_badges_for_display(user.id)
     user_level = user.user_level or 1
     level_description = LEVEL_DESCRIPTIONS.get(user_level, LEVEL_DESCRIPTIONS[1])
+
+    try:
+        resolve_expired_predictions()
+    except Exception:
+        logger.exception("Prediction resolution failed during dashboard load")
 
     active_prediction = (
         TremorPrediction.query.filter(
