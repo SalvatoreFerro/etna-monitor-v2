@@ -6,7 +6,8 @@ import os
 import sys
 import time
 import traceback
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
+from decimal import Decimal
 from pathlib import Path
 from time import perf_counter
 from uuid import uuid4
@@ -29,6 +30,28 @@ DEFAULT_STALE_THRESHOLD = 8
 DEFAULT_PIPELINE_MODE = "colored"
 
 log = logging.getLogger("csv_updater")
+
+
+def _sanitize_json(obj):
+    if isinstance(obj, datetime):
+        return obj.isoformat()
+    if isinstance(obj, date):
+        return obj.isoformat()
+    if isinstance(obj, Decimal):
+        return float(obj)
+    if isinstance(obj, bytes):
+        return str(obj)
+    if isinstance(obj, (set, tuple)):
+        return [_sanitize_json(item) for item in obj]
+    if isinstance(obj, list):
+        return [_sanitize_json(item) for item in obj]
+    if isinstance(obj, dict):
+        return {key: _sanitize_json(value) for key, value in obj.items()}
+    try:
+        json.dumps(obj)
+        return obj
+    except TypeError:
+        return str(obj)
 
 
 def _resolve_csv_metrics_path() -> Path:
@@ -379,7 +402,9 @@ def _log_cron_run(
     }
 
     try:
-        log_cron_run_external(cron_payload)
+        sanitized_payload = _sanitize_json(cron_payload)
+        log.debug("cron payload sanitized (datetime->isoformat)")
+        log_cron_run_external(sanitized_payload)
     except Exception:  # pragma: no cover - defensive logging
         log.exception("[CSV] Failed to persist cron run log")
 
