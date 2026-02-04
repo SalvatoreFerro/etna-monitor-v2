@@ -373,6 +373,9 @@
                       <div class="mission-info">
                         <strong class="mission-label">{{ mission.label }}</strong>
                         <p class="mission-description muted">{{ mission.description }}</p>
+                        {% if mission.hint %}
+                          <p class="mission-hint muted">{{ mission.hint }}</p>
+                        {% endif %}
                       </div>
                       <span class="mission-points">+{{ mission.points }} pts</span>
                     </div>
@@ -381,18 +384,28 @@
                         {% set progress_pct = (mission.progress.current / mission.progress.total * 100) | round(0, 'floor') %}
                         <span class="mission-progress-fill" style="width: {{ progress_pct }}%"></span>
                       </div>
-                      <span class="mission-progress-text">{{ mission.progress.current }}/{{ mission.progress.total }}</span>
+                      <span class="mission-progress-text">
+                        {% if mission.progress_label %}
+                          {{ mission.progress_label }}
+                        {% else %}
+                          {{ mission.progress.current }}/{{ mission.progress.total }}
+                        {% endif %}
+                      </span>
                     </div>
                     <div class="mission-status">
                       {% if mission.is_completed %}
                         <span class="mission-badge mission-badge--completed">✓ Completata</span>
-                        <button 
-                          class="btn btn-premium btn-sm mission-claim-btn" 
-                          data-mission-id="{{ mission.id }}"
-                          data-mission-claim
-                        >
-                          Riscatta +{{ mission.points }} pts
-                        </button>
+                        {% if mission.auto_claim or mission.is_claimed %}
+                          <span class="mission-expires muted">Punti assegnati automaticamente</span>
+                        {% else %}
+                          <button 
+                            class="btn btn-premium btn-sm mission-claim-btn" 
+                            data-mission-id="{{ mission.id }}"
+                            data-mission-claim
+                          >
+                            Riscatta +{{ mission.points }} pts
+                          </button>
+                        {% endif %}
                       {% elif mission.is_expired %}
                         <span class="mission-badge mission-badge--expired">Scaduta</span>
                       {% else %}
@@ -455,6 +468,19 @@
                       <span class="badge-grid-icon badge-grid-icon--locked" aria-hidden="true">🔒</span>
                       <strong class="badge-grid-label">Watcher 7 giorni</strong>
                       <p class="badge-grid-description muted">Accedi per 7 giorni consecutivi</p>
+                      {% set watcher_7 = watcher_progress.get('WATCHER_7D') %}
+                      {% if watcher_7 %}
+                        {% set remaining_7 = watcher_7.total - watcher_7.current %}
+                        <div class="badge-progress">
+                          <div class="mission-progress-bar">
+                            {% set progress_pct = (watcher_7.current / watcher_7.total * 100) | round(0, 'floor') %}
+                            <span class="mission-progress-fill" style="width: {{ progress_pct }}%"></span>
+                          </div>
+                          <span class="badge-progress-text muted">
+                            {{ watcher_7.current }}/{{ watcher_7.total }} giorni · Mancano {{ remaining_7 }} giorni
+                          </span>
+                        </div>
+                      {% endif %}
                     </div>
                   {% endif %}
                   {% if 'WATCHER_30D' not in unlocked_codes %}
@@ -462,6 +488,19 @@
                       <span class="badge-grid-icon badge-grid-icon--locked" aria-hidden="true">🔒</span>
                       <strong class="badge-grid-label">Watcher 30 giorni</strong>
                       <p class="badge-grid-description muted">Accedi per 30 giorni consecutivi</p>
+                      {% set watcher_30 = watcher_progress.get('WATCHER_30D') %}
+                      {% if watcher_30 %}
+                        {% set remaining_30 = watcher_30.total - watcher_30.current %}
+                        <div class="badge-progress">
+                          <div class="mission-progress-bar">
+                            {% set progress_pct = (watcher_30.current / watcher_30.total * 100) | round(0, 'floor') %}
+                            <span class="mission-progress-fill" style="width: {{ progress_pct }}%"></span>
+                          </div>
+                          <span class="badge-progress-text muted">
+                            {{ watcher_30.current }}/{{ watcher_30.total }} giorni · Mancano {{ remaining_30 }} giorni
+                          </span>
+                        </div>
+                      {% endif %}
                     </div>
                   {% endif %}
                   {% if 'PREMIUM_SUPPORTER' not in unlocked_codes %}

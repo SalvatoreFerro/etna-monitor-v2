@@ -1321,6 +1321,7 @@ class EtnaDashboard {
                             'mission_not_found': 'Missione non trovata',
                             'unauthorized': 'Non autorizzato',
                             'mission_not_completed': 'Missione non ancora completata',
+                            'mission_already_claimed': 'Missione già riscattata',
                             'invalid_csrf': 'Sessione scaduta, ricarica la pagina'
                         };
                         const errorMsg = errorMessages[result.error] || 'Errore nel riscattare la missione';

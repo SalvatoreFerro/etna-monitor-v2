@@ -193,3 +193,12 @@ def get_user_badges_for_display(user_id: int) -> list[dict[str, str | datetime |
             }
         )
     return items
+
+
+def get_watcher_progress(user_id: int) -> dict[str, dict[str, int]]:
+    progress_7 = min(_distinct_login_days(user_id, 7), 7)
+    progress_30 = min(_distinct_login_days(user_id, 30), 30)
+    return {
+        "WATCHER_7D": {"current": progress_7, "total": 7},
+        "WATCHER_30D": {"current": progress_30, "total": 30},
+    }

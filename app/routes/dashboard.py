@@ -5,7 +5,12 @@ from ..utils.config import get_curva_csv_path
 from ..utils.csrf import validate_csrf_token
 from ..models import db, TelegramLinkToken, TremorPrediction
 from ..models.event import Event
-from ..services.badge_service import BADGE_DEFINITIONS, LEVEL_DESCRIPTIONS, get_user_badges_for_display
+from ..services.badge_service import (
+    BADGE_DEFINITIONS,
+    LEVEL_DESCRIPTIONS,
+    get_user_badges_for_display,
+    get_watcher_progress,
+)
 from ..services.prediction_service import resolve_expired_predictions
 from ..utils.plot import make_tremor_figure
 from ..utils.metrics import record_csv_error, record_csv_read
@@ -122,6 +127,7 @@ def dashboard_home():
                                  .limit(10).all()
 
     user_badges = get_user_badges_for_display(user.id)
+    watcher_progress = get_watcher_progress(user.id)
     user_level = user.user_level or 1
     level_description = LEVEL_DESCRIPTIONS.get(user_level, LEVEL_DESCRIPTIONS[1])
 
@@ -145,9 +151,13 @@ def dashboard_home():
     enable_missions = os.getenv("ENABLE_MISSIONS", "").strip().lower()
     if enable_missions in {"1", "true", "yes"}:
         try:
-            from ..services.mission_service import get_user_missions, check_and_complete_missions
-            # Check and auto-complete missions
-            check_and_complete_missions(user.id)
+            from ..services.mission_service import (
+                get_user_missions,
+                record_daily_event,
+                sync_user_missions,
+            )
+            record_daily_event(user.id, "graph_view")
+            sync_user_missions(user.id, active_prediction=active_prediction)
             user_missions = get_user_missions(user.id, include_expired=False)
         except Exception:
             logger.exception("Failed to load missions for user %s", user.id)
@@ -217,6 +227,7 @@ def dashboard_home():
                          user_points=user_points,
                          level_progress=level_progress,
                          next_level_hint=next_level_hint,
+                         watcher_progress=watcher_progress,
                          hide_footer=True,
                          hide_nav=True,
                          page_title="Dashboard tremore Etna – EtnaMonitor",
