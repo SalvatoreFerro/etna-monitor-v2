@@ -611,6 +611,8 @@ def get_user_missions(
         definition = MISSION_DEFINITIONS.get(mission.mission_code)
         if definition is None:
             continue
+        if mission.mission_code == "prediction_wait" and mission.is_completed:
+            continue
 
         progress = _get_mission_progress(mission, now)
         hint = _get_mission_hint(mission.mission_code, mission)
