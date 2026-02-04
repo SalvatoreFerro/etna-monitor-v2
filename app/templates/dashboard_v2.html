@@ -395,8 +395,10 @@
                     <div class="mission-status">
                       {% if mission.is_completed %}
                         <span class="mission-badge mission-badge--completed">✓ Completata</span>
-                        {% if mission.auto_claim or mission.is_claimed %}
-                          <span class="mission-expires muted">Punti assegnati automaticamente</span>
+                        {% if mission.auto_claim %}
+                          <span class="mission-expires muted">Ricompensa assegnata automaticamente</span>
+                        {% elif mission.is_claimed %}
+                          <span class="mission-expires muted">Ricompensa già riscattata</span>
                         {% else %}
                           <button 
                             class="btn btn-premium btn-sm mission-claim-btn" 

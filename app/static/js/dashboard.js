@@ -111,54 +111,8 @@ class EtnaDashboard {
         }
 
         this.updateAnalyzeUI();
-        
-        // Mission claim buttons
-        this.setupMissionClaim();
     }
     
-    setupMissionClaim() {
-        const claimButtons = document.querySelectorAll('[data-mission-claim]');
-        claimButtons.forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                e.preventDefault();
-                const missionId = btn.dataset.missionId;
-                if (!missionId) return;
-                
-                const originalText = btn.textContent;
-                btn.disabled = true;
-                btn.textContent = 'Riscattando...';
-                
-                try {
-                    const response = await fetch(`/api/missions/${missionId}/claim`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            csrf_token: this.getCSRFToken()
-                        })
-                    });
-                    
-                    const data = await response.json();
-                    
-                    if (data.ok) {
-                        this.showToast(`✓ Ricompensa riscattata! +${data.points_awarded} punti`, 'success');
-                        setTimeout(() => window.location.reload(), 1500);
-                    } else {
-                        this.showToast(`✕ Errore: ${data.error || 'Impossibile riscattare'}`, 'error');
-                        btn.disabled = false;
-                        btn.textContent = originalText;
-                    }
-                } catch (error) {
-                    console.error('Mission claim error:', error);
-                    this.showToast('✕ Errore di rete', 'error');
-                    btn.disabled = false;
-                    btn.textContent = originalText;
-                }
-            });
-        });
-    }
-
     setupTelegramValidation() {
         const chatInput = document.getElementById('chat_id');
         const validationEl = document.getElementById('chat-id-validation');
@@ -1290,6 +1244,16 @@ class EtnaDashboard {
     
     setupMissions() {
         const claimButtons = document.querySelectorAll('[data-mission-claim]');
+        if (!claimButtons.length) {
+            return;
+        }
+
+        if (!this.getCSRFToken()) {
+            this.disableMissionClaimButtons(claimButtons, 'Sessione scaduta');
+            this.handleSessionExpired('Sessione scaduta, ricarico la pagina...');
+            return;
+        }
+
         claimButtons.forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 e.preventDefault();
@@ -1302,20 +1266,34 @@ class EtnaDashboard {
                 
                 try {
                     const csrfToken = this.getCSRFToken();
+                    if (!csrfToken) {
+                        this.disableMissionClaimButtons(claimButtons, 'Sessione scaduta');
+                        this.handleSessionExpired('Sessione scaduta, ricarico la pagina...');
+                        return;
+                    }
                     const response = await fetch(`/api/missions/${missionId}/claim`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
+                            'X-CSRF-Token': csrfToken,
                         },
                         body: JSON.stringify({ csrf_token: csrfToken })
                     });
                     
-                    const result = await response.json();
+                    let result = {};
+                    try {
+                        result = await response.json();
+                    } catch (error) {
+                        result = {};
+                    }
                     
                     if (result.ok) {
                         this.showToast(`Missione riscattata! +${result.points_awarded} punti`, 'success');
                         // Reload page after brief delay
                         setTimeout(() => window.location.reload(), 1500);
+                    } else if (result.error === 'invalid_csrf' || response.status === 401 || response.status === 403) {
+                        this.disableMissionClaimButtons(claimButtons, 'Sessione scaduta');
+                        this.handleSessionExpired('Sessione scaduta, ricarico la pagina...');
                     } else {
                         const errorMessages = {
                             'mission_not_found': 'Missione non trovata',
@@ -1348,6 +1326,20 @@ class EtnaDashboard {
         if (input) return input.value;
         
         return '';
+    }
+
+    disableMissionClaimButtons(buttons, message) {
+        buttons.forEach(btn => {
+            btn.disabled = true;
+            if (message) {
+                btn.textContent = message;
+            }
+        });
+    }
+
+    handleSessionExpired(message) {
+        this.showToast(message, 'error');
+        setTimeout(() => window.location.reload(), 1500);
     }
     
     showToast(message, type = 'info', duration = 5000) {
