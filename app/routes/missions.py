@@ -7,10 +7,11 @@ import os
 from flask import Blueprint, jsonify, request
 
 from app.services.mission_service import (
-    check_and_complete_missions,
     claim_mission_reward,
     get_user_missions,
+    sync_user_missions,
 )
+from app.models.tremor_prediction import TremorPrediction
 from app.utils.auth import get_current_user
 from app.utils.csrf import validate_csrf_token
 
@@ -33,8 +34,18 @@ def list_missions():
     if not user:
         return jsonify({"ok": False, "error": "auth_required"}), 401
 
-    # Check and auto-complete any missions that are now eligible
-    check_and_complete_missions(user.id)
+    active_prediction = (
+        TremorPrediction.query.filter(
+            TremorPrediction.user_id == user.id,
+            TremorPrediction.resolved.is_(False),
+            TremorPrediction.horizon_hours == 24,
+        )
+        .order_by(TremorPrediction.created_at.desc())
+        .first()
+    )
+
+    # Sync missions (daily + prediction wait) and auto-complete eligible ones
+    sync_user_missions(user.id, active_prediction=active_prediction)
 
     missions = get_user_missions(user.id, include_expired=False)
     return jsonify({"ok": True, "missions": missions})
@@ -66,6 +77,8 @@ def claim_mission(mission_id: int):
             return jsonify(result), 403
         elif error == "mission_not_completed":
             return jsonify(result), 400
+        elif error == "mission_already_claimed":
+            return jsonify(result), 409
         else:
             return jsonify(result), 500
 

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta, timezone
 
 from flask import Blueprint, jsonify, render_template, request
@@ -15,6 +16,7 @@ from app.services.prediction_service import (
 )
 from app.utils.auth import get_current_user
 from app.utils.csrf import validate_csrf_token
+from app.services.mission_service import record_daily_event
 
 bp = Blueprint("predictions", __name__)
 
@@ -149,6 +151,10 @@ def leaderboard_api():
 @bp.get("/leaderboard")
 def leaderboard_page():
     leaderboard = _fetch_leaderboard(20)
+    user = get_current_user()
+    enable_missions = os.getenv("ENABLE_MISSIONS", "").strip().lower()
+    if user and enable_missions in {"1", "true", "yes"}:
+        record_daily_event(user.id, "leaderboard_view")
     return render_template(
         "leaderboard.html",
         leaderboard=leaderboard,

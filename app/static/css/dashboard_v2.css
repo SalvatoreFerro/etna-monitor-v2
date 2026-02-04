@@ -742,6 +742,11 @@
   margin: 0;
 }
 
+.mission-hint {
+  font-size: 0.75rem;
+  margin: 0.35rem 0 0;
+}
+
 .mission-points {
   font-size: 0.875rem;
   font-weight: 600;
@@ -781,6 +786,18 @@
   font-weight: 600;
   color: var(--text-secondary);
   flex-shrink: 0;
+}
+
+.badge-progress {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.badge-progress-text {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
 }
 
 .mission-status {
