@@ -31,6 +31,7 @@ DEFAULT_S1_DAYS = 10
 DEFAULT_MAX_CLOUD = 40
 REQUEST_TIMEOUT = (8, 60)
 RETRY_DELAYS = [1.0, 2.0]
+TMP_BASE_DIR = Path("/tmp/etnamonitor")
 
 
 @dataclass(frozen=True)
@@ -285,10 +286,10 @@ def _write_status(payload: dict, target_path: Path) -> None:
 
 
 def _resolve_paths() -> tuple[Path, Path, Path]:
-    base_dir = Path(__file__).resolve().parents[1]
-    static_folder = base_dir / "app" / "static" / "copernicus"
-    data_dir = Path(os.getenv("DATA_DIR", str(base_dir / "data")))
-    log_dir = Path(os.getenv("LOG_DIR", str(base_dir / "logs")))
+    base_dir = TMP_BASE_DIR
+    static_folder = base_dir / "copernicus"
+    data_dir = base_dir / "data"
+    log_dir = base_dir / "log"
     status_path = data_dir / "copernicus_status.json"
     log_path = log_dir / "copernicus_preview.log"
     return static_folder, status_path, log_path
