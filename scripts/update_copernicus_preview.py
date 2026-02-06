@@ -27,6 +27,7 @@ DEFAULT_LATEST_DAYS = 14
 DEFAULT_MAX_CLOUD = 80
 REQUEST_TIMEOUT = (8, 60)
 RETRY_DELAYS = [1.0, 2.5]
+TMP_BASE_DIR = Path("/tmp/etnamonitor")
 
 
 @dataclass(frozen=True)
@@ -241,8 +242,8 @@ def _write_cache(payload: dict, target_path: Path) -> None:
 
 
 def _resolve_output_paths() -> tuple[Path, Path]:
-    base_dir = Path(__file__).resolve().parents[1]
-    folder = base_dir / "app" / "static" / "copernicus"
+    base_dir = TMP_BASE_DIR
+    folder = base_dir / "copernicus"
     return folder, folder / "preview.json"
 
 

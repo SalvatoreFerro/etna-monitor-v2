@@ -28,6 +28,8 @@ MAX_RETRIES = 3
 RETRY_BACKOFF_SECONDS = 30
 DEFAULT_STALE_THRESHOLD = 8
 DEFAULT_PIPELINE_MODE = "colored"
+TMP_BASE_DIR = Path("/tmp/etnamonitor")
+TMP_DATA_DIR = TMP_BASE_DIR / "data"
 
 log = logging.getLogger("csv_updater")
 
@@ -94,9 +96,13 @@ def _sanitize_json(obj):
         return str(obj)
 
 
+def _tmp_data_path(env_key: str, default_name: str) -> Path:
+    raw = Path(os.getenv(env_key, default_name))
+    return TMP_DATA_DIR / raw.name
+
+
 def _resolve_csv_metrics_path() -> Path:
-    data_dir = os.getenv("DATA_DIR", "data")
-    return Path(os.getenv("CSV_METRICS_PATH", os.path.join(data_dir, "csv_metrics.json")))
+    return _tmp_data_path("CSV_METRICS_PATH", "csv_metrics.json")
 
 
 def _record_csv_update(
@@ -196,8 +202,7 @@ def ensure_utc_aware(dt: datetime | None) -> datetime | None:
 
 
 def _resolve_hash_state_path() -> Path:
-    data_dir = os.getenv("DATA_DIR", "data")
-    return Path(os.getenv("INGV_WHITE_HASH_STATE", os.path.join(data_dir, "ingv_white_hash.json")))
+    return _tmp_data_path("INGV_WHITE_HASH_STATE", "ingv_white_hash.json")
 
 
 def _load_hash_state() -> dict:
@@ -475,7 +480,7 @@ def main() -> None:
 
     ingv_url = os.getenv("INGV_URL", "https://www.ct.ingv.it/RMS_Etna/2.png")
     colored_url = (os.getenv("INGV_COLORED_URL") or "").strip() or None
-    csv_path = Path(os.getenv("CURVA_CSV_PATH", "data/curva_colored.csv"))
+    csv_path = _tmp_data_path("CURVA_CSV_PATH", "curva_colored.csv")
     interval_seconds = int(os.getenv("CSV_UPDATE_INTERVAL", str(DEFAULT_INTERVAL_SECONDS)))
     run_once = os.getenv("RUN_ONCE", "").lower() in {"1", "true", "yes"}
 
