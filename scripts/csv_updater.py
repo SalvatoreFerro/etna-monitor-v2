@@ -6,6 +6,8 @@ import os
 import sys
 import time
 import traceback
+import urllib.error
+import urllib.request
 from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
@@ -20,7 +22,6 @@ from backend.utils.extract_colored import download_png as download_colored_png
 from backend.utils.extract_colored import extract_series_from_colored
 from backend.utils.extract_png import download_png as download_white_png
 from backend.utils.extract_png import clean_and_save_data, process_png_bytes_to_csv
-from app.services.runlog_service import log_cron_run_external
 
 
 DEFAULT_INTERVAL_SECONDS = 3600
@@ -463,13 +464,31 @@ def _log_cron_run(
         "traceback": error_traceback,
     }
 
+    _emit_cron_run(cron_payload)
+
+
+def _emit_cron_run(payload: dict) -> None:
+    """Emit cron run payload via local logging or optional HTTP endpoint."""
     try:
-        # Use serialize_datetimes for robust datetime handling
-        sanitized_payload = serialize_datetimes(cron_payload)
+        sanitized_payload = serialize_datetimes(payload)
         log.debug("cron payload serialized (datetime->isoformat)")
-        log_cron_run_external(sanitized_payload)
+        log.info("[CSV] cron_run payload=%s", json.dumps(sanitized_payload, ensure_ascii=False))
+        endpoint = (os.getenv("CRON_LOG_ENDPOINT") or "").strip()
+        if not endpoint:
+            return
+        req = urllib.request.Request(
+            endpoint,
+            data=json.dumps(sanitized_payload, ensure_ascii=False).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        token = (os.getenv("CRON_LOG_TOKEN") or "").strip()
+        if token:
+            req.add_header("Authorization", f"Bearer {token}")
+        with urllib.request.urlopen(req, timeout=10):
+            return
     except Exception:  # pragma: no cover - defensive logging
-        log.exception("[CSV] Failed to persist cron run log")
+        log.exception("[CSV] Failed to emit cron run log")
 
 
 def main() -> None:
