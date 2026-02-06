@@ -1,0 +1,193 @@
+# Design Tokens (Phase 1)
+
+_Base theme tokens defined in `app/static/css/theme.css`._
+
+## Typography
+- `--font-base`: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif
+- `--font-display`: "Space Grotesk", "Inter", "SF Pro Display", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif
+- `--font-sans`: var(--font-base)
+- `--font-family-primary`: var(--font-base)
+- `--font-family-headings`: var(--font-display)
+- `--font-family-mono`: "SF Mono", "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace
+
+## Font Sizes
+- `--font-size-2xs`: 0.6875rem
+- `--font-size-xs`: 0.75rem
+- `--font-size-sm`: 0.875rem
+- `--font-size-base`: 1rem
+- `--font-size-md`: 1.0625rem
+- `--font-size-lg`: 1.125rem
+- `--font-size-xl`: 1.25rem
+- `--font-size-2xl`: 1.5rem
+- `--font-size-3xl`: 1.875rem
+- `--font-size-4xl`: 2.25rem
+- `--font-size-5xl`: 3rem
+
+## Font Weights
+- `--font-weight-regular`: 400
+- `--font-weight-medium`: 500
+- `--font-weight-semibold`: 600
+- `--font-weight-bold`: 700
+
+## Line Heights
+- `--line-height-tight`: 1.25
+- `--line-height-snug`: 1.4
+- `--line-height-normal`: 1.5
+- `--line-height-relaxed`: 1.75
+
+## Core Colors & Surfaces
+- `--color-background`: #03060f
+- `--color-background-alt`: #050b18
+- `--color-bg-primary`: var(--color-background)
+- `--color-bg-secondary`: var(--color-background-alt)
+- `--color-bg-tertiary`: #0b1222
+- `--color-surface`: rgba(12, 19, 35, 0.78)
+- `--color-surface-strong`: rgba(15, 25, 45, 0.92)
+- `--color-surface-soft`: rgba(148, 163, 184, 0.08)
+- `--color-surface-hover`: rgba(30, 41, 59, 0.6)
+- `--color-surface-active`: rgba(30, 41, 59, 0.8)
+- `--surface-raised`: rgba(12, 20, 39, 0.82)
+- `--color-border`: rgba(148, 163, 184, 0.18)
+- `--color-border-strong`: rgba(100, 116, 139, 0.45)
+- `--color-border-light`: rgba(148, 163, 184, 0.32)
+- `--color-divider`: rgba(15, 23, 42, 0.65)
+
+## Text & Accent Colors
+- `--color-text`: #e2e8f0
+- `--color-text-muted`: rgba(226, 232, 240, 0.72)
+- `--color-heading`: #f8fafc
+- `--color-text-primary`: var(--color-text)
+- `--color-text-secondary`: rgba(226, 232, 240, 0.7)
+- `--color-text-tertiary`: rgba(226, 232, 240, 0.48)
+- `--color-text-inverse`: #04101f
+- `--text-primary`: var(--color-text-primary)
+- `--text-secondary`: var(--color-text-secondary)
+- `--text-muted`: var(--color-text-muted)
+- `--color-primary`: #64f4ff
+- `--color-primary-strong`: #36d0ff
+- `--color-primary-soft`: rgba(100, 244, 255, 0.18)
+- `--color-accent`: #a855f7
+- `--color-accent-primary`: var(--color-primary)
+- `--color-accent-secondary`: var(--color-accent)
+- `--color-accent-tertiary`: #f472b6
+- `--color-highlight`: rgba(100, 244, 255, 0.12)
+- `--color-success`: #22d3ee
+- `--color-warning`: #facc15
+- `--color-danger`: #fb7185
+- `--color-error`: var(--color-danger)
+- `--color-info`: #38bdf8
+- `--color-base`: #020617
+- `--color-focus-ring`: rgba(125, 211, 252, 0.9)
+- `--focus-ring-color`: var(--color-focus-ring)
+- `--accent`: var(--color-primary)
+
+## Theme-Specific Palette Tokens (Base Defaults)
+- `--color-lava-red`: #ff4757
+- `--color-lava-orange`: #ffa502
+- `--color-magma`: #ff6348
+- `--color-volcanic-glow`: #00d2ff
+- `--color-caution-stripe`: #ffcc00
+- `--color-caution-dark`: #1a1a1a
+- `--color-construction`: #ff6b00
+
+## Shadows
+- `--shadow-xs`: 0 6px 18px -16px rgba(15, 23, 42, 0.75)
+- `--shadow-sm`: 0 12px 28px -20px rgba(15, 23, 42, 0.82)
+- `--shadow-md`: 0 24px 70px -40px rgba(15, 23, 42, 0.86)
+- `--shadow-lg`: 0 35px 100px -55px rgba(15, 23, 42, 0.9)
+- `--shadow-xl`: 0 40px 120px -70px rgba(15, 23, 42, 0.92)
+- `--shadow-2xl`: 0 50px 140px -80px rgba(15, 23, 42, 0.95)
+- `--shadow-glass`: 0 12px 40px rgba(4, 8, 20, 0.45), 0 0 0 1px rgba(148, 163, 184, 0.1)
+- `--shadow-elevated`: 0 24px 60px rgba(5, 12, 28, 0.55)
+- `--shadow-floating`: 0 32px 80px rgba(3, 12, 28, 0.6)
+- `--shadow-premium`: 0 16px 40px rgba(100, 244, 255, 0.12), 0 12px 32px rgba(15, 23, 42, 0.35)
+- `--shadow-card-premium`: 0 18px 45px rgba(10, 16, 30, 0.45), 0 6px 20px rgba(15, 23, 42, 0.35)
+- `--shadow-button-premium`: 0 12px 28px rgba(100, 244, 255, 0.24)
+- `--shadow-volcanic-glow`: 0 0 24px rgba(255, 71, 87, 0.25), 0 0 48px rgba(255, 165, 2, 0.18)
+- `--shadow-card`: var(--shadow-sm)
+
+## Radii
+- `--radius-sm`: 12px
+- `--radius-md`: 18px
+- `--radius-lg`: 24px
+- `--radius-xl`: 32px
+- `--radius-2xl`: 36px
+- `--radius-xxl`: 40px
+- `--radius-3xl`: 48px
+- `--radius-pill`: 999px
+- `--radius-full`: 9999px
+
+## Spacing
+- `--space-1`: 0.25rem
+- `--space-2`: 0.5rem
+- `--space-3`: 0.75rem
+- `--space-4`: 1rem
+- `--space-5`: 1.25rem
+- `--space-6`: 1.5rem
+- `--space-7`: 1.75rem
+- `--space-8`: 2rem
+- `--space-9`: 2.25rem
+- `--space-10`: 2.5rem
+- `--space-11`: 2.75rem
+- `--space-12`: 3rem
+- `--space-13`: 3.25rem
+- `--space-14`: 3.5rem
+- `--space-16`: 4rem
+- `--space-18`: 4.5rem
+- `--space-20`: 5rem
+- `--space-2xs`: 0.25rem
+- `--space-xs`: 0.5rem
+- `--space-sm`: 0.75rem
+- `--space-md`: 1rem
+- `--space-lg`: 1.25rem
+- `--space-xl`: 1.5rem
+- `--space-2xl`: 2rem
+- `--space-3xl`: 2.5rem
+- `--space-4xl`: 3rem
+- `--space-5xl`: 4rem
+- `--space-6xl`: 5rem
+- `--space-7xl`: 6rem
+
+## Layout Metrics
+- `--layout-max`: 1180px
+- `--layout-max-wide`: 1380px
+- `--layout-gutter`: clamp(1.25rem, 4vw, 3.5rem)
+- `--nav-height`: 64px
+- `--navbar-height`: var(--nav-height)
+- `--navbar-offset`: calc(var(--navbar-height) + var(--space-6))
+
+## Gradients
+- `--gradient-sky`: radial-gradient(circle at 0% -20%, rgba(100, 244, 255, 0.38), transparent 55%), radial-gradient(circle at 100% 0%, rgba(168, 85, 247, 0.28), transparent 55%), linear-gradient(160deg, rgba(15, 23, 42, 0.95), rgba(2, 6, 23, 0.96))
+- `--gradient-card`: linear-gradient(145deg, rgba(100, 244, 255, 0.07), rgba(15, 23, 42, 0.78))
+- `--gradient-pill`: linear-gradient(120deg, rgba(100, 244, 255, 0.6), rgba(168, 85, 247, 0.6))
+- `--gradient-primary`: linear-gradient(125deg, var(--color-primary), var(--color-accent))
+- `--gradient-surface`: linear-gradient(145deg, rgba(10, 16, 30, 0.9), rgba(15, 23, 42, 0.98))
+- `--gradient-glass`: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02))
+- `--gradient-hero`: var(--gradient-sky)
+- `--gradient-card-premium`: linear-gradient(145deg, rgba(100, 244, 255, 0.08), rgba(168, 85, 247, 0.08))
+- `--gradient-lava`: linear-gradient(135deg, #ff4757 0%, #ff6348 50%, #ffa502 100%)
+- `--gradient-volcanic-flow`: linear-gradient(180deg, rgba(255, 71, 87, 0.22) 0%, rgba(255, 99, 72, 0.16) 50%, rgba(255, 165, 2, 0.1) 100%)
+- `--gradient-caution`: repeating-linear-gradient(45deg, var(--color-caution-stripe), var(--color-caution-stripe) 20px, var(--color-caution-dark) 20px, var(--color-caution-dark) 40px)
+- `--gradient-premium`: var(--gradient-primary)
+
+## Motion & Effects
+- `--transition-fast`: 150ms cubic-bezier(0.4, 0, 0.2, 1)
+- `--transition-normal`: 250ms cubic-bezier(0.4, 0, 0.2, 1)
+- `--transition-slow`: 350ms cubic-bezier(0.4, 0, 0.2, 1)
+- `--backdrop-strong`: saturate(160%) blur(24px)
+- `--backdrop-soft`: saturate(140%) blur(16px)
+- `--blur-glass`: blur(20px)
+- `--blur-backdrop`: blur(40px)
+
+## Z-Index
+- `--z-base`: 1
+- `--z-backdrop`: 1090
+- `--z-nav`: 1100
+- `--z-dropdown`: 1110
+- `--z-sticky`: 1120
+- `--z-fixed`: 1130
+- `--z-modal-backdrop`: 1140
+- `--z-modal`: 1150
+- `--z-popover`: 1160
+- `--z-tooltip`: 1170
+- `--z-toast`: 1180
