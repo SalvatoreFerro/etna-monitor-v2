@@ -16,14 +16,28 @@ _CURVA_FALLBACK_PATHS = [Path("data/curva_colored.csv"), Path("data/curva.csv")]
 
 
 def get_curva_csv_path() -> Path:
-    """Return the canonical curva.csv path."""
+    """Return the canonical curva.csv path.
+    
+    Prefers curva_colored.csv when it exists and has valid data.
+    Falls back to curva.csv if colored version is absent or empty.
+    """
     if _CURVA_ENV_PATH:
         return CURVA_CANONICAL_PATH
+    
+    # Check if canonical path (curva_colored.csv) exists and has data
     if CURVA_CANONICAL_PATH.exists():
-        return CURVA_CANONICAL_PATH
+        df, _ = load_curva_dataframe(CURVA_CANONICAL_PATH)
+        if df is not None and not df.empty:
+            return CURVA_CANONICAL_PATH
+    
+    # Fall back to checking all paths in order
     for fallback in _CURVA_FALLBACK_PATHS:
         if fallback.exists():
-            return fallback
+            df, _ = load_curva_dataframe(fallback)
+            if df is not None and not df.empty:
+                return fallback
+    
+    # If no valid file found, return canonical path as default
     return CURVA_CANONICAL_PATH
 
 

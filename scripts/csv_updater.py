@@ -3,6 +3,7 @@ import hashlib
 import json
 import logging
 import os
+import shutil
 import sys
 import time
 import traceback
@@ -239,6 +240,17 @@ def _update_hash_state(current_hash: str, threshold: int) -> tuple[int, bool]:
     return count, count >= threshold
 
 
+def _copy_to_fallback_csv(csv_path: Path) -> None:
+    """Copy the generated CSV to data/curva.csv as fallback."""
+    if csv_path.name == "curva_colored.csv":
+        fallback_path = csv_path.parent / "curva.csv"
+        try:
+            shutil.copy2(csv_path, fallback_path)
+            log.info("[CSV] Copied to fallback: %s", fallback_path)
+        except Exception as exc:
+            log.warning("[CSV] Failed to copy to fallback %s: %s", fallback_path, exc)
+
+
 def _write_csv_safely(rows: list, output_path: Path) -> dict:
     temp_path = output_path.with_suffix(".tmp")
     _, cleaned_rows = clean_and_save_data(rows, str(temp_path))
@@ -262,6 +274,7 @@ def _process_white_png(png_bytes: bytes, reference_time: datetime, csv_path: Pat
         temp_path.unlink(missing_ok=True)
         raise ValueError("Estratti 0 punti dal PNG bianco.")
     temp_path.replace(csv_path)
+    _copy_to_fallback_csv(csv_path)
     result["output_path"] = str(csv_path)
     return result
 
@@ -278,6 +291,7 @@ def _process_colored_png(path_png: Path, csv_path: Path) -> dict:
         for ts, value in zip(timestamps, values)
     ]
     result = _write_csv_safely(rows, csv_path)
+    _copy_to_fallback_csv(csv_path)
     result["debug_paths"] = debug_paths
     return result
 
